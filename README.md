@@ -1,6 +1,7 @@
 # Luminescent (formerly UsefulScripts / AllinOne)
 
-One background app for Linux (Hyprland, tested on CachyOS) that keeps every little tool a hotkey away: a GeForce-overlay style
+One background app for **Windows 11** and **Linux** (Hyprland, tested on CachyOS) that keeps every little tool a hotkey
+away: a GeForce-overlay style
 **hub** (Dashboard, Themes, Clipboard, Settings, and optional Notes, Timers, Calculator, Today and Usage pages), plus
 **Notes**, **Screen Doodle**, **Timers / Stopwatches**, **Calculator**, **Colour Picker**, **Screen Text Grab**,
 **Prompt Log**, **Reminders**, **Hearing Guard**, **Ghost Vault**, the **Metadata Stripper**, a **Window Snapper**, a
@@ -30,15 +31,23 @@ Start.bat            (Windows)
 From source, your setup lives in this folder (`settings.json` and `data/`), which git ignores: `git pull` updates
 the code and leaves your notes and settings alone.
 
-Inside a Hyprland session. Hotkeys are Hyprland binds that Luminescent adds while it runs (nothing is written
-to your config), and Hyprland places its windows, so it needs Hyprland; under another compositor the windows
-work but there are no global hotkeys. Optional system packages are listed at the end of requirements.txt
-(Tesseract for Text Grab, ffmpeg for video metadata, playerctl for Media Controls). After pulling a new version, run
-`.venv/bin/pip install -r requirements.txt` once (the QR Code maker needs `segno`).
+**Windows**: needs Python 3.11+ from python.org (tick "Add python.exe to PATH"). The first `Start.bat` sets
+everything up. Hotkeys are a global keyboard hook, so nothing needs administrator rights.
+
+**Linux**: run it inside a Hyprland session. Hotkeys are Hyprland binds that Luminescent adds while it runs (nothing
+is written to your config), and Hyprland places its windows, so it needs Hyprland; under another compositor the
+windows work but there are no global hotkeys. Optional system packages are listed at the end of requirements.txt
+(Tesseract for Text Grab, ffmpeg for video metadata, playerctl for Media Controls).
+
+After pulling a new version, install the requirements once more (`.venv/bin/pip install -r requirements.txt`, or
+`.venv\Scripts\pip install -r requirements.txt` on Windows).
+
+A few things are Linux-only: the Keybinds panel can edit Hyprland binds (on Windows it lists Luminescent's hotkeys),
+the frosted overlay background, and apps opening above the overlay. "Super" in hotkeys is the Windows key.
 
 A **sparkle** appears in the tray in your theme's accent colour. **Click it** (or press **Ctrl+Shift+Space**) to open
 the overlay. Right-click it for the dashboard items, quick actions, modules, Settings, Restart and Quit.
-Settings → General → **Run at login** adds an autostart entry (~/.config/autostart).
+Settings → General → **Run at login** starts it when you sign in (an autostart entry on Linux, the Run key on Windows).
 
 ## The overlay
 
@@ -129,7 +138,7 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   `Ctrl+Enter` calculates, copies the result and closes (⧉ copies without closing).
 * **Colour picker**: the Recent colours in the tray (and palette) can become the theme's accent or a new theme.
 * **Colour picker**: freezes the screen, shows an 11×11 zoom. The last 10 colours are in the tray menu and palette.
-* **Screen text grab**: uses Tesseract: `sudo pacman -S tesseract tesseract-data-eng` (plus `tesseract-data-<lang>`
+* **Screen text grab**: Windows uses its own text recognition. Linux uses Tesseract: `sudo pacman -S tesseract tesseract-data-eng` (plus `tesseract-data-<lang>`
   for other languages). Settings → Screen Text Grab can show the text in an edit box first (Ctrl+Enter copies).
 * **Prompt Log**: your fish (or bash / zsh) history plus everything the dashboard launched; search, copy, run again in
   a terminal, delete lines or clear it. Each row shows when it ran; **Pin** keeps a command at the top and **Save to
@@ -148,13 +157,15 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
 * **Ghost Vault**: a search box for names anywhere in the vault, and thumbnails for pictures (decrypted in memory,
   never written to disk).
 * **Metadata Stripper**: drop a whole folder to strip every image and video in it (to copies, or in place after a
-  confirm). Settings → Metadata Stripper → **Dolphin menu** adds right-click → Strip metadata to Dolphin.
-* **Window Snapper**: the active window to a half, third or corner of its screen (it floats while snapped);
-  **Back into the tiling layout** undoes it.
+  confirm). Settings → Metadata Stripper adds right-click → **Strip metadata** to Dolphin (Linux) or Explorer
+  (Windows, under Show more options).
+* **Window Snapper**: the active window to a half, third or corner of its screen (on Hyprland it floats while
+  snapped). The undo hotkey puts it back into the tiling layout (Linux) or where it was (Windows).
 * **Screen Ruler**, **Media Controls** (any MPRIS player, needs `playerctl`), **QR Code** (the clipboard as a QR code;
   copy it as a picture or save PNG / SVG) and **System Monitor** (CPU, RAM, GPU, network with a minute of history).
-* **Your own terminal**: Settings → Overlay & Interface → "Your own kitty windows follow the theme too" adds one
-  include line to kitty.conf (it asks first and keeps a backup).
+* **Your own terminal**: Settings → Overlay & Interface → "Your own terminal follows the theme too" adds one
+  include line to kitty.conf on Linux (it asks first and keeps a backup), or gives your Windows Terminal profiles the
+  Luminescent colours on Windows.
 
 ## Performance
 

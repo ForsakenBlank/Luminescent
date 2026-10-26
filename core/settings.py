@@ -270,7 +270,7 @@ SCHEMA = [
         Field("finish_sound_file", "Custom sound file", "file", "", file_filter=AUDIO_FILTER),
         Field("flash_on_finish", "Flash the panel when a timer finishes", "bool", True),
         Field("progress", "Countdown progress", "choice", "ring",
-              choices=[("ring", "A ring around the time"), ("bar", "A thin bar along the bottom"), ("none", "None")]),
+              choices=[("ring", "A ring beside the time"), ("bar", "A thin bar along the bottom"), ("none", "None")]),
         Field("restore_on_start", "Restore open timers on start", "bool", True),
         Field("bg_opacity", "Panel opacity", "opacity", 0.85),
         Field("default_width", "Default width", "int", 260, min=120, max=2000),

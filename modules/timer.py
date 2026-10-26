@@ -9,18 +9,25 @@ reboot) carries on counting, and a timer that ran out meanwhile shows DONE.
 
 Stopwatches have laps (button or the lap hotkey, which laps the stopwatch you
 started last). Running timers are listed in the tray icon's tooltip.
+
+No dialog: the new-timer hotkey opens a panel with a box to type the time in
+("5m", "1h30", "90s", "5m tea", "at 17:30"; empty = a stopwatch). The ⏲ button
+in a panel's header types a new time into it. Countdowns show their progress as
+a ring around the time or a bar along the bottom (Settings → Timer).
 """
 import os
 import time
+from datetime import datetime
 
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QDialog,
-    QSpinBox, QFormLayout, QCheckBox, QComboBox, QLineEdit, QScrollArea
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QLineEdit, QScrollArea
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, QRectF, QSize, pyqtSignal
+from PyQt6.QtGui import QPainter, QPen, QColor
 
 from core import DATA_DIR, theme, widgets, sounds, save_json, load_json
 from core.module import Module
+from core.timeparse import parse_duration, parse_clock
 
 SAVE_PATH = os.path.join(DATA_DIR, "timers.json")
 RUN_GREEN = "#3FBF74"
@@ -42,72 +49,56 @@ def fmt_ms(ms: float, show_ms: bool = True) -> str:
     return text + (f".{(ms % 1000) // 10:02d}" if show_ms else "")
 
 
-class NewTimerDialog(QDialog):
-    def __init__(self, parent=None, mode: str = "stopwatch"):
-        super().__init__(parent)
-        self.setWindowTitle("New Timer / Stopwatch")
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        self.setMinimumWidth(320)
+def parse_entry(text: str) -> tuple[float, str] | None:
+    """What was typed into a panel: (milliseconds, label). "5m tea" -> 5 min labelled tea, "at 17:30" -> until
+    then, "" -> (0, "") for a stopwatch. None when no time can be read."""
+    words = (text or "").split()
+    if not words:
+        return 0.0, ""
+    if words[0].lower() in ("at", "until") and len(words) > 1:
+        when = parse_clock(words[1])
+        if when is None:
+            return None
+        return max(1.0, (when - datetime.now()).total_seconds()) * 1000.0, " ".join(words[2:])
+    for k in range(len(words), 0, -1):
+        secs = parse_duration(" ".join(words[:k]))
+        if secs and secs > 0:
+            return secs * 1000.0, " ".join(words[k:])
+    return None
 
-        lay = QVBoxLayout(self)
-        lay.setSpacing(12)
-        lay.setContentsMargins(20, 20, 20, 20)
-        form = QFormLayout()
-        form.setSpacing(8)
 
-        self.name = QLineEdit()
-        self.name.setPlaceholderText("Optional label, e.g. Tea")
-        form.addRow("Label:", self.name)
+class _Ring(QFrame):
+    """Holds the big time; paints a countdown's progress as a ring just left of it."""
 
-        self.mode = QComboBox()
-        self.mode.addItems(["Stopwatch", "Timer"])
-        self.mode.setCurrentIndex(1 if mode == "timer" else 0)
-        self.mode.currentIndexChanged.connect(self._mode_changed)
-        form.addRow("Mode:", self.mode)
+    def __init__(self):
+        super().__init__()
+        self.frac: float | None = None
+        self.text_left = 0            # where the time text starts, so the ring can sit beside it
+        self.text_h = 0
+        self.colour = theme.P.primary
+        widgets.style(self, "background: transparent; border: none;")
 
-        self.h = QSpinBox(); self.h.setRange(0, 99); self.h.setSuffix(" h")
-        self.mi = QSpinBox(); self.mi.setRange(0, 59); self.mi.setSuffix(" m")
-        self.se = QSpinBox(); self.se.setRange(0, 59); self.se.setSuffix(" s")
-        self.mi.setValue(5)
-        row = QHBoxLayout()
-        row.setSpacing(6)
-        for w in (self.h, self.mi, self.se):
-            row.addWidget(w)
-        self.duration = QFrame()
-        self.duration.setLayout(row)
-        widgets.style(self.duration, "background: transparent; border: none;")
-        form.addRow("Duration:", self.duration)
-
-        self.ms = QCheckBox("Show milliseconds")
-        form.addRow("", self.ms)
-        lay.addLayout(form)
-
-        btns = QHBoxLayout()
-        cancel = widgets.button("Cancel")
-        cancel.clicked.connect(self.reject)
-        ok = widgets.button("Create", "primary")
-        ok.clicked.connect(self.accept)
-        ok.setDefault(True)
-        btns.addStretch()
-        btns.addWidget(cancel)
-        btns.addWidget(ok)
-        lay.addLayout(btns)
-        self._mode_changed(self.mode.currentIndex())
-
-    def showEvent(self, e):
-        super().showEvent(e)
-        QTimer.singleShot(0, lambda: widgets.bring_to_front(self))   # opened by a hotkey: take focus
-
-    def _mode_changed(self, idx):
-        self.duration.setVisible(idx == 1)
-
-    def config(self) -> dict:
-        return {
-            "label": self.name.text().strip(),
-            "mode": "timer" if self.mode.currentIndex() == 1 else "stopwatch",
-            "duration_ms": (self.h.value() * 3600 + self.mi.value() * 60 + self.se.value()) * 1000,
-            "show_ms": self.ms.isChecked(),
-        }
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if self.frac is None or not self.text_h:
+            return
+        d = self.text_h * 0.7
+        x = self.text_left - d * 1.45
+        if x < 2:
+            return
+        r = QRectF(x, (self.height() - d) / 2, d, d)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        width = max(2.5, d / 9)
+        p.setPen(QPen(QColor(theme.P.bg_frame), width))
+        p.drawEllipse(r)
+        left = max(0.0, 1.0 - self.frac)
+        if left > 0:
+            pen = QPen(QColor(self.colour), width)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawArc(r, 90 * 16, int(left * 360 * 16))      # what is left, running down clockwise
+        p.end()
 
 
 class TimerPanel(widgets.FloatingPanel):
@@ -136,6 +127,9 @@ class TimerPanel(widgets.FloatingPanel):
         self.run_dot.hide()
         hl = self.header.layout()
         hl.insertWidget(hl.indexOf(self.subtitle_label) + 1, self.run_dot)
+        set_time = widgets.icon_button("⏲", "Type a new time (5m, 1h30, at 17:30…)", 24, 12, ghost=True)
+        set_time.clicked.connect(self.ask_time)
+        self.header_right.addWidget(set_time)
 
         # body: the big time, its caption (timers), the pill buttons
         top = QFrame()
@@ -150,7 +144,20 @@ class TimerPanel(widgets.FloatingPanel):
         self.time_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.time_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.time_label.mousePressEvent = lambda e: self.play_pause() if e.button() == Qt.MouseButton.LeftButton else None
-        tl.addWidget(self.time_label, 1)
+        self.ring = _Ring()
+        rl = QVBoxLayout(self.ring)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.addWidget(self.time_label)
+        self.entry = QLineEdit()
+        self.entry.setPlaceholderText("5m, 1h30, 5m tea, at 17:30…  (empty: stopwatch)")
+        self.entry.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.entry.setFixedHeight(36)
+        self.entry.returnPressed.connect(self._entry_done)
+        self.entry.installEventFilter(self)
+        self.entry.hide()
+        rl.addWidget(self.entry)
+        tl.addWidget(self.ring, 1)
+        self._fresh = bool(cfg.get("ask"))          # opened by the hotkey: no time set yet
         self.caption = widgets.label("", 12, tone="muted")
         self.caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tl.addWidget(self.caption)
@@ -231,6 +238,52 @@ class TimerPanel(widgets.FloatingPanel):
         self._restore_progress(cfg)
         self._set_playing(self._running)
         self._update()
+        if self._fresh:
+            QTimer.singleShot(0, self.ask_time)
+
+    # ── typing a time ──────────────────────────────────────────────────────
+    def ask_time(self):
+        self.entry.setText("")
+        self.entry.setStyleSheet("")
+        self.time_label.hide()
+        self.entry.show()
+        self.show_and_raise()
+        self.entry.setFocus()
+
+    def _close_entry(self):
+        self.entry.hide()
+        self.time_label.show()
+
+    def eventFilter(self, obj, e):
+        if obj is self.entry and e.type() == e.Type.KeyPress and e.key() == Qt.Key.Key_Escape:
+            if self._fresh:
+                self.close()                # Esc on a brand new panel: never mind
+            else:
+                self._close_entry()
+            return True
+        return super().eventFilter(obj, e)
+
+    def _entry_done(self):
+        got = parse_entry(self.entry.text())
+        if got is None:
+            self.entry.setStyleSheet("QLineEdit { border: 1px solid #E5484D; }")
+            self.entry.setToolTip("Could not read a time. Try 5m, 1h30, 90s, 2:30 or at 17:30.")
+            return
+        ms, label = got
+        if ms <= 0 and not self._fresh:
+            self._close_entry()
+            return
+        self._fresh = False
+        self.cfg.pop("ask", None)
+        if label:
+            self.cfg["label"] = label
+        self.mode = "timer" if ms > 0 else "stopwatch"
+        self.duration_ms = int(ms)
+        self._refresh_switch_text()
+        self.reset()
+        self.set_title(self._title_text())
+        self._close_entry()
+        self.play_pause()
 
     # ── helpers ────────────────────────────────────────────────────────────
     def _title_text(self) -> str:
@@ -301,7 +354,7 @@ class TimerPanel(widgets.FloatingPanel):
         stopwatch = self.mode == "stopwatch"
         self.lap_btn.setVisible(stopwatch)
         self.lap_box.setVisible(stopwatch and bool(self.laps))
-        self.progress.setVisible(not stopwatch)
+        self.progress.setVisible(not stopwatch and self.m.s("progress", "ring") == "bar")
         self.caption.setVisible(not stopwatch)
         holder = QWidget()
         widgets.style(holder, "background: transparent;")
@@ -400,6 +453,23 @@ class TimerPanel(widgets.FloatingPanel):
             total = max(1, self.duration_ms)
             done = min(1.0, max(0.0, self.elapsed_ms() / total))
             self._fill.setGeometry(0, 0, int(self.progress.width() * done), 2)
+            ring = self.m.s("progress", "ring") == "ring" and self.duration_ms > 0
+            new = done if ring else None
+            fm = self.time_label.fontMetrics()
+            h = fm.capHeight() * 1.6
+            pad = int(h * 0.7 * 1.45) if ring else 0
+            if self.time_label.contentsMargins().left() != pad:
+                self.time_label.setContentsMargins(pad, 0, 0, 0)     # the time and its ring centred together
+            cr = self.time_label.contentsRect()
+            self.ring.text_h = h
+            self.ring.text_left = self.time_label.x() + cr.x() + (cr.width() - fm.horizontalAdvance(main)) / 2
+            if new != self.ring.frac:
+                self.ring.frac = new
+                self.ring.update()
+        elif self.ring.frac is not None:
+            self.ring.frac = None
+            self.time_label.setContentsMargins(0, 0, 0, 0)
+            self.ring.update()
             label = self.cfg.get("label") or ""
             self.caption.setText(f"of {fmt_clock(self.duration_ms, False)[0]}" + (f" · {label}" if label else ""))
 
@@ -422,6 +492,8 @@ class TimerPanel(widgets.FloatingPanel):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self._time_px = max(18, min(int(self.width() / (5.6 if self.show_ms else 4.4)), self.height() // 4, 72))
+        if self.mode == "timer" and self.m.s("progress", "ring") == "ring":
+            self._time_px = max(14, int(self._time_px * 0.72))     # room for the ring beside it
         self.time_label.setFont(theme.qfont(self._time_px, 500, mono=True, spacing=-0.02))
         self._update()
 
@@ -443,7 +515,6 @@ class TimerModule(Module):
         self._panels: list[TimerPanel] = []
         self._edit = False
         self._anchor_bar: widgets.AnchorBar | None = None
-        self._dialog_open = False
         self._stopping = False
 
     def _hotkeys(self):
@@ -483,7 +554,7 @@ class TimerModule(Module):
         return [("New timer / stopwatch", self.new_timer)]
 
     def actions(self):
-        return [("new_timer", "New timer", lambda: self.new_timer("timer")),
+        return [("new_timer", "New timer", lambda: self.new_timer("ask")),
                 ("new_stopwatch", "New stopwatch", lambda: self.new_timer("stopwatch")),
                 ("edit", "Timer edit mode (move, reset, snap)", self.toggle_edit),
                 ("lap", "Lap the last stopwatch", self.lap)]
@@ -503,17 +574,14 @@ class TimerModule(Module):
             target.lap()
 
     # ── panels ─────────────────────────────────────────────────────────────
-    def new_timer(self, mode: str = "stopwatch"):
-        if self._dialog_open:
+    def new_timer(self, mode: str = "ask"):
+        """A new panel. "ask" (the hotkey): it opens with a box to type the time in; "stopwatch": ready to start."""
+        mode = mode if mode in ("ask", "stopwatch") else "ask"
+        fresh = next((p for p in self._panels if p._fresh), None)
+        if fresh is not None and mode == "ask":
+            fresh.ask_time()                # the hotkey again while one is waiting for a time
             return
-        self._dialog_open = True
-        try:
-            dlg = NewTimerDialog(mode=mode if isinstance(mode, str) else "stopwatch")
-            if dlg.exec() != QDialog.DialogCode.Accepted:
-                return
-            self._add_panel(dlg.config())
-        finally:
-            self._dialog_open = False
+        self._add_panel({"mode": "stopwatch", "ask": mode == "ask"})
 
     def _add_panel(self, cfg: dict):
         panel = TimerPanel(self, cfg)
@@ -535,15 +603,19 @@ class TimerModule(Module):
             self.activity.emit()
 
     def apply_settings(self):
-        """Only hotkeys change live; running timers are left alone."""
+        """Only hotkeys and the progress style change live; running timers are left alone."""
         self.hotkeys.unregister_all(self.key)
         self._hotkeys()
+        for p in self._panels:
+            p._refresh_laps()
+            p.resize(p.size() + QSize(1, 0))         # re-fit the time for the ring / bar
+            p.resize(p.size() - QSize(1, 0))
 
     def save_panels(self):
         # atomic: the old open("w") + dump left a 0-byte timers.json whenever it was interrupted,
         # and every open timer was lost on the next start
         try:
-            save_json(SAVE_PATH, [p.state() for p in self._panels], indent=2)
+            save_json(SAVE_PATH, [p.state() for p in self._panels if not p._fresh], indent=2)
         except Exception:
             self.log.exception("could not save timers.json")
 

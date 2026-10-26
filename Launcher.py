@@ -659,6 +659,7 @@ def _smoke(launcher: "Launcher", app: QApplication):
             QTimer.singleShot(250, lambda: run(i + 1))
             return
         from PyQt6.QtWidgets import QLabel
+        errors.extend(f"module {k} failed: {v}" for k, v in launcher.module_errors.items())
         for k, _ in ALL_PAGES:
             page = launcher.overlay.page(k)
             if page is not None and any("could not be built" in lbl.text() for lbl in page.findChildren(QLabel)):

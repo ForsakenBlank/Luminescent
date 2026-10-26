@@ -35,4 +35,8 @@ jobs:
         shell: bash
         run: |
           export LUMINESCENT_HOME="$RUNNER_TEMP/lumhome"
-          python Launcher.py --smoke
+          code=0
+          python Launcher.py --smoke || code=$?
+          echo "--- warnings and errors in launcher.log ---"
+          grep -E "WARNING|ERROR|Traceback|  File " "$LUMINESCENT_HOME/data/launcher.log" || echo "(none)"
+          exit $code

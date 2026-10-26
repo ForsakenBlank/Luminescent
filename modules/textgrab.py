@@ -6,6 +6,9 @@ tesseract-data-<language> you read).  The screens are grabbed once when the
 hotkey is pressed (grim), dimmed, and you drag a rectangle (Esc or right-click
 cancels).  Recognition runs on a worker thread.  If Tesseract is missing only
 this module is unavailable.
+
+With "Show the text in an editable box" on, the result opens in a small panel
+first: fix what OCR got wrong, then Copy (Ctrl+Enter). Esc throws it away.
 """
 import os
 import shutil
@@ -13,8 +16,9 @@ import tempfile
 import threading
 import subprocess
 
-from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QRect, QPoint, pyqtSignal, QObject
+from PyQt6.QtWidgets import QApplication, QWidget, QPlainTextEdit, QHBoxLayout
+from PyQt6.QtCore import Qt, QRect, QPoint, QTimer, pyqtSignal, QObject
+from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap, QImage
 
 from core import theme, widgets, clip
@@ -110,6 +114,49 @@ class _Bridge(QObject):
     done = pyqtSignal(str, str)          # text, error
 
 
+class ReviewPanel(widgets.FloatingPanel):
+    """The grabbed text in an editable box: Copy (Ctrl+Enter) puts it on the clipboard."""
+
+    def __init__(self, m: "TextGrabModule", text: str):
+        self.m = m
+        super().__init__("Text Grab", min_size=(320, 180), opacity=0.96, close_hides=False)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.set_title("Text Grab", "check the text")
+        self.edit = QPlainTextEdit(text)
+        self.edit.setFont(theme.qfont(13))
+        self.edit.setStyleSheet("QPlainTextEdit { background: transparent; border: none; padding: 10px 12px; }")
+        self.body.addWidget(self.edit, 1)
+        row = QHBoxLayout()
+        row.setContentsMargins(12, 6, 12, 12)
+        row.addWidget(widgets.label("Ctrl+Enter copies · Esc closes", 11, tone="muted"))
+        row.addStretch()
+        cancel = widgets.button("Cancel", "ghost")
+        cancel.clicked.connect(self.close)
+        copy = widgets.button("Copy", "primary")
+        copy.clicked.connect(self.copy)
+        row.addWidget(cancel)
+        row.addWidget(copy)
+        self.body.addLayout(row)
+        for keys in ("Ctrl+Return", "Ctrl+Enter"):
+            QShortcut(QKeySequence(keys), self, activated=self.copy)
+        self.escape_pressed.connect(self.close)
+        lines = text.count("\n") + 1
+        self.resize(min(720, max(380, max((len(x) for x in text.splitlines()), default=20) * 8 + 60)),
+                    min(560, 130 + lines * 22))
+        self.center_on(widgets.cursor_screen_geometry())
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        QTimer.singleShot(0, lambda: (widgets.bring_to_front(self), self.edit.setFocus()))
+
+    def copy(self):
+        text = self.edit.toPlainText()
+        if text.strip():
+            clip.set_text(text)
+            self.m.ctx.notify(self.m.title, "Copied.", 1500)
+        self.close()
+
+
 class TextGrabModule(Module):
     key = "textgrab"
     title = "Text Grab"
@@ -188,6 +235,11 @@ class TextGrabModule(Module):
             return
         if not text.strip():
             self.ctx.notify(self.title, "No text found in that area.", 2500)
+            return
+        if self.s("review", False):
+            with self.themed():
+                panel = ReviewPanel(self, text.strip())
+            panel.show_and_raise()
             return
         clip.set_text(text)
         preview = text.replace("\n", " ")

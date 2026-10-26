@@ -584,7 +584,8 @@ class TimerModule(Module):
         self._add_panel({"mode": "stopwatch", "ask": mode == "ask"})
 
     def _add_panel(self, cfg: dict):
-        panel = TimerPanel(self, cfg)
+        with self.themed():
+            panel = TimerPanel(self, cfg)
         panel.show()
         panel.set_edit_mode(self._edit)
         self._panels.append(panel)

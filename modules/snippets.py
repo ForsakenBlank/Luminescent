@@ -1055,7 +1055,8 @@ class SnippetsModule(Module):
         if not os.path.isdir(base):
             self.ctx.notify(self.title, f"Snippets folder does not exist:\n{base}\nChange it in Settings → Snippets.")
             return
-        self.window = SnippetsWindow(self, path or base)
+        with self.themed():
+            self.window = SnippetsWindow(self, path or base)
         self.window.show_and_raise()
 
     def window_closed(self, win):

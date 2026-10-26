@@ -7,7 +7,7 @@ fill with items that open a script, program, file, folder, URL or command.
      "boards": [{"id", "name",
                  "tabs": [{"id", "title", "x", "y", "w", "collapsed",
                            "items": [{"id", "kind", "name", "path", "args", "hotkey", "action",
-                                      "cwd", "admin", "ask_args", "group"}]}]}]}
+                                      "cwd", "admin", "ask_args", "terminal", "group"}]}]}]}
 
 Boards are whole dashboards (Work, Gaming...) switched from the toolbar. The boxes float
 on the whole screen (x/y are screen pixels). Layout 1 files (panel-relative boxes) and
@@ -67,6 +67,7 @@ def _fill_item(it: dict):
     it["kind"] = it["kind"] or "item"
     it.setdefault("admin", False)
     it.setdefault("ask_args", False)
+    it.setdefault("terminal", False)          # a command that runs in a terminal window you can read
     if not isinstance(it.get("group"), list):
         it["group"] = []
 
@@ -398,6 +399,14 @@ class DashboardStore(QObject):
                 return
             args = text
         s = self.launcher.settings
+        cmd = it.get("path", "").strip()
+        if it.get("terminal") and cmd and not os.path.exists(os.path.expanduser(cmd)) and "://" not in cmd:
+            line = f"{cmd} {it.get('args', '') if args is None else args}".strip()
+            err = runner.open_terminal(os.path.expanduser(it.get("cwd") or "~"), line, s.get("dashboard.terminal", ""))
+            runner.log_command(line)
+            if err:
+                self.launcher.notify(it.get("name") or "Dashboard", err)
+            return
         err, proc = runner.launch(it.get("path", ""), it.get("args", "") if args is None else args, it.get("name", ""),
                                   {"use_terminal": s.get("dashboard.use_terminal", True),
                                    "keep_open": s.get("dashboard.keep_open", True),
@@ -493,6 +502,9 @@ class ItemDialog(QDialog):
         self.admin = QCheckBox("Run as administrator")
         self.admin.setToolTip("Scripts run with sudo in their terminal; programs and commands ask through pkexec.")
         self.admin.setChecked(bool(self.item.get("admin")))
+        self.term = QCheckBox("Commands run in a terminal window (to see their output)")
+        self.term.setToolTip("For a command (not a file or folder): it runs in your terminal, which stays open.")
+        self.term.setChecked(bool(self.item.get("terminal")))
         self.members: QListWidget | None = None
         if self.kind == "group":
             hint = QLabel("Tick the items it runs. Drag to change the order.")
@@ -537,6 +549,7 @@ class ItemDialog(QDialog):
             crow.addWidget(cb)
             form.addRow("Working folder", crow)
             form.addRow("", self.admin)
+            form.addRow("", self.term)
         else:
             lbl = QLabel(f"Runs a Luminescent action ({self.item['action']})")
             lbl.setObjectName("lumHint")
@@ -614,7 +627,8 @@ class ItemDialog(QDialog):
         self.item.update({"name": name or os.path.basename(path.rstrip("/")) or path, "hotkey": combo})
         if not self.is_action:
             self.item.update({"path": path, "args": self.args.text().strip(), "ask_args": self.ask.isChecked(),
-                              "cwd": self.cwd.text().strip(), "admin": self.admin.isChecked()})
+                              "cwd": self.cwd.text().strip(), "admin": self.admin.isChecked(),
+                              "terminal": self.term.isChecked()})
         self.accept()
 
     def done(self, r):

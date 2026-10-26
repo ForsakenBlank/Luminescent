@@ -10,8 +10,14 @@ Sources:
 Deleting rewrites the file atomically. A shell that is open keeps its own
 in-memory history (↑) and may write it back when it exits; fish merges, so
 delete there too ("history delete") if a command keeps coming back.
+
+Pinned commands (data/promptlog.json) stay at the top of every list. Each row shows
+when the command ran, where the history keeps that. "Save to Dashboard" turns a
+command into a dashboard item that runs it in a terminal.
 """
 import os
+import re
+from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout, QComboBox, QCheckBox,
@@ -19,8 +25,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 
-from core import theme, widgets, runner, clip
+from core import DATA_DIR, theme, widgets, runner, clip, save_json, load_json
 from core.module import Module
+
+PINS_PATH = os.path.join(DATA_DIR, "promptlog.json")
 
 _DATA = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
 HISTORIES = [
@@ -112,6 +120,34 @@ def read_entries(path: str) -> list[tuple[str, str]]:
     return out
 
 
+def entry_time(kind: str, raw: str) -> datetime | None:
+    """When a history entry ran, if its file keeps that (fish, zsh with timestamps, bash with HISTTIMEFORMAT,
+    Luminescent's own log)."""
+    try:
+        if kind == LOG_KIND:
+            return datetime.fromisoformat(raw.split("\t", 1)[0])
+        if kind == "fish":
+            m = re.search(r"^\s+when: (\d+)", raw, re.M)
+        elif kind == "zsh":
+            m = re.match(r": (\d+):", raw)
+        else:
+            m = re.match(r"#(\d+)\n", raw)
+        return datetime.fromtimestamp(int(m.group(1))) if m else None
+    except (ValueError, OSError, OverflowError):
+        return None
+
+
+def _when(t: datetime | None) -> str:
+    if t is None:
+        return ""
+    now = datetime.now()
+    if t.date() == now.date():
+        return t.strftime("%H:%M")
+    if t.year == now.year:
+        return f"{t.day} {t:%b} {t:%H:%M}"
+    return f"{t.day} {t:%b %Y}"
+
+
 def read_commands(path: str) -> list[str]:
     return [c for c, _ in read_entries(path)]
 
@@ -153,6 +189,8 @@ class PromptLogPanel(widgets.FloatingPanel):
         self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.list.setStyleSheet(f"QListWidget {{ font-family: {theme.MONO_CSS}; font-size: 12px; }}")
         self.list.itemDoubleClicked.connect(lambda it: self._copy([it]))
+        self.list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.list.customContextMenuRequested.connect(self._menu)
         lay.addWidget(self.list, 1)
         self.count = QLabel()
         self.count.setObjectName("lumHint")
@@ -160,6 +198,8 @@ class PromptLogPanel(widgets.FloatingPanel):
         btns = QHBoxLayout()
         for text, fn, variant in (("Copy", lambda: self._copy(self.list.selectedItems()), ""),
                                   ("Run in a terminal", self._run, ""),
+                                  ("📌 Pin / unpin", self._toggle_pin, ""),
+                                  ("Save to Dashboard…", self._to_dashboard, ""),
                                   ("Delete selected…", self._delete, "danger"),
                                   ("Clear all…", self._clear, "danger")):
             b = widgets.button(text, variant)
@@ -167,7 +207,8 @@ class PromptLogPanel(widgets.FloatingPanel):
             btns.addWidget(b)
         btns.addStretch()
         lay.addLayout(btns)
-        hint = QLabel("Double-click copies. Shows your fish, bash and zsh history and what Luminescent launched.")
+        hint = QLabel("Double-click copies, right-click for more. Pinned commands stay at the top of every list. "
+                      "Shows your fish, bash and zsh history and what Luminescent launched.")
         hint.setObjectName("lumHint")
         hint.setWordWrap(True)
         lay.addWidget(hint)
@@ -195,10 +236,24 @@ class PromptLogPanel(widgets.FloatingPanel):
         self._cmds = [c for c, _ in self._entries]
         self._fill()
 
+    def _row_text(self, c: str, when: str, pinned: bool) -> str:
+        text = c if "\n" not in c else c.replace("\n", "  ⏎ ")
+        return ("📌  " if pinned else "") + (f"{when:>13}   " if when else "") + text
+
     def _fill(self, *_):
         q = self.search.text().strip().lower()
         self.list.clear()
-        seen = set()
+        kind = kind_of(self.path()) if self.path() else ""
+        pins = self.m.pins()
+        for c in pins:                                        # pinned first, from any history
+            if q and q not in c.lower():
+                continue
+            it = QListWidgetItem(self._row_text(c, "", True))
+            it.setData(Qt.ItemDataRole.UserRole, -1)
+            it.setData(Qt.ItemDataRole.UserRole + 1, c)
+            it.setToolTip(c[:2000])
+            self.list.addItem(it)
+        seen = set(pins) if self.dedupe.isChecked() else set()
         shown = 0
         for i in range(len(self._cmds) - 1, -1, -1):           # newest first
             c = self._cmds[i]
@@ -208,8 +263,10 @@ class PromptLogPanel(widgets.FloatingPanel):
                 seen.add(c)
             if q and q not in c.lower():
                 continue
-            it = QListWidgetItem(c if "\n" not in c else c.replace("\n", "  ⏎ "))
+            when = _when(entry_time(kind, self._entries[i][1]))
+            it = QListWidgetItem(self._row_text(c, when, False))
             it.setData(Qt.ItemDataRole.UserRole, i)
+            it.setData(Qt.ItemDataRole.UserRole + 1, c)
             it.setToolTip(c[:2000])
             self.list.addItem(it)
             shown += 1
@@ -217,31 +274,73 @@ class PromptLogPanel(widgets.FloatingPanel):
                 break
         self.count.setText(f"{shown} shown · {len(self._cmds)} in {os.path.basename(self.path())}")
 
+    @staticmethod
+    def _cmd(it) -> str:
+        return it.data(Qt.ItemDataRole.UserRole + 1) or ""
+
     def _copy(self, items):
         if not items:
             return
-        clip.set_text("\n".join(self._cmds[it.data(Qt.ItemDataRole.UserRole)] for it in items))
+        clip.set_text("\n".join(self._cmd(it) for it in items))
         self.count.setText(f"Copied {len(items)} command(s).")
 
-    def _run(self):
+    def _one(self, what: str) -> str:
         items = self.list.selectedItems()
         if len(items) != 1:
-            widgets.message(self, "Run", "Select one command.")
+            widgets.message(self, what, "Select one command.")
+            return ""
+        return self._cmd(items[0])
+
+    def _run(self):
+        cmd = self._one("Run")
+        if not cmd:
             return
-        cmd = self._cmds[items[0].data(Qt.ItemDataRole.UserRole)]
         err = runner.open_terminal(os.path.expanduser("~"), cmd)
         if err:
             widgets.error(self, "Run", err)
 
+    def _toggle_pin(self):
+        items = self.list.selectedItems()
+        if not items:
+            return
+        pins = self.m.pins()
+        for it in items:
+            c = self._cmd(it)
+            if c in pins:
+                pins.remove(c)
+            else:
+                pins.append(c)
+        self.m.set_pins(pins)
+        self._fill()
+
+    def _to_dashboard(self):
+        cmd = self._one("Save to Dashboard")
+        if cmd:
+            self.m.save_to_dashboard(cmd, self)
+
+    def _menu(self, pos):
+        it = self.list.itemAt(pos)
+        if it is None:
+            return
+        c = self._cmd(it)
+        m = widgets.menu(self)
+        m.addAction("Copy", lambda: self._copy([it]))
+        m.addAction("Run in a terminal", lambda: runner.open_terminal(os.path.expanduser("~"), c))
+        m.addAction("Unpin" if c in self.m.pins() else "📌  Pin to the top",
+                    lambda: (self.list.setCurrentItem(it), self._toggle_pin()))
+        m.addAction("Save to Dashboard…", lambda: self.m.save_to_dashboard(c, self))
+        m.exec(self.list.mapToGlobal(pos))
+
     def _indices_to_drop(self, items) -> set[int]:
         """Selected rows; with "Hide repeats" on, every copy of a selected command goes."""
-        chosen = {self._cmds[it.data(Qt.ItemDataRole.UserRole)] for it in items}
+        items = [it for it in items if it.data(Qt.ItemDataRole.UserRole) >= 0]
+        chosen = {self._cmd(it) for it in items}
         if self.dedupe.isChecked():
             return {i for i, c in enumerate(self._cmds) if c in chosen}
         return {it.data(Qt.ItemDataRole.UserRole) for it in items}
 
     def _delete(self):
-        items = self.list.selectedItems()
+        items = [it for it in self.list.selectedItems() if it.data(Qt.ItemDataRole.UserRole) >= 0]
         if not items:
             return
         drop = self._indices_to_drop(items)
@@ -292,13 +391,49 @@ class PromptLogModule(Module):
         if self.panel and not self.panel.isVisible():
             self.stop()
 
+    def pins(self) -> list[str]:
+        d = load_json(PINS_PATH, {})
+        pins = d.get("pins", []) if isinstance(d, dict) else []
+        return [p for p in pins if isinstance(p, str)]
+
+    def set_pins(self, pins: list[str]):
+        try:
+            save_json(PINS_PATH, {"pins": pins}, indent=2)
+        except OSError as e:
+            self.ctx.notify(self.title, f"Could not save the pins: {e}")
+
+    def save_to_dashboard(self, cmd: str, parent=None):
+        """Make `cmd` a dashboard item (in a box you pick) that runs it in a terminal."""
+        launcher = self.ctx.launcher
+        if launcher is None:
+            return
+        dash = launcher.dashboard
+        tabs = [t for t in dash.tabs() if t["id"] != "tools"]
+        if not tabs:
+            tabs = [dash.add_tab("Commands", 96, 136)]
+        if len(tabs) == 1:
+            tab = tabs[0]
+        else:
+            title, ok = widgets.ask_choice(parent, "Save to Dashboard", "Which box?", [t["title"] for t in tabs])
+            if not ok:
+                return
+            tab = next(t for t in tabs if t["title"] == title)
+        first = cmd.strip().splitlines()[0] if cmd.strip() else cmd
+        name, ok = widgets.ask_text(parent, "Save to Dashboard", "Name:", first[:40])
+        if not ok:
+            return
+        dash.add_item(tab["id"], {"kind": "item", "name": name.strip() or first[:40], "path": cmd.strip(),
+                                  "terminal": True})
+        self.ctx.notify(self.title, f"Added “{name.strip() or first[:40]}” to {tab['title']}.")
+
     def actions(self):
         return [("open", "Prompt Log (command history)", self.toggle),
                 ("terminal", "Open a Luminescent terminal", lambda: runner.open_terminal())]
 
     def toggle(self):
         if self.panel is None:
-            self.panel = PromptLogPanel(self)
+            with self.themed():
+                self.panel = PromptLogPanel(self)
         if self.panel.isVisible():
             self.panel.hide()
         else:

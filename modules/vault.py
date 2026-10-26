@@ -841,7 +841,8 @@ class VaultModule(Module):
                     return
             elif not self._unlock(store):
                 return
-            self.window = VaultWindow(self, store)
+            with self.themed():
+                self.window = VaultWindow(self, store)
             self.window.show_and_raise()
         finally:
             self._opening = False

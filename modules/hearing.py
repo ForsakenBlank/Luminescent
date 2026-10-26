@@ -1115,7 +1115,8 @@ class HearingModule(Module):
 
     def toggle(self):
         if self.panel is None:
-            self.panel = HearingPanel(self)
+            with self.themed():
+                self.panel = HearingPanel(self)
         self.panel.toggle()
 
     # ── settings helpers ───────────────────────────────────────────────────

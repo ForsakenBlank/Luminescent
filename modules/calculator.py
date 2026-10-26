@@ -657,7 +657,8 @@ class CalculatorModule(Module):
     # ── panel ──────────────────────────────────────────────────────────────
     def toggle(self):
         if self.panel is None:
-            self.panel = CalcPanel(self)
+            with self.themed():
+                self.panel = CalcPanel(self)
             self.panel.hidden.connect(self._panel_hidden)
         if self.panel.isVisible():
             self.panel.hide()

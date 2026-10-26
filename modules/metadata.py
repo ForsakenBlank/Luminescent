@@ -388,7 +388,8 @@ class MetadataModule(Module):
 
     def toggle(self):
         if self.panel is None:
-            self.panel = MetaPanel(self)
+            with self.themed():
+                self.panel = MetaPanel(self)
         self.panel.toggle()
 
     def tray_actions(self):

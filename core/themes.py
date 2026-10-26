@@ -238,6 +238,25 @@ class ThemeStore(QObject):
         i = ids.index(act["id"]) if act["id"] in ids else -1
         return ring[(i + 1) % len(ring)] if ring else None
 
+    # ── made from one colour ───────────────────────────────────────────────
+    def from_accent(self, accent: str, light: bool, name: str = "") -> dict:
+        """A new theme whose colours all go with `accent` (added, not applied)."""
+        t = new_theme(name or f"{accent.upper()} {'light' if light else 'dark'}")
+        t["colours"] = {**theme.PRESETS["light" if light else "dark"], **theme.generate(accent, light)}
+        self.add(t)
+        return t
+
+    def set_accent(self, tid: str, accent: str):
+        """Give a theme a new accent colour; its accent shades follow."""
+        t = self.get(tid)
+        if t is None:
+            return
+        t = copy.deepcopy(t)
+        t["colours"].update(theme.accent_roles(accent.upper(), t["colours"].get("bg_base", "#131317")))
+        if t["colours"].get("folder_border"):
+            t["colours"]["folder_border"] = t["colours"]["primary_text"]
+        self.update_theme(t)
+
     # ── sharing ────────────────────────────────────────────────────────────
     def export(self, tid: str, path: str):
         """Write one theme to a .lumtheme file (JSON). Its background image and card icon go inside it."""

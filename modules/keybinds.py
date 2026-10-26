@@ -332,7 +332,8 @@ class KeybindsModule(Module):
 
     def toggle(self):
         if self.panel is None:
-            self.panel = KeybindsPanel(self)
+            with self.themed():
+                self.panel = KeybindsPanel(self)
         if self.panel.isVisible():
             self.panel.hide()
         else:

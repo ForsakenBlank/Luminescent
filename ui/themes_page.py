@@ -3,8 +3,9 @@ Themes page: a grid of theme cards grouped in colour-coded folders.
 
 Click a card to apply it. Right-click → Settings… (every colour on a full colour
 wheel, font, corner radius, glow, background image + its opacity, icon,
-wallpaper, settings profile), Rename, Duplicate, Move to folder, Delete.
-Themes outside a folder are listed under BUILT-IN (Dark, Light) and MY THEMES.
+wallpaper, settings profile, module accents), Rename, Duplicate, Export, Move to
+folder, Delete. The toolbar imports a .lumtheme file or makes a whole theme from
+one colour. Themes outside a folder are listed under BUILT-IN (Dark, Light) and MY THEMES.
 """
 import os
 
@@ -200,6 +201,14 @@ class ThemesPage(QWidget):
         self.active_lbl = widgets.label("", 10, 500, mono=True, spacing=0.06, tone="muted")
         bar.addWidget(self.active_lbl)
         bar.addStretch()
+        imp = widgets.button("Import…", "ghost", "Add a theme someone shared (.lumtheme)")
+        imp.setFixedHeight(30)
+        imp.clicked.connect(self.import_theme)
+        gen = widgets.button("From a colour…", "ghost", "Pick one colour; every other colour is chosen to match it")
+        gen.setFixedHeight(30)
+        gen.clicked.connect(self.theme_from_colour)
+        bar.addWidget(imp)
+        bar.addWidget(gen)
         fold = widgets.button("New folder", "ghost")
         fold.setFixedHeight(30)
         fold.clicked.connect(self.new_folder)
@@ -305,6 +314,47 @@ class ThemesPage(QWidget):
             self.store.add(t)
             self.edit(t)
 
+    def import_theme(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Import a theme", os.path.expanduser("~"),
+                                              "Luminescent themes (*.lumtheme);;All files (*)")
+        if not path:
+            return
+        try:
+            t = self.store.import_file(path)
+        except (ValueError, OSError) as e:
+            widgets.error(self, "Import theme", str(e))
+            return
+        if widgets.confirm(self, "Import theme", f'Added "{t["name"]}". Use it now?', yes="Use it"):
+            self.apply(t["id"])
+
+    def export_theme(self, t: dict):
+        safe = "".join(c for c in t["name"] if c not in '\\/:*?"<>|').strip() or "theme"
+        path, _ = QFileDialog.getSaveFileName(self, "Export theme", os.path.join(os.path.expanduser("~"),
+                                              safe + ".lumtheme"), "Luminescent themes (*.lumtheme)")
+        if not path:
+            return
+        if not path.endswith(".lumtheme"):
+            path += ".lumtheme"
+        try:
+            self.store.export(t["id"], path)
+        except (ValueError, OSError) as e:
+            widgets.error(self, "Export theme", str(e))
+            return
+        self.launcher.notify("Themes", f"Saved {path}")
+
+    def theme_from_colour(self, colour: str = ""):
+        if not colour:
+            c = QColorDialog.getColor(QColor(theme.P.primary), self, "The theme's accent colour")
+            if not c.isValid():
+                return
+            colour = c.name()
+        mode = widgets.choose(self, "Theme from a colour", f"A dark or a light theme around {colour.upper()}?",
+                              ["Dark", "Light"])
+        if mode is None:
+            return
+        t = self.store.from_accent(colour, mode == "Light")
+        self.apply(t["id"])
+
     def new_folder(self):
         name, ok = widgets.ask_text(self, "New folder", "Folder name:")
         if not ok or not name.strip():
@@ -323,6 +373,7 @@ class ThemesPage(QWidget):
         m.addAction("Settings…", lambda: self.edit(t))
         m.addAction("Rename…", lambda: self._rename(t))
         m.addAction("Duplicate", lambda: self.store.duplicate(t["id"]))
+        m.addAction("Export to a file…", lambda: self.export_theme(t))
         sub = m.addMenu("Move to folder")
         sub.addAction("(no folder)", lambda: self.store.move_to_folder(t["id"], ""))
         for f in self.store.folders():
@@ -416,7 +467,10 @@ class ThemeDialog(QDialog):
         self.name = QLineEdit(t["name"])
         form.addRow("Name", self.name)
         head = widgets.label("COLOURS", 11, 600, mono=True, spacing=0.14)
-        form.addRow(head)
+        gen = widgets.button("Match everything to the accent", "ghost",
+                             "Picks backgrounds, text and borders that go with the accent colour below")
+        gen.clicked.connect(self._generate)
+        form.addRow(head, gen)
         self.swatches = {}
         for role, label in theme.COLOUR_ROLES:
             sw = _Swatch(self.t["colours"].get(role, theme.PRESETS["dark"][role]), self._update_preview)
@@ -452,6 +506,33 @@ class ThemeDialog(QDialog):
         form.addRow("Image opacity", op)
         self.icon = self._path_row(form, "Card icon", t.get("icon", ""), IMAGE_FILTER,
                                    "Shown on the theme card. Empty: the background image or a preview.")
+
+        head_m = widgets.label("MODULE ACCENTS", 11, 600, mono=True, spacing=0.14)
+        form.addRow(head_m)
+        hint = QLabel("Give a module its own accent colour (e.g. Notes in green). Empty: the theme's accent.")
+        hint.setObjectName("lumHint")
+        hint.setWordWrap(True)
+        form.addRow(hint)
+        self.module_swatches = {}
+        mods = dict(self.t.get("modules") or {})
+        for key, m in launcher.modules.items():
+            if key in ("doodle", "colorpicker"):
+                continue                      # no windows of their own to colour
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            sw = _Swatch(mods.get(key) or theme.P.primary, self._update_preview)
+            sw.setProperty("unset", key not in mods)
+            if key not in mods:
+                sw.setText("THEME")
+            sw.clicked.connect(lambda _=False, s=sw: self._module_picked(s))
+            clear = widgets.icon_button("✕", "Use the theme's accent", 26, 11)
+            clear.clicked.connect(lambda _=False, s=sw: (s.setProperty("unset", True), s.set(theme.P.primary),
+                                                          s.setText("THEME")))
+            row.addWidget(sw)
+            row.addWidget(clear)
+            row.addStretch()
+            self.module_swatches[key] = sw
+            form.addRow(f"{m.icon}  {m.title}", row)
 
         head3 = widgets.label("WHEN THIS THEME IS APPLIED", 11, 600, mono=True, spacing=0.14)
         form.addRow(head3)
@@ -520,7 +601,7 @@ class ThemeDialog(QDialog):
     def _browse(self, edit: QLineEdit, flt: str):
         p, _ = QFileDialog.getOpenFileName(self, "Choose a file", edit.text(), flt)
         if p:
-            edit.setText(p.replace("/", "\\"))
+            edit.setText(p)
 
     def result_theme(self) -> dict:
         t = dict(self.t)
@@ -530,7 +611,25 @@ class ThemeDialog(QDialog):
                   "glow": self.glow.isChecked(), "background_image": self.bg_image.text().strip(),
                   "image_opacity": self.opacity.value() / 100.0, "icon": self.icon.text().strip(),
                   "wallpaper": self.wallpaper.text().strip(), "profile": self.profile.currentData() or ""})
+        if hasattr(self, "module_swatches"):
+            t["modules"] = {k: sw.colour for k, sw in self.module_swatches.items() if not sw.property("unset")}
         return t
+
+    @staticmethod
+    def _module_picked(sw: _Swatch):
+        # runs after the colour dialog: a cancelled pick leaves the module on the theme's accent
+        if sw.property("unset") and sw.colour.upper() == theme.P.primary.upper():
+            sw.setText("THEME")
+        else:
+            sw.setProperty("unset", False)
+
+    def _generate(self):
+        accent = self.swatches["primary"].colour
+        light = theme.luminance(self.swatches["bg_base"].colour) > 140
+        for role, value in theme.generate(accent, light).items():
+            if role in self.swatches:
+                self.swatches[role].set(value)
+        self._update_preview()
 
     def _update_preview(self, *_):
         if not hasattr(self, "preview"):

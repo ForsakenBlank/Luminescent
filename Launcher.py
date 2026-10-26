@@ -180,7 +180,40 @@ class Launcher:
             self.settings.switch_profile(t.get("profile") or "default")
             self.notify(APP_NAME, f"Settings profile: {self.settings.profile_name(self.settings.active_profile())}", 2500)
 
+    def _sync_own_terminal(self, asked: bool = False):
+        """Settings → Overlay → "Your own kitty windows follow the theme": link kitty.conf (after asking) or unlink it."""
+        if os.environ.get("LUMINESCENT_HOME"):
+            return
+        want = bool(self.settings.get("ui.own_terminal", False))
+        linked = terminal.kitty_linked()
+        if want and not linked and asked:
+            if not terminal.kitty_installed():
+                self.notify(APP_NAME, "kitty is not installed, so there is no kitty.conf to colour.")
+                want = False
+            elif widgets.confirm(None, "Colour your kitty windows",
+                                 "Luminescent will add one line to ~/.config/kitty/kitty.conf:\n\n"
+                                 "    include luminescent-theme.conf\n\n"
+                                 "and keep luminescent-theme.conf in the theme's colours. A copy of your kitty.conf "
+                                 "goes to data/terminal-backups first. Go ahead?", yes="Add it"):
+                err = terminal.link_kitty(os.path.join(DATA_DIR, "terminal-backups"))
+                if err:
+                    self.notify(APP_NAME, f"Could not change kitty.conf: {err}")
+                    want = False
+            else:
+                want = False
+            if not want:
+                self.settings.set("ui.own_terminal", False)
+                self.settings.save_quiet()
+        elif want and linked:
+            terminal.write_kitty_theme()
+        elif not want and linked and asked:
+            err = terminal.unlink_kitty()
+            if err:
+                self.notify(APP_NAME, f"Could not change kitty.conf: {err}")
+
     def _write_terminal_scheme(self):
+        if self.settings.get("ui.own_terminal", False):
+            self._sync_own_terminal()
         if not self.settings.get("ui.terminal_scheme", True):
             return
         try:
@@ -255,6 +288,7 @@ class Launcher:
         self._sync_autostart()
         self._sync_desktop_entry()
         terminal.set_preferred(self.settings.get("dashboard.terminal", ""))
+        self._sync_own_terminal(asked=True)
         if self.settings.get("ui.terminal_scheme", True):
             self._write_terminal_scheme()
         else:

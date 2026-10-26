@@ -166,6 +166,10 @@ SCHEMA = [
         Field("terminal_scheme", "Use the Luminescent colours in the terminal", "bool", True,
               "kitty, alacritty and foot windows opened by Luminescent get the theme's colours (passed on the "
               "command line, so your terminal config is not touched)."),
+        Field("own_terminal", "Your own kitty windows follow the theme too", "bool", False,
+              "Asks first. Adds one include line to ~/.config/kitty/kitty.conf (a backup goes to "
+              "data/terminal-backups) and writes luminescent-theme.conf next to it, which is rewritten and "
+              "reloaded whenever the theme changes. Turning it off takes the line out again."),
     ]),
 
     Section("dashboard", "Dashboard & Scripts", "▦", "How dashboard items start.", [

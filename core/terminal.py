@@ -5,11 +5,18 @@ Scripts, "Open a terminal" and the Prompt Log open in your terminal: the one set
 in Settings → Dashboard & Scripts, else $TERMINAL, else the first of TERMINALS
 that is installed.  With the Luminescent colours on, kitty, alacritty and foot
 get the theme's colours as command-line overrides, so no terminal config file is
-ever written or edited.
+written or edited for that.
+
+Optionally (Settings → Overlay & Interface, it asks first) your own kitty windows
+follow the theme too: kitty.conf gets one include line (a backup is kept) and
+luminescent-theme.conf next to it is rewritten on every theme change, then kitty
+is told to reload its config.
 """
 import os
 import shutil
 import logging
+import subprocess
+from datetime import datetime
 
 from core import theme, APP_NAME
 
@@ -140,3 +147,84 @@ def command(title: str, cwd: str, argv: list[str], configured: str = "") -> list
     if name == "xfce4-terminal":
         return [term, "--title", title, "--working-directory", cwd, "-x", *argv]
     return [term, "-T", title, "-e", *argv]
+
+
+# ── your own kitty windows ────────────────────────────────────────────────────
+KITTY_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "kitty")
+KITTY_CONF = os.path.join(KITTY_DIR, "kitty.conf")
+KITTY_THEME = os.path.join(KITTY_DIR, "luminescent-theme.conf")
+_INCLUDE = "include luminescent-theme.conf"
+_MARK = "# added by Luminescent: its theme colours (Settings > Overlay & Interface)"
+
+
+def kitty_installed() -> bool:
+    return bool(shutil.which("kitty"))
+
+
+def kitty_linked() -> bool:
+    try:
+        with open(KITTY_CONF, "r", encoding="utf-8") as f:
+            return any(line.strip() == _INCLUDE for line in f)
+    except OSError:
+        return False
+
+
+def write_kitty_theme() -> str:
+    """Write the theme's colours to luminescent-theme.conf and make running kittys reload. '' or an error."""
+    try:
+        s = scheme()
+        lines = [f"# {APP_NAME} theme colours, rewritten whenever the theme changes. Do not edit.",
+                 f"background {s['background']}", f"foreground {s['foreground']}",
+                 f"cursor {s['cursorColor']}", f"selection_background {s['selectionBackground']}",
+                 f"selection_foreground {s['foreground']}", f"active_border_color {theme.P.primary}",
+                 f"inactive_border_color {theme.P.border}", f"url_color {theme.P.primary_text}"]
+        lines += [f"color{i} {c}" for i, c in enumerate(_ansi(s))]
+        os.makedirs(KITTY_DIR, exist_ok=True)
+        with open(KITTY_THEME, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    except OSError as e:
+        return str(e)
+    if shutil.which("pkill"):
+        subprocess.run(["pkill", "-USR1", "-x", "kitty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return ""
+
+
+def link_kitty(backup_dir: str) -> str:
+    """Add the include line to kitty.conf (a copy of it goes to `backup_dir` first). '' or an error."""
+    if kitty_linked():
+        return write_kitty_theme()
+    try:
+        os.makedirs(KITTY_DIR, exist_ok=True)
+        if os.path.exists(KITTY_CONF):
+            os.makedirs(backup_dir, exist_ok=True)
+            shutil.copy2(KITTY_CONF, os.path.join(backup_dir, f"kitty.conf.{datetime.now():%Y%m%d-%H%M%S}"))
+            with open(KITTY_CONF, "r", encoding="utf-8") as f:
+                text = f.read()
+        else:
+            text = ""
+        # at the end, so the theme wins over colours set earlier in the file
+        text = text.rstrip("\n") + ("\n\n" if text.strip() else "") + f"{_MARK}\n{_INCLUDE}\n"
+        with open(KITTY_CONF, "w", encoding="utf-8") as f:
+            f.write(text)
+    except OSError as e:
+        return str(e)
+    return write_kitty_theme()
+
+
+def unlink_kitty() -> str:
+    """Take the include line out again (luminescent-theme.conf is removed too)."""
+    try:
+        with open(KITTY_CONF, "r", encoding="utf-8") as f:
+            lines = f.read().split("\n")
+        keep = [ln for ln in lines if ln.strip() not in (_INCLUDE, _MARK)]
+        while len(keep) > 1 and keep[-1] == "" and keep[-2] == "":
+            keep.pop()
+        with open(KITTY_CONF, "w", encoding="utf-8") as f:
+            f.write("\n".join(keep))
+        if os.path.exists(KITTY_THEME):
+            os.remove(KITTY_THEME)
+    except OSError as e:
+        return str(e)
+    if shutil.which("pkill"):
+        subprocess.run(["pkill", "-USR1", "-x", "kitty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return ""

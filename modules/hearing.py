@@ -25,6 +25,11 @@ A hard "never above X %" cap needs no calibration at all.
 
 A volume control on the headphones themselves (an analog wheel after the jack) is invisible to
 the PC. It can only attenuate, so calibrate with it at max and the estimate is the worst case.
+
+The panel's DAY / WEEK / APPS switch shows today's levels, the last seven days (dose and average)
+or every program playing right now with a live level and its own volume slider. The per-app
+levels are peaks of each stream (not A-weighted), sampled on a background thread only while that
+view is open.
 """
 import os
 import math
@@ -34,12 +39,13 @@ import logging
 import subprocess
 from collections import deque
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QDialog, QDoubleSpinBox, QSizePolicy, QFrame, QPushButton
+    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QDialog, QDoubleSpinBox, QSizePolicy, QFrame, QPushButton,
+    QStackedWidget, QSlider, QScrollArea
 )
-from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF
+from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QThread, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
 
 from core import DATA_DIR, theme, widgets, save_json, load_json
@@ -687,6 +693,200 @@ class TodayChart(QWidget):
         qp.end()
 
 
+class WeekChart(QWidget):
+    """The last seven days: a bar per day for the dose (100 % = the day's allowance), the average level above it."""
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumHeight(70)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.days: list[tuple[date, float | None, float]] = []
+
+    def set_data(self, days: list):
+        self.days = days
+        self.update()
+
+    def paintEvent(self, e):
+        p = theme.P
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.RenderHint.Antialiasing)
+        r = QRectF(self.rect()).adjusted(0, 14, 0, -16)
+        qp.setPen(QPen(QColor(p.border), 1))
+        qp.drawLine(QPointF(r.left(), r.bottom() + 0.5), QPointF(r.right(), r.bottom() + 0.5))
+        top = max(1.0, max((d for _day, _avg, d in self.days), default=1.0))
+        # a dashed line at 100 % when some day went over it
+        if top > 1.0:
+            y = r.bottom() - r.height() / top
+            pen = QPen(QColor(RED), 1, Qt.PenStyle.DashLine)
+            qp.setPen(pen)
+            qp.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+        n = max(1, len(self.days))
+        gap = 8.0
+        w = (r.width() - gap * (n - 1)) / n
+        qp.setFont(theme.qfont(9, mono=True))
+        for i, (day, avg, dose) in enumerate(self.days):
+            x = r.left() + i * (w + gap)
+            if dose > 0:
+                h = max(2.0, min(1.0, dose / top) * r.height())
+                qp.setPen(Qt.PenStyle.NoPen)
+                qp.setBrush(QColor(GREEN if dose < 0.5 else (AMBER if dose < 1.0 else RED)))
+                qp.drawRoundedRect(QRectF(x, r.bottom() - h, w, h), 2, 2)
+            qp.setPen(QColor(p.text_muted))
+            label = "TODAY" if day == date.today() else day.strftime("%a").upper()
+            qp.drawText(QRectF(x - 6, r.bottom() + 3, w + 12, 13), Qt.AlignmentFlag.AlignCenter, label)
+            if avg is not None:
+                qp.setPen(QColor(p.text_secondary))
+                y = r.bottom() - max(2.0, min(1.0, dose / top) * r.height()) - 13
+                qp.drawText(QRectF(x - 6, y, w + 12, 12), Qt.AlignmentFlag.AlignCenter, f"{avg:.0f}")
+        qp.end()
+
+
+class AppsWatcher(QThread):
+    """Every program playing on the default output: its volume and how loud it is right now.
+    Runs its own sound server connection, off the UI thread, while the APPS view is open."""
+    ready = pyqtSignal(list)                 # [{"index", "name", "volume", "peak"}]
+    failed = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        try:
+            pulsectl = _pulsectl()
+            pulse = pulsectl.Pulse("luminescent-apps")
+        except Exception as e:
+            self.failed.emit(_describe(e))
+            return
+        try:
+            while not self._stop:
+                sink = pulse.get_sink_by_name(pulse.server_info().default_sink_name)
+                out = []
+                for si in pulse.sink_input_list():
+                    if si.sink != sink.index or self._stop:
+                        continue
+                    props = si.proplist or {}
+                    name = (props.get("application.name") or props.get("media.name") or
+                            props.get("application.process.binary") or f"Stream {si.index}")
+                    try:
+                        peak = float(pulse.get_peak_sample(sink.monitor_source_name, 0.2, si.index))
+                    except Exception:
+                        peak = 0.0
+                    out.append({"index": si.index, "name": name, "volume": float(si.volume.value_flat),
+                                "peak": peak, "corked": bool(getattr(si, "corked", False))})
+                self.ready.emit(out)
+                for _ in range(8):
+                    if self._stop:
+                        break
+                    self.msleep(100)
+        except Exception as e:
+            self.failed.emit(_describe(e))
+        finally:
+            try:
+                pulse.close()
+            except Exception:
+                pass
+
+
+class AppsView(QWidget):
+    """The APPS tab: one row per playing program, loudest first, with a level bar and a volume slider."""
+
+    def __init__(self, m: "HearingModule"):
+        super().__init__()
+        self.m = m
+        self._watcher: AppsWatcher | None = None
+        self._rows: dict[int, tuple] = {}
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        holder = QWidget()
+        widgets.style(holder, "background: transparent;")
+        self.list = QVBoxLayout(holder)
+        self.list.setContentsMargins(0, 2, 0, 2)
+        self.list.setSpacing(8)
+        self.empty = widgets.label("No program is playing sound.", 12, tone="muted")
+        self.list.addWidget(self.empty)
+        self.list.addStretch()
+        scroll.setWidget(holder)
+        lay.addWidget(scroll)
+
+    def start(self):
+        if self._watcher is None:
+            self._watcher = AppsWatcher()
+            self._watcher.ready.connect(self._show)
+            self._watcher.failed.connect(lambda err: self.empty.setText(f"Can't list the programs: {err}"))
+            self._watcher.start()
+
+    def stop(self):
+        if self._watcher is not None:
+            self._watcher.stop()
+            self._watcher.wait(1500)
+            self._watcher = None
+
+    def _show(self, apps: list):
+        rd = self.m.reading
+        ep = self.m.monitor.endpoint
+        cal = self.m.calibration_for(ep)[0] if ep is not None else 105.0
+        master = rd.volume_db - rd.dip_db if rd is not None else 0.0
+        apps.sort(key=lambda a: -a["peak"])
+        self.empty.setVisible(not apps)
+        seen = set()
+        for i, a in enumerate(apps):
+            seen.add(a["index"])
+            row = self._rows.get(a["index"])
+            if row is None:
+                row = self._make_row(a)
+                self._rows[a["index"]] = row
+            frame, name, level, bar, slider = row
+            self.list.insertWidget(i, frame)          # loudest first
+            name.setText(a["name"])
+            if a["peak"] > 1e-4:
+                # a rough estimate: the stream's peak (it already carries the app's own volume) + master + calibration
+                est = 20 * math.log10(a["peak"]) + master + cal - SINE_RMS_DB
+                level.setText(f"≈{est:.0f} dB")
+                bar.set_value(max(0.0, min(1.0, (est - 30) / 70)), level_colour(est, float(self.m.s("limit_db", 85))))
+            else:
+                level.setText("quiet" if not a.get("corked") else "paused")
+                bar.set_value(0.0, theme.P.primary)
+            if not slider.isSliderDown():
+                slider.blockSignals(True)
+                slider.setValue(int(round(a["volume"] * 100)))
+                slider.blockSignals(False)
+        for idx in list(self._rows):
+            if idx not in seen:
+                frame = self._rows.pop(idx)[0]
+                frame.setParent(None)
+                frame.deleteLater()
+
+    def _make_row(self, a: dict):
+        frame = QFrame()
+        widgets.style(frame, "background: transparent; border: none;")
+        v = QVBoxLayout(frame)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(3)
+        top = QHBoxLayout()
+        name = widgets.label(a["name"], 12, 500)
+        name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        level = widgets.label("", 10, mono=True, tone="muted")
+        top.addWidget(name, 1)
+        top.addWidget(level)
+        v.addLayout(top)
+        bar = Bar(3)
+        v.addWidget(bar)
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(0, 100)
+        slider.setToolTip("This program's own volume")
+        slider.valueChanged.connect(lambda val, idx=a["index"]: self.m.set_app_volume(idx, val / 100.0))
+        v.addWidget(slider)
+        return frame, name, level, bar, slider
+
+
 # ── calibration dialog ────────────────────────────────────────────────────────
 class CalibrateDialog(QDialog):
     def __init__(self, module: "HearingModule", parent=None):
@@ -858,15 +1058,39 @@ class HearingPanel(widgets.FloatingPanel):
         # today's levels
         today = section()
         head = QHBoxLayout()
-        head.addWidget(widgets.label("TODAY", 9.5, 600, mono=True, spacing=0.12, tone="muted"))
+        head.setSpacing(2)
+        self._views = {}
+        for i, (key, label) in enumerate((("day", "TODAY"), ("week", "WEEK"), ("apps", "APPS"))):
+            b_ = QPushButton(label)
+            b_.setCheckable(True)
+            b_.setAutoExclusive(True)
+            b_.setCursor(Qt.CursorShape.PointingHandCursor)
+            b_.setFont(theme.qfont(9.5, 600, mono=True, spacing=0.12))
+            b_.setStyleSheet(f"QPushButton {{ background: transparent; border: none; padding: 0 8px 0 0;"
+                             f" color: {p.text_muted}; }} QPushButton:checked {{ color: {p.text_primary}; }}")
+            b_.clicked.connect(lambda _, n=i: self._show_view(n))
+            head.addWidget(b_)
+            self._views[i] = b_
+        self._views[0].setChecked(True)
         head.addStretch()
         self.stats_label = widgets.label("", 9.5, mono=True, tone="muted")
         head.addWidget(self.stats_label)
         today.addLayout(head)
+        self.stack = QStackedWidget()
+        day_page = QWidget()
+        dl = QVBoxLayout(day_page)
+        dl.setContentsMargins(0, 0, 0, 0)
+        dl.setSpacing(6)
         self.today = TodayChart()
-        today.addWidget(self.today, 1)
+        dl.addWidget(self.today, 1)
         self.today_scale = QHBoxLayout()
-        today.addLayout(self.today_scale)
+        dl.addLayout(self.today_scale)
+        self.stack.addWidget(day_page)
+        self.week = WeekChart()
+        self.stack.addWidget(self.week)
+        self.apps = AppsView(m)
+        self.stack.addWidget(self.apps)
+        today.addWidget(self.stack, 1)
 
         # how long each level is safe
         safe = section()
@@ -936,6 +1160,25 @@ class HearingPanel(widgets.FloatingPanel):
     def showEvent(self, e):
         super().showEvent(e)
         self.refresh(full=True)
+        if self.stack.currentIndex() == 2:
+            self.apps.start()
+
+    def hideEvent(self, e):
+        self.apps.stop()
+        super().hideEvent(e)
+
+    def closeEvent(self, e):
+        self.apps.stop()
+        super().closeEvent(e)
+
+    def _show_view(self, i: int):
+        self._views[i].setChecked(True)
+        self.stack.setCurrentIndex(i)
+        if i == 2:
+            self.apps.start()
+        else:
+            self.apps.stop()
+        self.refresh(full=True)
 
     def _set_big(self, text: str, colour: str):
         self.big.setText(text)
@@ -1001,13 +1244,25 @@ class HearingPanel(widgets.FloatingPanel):
         now = time.monotonic()
         if full or now - self._today_at >= self.TODAY_REFRESH_S:
             self._today_at = now
-            minutes = m.today_minutes()
-            self.today.set_data(minutes, limit)
-            self._today_scale()
-            avg = m.today_average()
-            peak = max(minutes.values(), default=None)
-            self.stats_label.setText(" · ".join(x for x in (f"AVG {avg:.0f}" if avg is not None else "",
-                                                             f"PEAK {peak:.0f}" if peak is not None else "") if x))
+            view = self.stack.currentIndex()
+            if view == 0:
+                minutes = m.today_minutes()
+                self.today.set_data(minutes, limit)
+                self._today_scale()
+                avg = m.today_average()
+                peak = max(minutes.values(), default=None)
+                self.stats_label.setText(" · ".join(x for x in (f"AVG {avg:.0f}" if avg is not None else "",
+                                                                 f"PEAK {peak:.0f}" if peak is not None else "") if x))
+            elif view == 1:
+                days = m.week()
+                self.week.set_data(days)
+                heard = [d for _day, _a, d in days if d > 0]
+                over = sum(1 for d in heard if d >= 1.0)
+                self.stats_label.setText(f"AVG DOSE {sum(heard) / len(heard) * 100:.0f} %" +
+                                         (f" · {over} DAY{'S' if over != 1 else ''} OVER" if over else "")
+                                         if heard else "NOTHING YET")
+            else:
+                self.stats_label.setText("LOUDEST FIRST")
 
 
 # ── module ────────────────────────────────────────────────────────────────────
@@ -1317,6 +1572,42 @@ class HearingModule(Module):
 
     def today_average(self) -> float | None:
         return _db(sum(e for e, _ in self._minutes.values()), sum(s for _, s in self._minutes.values()))
+
+    def week(self) -> list[tuple[date, float | None, float]]:
+        """(day, average dB(A) while something played, dose) for the last seven days, oldest first."""
+        days = self._data.get("days", {})
+        out = []
+        today = date.today()
+        for back in range(6, -1, -1):
+            d = today - timedelta(days=back)
+            if back == 0:
+                out.append((d, self.today_average(), self.dose))
+                continue
+            entry = days.get(d.isoformat()) or {}
+            energy = secs = 0.0
+            try:
+                for v in (entry.get("minutes") or {}).values():
+                    db, s_ = v if isinstance(v, list) else (v, 60.0)
+                    energy += 10 ** (float(db) / 10.0) * float(s_)
+                    secs += float(s_)
+                dose = float(entry.get("dose", 0.0))
+            except (TypeError, ValueError):
+                energy = secs = dose = 0.0
+            out.append((d, _db(energy, secs), dose))
+        return out
+
+    def set_app_volume(self, index: int, value: float):
+        """Set one program's own volume (the APPS view's slider)."""
+        ep = self.monitor.endpoint
+        if ep is None:
+            return
+        try:
+            for si in ep.pulse.sink_input_list():
+                if si.index == index:
+                    ep.pulse.volume_set_all_chans(si, max(0.0, min(1.0, value)))
+                    break
+        except Exception as e:
+            self.log.warning("could not set the app volume: %s", _describe(e))
 
     def reset_today(self):
         self.dose = self.listen_seconds = 0.0

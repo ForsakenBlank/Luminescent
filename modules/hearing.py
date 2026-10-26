@@ -827,7 +827,7 @@ class AppsView(QWidget):
 
     def start(self):
         if self._watcher is None:
-            self._watcher = AppsWatcher()
+            self._watcher = _apps_watcher()
             self._watcher.ready.connect(self._show)
             self._watcher.failed.connect(lambda err: self.empty.setText(f"Can't list the programs: {err}"))
             self._watcher.start()
@@ -1292,7 +1292,7 @@ class HearingModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self.panel: HearingPanel | None = None
-        self.monitor = AudioMonitor()
+        self.monitor = _audio_monitor()
         self.reading: Reading | None = None
         self.display_level: float | None = None     # dB(A) over the last second at the current volume
         self.dose = 0.0
@@ -1668,6 +1668,22 @@ class HearingModule(Module):
             self.log.exception("could not save hearing.json")
 
 
+def _audio_monitor():
+    """The meter for this system: PipeWire here, WASAPI / Core Audio on Windows (modules/hearing_win.py)."""
+    if IS_WIN:
+        from modules.hearing_win import AudioMonitor as WinAudioMonitor
+        return WinAudioMonitor()
+    return AudioMonitor()
+
+
+def _apps_watcher():
+    if IS_WIN:
+        from modules.hearing_win import AppsWatcher as WinAppsWatcher
+        return WinAppsWatcher()
+    return AppsWatcher()
+
+
 if IS_WIN:
-    # Windows: WASAPI loopback and Core Audio volumes instead of PipeWire (same interface)
-    from modules.hearing_win import AudioMonitor, AppsWatcher, _describe  # noqa: E402,F811
+    def _describe(e: Exception) -> str:          # noqa: F811  Windows audio errors are HRESULTs
+        from modules.hearing_win import _describe as win_describe
+        return win_describe(e)

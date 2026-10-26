@@ -22,7 +22,7 @@ from types import SimpleNamespace
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from modules.hearing import AWeightingFilter, Reading, SINE_RMS_DB
+from modules import hearing as _hearing        # the module, not names from it: hearing.py imports this file
 
 log = logging.getLogger("hearing")
 
@@ -154,7 +154,7 @@ class Loopback:
         finally:
             ctypes.windll.ole32.CoTaskMemFree(fmt)
         self.capture = self.client.GetService(api.IAudioCaptureClient._iid_).QueryInterface(api.IAudioCaptureClient)
-        self.weighting = AWeightingFilter(self.rate, self.channels)
+        self.weighting = _hearing.AWeightingFilter(self.rate, self.channels)
         self.client.Start()
 
     def read(self) -> tuple[float, int]:
@@ -328,7 +328,7 @@ class AudioMonitor:
         self.endpoint = None
         self._enum = None
 
-    def poll(self, now: float, dt: float) -> Reading | None:
+    def poll(self, now: float, dt: float) -> "_hearing.Reading | None":
         if not self._ensure_device(now):
             return None
         ep = self.endpoint
@@ -342,7 +342,7 @@ class AudioMonitor:
         except Exception as e:
             self._fail(e, now)
             return None
-        return Reading(level, secs, source, volume_db, volume_pct, muted, ep.dip_db)
+        return _hearing.Reading(level, secs, source, volume_db, volume_pct, muted, ep.dip_db)
 
     def _ensure_device(self, now: float) -> bool:
         if self.endpoint is not None and now < self._check_at:
@@ -413,7 +413,7 @@ class AudioMonitor:
                 if ms > 1e-11 and not muted:               # above -110 dBFS and actually audible
                     # the capture already has our dip in it; the guard wants the level before it
                     dip = ep.dip_at(now - ep.DIP_LATENCY_S)
-                    level, source = 10.0 * math.log10(ms) + SINE_RMS_DB - dip, "loopback"
+                    level, source = 10.0 * math.log10(ms) + _hearing.SINE_RMS_DB - dip, "loopback"
                     self._last_sound = now
                     if playing and level > -60:            # learn the peak-to-RMS gap for the fallback
                         self.crest_db += 0.02 * (20.0 * math.log10(peak) - level - self.crest_db)

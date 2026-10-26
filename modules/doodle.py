@@ -17,8 +17,10 @@ keep it off.
 Undo is one history shared by every screen: Alt+F undoes the last stroke
 wherever it was drawn (each screen used to undo its own last stroke at once).
 
-Tools: the strip at the top of the primary screen picks pen, line, rectangle,
-circle or arrow; Shift-dragging the pen draws a straight line. The mouse wheel
+Tools: the strip at the top of the primary screen picks pen, highlighter, line, rectangle,
+circle, arrow or text, and toggles filled shapes; Shift-dragging the pen draws a straight line.
+The text tool: click where the text goes, let go of the draw key and type; Enter puts it on the
+drawing, Esc throws it away. The mouse wheel
 changes the brush size; the cursor is a circle of the real size (a cursor
 pixmap, so moving the mouse costs no repaints).
 """
@@ -27,17 +29,18 @@ import math
 import logging
 from datetime import datetime
 
-from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QRect, QRectF, QTimer, QPoint, QPointF, QLineF
-from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap, QBrush, QCursor, QFont, QFontMetrics
+from PyQt6.QtWidgets import QApplication, QWidget, QLineEdit
+from PyQt6.QtCore import Qt, QRect, QRectF, QTimer, QPoint, QPointF, QLineF, pyqtSignal
+from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap, QBrush, QCursor, QFont, QFontMetrics, QPainterPath
 
 from core.module import Module
 from core import hotkeys as hk, theme, widgets, hypr, clip
 
 log = logging.getLogger("doodle")
 
-TOOLS = [("pen", "✎", "Pen (Shift-drag: straight line)"), ("line", "╱", "Line"), ("rect", "▭", "Rectangle"),
-         ("ellipse", "○", "Circle / ellipse"), ("arrow", "→", "Arrow")]
+TOOLS = [("pen", "✎", "Pen (Shift-drag: straight line)"), ("hl", "▌", "Highlighter"), ("line", "╱", "Line"),
+         ("rect", "▭", "Rectangle"), ("ellipse", "○", "Circle / ellipse"), ("arrow", "→", "Arrow"), ("text", "T", "Text")]
+FILLABLE = ("rect", "ellipse")
 TOOL_BTN = 34
 
 
@@ -68,6 +71,47 @@ def circle_cursor(diameter: int, colour: str) -> QCursor:
     return QCursor(px, size // 2, size // 2)
 
 
+class TextBox(QLineEdit):
+    """The text tool's box: typed into straight on the drawing. Enter keeps it, Esc throws it away."""
+    done = pyqtSignal(bool)
+
+    def __init__(self, parent: QWidget, pos: QPoint, px: int, colour: str):
+        super().__init__(parent)
+        self._finished = False
+        f = theme.qfont(px, 600)
+        self.setFont(f)
+        self.setFrame(False)
+        self.setStyleSheet(f"QLineEdit {{ background: rgba(0, 0, 0, 70); color: {colour};"
+                           f" border: 1px dashed {colour}; border-radius: 4px; padding: 0 4px; }}")
+        self.setPlaceholderText("Type…")
+        self.textChanged.connect(self._fit)
+        h = QFontMetrics(f).height() + 8
+        self.move(pos.x(), pos.y() - h // 2)
+        self.resize(80, h)
+        self._fit()
+
+    def _fit(self):
+        fm = QFontMetrics(self.font())
+        self.resize(max(80, fm.horizontalAdvance(self.text() or self.placeholderText()) + 24), self.height())
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.finish(True)
+        elif e.key() == Qt.Key.Key_Escape:
+            self.finish(False)
+        else:
+            super().keyPressEvent(e)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        QTimer.singleShot(0, lambda: self.finish(True))
+
+    def finish(self, keep: bool):
+        if not self._finished:
+            self._finished = True
+            self.done.emit(keep)
+
+
 class DoodleOverlay(QWidget):
     def __init__(self, module: "DoodleModule", geometry: QRect, primary: bool):
         super().__init__()
@@ -95,6 +139,8 @@ class DoodleOverlay(QWidget):
         self._last: QPoint | None = None
         self._start: QPoint | None = None        # press point of a shape / straight line
         self._shape: str = ""                    # tool used by the stroke in progress ("" = freehand)
+        self._points: list[QPoint] = []          # the highlighter stroke in progress
+        self.text_box: TextBox | None = None
         self._active = False
         self._show_bg = False
         self._label_pos: QPoint | None = None    # "8 px" after a wheel turn
@@ -155,8 +201,8 @@ class DoodleOverlay(QWidget):
         """The strip's pieces left to right: the tools, a divider, the colour, the size and ✕."""
         fm = QFontMetrics(theme.qfont(11, mono=True))
         size_w = fm.horizontalAdvance(f"{self.m.effective_size()} PX") + 16
-        widths = [(tid, TOOL_BTN) for tid, _g, _t in TOOLS] + [("sep", 13), ("colour", 28), ("size", size_w),
-                                                                   ("close", TOOL_BTN)]
+        widths = [(tid, TOOL_BTN) for tid, _g, _t in TOOLS] + [("sep", 13), ("fill", TOOL_BTN), ("colour", 28),
+                                                                   ("size", size_w), ("close", TOOL_BTN)]
         total = sum(w for _k, w in widths) + 8
         x = (self.width() - total) // 2 + 4
         y = self._top + 18 + 4
@@ -179,7 +225,7 @@ class DoodleOverlay(QWidget):
             return ""
         for k, r in self._strip_parts():
             if r.contains(pos):
-                return k if k in {t[0] for t in TOOLS} or k == "close" else "strip"
+                return k if k in {t[0] for t in TOOLS} or k in ("close", "fill") else "strip"
         return "strip"
 
     def _set_hover(self, key: str):
@@ -222,6 +268,12 @@ class DoodleOverlay(QWidget):
                 else:
                     p.setPen(QColor(pal.text_secondary))
                 p.drawText(b, Qt.AlignmentFlag.AlignCenter, glyphs[k])
+            elif k == "fill":
+                # a square that is filled while shapes get filled
+                c = QColor(pal.primary_text if self.m.fill else pal.text_secondary)
+                p.setPen(QPen(c, 1.6))
+                p.setBrush(c if self.m.fill else Qt.BrushStyle.NoBrush)
+                p.drawRoundedRect(QRectF(b.center().x() - 7, b.center().y() - 7, 14, 14), 3, 3)
             elif k == "sep":
                 p.setPen(QPen(QColor(pal.border), 1))
                 p.drawLine(b.center().x(), b.center().y() - 10, b.center().x(), b.center().y() + 10)
@@ -280,14 +332,39 @@ class DoodleOverlay(QWidget):
         p.setBrush(QBrush(QColor(self.m.s("colour", "#FF0000"))))
         return p
 
+    def _hl_pen(self) -> QPen:
+        colour = QColor(self.m.s("colour", "#FF0000"))
+        colour.setAlphaF(max(0.05, min(1.0, float(self.m.s("highlighter_opacity", 0.35)))))
+        return QPen(colour, max(10, self.m.effective_size() * 4), Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap,
+                    Qt.PenJoinStyle.RoundJoin)
+
+    def _hl_path(self) -> QPainterPath:
+        path = QPainterPath()
+        if self._points:
+            path.moveTo(QPointF(self._points[0]))
+            for pt in self._points[1:]:
+                path.lineTo(QPointF(pt))
+            if len(self._points) == 1:
+                path.lineTo(QPointF(self._points[0]) + QPointF(0.1, 0))
+        return path
+
     def _paint_shape(self, p: QPainter, shape: str, a: QPoint, b: QPoint, erase: bool, preview: bool = False):
         smooth = self.m.s("brush_style", "smooth") == "smooth"
         p.setRenderHint(QPainter.RenderHint.Antialiasing, smooth)
+        if shape == "hl":
+            # one path for the whole stroke, so the see-through ink does not darken where it overlaps itself
+            p.setPen(self._hl_pen())
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawPath(self._hl_path())
+            return
         pen = self._pen(erase)
         if preview and erase:
             pen.setColor(QColor(255, 255, 255, 120))
         p.setPen(pen)
-        p.setBrush(Qt.BrushStyle.NoBrush)
+        if shape in FILLABLE and self.m.fill:
+            p.setBrush(QColor(255, 255, 255, 60) if preview and erase else QColor(self.m.s("colour", "#FF0000")))
+        else:
+            p.setBrush(Qt.BrushStyle.NoBrush)
         if shape == "line":
             p.drawLine(a, b)
         elif shape == "rect":
@@ -367,8 +444,15 @@ class DoodleOverlay(QWidget):
             self.m.deactivate()
             return
         if tool:
-            if tool != "strip":
+            if tool == "fill":
+                self.m.toggle_fill()
+            elif tool != "strip":
                 self.m.set_tool(tool)
+            return
+        if self.text_box is not None:
+            self.text_box.finish(True)          # a click somewhere else keeps the text being typed
+        if e.button() == Qt.MouseButton.LeftButton and self.m.tool == "text":
+            self.open_text(pos)
             return
         if e.button() in (Qt.MouseButton.LeftButton, Qt.MouseButton.RightButton):
             self.m.mask_menu_key()
@@ -377,9 +461,15 @@ class DoodleOverlay(QWidget):
             self._erasing = e.button() == Qt.MouseButton.RightButton
             self._last = self._start = pos
             shift = bool(e.modifiers() & Qt.KeyboardModifier.ShiftModifier)
-            self._shape = self.m.tool if self.m.tool != "pen" else ("line" if shift else "")
+            tool = self.m.tool
+            if self._erasing and tool in ("hl", "text"):
+                tool = "pen"                     # the right button always rubs out
+            self._shape = tool if tool != "pen" else ("line" if shift else "")
+            self._points = [pos] if self._shape == "hl" else []
             if not self._shape:
                 self._draw_segment(pos, pos, self._erasing)
+            elif self._shape == "hl":
+                self.update(QRect(pos, pos).adjusted(-60, -60, 60, 60))
 
     def mouseMoveEvent(self, e):
         if self._active and not self._drawing:
@@ -387,6 +477,12 @@ class DoodleOverlay(QWidget):
         if not (self._active and self._drawing):
             return
         cur = e.position().toPoint()
+        if self._shape == "hl":
+            pad = max(12, self.m.effective_size() * 4) + 4
+            self._points.append(cur)
+            self.update(QRect(self._last, cur).normalized().adjusted(-pad, -pad, pad, pad))
+            self._last = cur
+            return
         if self._shape:
             pad = max(12, self.m.effective_size() * 4 + 4)
             old = QRect(self._start, self._last).normalized().adjusted(-pad, -pad, pad, pad)
@@ -405,6 +501,36 @@ class DoodleOverlay(QWidget):
             self._erasing = False
             self._last = self._start = None
             self._shape = ""
+            self._points = []
+
+    # ── text tool ──────────────────────────────────────────────────────────
+    def open_text(self, pos: QPoint):
+        box = TextBox(self, pos, int(self.m.s("text_size", 28)), self.m.s("colour", "#FF0000"))
+        box.done.connect(lambda keep, b=box: self._text_done(b, keep))
+        self.text_box = box
+        self.m.text_opened(self)
+        box.show()
+        widgets.bring_to_front(self)
+        box.setFocus()
+
+    def _text_done(self, box: TextBox, keep: bool):
+        if self.text_box is box:
+            self.text_box = None
+        text = box.text().strip()
+        if keep and text:
+            self.m.record_undo([self])
+            self.has_content = True
+            p = QPainter(self._canvas)
+            p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+            p.setFont(box.font())
+            p.setPen(QColor(self.m.s("colour", "#FF0000")))
+            p.drawText(box.geometry().adjusted(5, 0, 0, 0), int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                       box.text())
+            p.end()
+        box.hide()
+        box.deleteLater()
+        self.update()
+        self.m.text_closed()
 
     def wheelEvent(self, e):
         if not self._active or not self.m.s("wheel_size", True):
@@ -442,6 +568,9 @@ class DoodleModule(Module):
         self._masked = False            # dummy key already sent during this hold
         self._own_keys: set[str] = set()
         self.tool = "pen"
+        self.fill = False
+        self._typing: DoodleOverlay | None = None    # an overlay with an open text box
+        self._off_after_text = False
         self._solo_timer = QTimer(self)
         self._solo_timer.setSingleShot(True)
         self._solo_timer.timeout.connect(self._solo_elapsed)
@@ -532,6 +661,7 @@ class DoodleModule(Module):
                 o.hide()
 
     def _destroy_overlays(self):
+        self._typing = None
         for o in self._overlays:
             o.close()
             o.deleteLater()
@@ -559,9 +689,31 @@ class DoodleModule(Module):
 
     def set_tool(self, tool: str):
         self.tool = tool
+        self._update_strip()
+
+    def toggle_fill(self):
+        self.fill = not self.fill
+        self._update_strip()
+
+    def _update_strip(self):
         for o in self._overlays:
             if o.primary:
                 o.update(o._strip_rect().adjusted(-2, -2, 2, 2))
+
+    # ── text tool: drawing stays on while you type, even after the draw key is let go ──
+    def text_opened(self, overlay: DoodleOverlay):
+        self._typing = overlay
+
+    def text_closed(self):
+        self._typing = None
+        self._sync_visibility()
+        if self._off_after_text:
+            self._off_after_text = False
+            self.deactivate()
+
+    def _close_text(self, keep: bool):
+        if self._typing is not None and self._typing.text_box is not None:
+            self._typing.text_box.finish(keep)
 
     # ── actions ────────────────────────────────────────────────────────────
     def _hold_pressed(self):
@@ -616,6 +768,9 @@ class DoodleModule(Module):
         self._masked = True
 
     def _escape(self):
+        if self._typing is not None:
+            self._off_after_text = False
+            self._close_text(False)
         if self._active:
             self.deactivate()
             self._wait_release = self._hold_mode
@@ -634,6 +789,9 @@ class DoodleModule(Module):
     def deactivate(self):
         self._masked = False
         if not self._active:
+            return
+        if self._typing is not None:
+            self._off_after_text = True       # the key was let go to type: stop once the text is done
             return
         self._active = False
         for o in self._overlays:
@@ -680,6 +838,8 @@ class DoodleModule(Module):
     def panic(self):
         """Clear everything, drop the blackboard and make every overlay click-through again."""
         self._show_bg = False
+        self._off_after_text = False
+        self._close_text(False)
         for o in self._overlays:
             o.set_show_bg(False)
             o.clear()

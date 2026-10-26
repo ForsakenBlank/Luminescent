@@ -2,20 +2,21 @@
 Mini media controls: what is playing (title, artist, cover, progress) with previous / play-pause / next.
 
 Talks to every MPRIS player (Spotify, Firefox, mpv, VLC...) through playerctl
-(sudo pacman -S playerctl). While the panel is open it asks playerctl once a second, without
+(sudo pacman -S playerctl). On Windows it uses the media sessions Windows knows about (modules/media_win.py). While the panel is open it asks playerctl once a second, without
 blocking. Click the player's name to switch between players when several are open. Optional hotkeys
 for play/pause, next and previous work with the panel closed too.
 """
 import os
 import shutil
 import logging
+import threading
 from urllib.parse import urlparse, unquote
 
 from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QSizePolicy
-from PyQt6.QtCore import Qt, QTimer, QProcess
+from PyQt6.QtCore import Qt, QTimer, QProcess, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
-from core import DATA_DIR, theme, widgets, save_json, load_json
+from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json
 from core.module import Module
 
 log = logging.getLogger("media")
@@ -105,8 +106,10 @@ class MediaPanel(widgets.FloatingPanel):
 
     def show_state(self, d: dict | None, count: int):
         if d is None:
-            self.player.setText("NO PLAYER" if self.m.has_playerctl() else "PLAYERCTL IS MISSING")
-            self.title.setText("Nothing playing" if self.m.has_playerctl() else "sudo pacman -S playerctl")
+            ok = self.m.has_playerctl()
+            self.player.setText("NO PLAYER" if ok else ("WINRT PACKAGES MISSING" if IS_WIN else "PLAYERCTL IS MISSING"))
+            self.title.setText("Nothing playing" if ok else
+                               ("pip install winrt-Windows.Media.Control" if IS_WIN else "sudo pacman -S playerctl"))
             self.artist.setText("")
             self.bar.setText("")
             self.fill.setFixedWidth(0)
@@ -144,9 +147,12 @@ class MediaModule(Module):
     key = "media"
     title = "Media Controls"
     icon = "♪"
+    _win_ready = pyqtSignal(list)            # Windows: the sessions, from the worker thread
 
     def __init__(self, ctx):
         super().__init__(ctx)
+        self._win_ready.connect(self._show_players)
+        self._asking = False
         self.panel: MediaPanel | None = None
         self.players: list[dict] = []
         self._chosen = ""
@@ -218,9 +224,26 @@ class MediaModule(Module):
     # ── playerctl ──────────────────────────────────────────────────────────
     @staticmethod
     def has_playerctl() -> bool:
+        """Whether there is a way to read what is playing (playerctl, or Windows' media sessions)."""
+        if IS_WIN:
+            from modules import media_win
+            return media_win.available()
         return bool(shutil.which("playerctl"))
 
+    def _show_players(self, players: list):
+        self._asking = False
+        self.players = players
+        if self.panel:
+            self.panel.show_state(self.current(), len(self.players))
+
     def refresh(self):
+        if IS_WIN:
+            if not self._asking:
+                from modules import media_win
+                self._asking = True
+                threading.Thread(target=lambda: self._win_ready.emit(media_win.query()), daemon=True,
+                                 name="media").start()
+            return
         if not self.has_playerctl():
             if self.panel:
                 self.panel.show_state(None, 0)
@@ -258,6 +281,12 @@ class MediaModule(Module):
                 self.panel.show_state(self.current(), len(self.players))
 
     def _send(self, command: str):
+        if IS_WIN:
+            from modules import media_win
+            cur = self.current()
+            threading.Thread(target=media_win.control, args=(cur["id"] if cur else "", command), daemon=True).start()
+            QTimer.singleShot(400, self.refresh)
+            return
         if not self.has_playerctl():
             self.ctx.notify(self.title, "Media controls need playerctl: sudo pacman -S playerctl")
             return

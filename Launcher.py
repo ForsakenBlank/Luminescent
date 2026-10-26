@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
 from PyQt6.QtCore import QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
-from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, VERSION, theme, widgets, autostart, terminal,
+from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, IS_WIN, VERSION, theme, widgets, autostart, terminal,
                   wallpaper, hypr, runner, desktop, usage, backup)
 from core.settings import Settings, SCHEMA, ALL_PAGES
 from core.hotkeys import HotkeyManager, pretty
@@ -187,23 +187,27 @@ class Launcher:
             self.notify(APP_NAME, f"Settings profile: {self.settings.profile_name(self.settings.active_profile())}", 2500)
 
     def _sync_own_terminal(self, asked: bool = False):
-        """Settings → Overlay → "Your own kitty windows follow the theme": link kitty.conf (after asking) or unlink it."""
+        """Settings → Overlay → "Your own terminal follows the theme": kitty.conf on Linux, a Windows Terminal
+        fragment on Windows. Linked (after asking) or unlinked here."""
         if os.environ.get("LUMINESCENT_HOME"):
             return
         want = bool(self.settings.get("ui.own_terminal", False))
-        linked = terminal.kitty_linked()
+        linked = terminal.own_linked()
         if want and not linked and asked:
-            if not terminal.kitty_installed():
-                self.notify(APP_NAME, "kitty is not installed, so there is no kitty.conf to colour.")
+            what = (f"Luminescent will give your PowerShell and Command Prompt profiles in Windows Terminal its "
+                    f"colours (through its own fragment file; your Terminal settings file is not edited)."
+                    if IS_WIN else
+                    "Luminescent will add one line to ~/.config/kitty/kitty.conf:\n\n"
+                    "    include luminescent-theme.conf\n\n"
+                    "and keep luminescent-theme.conf in the theme's colours. A copy of your kitty.conf "
+                    "goes to data/terminal-backups first.")
+            if not terminal.own_installed():
+                self.notify(APP_NAME, f"{terminal.OWN_NAME} is not installed, so there is nothing to colour.")
                 want = False
-            elif widgets.confirm(None, "Colour your kitty windows",
-                                 "Luminescent will add one line to ~/.config/kitty/kitty.conf:\n\n"
-                                 "    include luminescent-theme.conf\n\n"
-                                 "and keep luminescent-theme.conf in the theme's colours. A copy of your kitty.conf "
-                                 "goes to data/terminal-backups first. Go ahead?", yes="Add it"):
-                err = terminal.link_kitty(os.path.join(DATA_DIR, "terminal-backups"))
+            elif widgets.confirm(None, f"Colour your {terminal.OWN_NAME} windows", what + " Go ahead?", yes="Do it"):
+                err = terminal.link_own(os.path.join(DATA_DIR, "terminal-backups"))
                 if err:
-                    self.notify(APP_NAME, f"Could not change kitty.conf: {err}")
+                    self.notify(APP_NAME, f"Could not change {terminal.OWN_NAME}: {err}")
                     want = False
             else:
                 want = False
@@ -211,11 +215,11 @@ class Launcher:
                 self.settings.set("ui.own_terminal", False)
                 self.settings.save_quiet()
         elif want and linked:
-            terminal.write_kitty_theme()
+            terminal.write_own()
         elif not want and linked and asked:
-            err = terminal.unlink_kitty()
+            err = terminal.unlink_own()
             if err:
-                self.notify(APP_NAME, f"Could not change kitty.conf: {err}")
+                self.notify(APP_NAME, f"Could not change {terminal.OWN_NAME}: {err}")
 
     def _write_terminal_scheme(self):
         if self.settings.get("ui.own_terminal", False):

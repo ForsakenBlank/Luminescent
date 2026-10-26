@@ -5,6 +5,8 @@ Sources:
   - fish: ~/.local/share/fish/fish_history ("- cmd: ..." entries with their time and paths)
   - bash: $HISTFILE or ~/.bash_history (one command per line, "#<time>" lines kept with them)
   - zsh:  $HISTFILE or ~/.zsh_history (": <time>:0;command", backslash-continued lines)
+  - PowerShell (Windows): PSReadLine's %APPDATA%\\Microsoft\\Windows\\PowerShell\\PSReadLine\\<host>_history.txt
+    (ConsoleHost = Windows Terminal / the console); multi-line commands end each continued line with `
   - Luminescent: everything the Dashboard launched (data/command_log.txt).
 
 Deleting rewrites the file atomically. A shell that is open keeps its own
@@ -17,6 +19,7 @@ command into a dashboard item that runs it in a terminal.
 """
 import os
 import re
+import glob
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -39,6 +42,7 @@ HISTORIES = [
     ("zsh", "zsh", os.path.expanduser("~/.zsh_history")),
 ]
 LOG_KIND = "log"
+PS_DIR = os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "PowerShell", "PSReadLine")
 
 
 def sources() -> list[tuple[str, str]]:
@@ -48,6 +52,11 @@ def sources() -> list[tuple[str, str]]:
         if path and os.path.isfile(path) and path not in seen:
             seen.add(path)
             out.append((name, path))
+    if os.environ.get("APPDATA"):
+        for path in sorted(glob.glob(os.path.join(PS_DIR, "*_history.txt"))):
+            host = os.path.basename(path)[:-len("_history.txt")]
+            out.append(({"ConsoleHost": "PowerShell (Terminal / console)",
+                         "Visual Studio Code Host": "PowerShell in VS Code"}.get(host, f"PowerShell ({host})"), path))
     out.append(("Launched by Luminescent", runner.COMMAND_LOG))
     return out
 
@@ -56,6 +65,8 @@ def kind_of(path: str) -> str:
     if os.path.normcase(path) == os.path.normcase(runner.COMMAND_LOG):
         return LOG_KIND
     base = os.path.basename(path)
+    if base.endswith("_history.txt") and "PSReadLine" in path:
+        return "powershell"
     if base == "fish_history":
         return "fish"
     if "zsh" in base:
@@ -109,6 +120,17 @@ def read_entries(path: str) -> list[tuple[str, str]]:
         return [(c, r) for c, r in out if c.strip()]
     if kind == LOG_KIND:
         return [(line.split("\t", 1)[-1], line) for line in raw if line.strip()]
+    if kind == "powershell":
+        buf = []
+        for line in raw:
+            buf.append(line)
+            if line.endswith("`"):
+                continue
+            out.append(("\n".join(b[:-1] if b.endswith("`") else b for b in buf), "\n".join(buf)))
+            buf = []
+        if buf:
+            out.append(("\n".join(buf), "\n".join(buf)))
+        return [(c, r) for c, r in out if c.strip()]
     stamp = ""
     for line in raw:                                   # bash
         if line.startswith("#") and line[1:].isdigit():

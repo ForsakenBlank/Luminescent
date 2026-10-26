@@ -18,6 +18,8 @@ import logging
 import threading
 import subprocess
 
+from core import IS_WIN
+
 log = logging.getLogger("wallpaper")
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif"}
@@ -153,3 +155,7 @@ def apply(path: str, engine_exe: str = "", on_error=None):
                 on_error(str(e))
 
     threading.Thread(target=work, name="wallpaper", daemon=True).start()
+
+
+if IS_WIN:
+    from core.wallpaper_win import apply, find_wallpaper_engine, is_image  # noqa: E402,F811

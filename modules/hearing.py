@@ -48,7 +48,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QThread, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
 
-from core import DATA_DIR, theme, widgets, save_json, load_json
+from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json
 from core.module import Module
 
 log = logging.getLogger("hearing")
@@ -312,6 +312,15 @@ class Endpoint:
         self.sink = self.pulse.get_sink_by_name(self.id)
         return self.volume_db()
 
+    def open_loopback(self) -> "Loopback":
+        return Loopback(self.monitor)
+
+    def set_app_volume(self, index: int, value: float):
+        for si in self.pulse.sink_input_list():
+            if si.index == index:
+                self.pulse.volume_set_all_chans(si, max(0.0, min(1.0, value)))
+                break
+
     def reset_dip(self):
         if self.dip_db < 0 or self._streams:
             self._apply_dip(0.0)
@@ -430,7 +439,7 @@ class AudioMonitor:
         lb = ep.loopback
         if lb is None and ep.running and not muted and now >= self._loopback_retry_at:
             try:
-                ep.loopback = lb = Loopback(ep.monitor)
+                ep.loopback = lb = ep.open_loopback()
                 self._last_sound = now
                 self.loopback_error = ""
             except Exception as e:
@@ -1602,10 +1611,7 @@ class HearingModule(Module):
         if ep is None:
             return
         try:
-            for si in ep.pulse.sink_input_list():
-                if si.index == index:
-                    ep.pulse.volume_set_all_chans(si, max(0.0, min(1.0, value)))
-                    break
+            ep.set_app_volume(index, value)
         except Exception as e:
             self.log.warning("could not set the app volume: %s", _describe(e))
 
@@ -1660,3 +1666,8 @@ class HearingModule(Module):
             save_json(DATA_PATH, self._data)
         except OSError:
             self.log.exception("could not save hearing.json")
+
+
+if IS_WIN:
+    # Windows: WASAPI loopback and Core Audio volumes instead of PipeWire (same interface)
+    from modules.hearing_win import AudioMonitor, AppsWatcher, _describe  # noqa: E402,F811

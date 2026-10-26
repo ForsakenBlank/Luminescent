@@ -1,0 +1,76 @@
+# Builds the Windows and Linux downloads and publishes them as a GitHub release.
+# Run it from the Actions tab (Release → Run workflow), or push a tag like v1.0.1.
+# The version comes from VERSION in core/__init__.py; bump it first for a new release.
+# The builds are clean: nobody's settings, notes or data are in them.
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            archive: Luminescent-windows.zip
+          - os: ubuntu-22.04
+            archive: Luminescent-linux.tar.gz
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Qt's system libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+      - name: Install
+        run: python -m pip install -r requirements.txt
+      - name: Build and self-test
+        run: python build.py --release --test
+      - name: Pack (Windows)
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path dist/Luminescent -DestinationPath ${{ matrix.archive }}
+      - name: Pack (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf ${{ matrix.archive }} -C dist Luminescent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: v
+        run: echo "tag=v$(python3 -c "import re;print(re.search(r'VERSION = \"([^\"]+)\"', open('core/__init__.py').read()).group(1))")" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: Luminescent ${{ steps.v.outputs.tag }}
+          generate_release_notes: true
+          body: |
+            **Windows**: download `Luminescent-windows.zip`, unzip it anywhere and run `Luminescent.exe`.
+            **Linux**: download `Luminescent-linux.tar.gz`, unpack it and run `Luminescent/Luminescent` (Hyprland for global hotkeys).
+
+            A download starts fresh. Your settings and notes live in your own data folder
+            (`%LOCALAPPDATA%\Luminescent` on Windows, `~/.local/share/Luminescent` on Linux), so to update you
+            just replace the program folder with the new one and everything is kept.
+          files: out/*

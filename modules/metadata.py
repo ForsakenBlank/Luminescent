@@ -28,6 +28,7 @@ from core.module import Module
 
 SUPPORTED_IMAGE = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif"}
 SUPPORTED_VIDEO = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
+_FFMPEG_HOW = "winget install ffmpeg" if sys.platform == "win32" else "sudo pacman -S ffmpeg"
 _FMT = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".gif": "GIF", ".webp": "WEBP",
         ".bmp": "BMP", ".tiff": "TIFF", ".tif": "TIFF"}
 
@@ -66,7 +67,7 @@ def read_video_meta(path: Path) -> dict:
         r = subprocess.run(["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", str(path)],
                            capture_output=True, text=True, timeout=15)
         if r.returncode != 0:
-            meta["_error"] = "ffprobe failed. Install ffmpeg (sudo pacman -S ffmpeg) for video metadata."
+            meta["_error"] = f"ffprobe failed. Install ffmpeg ({_FFMPEG_HOW}) for video metadata."
             return meta
         data = json.loads(r.stdout)
         fmt = data.get("format", {})
@@ -81,7 +82,7 @@ def read_video_meta(path: Path) -> dict:
             for k, v in st.get("tags", {}).items():
                 meta[f"Stream{i}:tag:{k}"] = str(v)
     except FileNotFoundError:
-        meta["_error"] = "ffprobe not found. Install ffmpeg: sudo pacman -S ffmpeg"
+        meta["_error"] = f"ffprobe not found. Install ffmpeg: {_FFMPEG_HOW}"
     except Exception as e:
         meta["_error"] = str(e)
     return meta
@@ -186,6 +187,23 @@ def strip_folder(folder: Path, out_root: Path | None, jpeg_quality: int = 95, pr
     return done, errors
 
 
+def _tell(msg: str):
+    """A desktop notification from the command line (Luminescent itself need not be running)."""
+    if sys.platform == "win32":
+        from PyQt6.QtWidgets import QApplication, QSystemTrayIcon
+        from PyQt6.QtCore import QTimer
+        from PyQt6.QtGui import QIcon
+        from core import APP_DIR
+        app = QApplication.instance() or QApplication(sys.argv[:1])
+        tray = QSystemTrayIcon(QIcon(os.path.join(APP_DIR, "assets", "luminescent-256.png")))
+        tray.show()
+        tray.showMessage("Metadata Stripper", msg, QSystemTrayIcon.MessageIcon.Information, 5000)
+        QTimer.singleShot(6000, app.quit)
+        app.exec()
+    elif shutil.which("notify-send"):
+        subprocess.run(["notify-send", "-a", "Luminescent", "Metadata Stripper", msg])
+
+
 def cli(paths: list[str]) -> int:
     """`start.sh --strip-metadata <files or folders>` (Dolphin's right-click menu): clean copies to the save
     folder, then a desktop notification. No window, no running Luminescent needed."""
@@ -212,8 +230,7 @@ def cli(paths: list[str]) -> int:
     msg = f"{done} file{'s' if done != 1 else ''} cleaned into {out_root}"
     if errors:
         msg += f"\n{len(errors)} failed: " + "; ".join(errors[:3])
-    if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "-a", "Luminescent", "Metadata Stripper", msg])
+    _tell(msg)
     print(msg)
     return 0 if not errors else 1
 

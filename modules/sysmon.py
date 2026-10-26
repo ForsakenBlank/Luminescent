@@ -5,6 +5,10 @@ Everything comes straight from /proc and /sys (no extra packages): CPU from /pro
 temperature from hwmon (k10temp, zenpower, coretemp), memory from /proc/meminfo, network from
 /proc/net/dev. AMD and Intel GPUs report their load in /sys; NVIDIA cards are asked through nvidia-smi
 (without blocking). It only measures while the panel is on screen.
+
+Windows: CPU and memory come from Windows itself (GetSystemTimes, GlobalMemoryStatusEx), the network from
+psutil; NVIDIA cards through nvidia-smi as on Linux. There is no CPU temperature on Windows without
+extra drivers, so the CPU row shows the load only.
 """
 import os
 import glob
@@ -15,7 +19,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QProcess
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
 
-from core import DATA_DIR, theme, widgets, save_json, load_json
+from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json
 from core.module import Module
 
 SAVE_PATH = os.path.join(DATA_DIR, "sysmon.json")
@@ -32,6 +36,8 @@ def _read(path: str) -> str:
 
 def cpu_times() -> tuple[int, int]:
     """(busy, total) jiffies since boot, all cores together."""
+    if IS_WIN:
+        return _win_cpu_times()
     first = _read("/proc/stat").split("\n", 1)[0].split()
     if len(first) < 5 or first[0] != "cpu":
         return 0, 0
@@ -42,6 +48,8 @@ def cpu_times() -> tuple[int, int]:
 
 def memory() -> tuple[float, float]:
     """(used GiB, total GiB)."""
+    if IS_WIN:
+        return _win_memory()
     info = {}
     for line in _read("/proc/meminfo").splitlines():
         k, _, v = line.partition(":")
@@ -56,6 +64,13 @@ def memory() -> tuple[float, float]:
 
 def net_bytes() -> tuple[int, int]:
     """(received, sent) bytes on every interface but loopback."""
+    if IS_WIN:
+        try:
+            import psutil
+            c = psutil.net_io_counters()
+            return int(c.bytes_recv), int(c.bytes_sent)
+        except Exception:
+            return 0, 0
     rx = tx = 0
     for line in _read("/proc/net/dev").splitlines()[2:]:
         name, _, rest = line.partition(":")
@@ -68,6 +83,8 @@ def net_bytes() -> tuple[int, int]:
 
 
 def cpu_temp() -> float | None:
+    if IS_WIN:
+        return None
     for hw in glob.glob("/sys/class/hwmon/hwmon*"):
         if _read(os.path.join(hw, "name")).strip() in ("k10temp", "zenpower", "coretemp", "cpu_thermal"):
             raw = _read(os.path.join(hw, "temp1_input")).strip()
@@ -78,6 +95,8 @@ def cpu_temp() -> float | None:
 
 def sysfs_gpu() -> dict | None:
     """Load (and VRAM, temperature) of an AMD or Intel GPU from /sys, None without one."""
+    if IS_WIN:
+        return None
     for dev in sorted(glob.glob("/sys/class/drm/card[0-9]/device")):
         busy = _read(os.path.join(dev, "gpu_busy_percent")).strip()
         if not busy.isdigit():
@@ -94,6 +113,33 @@ def sysfs_gpu() -> dict | None:
                 break
         return out
     return None
+
+
+def _win_cpu_times() -> tuple[int, int]:
+    import ctypes
+    from ctypes import wintypes
+    idle, kernel, user = wintypes.FILETIME(), wintypes.FILETIME(), wintypes.FILETIME()
+    if not ctypes.windll.kernel32.GetSystemTimes(ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)):
+        return 0, 0
+    val = lambda ft: (ft.dwHighDateTime << 32) | ft.dwLowDateTime
+    total = val(kernel) + val(user)                  # kernel time includes the idle time
+    return total - val(idle), total
+
+
+def _win_memory() -> tuple[float, float]:
+    import ctypes
+
+    class MEMORYSTATUSEX(ctypes.Structure):
+        _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+    m = MEMORYSTATUSEX()
+    m.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+    if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+        return 0.0, 0.0
+    return (m.ullTotalPhys - m.ullAvailPhys) / 1073741824, m.ullTotalPhys / 1073741824
 
 
 def _rate(bps: float) -> str:

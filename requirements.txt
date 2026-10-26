@@ -1,19 +1,39 @@
 PyQt6>=6.5
 Pillow>=10
 cryptography>=41
-# Hearing Guard (PipeWire / PulseAudio volume and A-weighting)
-pulsectl
 numpy
-# optional: video thumbnails in Snippets
-opencv-python
 # QR codes (QR Code module)
 segno
 # optional: image previews for .txt files that contain a URL
 requests
-# only for building a standalone binary (python build.py)
+# optional: video thumbnails in Snippets
+opencv-python
+
+# Linux: Hearing Guard (PipeWire / PulseAudio volumes)
+pulsectl; sys_platform == "linux"
+
+# Windows: global hotkeys, Hearing Guard (Core Audio), System Monitor, Text Grab (Windows OCR) and
+# Media Controls (Windows media sessions)
+keyboard; sys_platform == "win32"
+pycaw; sys_platform == "win32"
+comtypes; sys_platform == "win32"
+psutil; sys_platform == "win32"
+winrt-runtime; sys_platform == "win32"
+winrt-Windows.Foundation; sys_platform == "win32"
+winrt-Windows.Foundation.Collections; sys_platform == "win32"
+winrt-Windows.Media.Control; sys_platform == "win32"
+winrt-Windows.Media.Ocr; sys_platform == "win32"
+winrt-Windows.Graphics.Imaging; sys_platform == "win32"
+winrt-Windows.Storage; sys_platform == "win32"
+winrt-Windows.Storage.Streams; sys_platform == "win32"
+winrt-Windows.Globalization; sys_platform == "win32"
+
+# only for building a standalone version (python build.py)
 pyinstaller
 #
-# System packages (sudo pacman -S ...):
+# Linux system packages (sudo pacman -S ...):
 #   grim wl-clipboard libnotify      screenshots, clipboard, notifications (CachyOS Hyprland has them)
 #   tesseract tesseract-data-eng     Screen Text Grab (OCR)
 #   ffmpeg                           video metadata in the Metadata Stripper
+#   playerctl                        Media Controls
+# Windows (optional): winget install ffmpeg   for video metadata

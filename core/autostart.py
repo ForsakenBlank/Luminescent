@@ -9,7 +9,7 @@ import os
 import sys
 import logging
 
-from core import APP_DIR, APP_NAME, FROZEN
+from core import APP_DIR, APP_NAME, FROZEN, IS_WIN
 
 log = logging.getLogger("autostart")
 
@@ -86,3 +86,7 @@ def sync(want_enabled: bool) -> str:
     if not want_enabled and cur is not None:
         return set_enabled(False)
     return ""
+
+
+if IS_WIN:
+    from core.autostart_win import command, current, is_enabled, set_enabled, sync  # noqa: E402,F811

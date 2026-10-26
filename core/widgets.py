@@ -13,7 +13,7 @@ from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, 
                           QPropertyAnimation, QEasingCurve)
 from PyQt6.QtGui import QPainter, QColor, QPixmap
 
-from core import theme, hypr
+from core import IS_WIN, theme, hypr
 
 log = logging.getLogger("widgets")
 _uid = 0
@@ -50,9 +50,36 @@ def bring_to_front(w: QWidget):
     soon as it has mapped the window).
     """
     w.activateWindow()
+    if IS_WIN:
+        _win_foreground(w)
+        return
     sync = hypr.sync()
     if sync is not None and sync.enabled:
         sync.focus(w)
+
+
+def _win_foreground(w: QWidget):
+    """Windows refuses SetForegroundWindow from a background process, so a window opened by a global hotkey
+    used to appear without keyboard focus. Attaching to the foreground thread's input lifts that."""
+    import ctypes
+    u32 = ctypes.windll.user32
+    try:
+        hwnd = int(w.winId())
+        fg = u32.GetForegroundWindow()
+        if not fg or fg == hwnd:
+            return
+        me = ctypes.windll.kernel32.GetCurrentThreadId()
+        other = u32.GetWindowThreadProcessId(fg, None)
+        attached = bool(other and other != me and u32.AttachThreadInput(other, me, True))
+        try:
+            u32.BringWindowToTop(hwnd)
+            u32.SetForegroundWindow(hwnd)
+        finally:
+            if attached:
+                u32.AttachThreadInput(other, me, False)
+        w.activateWindow()
+    except Exception:
+        pass
 
 
 def raise_window(w: QWidget):

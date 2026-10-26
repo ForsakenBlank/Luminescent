@@ -11,6 +11,11 @@ Optionally (Settings → Overlay & Interface, it asks first) your own kitty wind
 follow the theme too: kitty.conf gets one include line (a backup is kept) and
 luminescent-theme.conf next to it is rewritten on every theme change, then kitty
 is told to reload its config.
+
+Windows: Windows Terminal (wt) runs scripts in a new tab, else a console window. The colours are a
+Terminal *fragment* (a JSON file Terminal merges in at start-up, so your own settings.json is never
+edited) with a "Luminescent" PowerShell profile; the "your own terminal" option makes the fragment also
+give your PowerShell and Command Prompt profiles the Luminescent scheme.
 """
 import os
 import shutil
@@ -18,7 +23,7 @@ import logging
 import subprocess
 from datetime import datetime
 
-from core import theme, APP_NAME
+from core import IS_WIN, theme, save_json, APP_NAME
 
 log = logging.getLogger("terminal")
 
@@ -228,3 +233,101 @@ def unlink_kitty() -> str:
     if shutil.which("pkill"):
         subprocess.run(["pkill", "-USR1", "-x", "kitty"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return ""
+
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+if IS_WIN:
+    FRAGMENT_DIR = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows Terminal", "Fragments",
+                                APP_NAME)
+    FRAGMENT = os.path.join(FRAGMENT_DIR, "luminescent.json")
+    # the profiles Windows Terminal makes itself: Windows PowerShell, Command Prompt, PowerShell 7
+    _DEFAULT_PROFILES = ["{61c54bbd-c2c6-5271-96e7-009a87ff44bf}", "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+                         "{574e775e-4f2a-5b96-ac1e-a2962a402336}"]
+    _icon_png = ""
+    _own = False
+
+    def wt_exe() -> str:
+        return shutil.which("wt") or ""
+
+    def find(configured: str = "") -> str:
+        for cand in (configured, _preferred):
+            cand = (cand or "").strip()
+            if cand and shutil.which(cand.split()[0]):
+                return cand.split()[0]
+        return wt_exe() or "powershell.exe"
+
+    def _write():
+        if not os.environ.get("LOCALAPPDATA"):
+            return "LOCALAPPDATA is not set"
+        try:
+            os.makedirs(FRAGMENT_DIR, exist_ok=True)
+            profile = {"name": APP_NAME, "commandline": "powershell.exe -NoLogo", "colorScheme": APP_NAME,
+                       "startingDirectory": "%USERPROFILE%"}
+            if _icon_png and os.path.isfile(_icon_png):
+                dst = os.path.join(FRAGMENT_DIR, "luminescent.png")
+                shutil.copyfile(_icon_png, dst)
+                profile["icon"] = dst
+            s = scheme()
+            s["name"] = APP_NAME
+            profiles = [profile] + ([{"updates": g, "colorScheme": APP_NAME} for g in _DEFAULT_PROFILES] if _own else [])
+            save_json(FRAGMENT, {"profiles": profiles, "schemes": [s]}, indent=2)
+            return ""
+        except OSError as e:
+            log.warning("could not write the Terminal fragment: %s", e)
+            return str(e)
+
+    def write_fragment(icon_png: str = "") -> str:
+        global _colours_on, _icon_png
+        _colours_on, _icon_png = True, icon_png or _icon_png
+        return _write()
+
+    def remove_fragment():
+        global _colours_on
+        _colours_on = False
+        if not _own:
+            shutil.rmtree(FRAGMENT_DIR, ignore_errors=True)
+
+    def has_scheme() -> bool:
+        return _colours_on and os.path.isfile(FRAGMENT)
+
+    def command(title: str, cwd: str, argv: list[str], configured: str = "") -> list[str]:
+        """A new Windows Terminal tab running `argv` (or `argv` itself, which the runner gives a console)."""
+        term = find(configured)
+        cwd = cwd or os.path.expanduser("~")
+        if os.path.basename(term).lower() in ("wt", "wt.exe"):
+            esc = [a.replace(";", "\\;") for a in argv]          # ';' separates wt sub-commands
+            args = [term, "-w", "0", "new-tab", "--title", title.replace(";", "\\;")]
+            if has_scheme():
+                args += ["--colorScheme", APP_NAME]
+            return args + ["-d", cwd] + esc
+        return list(argv)
+
+    # "your own terminal follows the theme": the fragment also updates your built-in profiles
+    def own_installed() -> bool:
+        return bool(wt_exe())
+
+    def own_linked() -> bool:
+        try:
+            with open(FRAGMENT, "r", encoding="utf-8") as f:
+                return '"updates"' in f.read()
+        except OSError:
+            return False
+
+    def link_own(backup_dir: str = "") -> str:
+        global _own
+        _own = True
+        return _write()
+
+    def unlink_own() -> str:
+        global _own
+        _own = False
+        return _write() if _colours_on else (shutil.rmtree(FRAGMENT_DIR, ignore_errors=True) or "")
+
+    def write_own() -> str:
+        global _own
+        _own = True
+        return _write()
+else:
+    own_installed, own_linked, link_own, unlink_own, write_own = (kitty_installed, kitty_linked, link_kitty,
+                                                                  unlink_kitty, write_kitty_theme)
+OWN_NAME = "Windows Terminal" if IS_WIN else "kitty"

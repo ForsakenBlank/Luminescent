@@ -22,6 +22,7 @@ Rows can be dragged within a box and onto another box; files dragged in from the
 manager become items. The lock button stops all of that (and moving the boxes).
 """
 import os
+import sys
 import uuid
 import logging
 
@@ -500,7 +501,8 @@ class ItemDialog(QDialog):
         self.cwd = QLineEdit(self.item.get("cwd", ""))
         self.cwd.setPlaceholderText("Default: the script's own folder (your home for commands)")
         self.admin = QCheckBox("Run as administrator")
-        self.admin.setToolTip("Scripts run with sudo in their terminal; programs and commands ask through pkexec.")
+        self.admin.setToolTip("Windows asks first (the administrator prompt)." if sys.platform == "win32" else
+                              "Scripts run with sudo in their terminal; programs and commands ask through pkexec.")
         self.admin.setChecked(bool(self.item.get("admin")))
         self.term = QCheckBox("Commands run in a terminal window (to see their output)")
         self.term.setToolTip("For a command (not a file or folder): it runs in your terminal, which stays open.")

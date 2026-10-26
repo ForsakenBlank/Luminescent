@@ -5,10 +5,15 @@ Hyprland tiles windows, so a snapped window is made floating first and then move
 spot (the screen minus your bars and dock, with a small gap). Pressing the same direction again steps
 through the sizes: left half, left third, left two thirds, back to the half. "Back into the tiling
 layout" undoes it. Every spot is also in the command palette.
+
+Windows: the active window is moved with the Win32 API inside its screen's work area (the taskbar stays
+clear), a maximised window is restored first, and Windows 11's invisible resize borders are allowed for so
+the gaps look even. "Back into the tiling layout" puts the window back where it was before it was snapped.
 """
+import os
 import logging
 
-from core import hypr
+from core import IS_WIN, hypr
 from core.module import Module
 
 log = logging.getLogger("snapper")
@@ -70,6 +75,7 @@ class SnapperModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self._last: dict[str, tuple[str, int]] = {}      # window address -> (direction, step in its cycle)
+        self._before: dict[int, tuple] = {}             # Windows: hwnd -> its rect before the first snap
 
     def start(self):
         for d in CYCLES:
@@ -84,12 +90,15 @@ class SnapperModule(Module):
 
     def actions(self):
         out = [(f"snap_{k}", f"Snap window: {v}", lambda k=k: self.snap(k)) for k, v in LABELS.items()]
-        out.append(("tile", "Snap window: back into the tiling layout", self.tile))
+        out.append(("tile", "Snap window: put it back where it was" if IS_WIN else
+                     "Snap window: back into the tiling layout", self.tile))
         return out
 
     # ── snapping ───────────────────────────────────────────────────────────
     def _active(self) -> tuple[dict, dict] | None:
         """(the active window, its monitor) from Hyprland, or None (no Hyprland, nothing focused, Luminescent)."""
+        if IS_WIN:
+            return _win_active()
         if not hypr.available():
             self.ctx.notify(self.title, "Snapping windows needs Hyprland.")
             return None
@@ -120,6 +129,10 @@ class SnapperModule(Module):
         if got is None:
             return
         win, mon = got
+        if IS_WIN:
+            self._before.setdefault(win["hwnd"], _win_rect(win["hwnd"]))
+            _win_snap(win["hwnd"], spot_rect(mon["area"], spot, round(max(0, int(self.s("gap", 8))) * mon["scale"])))
+            return
         target = hypr.lstr("address:" + win["address"])
         if not win.get("floating"):
             hypr.dispatch(f"hl.dsp.window.float({{ action = \"enable\", window = {target} }})")
@@ -134,5 +147,88 @@ class SnapperModule(Module):
             return
         win, _mon = got
         self._last.pop(win["address"], None)
+        if IS_WIN:
+            before = self._before.pop(win["hwnd"], None)
+            if before:
+                _win_move(win["hwnd"], *before)
+            return
         if win.get("floating"):
             hypr.dispatch(f"hl.dsp.window.float({{ action = \"disable\", window = {hypr.lstr('address:' + win['address'])} }})")
+
+
+# ── Windows ───────────────────────────────────────────────────────────────────
+def _u32():
+    import ctypes
+    return ctypes.windll.user32
+
+
+def _win_active():
+    """(window, monitor) for the foreground window, or None (the desktop, Luminescent itself)."""
+    import ctypes
+    from ctypes import wintypes
+    u32 = _u32()
+    hwnd = u32.GetForegroundWindow()
+    if not hwnd or not u32.IsWindowVisible(hwnd):
+        return None
+    pid = wintypes.DWORD()
+    u32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if pid.value == os.getpid():
+        return None
+    cls = ctypes.create_unicode_buffer(64)
+    u32.GetClassNameW(hwnd, cls, 64)
+    if cls.value in ("Progman", "WorkerW", "Shell_TrayWnd"):
+        return None
+
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT), ("rcWork", wintypes.RECT),
+                    ("dwFlags", wintypes.DWORD)]
+    info = MONITORINFO()
+    info.cbSize = ctypes.sizeof(MONITORINFO)
+    if not u32.GetMonitorInfoW(u32.MonitorFromWindow(hwnd, 2), ctypes.byref(info)):     # MONITOR_DEFAULTTONEAREST
+        return None
+    r = info.rcWork
+    try:
+        scale = u32.GetDpiForWindow(hwnd) / 96.0
+    except Exception:
+        scale = 1.0
+    return ({"address": str(hwnd), "hwnd": hwnd},
+            {"area": (r.left, r.top, r.right - r.left, r.bottom - r.top), "scale": scale})
+
+
+def _win_rect(hwnd) -> tuple[int, int, int, int]:
+    import ctypes
+    from ctypes import wintypes
+    r = wintypes.RECT()
+    _u32().GetWindowRect(hwnd, ctypes.byref(r))
+    return r.left, r.top, r.right - r.left, r.bottom - r.top
+
+
+def _win_borders(hwnd) -> tuple[int, int, int, int]:
+    """Windows 10/11 windows have invisible resize borders: (left, top, right, bottom) of them."""
+    import ctypes
+    from ctypes import wintypes
+    outer, frame = wintypes.RECT(), wintypes.RECT()
+    _u32().GetWindowRect(hwnd, ctypes.byref(outer))
+    try:
+        if ctypes.windll.dwmapi.DwmGetWindowAttribute(hwnd, 9, ctypes.byref(frame), ctypes.sizeof(frame)):
+            return 0, 0, 0, 0                                      # DWMWA_EXTENDED_FRAME_BOUNDS failed
+    except Exception:
+        return 0, 0, 0, 0
+    return frame.left - outer.left, frame.top - outer.top, outer.right - frame.right, outer.bottom - frame.bottom
+
+
+def _win_move(hwnd, x: int, y: int, w: int, h: int):
+    u32 = _u32()
+    if u32.IsZoomed(hwnd) or u32.IsIconic(hwnd):
+        u32.ShowWindow(hwnd, 9)                                    # SW_RESTORE
+    u32.SetWindowPos(hwnd, 0, int(x), int(y), int(w), int(h), 0x0004 | 0x0010)   # NOZORDER | NOACTIVATE
+
+
+def _win_snap(hwnd, rect: tuple[int, int, int, int]):
+    x, y, w, h = rect
+    u32 = _u32()
+    if u32.IsZoomed(hwnd):
+        u32.ShowWindow(hwnd, 9)                                    # a maximised window ignores SetWindowPos
+    left, top, right, bottom = _win_borders(hwnd)
+    _win_move(hwnd, x - left, y - top, w + left + right, h + top + bottom)
+    log.info("snapped window %s to %s", hwnd, rect)

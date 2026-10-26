@@ -20,7 +20,7 @@ import logging
 import configparser
 import subprocess
 
-from core import APP_DIR, APP_NAME, FROZEN
+from core import APP_DIR, APP_NAME, FROZEN, IS_WIN
 
 log = logging.getLogger("desktop")
 
@@ -339,3 +339,8 @@ def icon_for(target: str, kind: str):
             return None
         return _theme_icon(_index_apps().get(prog, "")) or _theme_icon(prog) or _theme_icon("utilities-terminal")
     return None
+
+
+if IS_WIN:
+    from core.desktop_win import (install_entry, remove_entry, install_service_menu, remove_service_menu,  # noqa
+                                  apply_icon_theme, reveal, icon_for)

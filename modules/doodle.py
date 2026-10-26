@@ -34,7 +34,7 @@ from PyQt6.QtCore import Qt, QRect, QRectF, QTimer, QPoint, QPointF, QLineF, pyq
 from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap, QBrush, QCursor, QFont, QFontMetrics, QPainterPath
 
 from core.module import Module
-from core import hotkeys as hk, theme, widgets, hypr, clip
+from core import IS_WIN, hotkeys as hk, theme, widgets, hypr, clip
 
 log = logging.getLogger("doodle")
 
@@ -44,8 +44,22 @@ FILLABLE = ("rect", "ellipse")
 TOOL_BTN = 34
 
 
-def _set_click_through(w: QWidget, enabled: bool):
-    """An empty input region lets every click fall through to the window underneath."""
+def _set_click_through(w: QWidget, enabled: bool, activatable: bool = False):
+    """An empty input region lets every click fall through to the window underneath.
+
+    Windows: the WS_EX_TRANSPARENT style does that, and WS_EX_NOACTIVATE keeps a click on the drawing from
+    taking the focus away from your app (`activatable` lifts it while the text tool is being typed into)."""
+    if IS_WIN:
+        import ctypes
+        u32 = ctypes.windll.user32
+        hwnd = int(w.winId())
+        gwl_exstyle, transparent, noactivate = -20, 0x20, 0x08000000
+        style = u32.GetWindowLongW(hwnd, gwl_exstyle)
+        style = (style | transparent) if enabled else (style & ~transparent)
+        style = (style & ~noactivate) if activatable else (style | noactivate)
+        u32.SetWindowLongW(hwnd, gwl_exstyle, style)
+        u32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020)
+        return
     handle = w.windowHandle()
     if handle is not None:
         handle.setFlag(Qt.WindowType.WindowTransparentForInput, enabled)
@@ -509,6 +523,8 @@ class DoodleOverlay(QWidget):
         box.done.connect(lambda keep, b=box: self._text_done(b, keep))
         self.text_box = box
         self.m.text_opened(self)
+        if IS_WIN:
+            _set_click_through(self, False, activatable=True)     # it has to take the keyboard now
         box.show()
         widgets.bring_to_front(self)
         box.setFocus()
@@ -529,6 +545,8 @@ class DoodleOverlay(QWidget):
             p.end()
         box.hide()
         box.deleteLater()
+        if IS_WIN:
+            _set_click_through(self, not self._active)
         self.update()
         self.m.text_closed()
 
@@ -764,8 +782,19 @@ class DoodleModule(Module):
         self.deactivate()
 
     def mask_menu_key(self):
-        """Windows needed a dummy key so a lone Alt tap did not open the menu bar; Linux apps don't do that."""
+        """Windows: send one unassigned key while the draw key is down, so letting go of Alt is not a lone Alt
+        tap (which opens the menu bar of the app underneath). Linux apps don't do that."""
+        if self._masked or not IS_WIN or not self._hold_mode or not hk.is_modifier(hk.normalize(self.s("hotkey", "alt"))):
+            self._masked = True
+            return
         self._masked = True
+        try:
+            import ctypes
+            u32 = ctypes.windll.user32
+            u32.keybd_event(0xE8, 0, 0, 0)
+            u32.keybd_event(0xE8, 0, 2, 0)      # KEYEVENTF_KEYUP
+        except Exception:
+            pass
 
     def _escape(self):
         if self._typing is not None:

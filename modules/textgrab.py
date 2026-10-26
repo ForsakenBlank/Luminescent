@@ -9,8 +9,12 @@ this module is unavailable.
 
 With "Show the text in an editable box" on, the result opens in a small panel
 first: fix what OCR got wrong, then Copy (Ctrl+Enter). Esc throws it away.
+
+Windows: Windows' own OCR engine (Windows.Media.Ocr through the winrt packages) is used, so nothing
+has to be installed; Tesseract (C:\\Program Files\\Tesseract-OCR) is the fallback.
 """
 import os
+import sys
 import shutil
 import tempfile
 import threading
@@ -37,9 +41,52 @@ def _languages(exe: str) -> str:
     return "+".join(["eng"] + [x for x in langs if x != "eng"] if "eng" in langs else langs)
 
 
-def _ocr_file(path: str, keep_lines: bool) -> str:
-    """Blocking: run Tesseract on an image file. Raises RuntimeError with a readable message."""
+def _windows_ocr(path: str, keep_lines: bool) -> str:
+    """Blocking: Windows' own OCR on an image file. Raises ImportError without the winrt packages."""
+    import asyncio
+    from winrt.windows.media.ocr import OcrEngine
+    from winrt.windows.graphics.imaging import BitmapDecoder
+    from winrt.windows.storage import StorageFile, FileAccessMode
+
+    async def run():
+        engine = OcrEngine.try_create_from_user_profile_languages()
+        if engine is None:
+            raise RuntimeError("Windows has no OCR language installed. Add one in Windows Settings → Time & "
+                               "language → Language & region (e.g. English with 'Optical character recognition').")
+        f = await StorageFile.get_file_from_path_async(path)
+        stream = await f.open_async(FileAccessMode.READ)
+        try:
+            bitmap = await (await BitmapDecoder.create_async(stream)).get_software_bitmap_async()
+            result = await engine.recognize_async(bitmap)
+        finally:
+            stream.close()
+        lines = [ln.text for ln in result.lines]
+        return "\n".join(lines) if keep_lines else " ".join(lines)
+
+    return asyncio.run(run())
+
+
+def _tesseract() -> str:
     exe = shutil.which("tesseract")
+    if not exe and sys.platform == "win32":
+        for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("LOCALAPPDATA", "")):
+            cand = os.path.join(base, "Tesseract-OCR", "tesseract.exe")
+            if os.path.isfile(cand):
+                return cand
+    return exe or ""
+
+
+def _ocr_file(path: str, keep_lines: bool) -> str:
+    """Blocking: run OCR on an image file. Raises RuntimeError with a readable message."""
+    if sys.platform == "win32":
+        try:
+            return _windows_ocr(path, keep_lines)
+        except ImportError:
+            if not _tesseract():
+                raise RuntimeError("The Windows OCR packages are missing. Run:\npip install winrt-Windows.Media.Ocr "
+                                   "winrt-Windows.Graphics.Imaging winrt-Windows.Storage "
+                                   "winrt-Windows.Storage.Streams winrt-Windows.Globalization")
+    exe = _tesseract()
     if not exe:
         raise RuntimeError("Tesseract is not installed. Run:\nsudo pacman -S tesseract tesseract-data-eng")
     # --psm 6: one block of text, which is what a dragged box usually is

@@ -65,6 +65,14 @@ class TodayPage(QWidget):
         body.addWidget(sw)
         lay.addLayout(body, 1)
 
+    def state(self) -> dict:
+        return {"days_back": (date.today() - self.day).days}
+
+    def restore_state(self, st: dict):
+        back = int(st.get("days_back") or 0)
+        if back:
+            self._step(-back)
+
     def _step(self, days: int):
         self.day = min(date.today(), self.day + timedelta(days=days))
         self.refresh()

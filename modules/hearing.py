@@ -48,7 +48,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QThread, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
 
-from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json
+from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json, events
 from core.module import Module
 
 log = logging.getLogger("hearing")
@@ -1532,6 +1532,7 @@ class HearingModule(Module):
                                                 f"Volume turned down to stay under {limit:.0f} dB.")
             elif now - self._over_since >= 3 and now - self._last_warn > 30:
                 self._last_warn = now
+                events.emit("hearing.over_limit", f"{level:.0f}")
                 self.ctx.notify(self.title, f"About {level:.0f} dB, above your {limit:.0f} dB limit. "
                                             f"Safe for {fmt_duration(safe_seconds(level))} per day at this level.")
         except Exception as e:

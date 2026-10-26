@@ -610,7 +610,7 @@ class CalculatorModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self.panel: CalcPanel | None = None
-        self._page_calc: CalcPanel | None = None     # the one inside the overlay's Calculator page
+        self._page_calcs: list[CalcPanel] = []        # the ones inside Calculator pages (overlay, dashboard boxes)
         self.data = {"history": [], "pins": [], "panel": {}}
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -696,7 +696,7 @@ class CalculatorModule(Module):
 
     def refresh_views(self):
         """The pop-out and the overlay's Calculator page show the same history and pins."""
-        for v in (self.panel, self._page_calc):
+        for v in [self.panel] + self._page_calcs:
             if v is not None:
                 try:
                     v.refresh()
@@ -711,7 +711,7 @@ class CalculatorModule(Module):
         outer.addStretch()
         with self.themed():
             calc = CalcPanel(self, embedded=True)
-        self._page_calc = calc
+        self._page_calcs.append(calc)
         holder = calc.container
         holder.setParent(page)
         holder.setMinimumWidth(460)
@@ -719,7 +719,8 @@ class CalculatorModule(Module):
         outer.addWidget(holder, 3)
         outer.addStretch()
         page.on_show = lambda: QTimer.singleShot(0, calc.input.setFocus)
-        page.teardown = lambda: (calc.close(), calc.deleteLater(), setattr(self, "_page_calc", None))
+        page.teardown = lambda: (calc.close(), calc.deleteLater(),
+                                 self._page_calcs.remove(calc) if calc in self._page_calcs else None)
         return page
 
     # ── maths ──────────────────────────────────────────────────────────────

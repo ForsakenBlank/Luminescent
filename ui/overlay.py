@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QRect, QRectF, QPointF, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QObject, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QPixmap, QPen, QRadialGradient
 
-from core import hypr, theme, widgets, APP_NAME
+from core import hypr, theme, widgets, events, APP_NAME
 from core.settings import NAV_SECTIONS, ALL_PAGES, REQUIRED_PAGES
 
 log = logging.getLogger("overlay")
@@ -35,6 +35,7 @@ log = logging.getLogger("overlay")
 _FLAGS = Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
 DOT_STEP = 20
 PANEL_TOP = 96          # panel pages start below the docked switcher
+FULL_PAGES = ("dashboard", "automation")    # pages that fill the screen instead of sitting in the panel
 
 
 class _Backdrop(QWidget):
@@ -42,8 +43,9 @@ class _Backdrop(QWidget):
     clicked_outside = pyqtSignal()
     escape = pyqtSignal()
 
-    def __init__(self, geom: QRect, dim: float, blur: bool = False):
+    def __init__(self, geom: QRect, dim: float, blur: bool = False, screen_name: str = ""):
         super().__init__()
+        self.screen_name = screen_name
         self.setWindowFlags(_FLAGS)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setProperty("lum_no_pin", True)      # so apps opened from the overlay can be drawn above it
@@ -267,6 +269,11 @@ class _Keys(QObject):
         mods = e.modifiers()
         ctrl = bool(mods & Qt.KeyboardModifier.ControlModifier)
         k = e.key()
+        fw = QApplication.focusWidget()
+        typing = isinstance(fw, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox, QComboBox))
+        hook = getattr(self.o._pages.get(self.o._current), "overlay_key", None)
+        if callable(hook) and not typing and hook(e):
+            return True
         if ctrl and Qt.Key.Key_1 <= k <= Qt.Key.Key_9 and not mods & Qt.KeyboardModifier.AltModifier:
             order = self.o.nav_order()
             i = k - Qt.Key.Key_1
@@ -281,8 +288,7 @@ class _Keys(QObject):
             return False
         if not self.o.settings.get("ui.type_to_search", True) or self.o._current not in ("dashboard", "themes"):
             return False
-        fw = QApplication.focusWidget()
-        if isinstance(fw, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox, QComboBox)):
+        if typing:
             return False
         self.o.launcher.open_palette(text)
         return True
@@ -313,7 +319,8 @@ class MainOverlay:
         self._primary: _Backdrop | None = None
         self.panel: QFrame | None = None
         self.stack: QStackedWidget | None = None
-        self.surface: QWidget | None = None         # full-screen layer for the Dashboard
+        self.surface: QWidget | None = None         # full-screen layer for the Dashboard and Automation
+        self._extra_surfaces: dict[str, QWidget] = {}   # the Dashboard's layer on the other screens
         self._chrome: list[QWidget] = []
         self._pages: dict[str, QWidget] = {}
         self._nav_buttons: dict[str, QPushButton] = {}
@@ -352,7 +359,7 @@ class MainOverlay:
         prim = self._host_screen()
         blur = self._blur()
         for scr in QApplication.screens():
-            b = _Backdrop(scr.geometry(), dim, blur)
+            b = _Backdrop(scr.geometry(), dim, blur, scr.name())
             b.clicked_outside.connect(self._outside_click)
             b.escape.connect(self.hide)
             b.installEventFilter(self._activation)
@@ -367,6 +374,17 @@ class MainOverlay:
         a = hypr.available_geometry(prim)
         self._insets = (max(0, a.top() - g.top()), max(0, g.bottom() - a.bottom()))
         self._build_chrome(self._primary)
+        # the other screens get a layer of their own, so dashboard boxes can live there too
+        self._extra_surfaces = {}
+        for b, scr in zip(self._backdrops, QApplication.screens()):
+            if b is self._primary:
+                continue
+            g, a = scr.geometry(), hypr.available_geometry(scr)
+            top, bottom = max(0, a.top() - g.top()), max(0, g.bottom() - a.bottom())
+            surf = QWidget(b)
+            surf.setGeometry(0, top, b.width(), b.height() - top - bottom)
+            surf.hide()
+            self._extra_surfaces[scr.name()] = surf
         self._screen_sig = self._screens_signature()
 
     def _build_chrome(self, host: _Backdrop):
@@ -496,6 +514,7 @@ class MainOverlay:
         self.panel = None
         self.stack = None
         self.surface = None
+        self._extra_surfaces = {}
         self._chrome = []
         self._pages = {}
         self._clock = self._status = None
@@ -505,7 +524,11 @@ class MainOverlay:
         try:
             if key == "dashboard":
                 from ui.dashboard import DashboardPage
-                return DashboardPage(self.launcher, self.surface)
+                return DashboardPage(self.launcher, self.surface, self._host_screen().name(),
+                                     dict(self._extra_surfaces))
+            if key == "automation":
+                from ui.automation import AutomationPage
+                return AutomationPage(self.launcher, self.surface)
             if key == "themes":
                 from ui.themes_page import ThemesPage
                 return ThemesPage(self.launcher)
@@ -595,6 +618,7 @@ class MainOverlay:
         self._tick_chrome()
         self._tick.start()
         self.focus_page()
+        events.emit("overlay.opened", self._current)
         # panels that were open (Calculator, Notes…) stay above the overlay; the backdrop's map and focus
         # put it on top of them, so lift them again once it is up
         QTimer.singleShot(250, self.raise_panels)
@@ -620,7 +644,7 @@ class MainOverlay:
         if self._clock is not None and self._clock.isVisible():
             self._clock.tick()
         if self._status is not None:
-            if self.settings.get("ui.show_status", True):
+            if self.settings.get("ui.show_status", True) and self._current != "automation":
                 self._status.tick()
             else:
                 self._status.hide()
@@ -649,16 +673,27 @@ class MainOverlay:
         if page is None:
             page = self._make_page(key)
             self._pages[key] = page
-            if key != "dashboard":
+            if key not in FULL_PAGES:
                 self.stack.addWidget(page)
-        on_dash = key == "dashboard"
-        self.surface.setVisible(on_dash)
-        self.panel.setVisible(not on_dash)
-        if on_dash:
+        full = key in FULL_PAGES
+        self.surface.setVisible(full)
+        for surf in self._extra_surfaces.values():
+            surf.setVisible(key == "dashboard")
+        self.panel.setVisible(not full)
+        for k in FULL_PAGES:
+            other = self._pages.get(k)
+            if other is not None and k != key:
+                other.hide()
+        if full:
             page.setGeometry(self.surface.rect())
             page.show()
         else:
             self.stack.setCurrentWidget(page)
+        # the node editor uses the whole screen: the clock and chips would sit on top of the nodes
+        if self._clock is not None:
+            self._clock.setVisible(key != "automation" and bool(self.settings.get("ui.show_clock", True)))
+        if self._status is not None and key == "automation":
+            self._status.hide()
         for c in self._chrome:
             c.raise_()
         if key in self._nav_buttons:
@@ -690,6 +725,7 @@ class MainOverlay:
             self._fade(0.0, self._hide_now)
 
     def _hide_now(self):
+        events.emit("overlay.closed")
         self._tick.stop()
         for b in self._backdrops:
             b.hide()
@@ -731,8 +767,20 @@ class MainOverlay:
             self.hide()
 
     def outside_click(self):
-        """A click on empty overlay space inside a page (the Dashboard's open screen)."""
+        """A click on empty overlay space inside a page."""
         self._outside_click()
+
+    def left_chrome_bottom(self) -> int:
+        """The bottom of the logo, clock and status chips in the full-screen layer's coordinates, with room for
+        two more chips (a timer started later must not end up under a dashboard box)."""
+        top = getattr(self, "_insets", (0, 0))[0]
+        y = 0
+        for w in (self._clock, self._status):
+            if w is not None and (w.isVisible() or w is self._status):
+                y = max(y, w.y() + (w.height() if w.isVisible() else 0))
+        if self._status is not None and self.settings.get("ui.show_status", True):
+            y += 2 * 34
+        return max(0, y - top)
 
     # ── changes ────────────────────────────────────────────────────────────
     def rebuild(self):
@@ -763,7 +811,7 @@ class MainOverlay:
             log.exception("could not prepare the %s page", key)
             return
         self._pages[key] = page
-        if key != "dashboard":
+        if key not in FULL_PAGES:
             self.stack.addWidget(page)
         else:
             page.hide()
@@ -782,7 +830,10 @@ class MainOverlay:
             self._clock.setVisible(bool(self.settings.get("ui.show_clock", True)))
         page = self._pages.get("dashboard")
         if page is not None and hasattr(page, "refresh"):
-            page.refresh()
+            page.refresh(force=True)
+        auto = self._pages.get("automation")
+        if auto is not None and hasattr(auto, "settings_applied"):
+            auto.settings_applied()
 
     def page(self, key: str):
         return self._pages.get(key)

@@ -28,7 +28,7 @@ from core import APP_DIR, HOME_DIR, DATA_DIR, IS_WIN, save_json, load_json
 SETTINGS_FILE = os.path.join(HOME_DIR, "settings.json")
 PROFILES_FILE = os.path.join(DATA_DIR, "profiles.json")
 PROFILES_DIR = os.path.join(DATA_DIR, "profiles")
-SHARED_SECTIONS = {"general", "ui", "dashboard"}
+SHARED_SECTIONS = {"general", "ui", "dashboard", "automation"}
 DEFAULT_PROFILE = "default"
 
 
@@ -78,7 +78,8 @@ SOUND_CHOICES = [
 
 AUDIO_FILTER = "Audio (*.wav *.mp3 *.ogg *.flac *.m4a);;All files (*)"
 
-NAV_SECTIONS = [("dashboard", "Dashboard"), ("themes", "Themes"), ("clipboard", "Clipboard"), ("settings", "Settings")]
+NAV_SECTIONS = [("dashboard", "Dashboard"), ("automation", "Automation"), ("themes", "Themes"),
+                ("clipboard", "Clipboard"), ("settings", "Settings")]
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
 EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
                ("stats", "Usage")]
@@ -91,6 +92,7 @@ START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard"), ("sysmon", "Sy
 
 # what the tray menu can list (Settings → General → Tray menu)
 TRAY_ITEMS = [("open", "Open Luminescent"), ("palette", "Command palette"), ("dashboard", "Dashboard items"),
+              ("automation", "Automation (pause, buttons, workspaces)"),
               ("modules", "Modules submenu"), ("actions", "Module actions (Snippets, Notes, Calculator…)"),
               ("colours", "Recent colours"), ("reset", "Reset stuck keys"), ("settings", "Settings"),
               ("log", "Open log file"), ("restart", "Restart"), ("quit", "Quit")]
@@ -148,6 +150,7 @@ SCHEMA = [
               "Shows every hotkey while held."),
         Field("cheatsheet_toggle", "Cheat sheet: press to show / press again to hide (instead of hold)", "bool", False),
         Field("hotkey_dashboard", "Jump to Dashboard", "hotkey", ""),
+        Field("hotkey_automation", "Jump to Automation", "hotkey", ""),
         Field("hotkey_themes", "Jump to Themes", "hotkey", ""),
         Field("hotkey_clipboard", "Jump to Clipboard", "hotkey", ""),
         Field("hotkey_settings_page", "Jump to Settings", "hotkey", ""),
@@ -166,7 +169,9 @@ SCHEMA = [
         Field("theme_cycle_hotkey", "Next theme hotkey", "hotkey", "",
               "Switches to the next theme in the active theme's folder (or the next of all themes)."),
         Field("overlay_dim", "Dim the screen behind the overlay", "opacity", 0.64),
-        Field("click_outside_closes", "Clicking the dimmed area closes the overlay", "bool", True),
+        Field("click_outside_closes", "Clicking the dimmed area closes the overlay", "bool", True,
+              "Around the Themes, Clipboard and Settings panels. The Dashboard works like a desktop: clicking it "
+              "never closes the overlay, and dragging on it draws a selection box."),
         Field("apps_over_overlay", "Apps opened while the overlay is up appear on top of it", "bool", True,
               _os("Super+E, a dashboard item...: the new window floats, centred, above the overlay, and goes back "
                   "into your tiling layout when the overlay closes.",
@@ -208,6 +213,27 @@ SCHEMA = [
         Field("show_icons", "Show program and file icons on items", "bool", True,
               "Taken from the program's app entry, your icon theme or the file type."),
         Field("group_delay_ms", "Pause between the items of a group (ms)", "int", 400, min=0, max=10000),
+        Field("snap", "Snap boxes to a grid while moving (px)", "int", 8,
+              "0 = off: boxes follow the mouse pixel by pixel, perfectly smooth. Also in the dashboard's "
+              "right-click menu.", min=0, max=64),
+    ]),
+
+    Section("automation", "Automation", "⚡",
+            "The Automation page: nodes you wire together (a timer fires, a command runs, a message pops up…). "
+            "They run in the background whether or not the overlay is open.", [
+        Field("enabled", "Run automations", "bool", True,
+              "Off pauses every workspace (the Automation page still opens, so you can keep editing)."),
+        Field("pause_hotkey", "Pause / resume all automations", "hotkey", ""),
+        Field("animate", "Show pulses travelling along the wires", "bool", True,
+              "Only drawn while the Automation page is open. Off in performance mode."),
+        Field("max_rate", "Safety stop: pause a workspace that fires more than this many times a second",
+              "int", 200, "Stops a wire loop (a node wired back into itself) from freezing Luminescent.",
+              min=10, max=5000),
+        Field("command_timeout", "Stop a background command after (seconds, 0 = never)", "int", 0, min=0,
+              max=86400),
+        Field("shell", "Shell for commands", "choice", _os("bash", "cmd"),
+              choices=_os([("bash", "bash"), ("sh", "sh"), ("fish", "fish"), ("zsh", "zsh")],
+                          [("cmd", "Command Prompt (cmd)"), ("powershell", "PowerShell")])),
     ]),
 
     Section("snippets", "Clipboard (Snippets)", "📋",
@@ -582,7 +608,17 @@ def _merge(data: dict, saved: dict, only=None):
 
 
 def _migrate(data: dict, saved: dict):
-    """Settings that moved: the per-module "show on start" boxes became General → Show on start."""
+    """Settings that moved: the per-module "show on start" boxes became General → Show on start.
+    The Automation page joins an existing navigation bar once (its jump hotkey came with it)."""
+    ui = saved.get("ui") or {}
+    if isinstance(ui.get("nav_order"), list) and "hotkey_automation" not in ui \
+            and "automation" not in data["ui"]["nav_order"]:
+        order = list(data["ui"]["nav_order"])
+        order.insert(1 if order[:1] == ["dashboard"] else 0, "automation")
+        data["ui"]["nav_order"] = order
+        tray = (saved.get("general") or {}).get("tray_items")
+        if isinstance(tray, list) and "automation" not in tray:
+            data["general"]["tray_items"] = list(tray) + ["automation"]
     if "start_panels" not in (saved.get("general") or {}):
         panels = []
         if (saved.get("notes") or {}).get("show_on_start", True):

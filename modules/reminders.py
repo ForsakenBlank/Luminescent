@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer, QDate, QTime, pyqtSignal
 
-from core import DATA_DIR, theme, widgets, sounds, save_json, load_json
+from core import DATA_DIR, theme, widgets, sounds, save_json, load_json, events
 from core.timeparse import parse_duration, parse_clock
 from core.module import Module
 from core.settings import ANCHOR_CHOICES, SOUND_CHOICES, AUDIO_FILTER
@@ -498,6 +498,8 @@ class RemindersModule(Module):
     def fire(self, rem: dict, preview: bool = False):
         acts = rem.get("actions", {})
         self.log.info("firing %r", rem.get("title"))
+        if not preview:
+            events.emit("reminder.fired", rem.get("title") or "")
         # theme switch (time-based themes)
         tid = acts.get("theme") or ""
         launcher = self.ctx.launcher

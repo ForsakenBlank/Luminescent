@@ -6,7 +6,7 @@ import shutil
 import logging
 
 APP_NAME = "Luminescent"          # shown in the tray, menus, dialogs and the startup entry
-VERSION = "1.0.0"                 # the release tag is v<VERSION>; core/updates.py compares against it
+VERSION = "1.1.0"                 # the release tag is v<VERSION>; core/updates.py compares against it
 REPO = "ForsakenBlank/Luminescent"
 
 FROZEN = bool(getattr(sys, "frozen", False))

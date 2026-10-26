@@ -1106,6 +1106,14 @@ class SettingsPage(QWidget):
             self.launcher.restart()
 
     # ── overlay hooks ──────────────────────────────────────────────────────
+    def state(self) -> dict:
+        """Which section is open (a dashboard box remembers it)."""
+        i = self.stack.currentIndex()
+        return {"section": next((k for k, v in self._pages.items() if v == i), "")}
+
+    def restore_state(self, st: dict):
+        self.open_section(st.get("section", ""))
+
     def open_section(self, key: str = ""):
         if key in self._pages:
             self.search.clear()

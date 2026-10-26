@@ -109,6 +109,11 @@ class CheatSheet:
         dash = [(it["name"], it["hotkey"]) for t in L.dashboard.tabs() for it in t["items"] if it.get("hotkey")]
         if dash:
             out.append(("Dashboard items", True, dash))
+        auto = [((n.get("title") or "Hotkey") + f"  ({ws['name']})", n["fields"]["combo"])
+                for ws in L.automation.workspaces() for n in ws["nodes"]
+                if n["type"] == "hotkey" and n["fields"].get("combo") and not n.get("off")]
+        if auto:
+            out.append(("Automation hotkeys", not L.automation.paused, auto))
         return out
 
     def trigger(self, combo: str):

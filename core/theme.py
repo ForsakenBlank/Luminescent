@@ -549,6 +549,10 @@ def stylesheet() -> str:
 
     #tabBox {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
     #tabBox[active="true"] {{ border-color: {p.primary}; }}
+    #tabBox[selected="true"] {{ border: 1px solid {p.primary}; background: {mix(p.bg_card, p.primary, 0.07)}; }}
+    #pageBody {{ background: {p.bg_base}; border: none; border-bottom-left-radius: {rb}px;
+                 border-bottom-right-radius: {rb}px; }}
+    #lumBand {{ background: {rgba(p.primary, 0.12)}; border: 1px solid {rgba(p.primary, 0.75)}; border-radius: 3px; }}
     #tabHeader {{
         background: {p.bg_header}; border: none; border-bottom: 1px solid {p.border};
         border-top-left-radius: {rb}px; border-top-right-radius: {rb}px;

@@ -27,7 +27,7 @@ from PyQt6.QtCore import QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
 from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, IS_WIN, VERSION, theme, widgets, autostart, terminal,
-                  wallpaper, hypr, runner, desktop, usage, backup)
+                  wallpaper, hypr, runner, desktop, usage, backup, events)
 from core.settings import Settings, SCHEMA, ALL_PAGES
 from core.hotkeys import HotkeyManager, pretty
 from core.module import ModuleContext
@@ -109,7 +109,9 @@ class Launcher:
         from ui.dashboard import DashboardStore
         from ui.overlay import MainOverlay
         from ui.cheatsheet import CheatSheet
+        from core.automation import AutomationEngine
         self.dashboard = DashboardStore(self)
+        self.automation = AutomationEngine(self)
         self.overlay = MainOverlay(self)
         self.cheatsheet = CheatSheet(self)
         self._palette = None
@@ -123,7 +125,9 @@ class Launcher:
             if self._enabled(key):
                 self._start_module(key)
         self.dashboard.register_hotkeys()
+        self.automation.start()
         self.dashboard.changed.connect(self._build_menu)
+        self.automation.changed.connect(self._build_menu)
         self._build_menu()
         self._sync_autostart()
         self._sync_desktop_entry()
@@ -152,6 +156,7 @@ class Launcher:
         if self.module_errors:
             QTimer.singleShot(2500, lambda: self.toast(
                 "Some modules failed to load", "\n".join(f"{k}: {v}" for k, v in self.module_errors.items()), 10000))
+        QTimer.singleShot(1500, lambda: events.emit("luminescent.started", VERSION))
         log.info("ready: %s", ", ".join(k for k in self.modules if self.modules[k].running) or "no modules running")
 
     # ── look ───────────────────────────────────────────────────────────────
@@ -162,6 +167,7 @@ class Launcher:
         self.app.setFont(f)
 
     def _theme_applied(self, t: dict):
+        events.emit("theme.changed", t.get("name", ""))
         self._restyle()
         self.icon = make_icon(theme.is_light(), theme.P.primary)
         self.app.setWindowIcon(self.icon)
@@ -294,6 +300,7 @@ class Launcher:
                 self.notify(m.title, f"Could not apply settings: {e}")
             self._enabled_snapshot[key] = want
         self.dashboard.register_hotkeys()
+        self.automation.apply_settings()
         self.overlay.settings_applied()
         self._build_menu()
         self._sync_autostart()
@@ -425,6 +432,7 @@ class Launcher:
                     out += extra(Entry)
                 except Exception:
                     log.exception("palette entries from %s failed", key)
+        out += self.automation.palette_entries(Entry)
         for board, t in self.dashboard.all_tabs():
             for it in t["items"]:
                 if it.get("action") or it.get("kind") in ("separator", "heading"):
@@ -487,6 +495,8 @@ class Launcher:
             dash.addSeparator()
             dash.addAction("Edit the dashboard…", lambda: self.overlay.open("dashboard"))
 
+        if "automation" in shown:
+            self.automation.tray_menu(menu)
         if "modules" in shown:
             self._modules_menu(menu)
         for key, m in self.modules.items():
@@ -631,8 +641,9 @@ class Launcher:
         log.info("shutting down")
         usage.flush()
         self.toasts.clear()
+        self.overlay.shutdown()             # first: dashboard page boxes write where they were
         self.dashboard.save_now()
-        self.overlay.shutdown()
+        self.automation.shutdown()
         for key in list(self.modules):
             try:
                 self.modules[key]._stop()

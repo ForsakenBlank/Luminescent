@@ -31,9 +31,18 @@ import keyboard
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from core import usage
-from core.hotkeys import normalize, pretty
 
 log = logging.getLogger("hotkeys")
+
+
+def normalize(combo: str) -> str:
+    from core.hotkeys import normalize as _normalize      # here, not at the top: core.hotkeys imports this file
+    return _normalize(combo)
+
+
+def pretty(combo: str) -> str:
+    from core.hotkeys import pretty as _pretty
+    return _pretty(combo)
 
 _u32 = ctypes.windll.user32
 

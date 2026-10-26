@@ -45,7 +45,7 @@ RULES_VERSION = 3                    # bump when the rules below change: the old
 BIND_DESC = "Luminescent"
 
 _sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
-_runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+_runtime = os.environ.get("XDG_RUNTIME_DIR") or (f"/run/user/{os.getuid()}" if hasattr(os, "getuid") else "")
 SOCKET = os.path.join(_runtime, "hypr", _sig, ".socket.sock") if _sig else ""
 EVENT_SOCKET = os.path.join(_runtime, "hypr", _sig, ".socket2.sock") if _sig else ""
 FIFO_DIR = os.path.join(_runtime, "luminescent")
@@ -458,6 +458,9 @@ class WindowSync(QObject):
         self._by_addr[addr] = w
         if isinstance(w, QDialog):
             self._centre_dialog(w, addr)
+            self._dialog_on_top(w)
+            # a panel raised a moment later (Notes re-raises itself after opening) must not cover it
+            QTimer.singleShot(250, lambda d=w: self._dialog_on_top(d) if d in self._addr and d.isVisible() else None)
         elif w.testAttribute(Qt.WidgetAttribute.WA_Moved):
             self._move(addr, w)
         else:
@@ -507,6 +510,28 @@ class WindowSync(QObject):
         addr = self._addr.get(w)
         if addr:
             dispatch(f"hl.dsp.window.alter_zorder({{ mode = \"top\", window = {lstr('address:' + addr)} }})")
+        # an open dialog always stays above Luminescent's other windows: it blocks clicks on them, so one
+        # hidden behind a panel left you stuck
+        for d in self._open_dialogs():
+            if d is not w:
+                self._dialog_on_top(d, focus=False)
+
+    def _open_dialogs(self) -> list[QWidget]:
+        modal = QApplication.activeModalWidget()
+        out = [d for d in self._addr if isinstance(d, QDialog) and d.isVisible()]
+        if modal is not None and modal in out:
+            out.remove(modal)
+            out.append(modal)                    # the modal one last, so it ends up on top
+        return out
+
+    def _dialog_on_top(self, d: QWidget, focus: bool = True):
+        addr = self._addr.get(d)
+        if not addr:
+            return
+        target = lstr("address:" + addr)
+        dispatch(f"hl.dsp.window.alter_zorder({{ mode = \"top\", window = {target} }})")
+        if focus:
+            dispatch(f"hl.dsp.focus({{ window = {target} }})")
 
     def float_on_top(self, addr: str, area: QRect):
         """Make another program's window float, centred on `area`, above Luminescent's windows."""

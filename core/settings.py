@@ -75,12 +75,14 @@ AUDIO_FILTER = "Audio (*.wav *.mp3 *.ogg *.flac *.m4a);;All files (*)"
 
 NAV_SECTIONS = [("dashboard", "Dashboard"), ("themes", "Themes"), ("clipboard", "Clipboard"), ("settings", "Settings")]
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
-EXTRA_PAGES = []   # Notes, Timers, Calculator, Today, Usage pages: not built yet
+EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
+               ("stats", "Usage")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
 # panels that can open by themselves when Luminescent starts (Settings → General → Show on start)
-START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard")]
+START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard"), ("sysmon", "System Monitor"),
+                ("media", "Media controls")]
 
 # what the tray menu can list (Settings → General → Tray menu)
 TRAY_ITEMS = [("open", "Open Luminescent"), ("palette", "Command palette"), ("dashboard", "Dashboard items"),
@@ -405,6 +407,54 @@ SCHEMA = [
         Field("catch_up_minutes", "Fire missed reminders if less than (minutes) late", "int", 120,
               "If the PC was asleep or off when a reminder was due, it still fires on wake unless it is later "
               "than this.", min=0, max=1440),
+    ]),
+]
+
+SCHEMA += [
+    Section("snapper", "Window Snapper", "▣",
+            "Hotkeys that put the active window in a half, a third or a corner of its screen. The window floats "
+            "while it is snapped; press a direction again for the next size (half, third, two thirds).", [
+        Field("enabled", "Enable Window Snapper", "bool", True),
+        Field("left_hotkey", "Left (half, third, two thirds)", "hotkey", "super+alt+left"),
+        Field("right_hotkey", "Right (half, third, two thirds)", "hotkey", "super+alt+right"),
+        Field("up_hotkey", "Up (top half, fill the screen)", "hotkey", "super+alt+up"),
+        Field("down_hotkey", "Down (bottom half, centred)", "hotkey", "super+alt+down"),
+        Field("top_left_hotkey", "Top-left quarter", "hotkey", ""),
+        Field("top_right_hotkey", "Top-right quarter", "hotkey", ""),
+        Field("bottom_left_hotkey", "Bottom-left quarter", "hotkey", ""),
+        Field("bottom_right_hotkey", "Bottom-right quarter", "hotkey", ""),
+        Field("centre_third_hotkey", "Centre third", "hotkey", ""),
+        Field("tile_hotkey", "Back into the tiling layout", "hotkey", ""),
+        Field("gap", "Gap around snapped windows (px)", "int", 8, min=0, max=100),
+    ]),
+    Section("ruler", "Screen Ruler", "📏",
+            "Freeze the screen and drag between two points to measure them in pixels. Shift keeps the line level, "
+            "click copies W×H, Ctrl+click the distance.", [
+        Field("enabled", "Enable Screen Ruler", "bool", True),
+        Field("hotkey", "Measure hotkey", "hotkey", "ctrl+alt+r"),
+    ]),
+    Section("media", "Media Controls", "♪",
+            "What is playing in any player (Spotify, Firefox, mpv…) with previous / play-pause / next. Needs "
+            "playerctl: sudo pacman -S playerctl.", [
+        Field("enabled", "Enable Media Controls", "bool", True),
+        Field("hotkey", "Show / hide the panel", "hotkey", ""),
+        Field("play_hotkey", "Play / pause", "hotkey", ""),
+        Field("next_hotkey", "Next track", "hotkey", ""),
+        Field("previous_hotkey", "Previous track", "hotkey", ""),
+        Field("bg_opacity", "Panel opacity", "opacity", 0.92),
+    ]),
+    Section("qr", "QR Code", "▦",
+            "Shows the text or link on the clipboard as a QR code to scan with a phone. Copy it as a picture or "
+            "save it as PNG or SVG.", [
+        Field("enabled", "Enable QR codes", "bool", True),
+        Field("hotkey", "QR code of the clipboard", "hotkey", ""),
+    ]),
+    Section("sysmon", "System Monitor", "📈",
+            "CPU, memory, GPU and network with a minute of history in a small floating panel. Only measures while "
+            "it is on screen.", [
+        Field("enabled", "Enable System Monitor", "bool", True),
+        Field("hotkey", "Show / hide hotkey", "hotkey", ""),
+        Field("bg_opacity", "Panel opacity", "opacity", 0.88),
     ]),
 ]
 

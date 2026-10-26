@@ -246,8 +246,9 @@ def _row_list() -> QListWidget:
 
 
 class CalcPanel(widgets.FloatingPanel):
-    def __init__(self, m: "CalculatorModule"):
+    def __init__(self, m: "CalculatorModule", embedded: bool = False):
         self.m = m
+        self.embedded = embedded            # its contents live in the overlay's Calculator page instead
         super().__init__("Calculator", min_size=(240, 260), opacity=float(m.s("bg_opacity", 0.92)),
                          drag_needs_edit_mode=False, close_hides=True)
         self.base_btn = widgets.button("DEC", "ghost", "Show whole-number results in decimal, hex, binary or octal")
@@ -317,9 +318,14 @@ class CalcPanel(widgets.FloatingPanel):
             self.clamp_to_screens()
         else:
             self.center_on(widgets.cursor_screen_geometry())
-        self.keypad.setVisible(bool(st.get("keypad", False)))
+        self.keypad.setVisible(bool(st.get("keypad", False)) or embedded)
         self.base_btn.setText(dict(BASES).get(m.base(), "DEC"))
-        self.geometry_changed.connect(m.schedule_save)
+        if embedded:
+            self.close_btn.hide()
+            self.input.setFont(theme.qfont(32, 500, mono=True))
+            self.input.setStyleSheet("QLineEdit { background: transparent; border: none; padding: 0; font-size: 32px; }")
+        else:
+            self.geometry_changed.connect(m.schedule_save)
         self.escape_pressed.connect(self._escape)
         self.refresh()
 
@@ -367,6 +373,8 @@ class CalcPanel(widgets.FloatingPanel):
 
     def toggle_keypad(self):
         self.keypad.setVisible(not self.keypad.isVisible())
+        if self.embedded:
+            return
         self.m.data.setdefault("panel", {})["keypad"] = self.keypad.isVisible()
         self.m.schedule_save()
 
@@ -487,7 +495,7 @@ class CalcPanel(widgets.FloatingPanel):
                 if e.modifiers() & Qt.KeyboardModifier.ControlModifier:
                     # calculate, copy and close (or just copy and close the last result)
                     if (not self.input.text().strip() or self.calculate()) and self.copy_result():
-                        QTimer.singleShot(250, self.hide)
+                        QTimer.singleShot(250, self._close_after_copy)
                     return True
                 self.calculate()
                 return True
@@ -506,6 +514,13 @@ class CalcPanel(widgets.FloatingPanel):
                     self.preview.setText("copied ✓")
                 return True
         return super().eventFilter(obj, e)
+
+    def _close_after_copy(self):
+        launcher = self.m.ctx.launcher
+        if self.embedded and launcher is not None:
+            launcher.overlay.hide()
+        else:
+            self.hide()
 
     def _escape(self):
         if self.input.text():
@@ -595,6 +610,7 @@ class CalculatorModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self.panel: CalcPanel | None = None
+        self._page_calc: CalcPanel | None = None     # the one inside the overlay's Calculator page
         self.data = {"history": [], "pins": [], "panel": {}}
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -678,6 +694,34 @@ class CalculatorModule(Module):
             self.data["panel"].update({"x": g.x(), "y": g.y(), "w": g.width(), "h": g.height(),
                                        "keypad": self.panel.keypad.isVisible()})
 
+    def refresh_views(self):
+        """The pop-out and the overlay's Calculator page show the same history and pins."""
+        for v in (self.panel, self._page_calc):
+            if v is not None:
+                try:
+                    v.refresh()
+                except RuntimeError:
+                    pass
+
+    def make_page(self) -> QWidget:
+        """The overlay's Calculator page: the calculator itself, larger, with the keypad out."""
+        page = QWidget()
+        outer = QHBoxLayout(page)
+        outer.setContentsMargins(24, 16, 24, 24)
+        outer.addStretch()
+        with self.themed():
+            calc = CalcPanel(self, embedded=True)
+        self._page_calc = calc
+        holder = calc.container
+        holder.setParent(page)
+        holder.setMinimumWidth(460)
+        holder.setMaximumWidth(620)
+        outer.addWidget(holder, 3)
+        outer.addStretch()
+        page.on_show = lambda: QTimer.singleShot(0, calc.input.setFocus)
+        page.teardown = lambda: (calc.close(), calc.deleteLater(), setattr(self, "_page_calc", None))
+        return page
+
     # ── maths ──────────────────────────────────────────────────────────────
     def base(self) -> str:
         b = self.data["panel"].get("base", "dec")
@@ -737,8 +781,7 @@ class CalculatorModule(Module):
         limit = int(self.s("history_limit", 200))
         del self.data["history"][:-limit]
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def _reformat(self):
         for h in self.data["history"] + self.data["pins"]:
@@ -747,22 +790,19 @@ class CalculatorModule(Module):
             # plain numbers only: "3.1 mi", "60 days" keep their text
             if "var" in h or _PLAIN.fullmatch(h.get("result", "")):
                 h["result"] = self.fmt(h["value"])
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def delete_history(self, h: dict):
         self.data["history"] = [x for x in self.data["history"] if x is not h]
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def clear_history(self, parent):
         if widgets.confirm(parent, "Clear history", "Delete the whole calculator history? Pins are kept.",
                            yes="Clear", danger=True):
             self.data["history"] = []
             self.schedule_save()
-            if self.panel:
-                self.panel.refresh()
+            self.refresh_views()
 
     # ── pins ───────────────────────────────────────────────────────────────
     def pin(self, h: dict, parent):
@@ -777,8 +817,7 @@ class CalculatorModule(Module):
         self.data["pins"].append({"name": name.strip(), "var": var, "expr": h["expr"], "result": h["result"],
                                   "value": h.get("value", 0)})
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def rename_pin(self, pin: dict, parent):
         name, ok = widgets.ask_text(parent, "Rename pin", "New name:", pin["name"])
@@ -789,8 +828,7 @@ class CalculatorModule(Module):
                 return
             pin.update({"name": name.strip(), "var": var})
             self.schedule_save()
-            if self.panel:
-                self.panel.refresh()
+            self.refresh_views()
 
     def recalc_pin(self, pin: dict):
         try:
@@ -800,14 +838,12 @@ class CalculatorModule(Module):
             return
         pin.update({"value": value, "result": self.fmt(value)})
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def set_pin(self, pin: dict, **changes):
         pin.update(changes)
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def new_pin_folder(self, pin: dict, parent):
         name, ok = widgets.ask_text(parent, "Pin folder", "Folder name (e.g. Bills, Work):")
@@ -817,8 +853,7 @@ class CalculatorModule(Module):
     def unpin(self, pin: dict):
         self.data["pins"] = [p for p in self.data["pins"] if p is not pin]
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     # ── saving ─────────────────────────────────────────────────────────────
     def schedule_save(self):

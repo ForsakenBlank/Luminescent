@@ -6,6 +6,8 @@ pulsectl
 numpy
 # optional: video thumbnails in Snippets
 opencv-python
+# QR codes (QR Code module)
+segno
 # optional: image previews for .txt files that contain a URL
 requests
 # only for building a standalone binary (python build.py)

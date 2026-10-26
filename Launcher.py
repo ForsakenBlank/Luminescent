@@ -262,6 +262,7 @@ class Launcher:
         for a_id, label, fn in m.actions():
             if a_id == aid:
                 usage.record("tools", action, f"{m.title}: {label}")
+                usage.activity("tool", label)
                 fn()
                 return
         self.notify(m.title, f"{m.title} has no action '{aid}' any more.")

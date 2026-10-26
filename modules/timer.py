@@ -20,12 +20,12 @@ import time
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QLineEdit, QScrollArea
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame, QSizePolicy, QLineEdit, QScrollArea
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QSize, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen, QColor
 
-from core import DATA_DIR, theme, widgets, sounds, save_json, load_json
+from core import DATA_DIR, theme, widgets, sounds, save_json, load_json, usage
 from core.module import Module
 from core.timeparse import parse_duration, parse_clock
 
@@ -393,8 +393,16 @@ class TimerPanel(widgets.FloatingPanel):
         self.set_title(self._title_text() + ("  —  DONE" if done else ""))
 
     # ── controls ───────────────────────────────────────────────────────────
+    def _log_run(self):
+        """The stretch that just ended goes in the activity log (the Today page)."""
+        secs = time.monotonic() - self._started_at
+        if self._running and secs >= 5 and not self.m._stopping:
+            label = self.cfg.get("label") or ("Timer" if self.mode == "timer" else "Stopwatch")
+            usage.activity("timer", label, secs)
+
     def play_pause(self):
         if self._running:
+            self._log_run()
             self._accum_ms = self.elapsed_ms()
             self._running = False
             self._tick.stop()
@@ -414,6 +422,7 @@ class TimerPanel(widgets.FloatingPanel):
         self.m.activity.emit()
 
     def reset(self):
+        self._log_run()
         self._tick.stop()
         self._running = False
         self._finished = False
@@ -474,6 +483,7 @@ class TimerPanel(widgets.FloatingPanel):
             self.caption.setText(f"of {fmt_clock(self.duration_ms, False)[0]}" + (f" · {label}" if label else ""))
 
     def _finish(self):
+        self._log_run()
         self._running = False
         self._finished = True
         self._accum_ms = float(self.duration_ms)
@@ -498,6 +508,7 @@ class TimerPanel(widgets.FloatingPanel):
         self._update()
 
     def closeEvent(self, e):
+        self._log_run()
         self._tick.stop()
         self.m.panel_closed(self)
         super().closeEvent(e)
@@ -552,6 +563,10 @@ class TimerModule(Module):
 
     def tray_actions(self):
         return [("New timer / stopwatch", self.new_timer)]
+
+    def make_page(self) -> QWidget:
+        """The overlay's Timers page."""
+        return TimersPage(self)
 
     def actions(self):
         return [("new_timer", "New timer", lambda: self.new_timer("ask")),
@@ -659,3 +674,157 @@ class TimerModule(Module):
             p.move(pos)
             offset += p.height() + 8 if key[0] != "m" else p.width() + 8
         self.save_panels()
+
+
+class _TimerCard(QFrame):
+    """One timer or stopwatch on the overlay's Timers page."""
+
+    def __init__(self, panel: TimerPanel):
+        super().__init__()
+        self.panel = panel
+        p = theme.P
+        self.setObjectName("timerCard")
+        self.setStyleSheet(f"#timerCard {{ background: {p.bg_card}; border: 1px solid {p.border};"
+                           f" border-radius: {p.radius}px; }}")
+        self.setFixedHeight(190)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(18, 14, 18, 14)
+        lay.setSpacing(8)
+        head = QHBoxLayout()
+        self.kind = widgets.label("", 9.5, 600, mono=True, spacing=0.12, tone="muted")
+        head.addWidget(self.kind)
+        head.addStretch()
+        close = widgets.icon_button("✕", "Close this timer", 24, 10, ghost=True)
+        close.clicked.connect(panel.close)
+        head.addWidget(close)
+        lay.addLayout(head)
+        self.time = widgets.label("", 40, 500, mono=True, spacing=-0.02)
+        lay.addWidget(self.time)
+        self.bar = QFrame()
+        self.bar.setFixedHeight(3)
+        self.bar.setStyleSheet(f"background: {p.bg_frame}; border-radius: 1px;")
+        self.fill = QFrame(self.bar)
+        self.fill.setStyleSheet(f"background: {p.primary}; border-radius: 1px;")
+        lay.addWidget(self.bar)
+        btns = QHBoxLayout()
+        btns.setSpacing(6)
+        self.play = widgets.button("", "primary")
+        self.play.clicked.connect(panel.play_pause)
+        reset = widgets.button("Reset", "ghost")
+        reset.clicked.connect(panel.reset)
+        self.lap = widgets.button("Lap", "ghost")
+        self.lap.clicked.connect(panel.lap)
+        show = widgets.button("Panel", "ghost", "Show its floating panel")
+        show.clicked.connect(lambda: panel.show_and_raise())
+        for b in (self.play, reset, self.lap):
+            btns.addWidget(b)
+        btns.addStretch()
+        btns.addWidget(show)
+        lay.addLayout(btns)
+        self.update_view()
+
+    def update_view(self):
+        pnl = self.panel
+        label = pnl.cfg.get("label") or ""
+        kind = "TIMER" if pnl.mode == "timer" else "STOPWATCH"
+        self.kind.setText(f"{kind}{'  ·  ' + label.upper() if label else ''}{'  ·  DONE' if pnl._finished else ''}")
+        ms = pnl.elapsed_ms()
+        if pnl.mode == "timer":
+            ms = max(0.0, pnl.duration_ms - ms)
+        self.time.setText(fmt_clock(ms, False)[0])
+        self.time.setProperty("tone", "accent2" if pnl._finished else "primary")
+        timer = pnl.mode == "timer" and pnl.duration_ms > 0
+        self.bar.setVisible(timer)
+        if timer:
+            done = min(1.0, max(0.0, pnl.elapsed_ms() / pnl.duration_ms))
+            self.fill.setGeometry(0, 0, int(self.bar.width() * done), 3)
+        self.play.setText("Pause" if pnl.running else ("Start" if pnl.elapsed_ms() <= 0 or pnl._finished else "Resume"))
+        self.lap.setVisible(pnl.mode == "stopwatch")
+
+
+class TimersPage(QWidget):
+    """The overlay's Timers page: the same timers and stopwatches as the floating panels, as big cards."""
+
+    def __init__(self, m: "TimerModule"):
+        super().__init__()
+        self.m = m
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(24, 0, 24, 24)
+        lay.setSpacing(16)
+        head = QHBoxLayout()
+        head.setContentsMargins(0, 12, 0, 0)
+        head.addWidget(widgets.label("Timers", 15, 600))
+        head.addStretch()
+        self.entry = QLineEdit()
+        self.entry.setPlaceholderText("New timer: 5m, 1h30, 25m focus, at 17:30…   (Enter)")
+        self.entry.setFixedSize(380, 32)
+        self.entry.returnPressed.connect(self._new)
+        head.addWidget(self.entry)
+        sw = widgets.button("New stopwatch", "ghost")
+        sw.setFixedHeight(32)
+        sw.clicked.connect(lambda: m._add_panel({"mode": "stopwatch"}))
+        head.addWidget(sw)
+        lay.addLayout(head)
+        self.hint = widgets.label("", 12, tone="muted")
+        lay.addWidget(self.hint)
+        self.grid = QGridLayout()
+        self.grid.setSpacing(16)
+        self.grid.setAlignment(Qt.AlignmentFlag.AlignTop)
+        for c in range(3):
+            self.grid.setColumnStretch(c, 1)
+        lay.addLayout(self.grid)
+        lay.addStretch()
+        self.cards: list[_TimerCard] = []
+        self._tick = QTimer(self)
+        self._tick.setInterval(250)
+        self._tick.timeout.connect(self._update)
+        m.activity.connect(self._rebuild_later)
+        self._rebuild()
+
+    def _new(self):
+        got = parse_entry(self.entry.text())
+        if got is None:
+            self.hint.setText("Could not read a time. Try 5m, 1h30, 90s, 2:30 or at 17:30.")
+            return
+        ms, label = got
+        cfg = {"mode": "timer" if ms > 0 else "stopwatch", "duration_ms": int(ms)}
+        if label:
+            cfg["label"] = label
+        self.entry.clear()
+        self.m._add_panel(cfg)
+        self.m._panels[-1].play_pause()
+
+    def _rebuild_later(self):
+        QTimer.singleShot(0, self._rebuild)
+
+    def _rebuild(self):
+        panels = [p for p in self.m._panels if not p._fresh]
+        if [c.panel for c in self.cards] == panels:
+            return
+        widgets.clear_layout(self.grid)
+        self.cards = [_TimerCard(p) for p in panels]
+        for i, c in enumerate(self.cards):
+            self.grid.addWidget(c, i // 3, i % 3)
+        self.hint.setText("" if panels else "No timers yet. Type a time above, or start a stopwatch.")
+
+    def _update(self):
+        for c in self.cards:
+            try:
+                c.update_view()
+            except RuntimeError:
+                pass                                 # its panel was just closed: the rebuild follows
+
+    def on_show(self):
+        self._rebuild()
+        self._tick.start()
+        QTimer.singleShot(0, self.entry.setFocus)
+
+    def on_hide(self):
+        self._tick.stop()
+
+    def teardown(self):
+        self._tick.stop()
+        try:
+            self.m.activity.disconnect(self._rebuild_later)
+        except TypeError:
+            pass

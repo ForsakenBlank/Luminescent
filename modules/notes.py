@@ -965,6 +965,234 @@ class NotePanel(widgets.FloatingPanel):
         self.close()
 
 
+class NotesPage(QWidget):
+    """The overlay's Notes page: every note on the left, the open one on the right. The same notes as the
+    panel and the stickies (all three show each other's changes)."""
+
+    def __init__(self, m: "NotesModule"):
+        super().__init__()
+        self.m = m
+        self.current_id = ""
+        self._view = None
+        self._preview = False
+        root = QHBoxLayout(self)
+        root.setContentsMargins(24, 12, 24, 24)
+        root.setSpacing(20)
+
+        left = QVBoxLayout()
+        left.setSpacing(8)
+        head = QHBoxLayout()
+        head.addWidget(widgets.label("Notes", 15, 600))
+        head.addStretch()
+        new = widgets.button("＋ New note", "primary")
+        new.setFixedHeight(30)
+        new.clicked.connect(self._new)
+        head.addWidget(new)
+        left.addLayout(head)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search notes (#tag for a tag)")
+        self.search.setClearButtonEnabled(True)
+        self.search.setFixedHeight(32)
+        self.search.textChanged.connect(lambda _t: self._fill())
+        left.addWidget(self.search)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        holder = QWidget()
+        widgets.style(holder, "background: transparent;")
+        self.list = QVBoxLayout(holder)
+        self.list.setContentsMargins(0, 4, 0, 4)
+        self.list.setSpacing(6)
+        scroll.setWidget(holder)
+        left.addWidget(scroll, 1)
+        lw = QWidget()
+        lw.setLayout(left)
+        lw.setFixedWidth(320)
+        root.addWidget(lw)
+
+        self.right = QFrame()
+        self.right.setObjectName("notePageBody")
+        p = theme.P
+        self.right.setStyleSheet(f"#notePageBody {{ background: {p.bg_card}; border: 1px solid {p.border};"
+                                 f" border-radius: {p.radius}px; }}")
+        rl = QVBoxLayout(self.right)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(0)
+        bar = QHBoxLayout()
+        bar.setContentsMargins(18, 12, 12, 8)
+        self.title = widgets.label("", 16, 600)
+        bar.addWidget(self.title, 1)
+        self.eye = widgets.icon_button("👁", "Show formatted (Markdown) / edit", 28, 12, ghost=True)
+        self.eye.setCheckable(True)
+        self.eye.toggled.connect(self._set_preview)
+        bar.addWidget(self.eye)
+        more = widgets.icon_button("⋯", "Note options", 28, 12, ghost=True)
+        more.clicked.connect(lambda: self._menu(more.mapToGlobal(more.rect().bottomLeft())))
+        bar.addWidget(more)
+        rl.addLayout(bar)
+        self.body = QVBoxLayout()
+        rl.addLayout(self.body, 1)
+        root.addWidget(self.right, 1)
+        m.note_changed.connect(self._changed_elsewhere)
+        self._fill()
+
+    # ── list ───────────────────────────────────────────────────────────────
+    def notes(self) -> list[dict]:
+        return self.m.panel.data["notes"] if self.m.panel else []
+
+    def _fill(self):
+        widgets.clear_layout(self.list)
+        panel = self.m.panel
+        if panel is None:
+            return
+        panel._query = self.search.text()
+        p = theme.P
+        order = sorted(range(len(self.notes())), key=lambda i: (not self.notes()[i].get("pinned"), i))
+        shown = 0
+        for i in order:
+            note = self.notes()[i]
+            if not panel._matches(note):
+                continue
+            shown += 1
+            card = QFrame()
+            card.setObjectName("notePageCard")
+            card.setCursor(Qt.CursorShape.PointingHandCursor)
+            card.setFixedHeight(46)
+            on = note.get("id") == self.current_id
+            colour = note.get("colour") or ""
+            card.setStyleSheet(f"#notePageCard {{ background: {p.primary_muted if on else p.bg_card};"
+                               f" border: 1px solid {p.primary if on else p.border}; border-radius: {p.radius}px; }}"
+                               f"#notePageCard:hover {{ border-color: {p.primary}; }}")
+            cl = QHBoxLayout(card)
+            cl.setContentsMargins(12, 0, 12, 0)
+            cl.setSpacing(8)
+            if colour or note.get("pinned"):
+                tick = QFrame()
+                tick.setFixedSize(3, 16)
+                tick.setStyleSheet(f"background: {colour or p.primary}; border-radius: 1px;")
+                cl.addWidget(tick)
+            name = widgets.label(("📌 " if note.get("pinned") else "") + note["name"], 13, 500)
+            name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            cl.addWidget(name, 1)
+            if note["type"] == "todo":
+                done = sum(1 for it in note["items"] if it.get("checked"))
+                cl.addWidget(widgets.label(f"{done}/{len(note['items'])}", 10, mono=True, tone="muted"))
+            for w in card.findChildren(QWidget):
+                w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            card.mousePressEvent = lambda e, nid=note["id"], idx=i: self._card_click(e, nid, idx)
+            self.list.addWidget(card)
+        if not shown:
+            self.list.addWidget(widgets.label("No notes match." if self.notes() else "No notes yet.", 12,
+                                              tone="muted"))
+        self.list.addStretch()
+
+    def _card_click(self, e, nid: str, idx: int):
+        if e.button() == Qt.MouseButton.RightButton:
+            self.m.panel._note_menu(idx, e.globalPosition().toPoint())
+            self._after_menu()
+        else:
+            self.open(nid)
+
+    def _after_menu(self):
+        if self.m.panel and self.m.panel.index_of(self.current_id) is None:
+            self.current_id = ""
+        self._fill()
+        self._show()
+
+    def _menu(self, pos):
+        idx = self.m.panel.index_of(self.current_id) if self.m.panel and self.current_id else None
+        if idx is None:
+            return
+        mm = widgets.menu(self)
+        pinned = self.notes()[idx].get("pinned")
+        mm.addAction("Unpin" if pinned else "📌  Pin (shown first)", lambda: self.m.panel._pin(idx, not pinned))
+        self.m.panel._decorate_menu(mm, idx)
+        mm.addSeparator()
+        mm.addAction("Delete…", lambda: self.m.panel.delete_note(idx))
+        mm.exec(pos)
+        self._after_menu()
+
+    def _new(self):
+        if self.m.panel is None:
+            return
+        before = len(self.notes())
+        self.m.panel.add_note()
+        if len(self.notes()) > before:
+            self.open(self.notes()[-1]["id"])
+
+    # ── the open note ──────────────────────────────────────────────────────
+    def open(self, nid: str):
+        self.current_id = nid
+        self._fill()
+        self._show()
+
+    def _note(self) -> dict | None:
+        return next((n for n in self.notes() if n.get("id") == self.current_id), None)
+
+    def _show(self):
+        widgets.clear_layout(self.body)
+        self._view = None
+        note = self._note()
+        if note is None:
+            self.title.setText("")
+            self.eye.hide()
+            hint = widgets.label("Pick a note on the left, or make a new one.", 13, tone="muted")
+            hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.body.addWidget(hint, 1)
+            return
+        self.title.setText(note["name"])
+        text_note = note["type"] != "todo"
+        self.eye.setVisible(text_note and bool(self.m.s("markdown", True)))
+        font = int(self.m.s("font_size", 16))
+        if not text_note:
+            self._view = TodoList(self.m, note)
+            self._view.changed.connect(self._fill)
+        elif self._preview and self.m.s("markdown", True):
+            self._view = markdown_view(font)
+            self._view.setMarkdown(note.get("content", "") or "*Empty note. Click 👁 to write.*")
+        else:
+            ed = QTextEdit()
+            ed.setAcceptRichText(False)
+            ed.setPlaceholderText("Start typing…")
+            ed.setStyleSheet(f"QTextEdit {{ background: transparent; border: none; padding: 8px 18px;"
+                             f" font-size: {font}px; color: {theme.P.text_primary}; }}")
+            ed.setPlainText(note.get("content", ""))
+            ed.textChanged.connect(lambda: self._typed(ed))
+            self._view = ed
+        self.body.addWidget(self._view, 1)
+
+    def _typed(self, ed: QTextEdit):
+        note = self._note()
+        if note is not None:
+            note["content"] = ed.toPlainText()
+            self.m.note_edited(note, self)
+
+    def _set_preview(self, on: bool):
+        self._preview = on
+        self._show()
+
+    def _changed_elsewhere(self, nid: str, source):
+        if source is self or (self._view is not None and source is self._view.window() and source is not self.m.panel):
+            return
+        if nid == self.current_id and not (self._view is not None and self._view.hasFocus()):
+            self._show()
+
+    def on_show(self):
+        if not self.current_id and self.m.panel:
+            pin = self.m.panel.first_pinned()
+            notes = self.notes()
+            if notes:
+                self.current_id = notes[pin if pin is not None else 0]["id"]
+        self._fill()
+        self._show()
+
+    def teardown(self):
+        try:
+            self.m.note_changed.disconnect(self._changed_elsewhere)
+        except TypeError:
+            pass
+
+
 class NotesModule(Module):
     key = "notes"
     title = "Notes"
@@ -1145,6 +1373,10 @@ class NotesModule(Module):
             self.panel.show()
             if edit:
                 self.panel.set_edit(True)
+
+    def make_page(self) -> QWidget:
+        """The overlay's Notes page."""
+        return NotesPage(self)
 
     def actions(self):
         return [("toggle", "Show / hide Notes", self.toggle), ("edit", "Notes edit mode", self.toggle_edit),

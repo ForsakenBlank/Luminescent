@@ -574,6 +574,16 @@ class SnippetsView(QWidget):
     def at_root(self) -> bool:
         return os.path.normcase(self.path) == os.path.normcase(self.root)
 
+    def state(self) -> dict:
+        """The folder it is in, relative to the snippets folder (a dashboard box remembers it)."""
+        rel = os.path.relpath(self.path, self.root)
+        return {"folder": "" if rel == "." else rel}
+
+    def restore_state(self, st: dict):
+        path = os.path.normpath(os.path.join(self.root, st.get("folder") or ""))
+        if os.path.isdir(path) and os.path.normcase(path).startswith(os.path.normcase(self.root)):
+            self._open_folder(path)
+
     def go_up(self):
         if not self.at_root():
             self.path = os.path.dirname(self.path)

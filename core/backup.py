@@ -13,7 +13,7 @@ from core import HOME_DIR, DATA_DIR
 
 FILES = ["settings.json", "data/notes.json", "data/timers.json", "data/reminders_state.json", "data/hearing.json",
          "data/dashboard.json", "data/themes.json", "data/calculator.json", "data/colours.json",
-         "data/palette.json", "data/profiles.json"]
+         "data/palette.json", "data/profiles.json", "data/automation.json"]
 BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 
 

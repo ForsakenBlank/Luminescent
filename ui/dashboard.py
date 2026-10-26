@@ -5,13 +5,18 @@ fill with items that open a script, program, file, folder, URL or command.
     data/dashboard.json:
     {"layout": 3, "active": board id, "locked": false,
      "boards": [{"id", "name",
-                 "tabs": [{"id", "title", "x", "y", "w", "collapsed",
+                 "tabs": [{"id", "kind", "title", "x", "y", "w", "h", "collapsed", "screen", "page", "state",
                            "items": [{"id", "kind", "name", "path", "args", "hotkey", "action",
                                       "cwd", "admin", "ask_args", "terminal", "group"}]}]}]}
 
 Boards are whole dashboards (Work, Gaming...) switched from the toolbar. The boxes float
-on the whole screen (x/y are screen pixels). Layout 1 files (panel-relative boxes) and
-layout 2 files (one board) are moved over once.
+on the whole screen (x/y are pixels on the screen named by `screen`, "" = the screen the
+overlay opens on). Layout 1 files (panel-relative boxes) and layout 2 files (one board)
+are moved over once.
+
+A tab's `kind` is "items" (a box of items) or "page": a whole overlay page (Themes,
+Settings, Clipboard...) in a box you can resize, `page` says which one and `state`
+remembers where it was (the Settings section, the Clipboard folder...).
 
 Items: `kind` is "item" (default), "group" (runs the items listed in `group`, in order),
 "heading" or "separator" (they only tidy a box up). `action` items ("notes:toggle") run a
@@ -23,6 +28,7 @@ manager become items. The lock button stops all of that (and moving the boxes).
 """
 import os
 import sys
+import json
 import uuid
 import logging
 
@@ -30,17 +36,20 @@ from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QDialog, QFormLayout, QLineEdit,
     QFileDialog, QSizePolicy, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView, QApplication
 )
-from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QMimeData, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QRect, QMimeData, QSize, pyqtSignal
 from PyQt6.QtGui import QDrag, QPixmap, QPainter, QColor, QIcon
 
-from core import DATA_DIR, save_json, load_json, widgets, runner, desktop, usage, theme
+from core import DATA_DIR, save_json, load_json, widgets, runner, desktop, usage, theme, events
 from core import hotkeys as hk
+from core.settings import ALL_PAGES
 
 log = logging.getLogger("dashboard")
 
 PATH = os.path.join(DATA_DIR, "dashboard.json")
-GRID = 8
+GRID = 8                    # the default snap; Settings → Dashboard → Snap tabs to a grid
 BOX_W = 264
+PAGE_W, PAGE_H = 720, 520   # a new page box (Settings, Themes...)
+PAGE_MIN = (360, 220)
 ROW_H = 32
 HEAD_ROW_H = 26
 SEP_ROW_H = 13
@@ -51,6 +60,7 @@ LAYOUT = 3
 TOOLS_TAB = "tools"
 ITEM_MIME = "application/x-luminescent-item"
 ITEM_KEYS = ("kind", "name", "path", "args", "hotkey", "action", "cwd")
+FULL_PAGES = ("dashboard", "automation")     # whole-screen pages: never a box on the dashboard
 
 
 def _id() -> str:
@@ -76,6 +86,7 @@ def _fill_item(it: dict):
 class DashboardStore(QObject):
     """The dashboard's data, item hotkeys and running items. Lives as long as the launcher, not the overlay."""
     changed = pyqtSignal()           # boards/tabs/items added, removed, renamed, moved between boxes
+    switched = pyqtSignal()          # another board is the active one
     running_changed = pyqtSignal()   # an item started or its process ended
 
     def __init__(self, launcher):
@@ -114,11 +125,18 @@ class DashboardStore(QObject):
             b["tabs"] = [t for t in b.get("tabs", []) if isinstance(t, dict)]
             for t in b["tabs"]:
                 t.setdefault("id", _id())
+                t.setdefault("kind", "items")
                 t.setdefault("title", "Tab")
                 t.setdefault("x", 16)
                 t.setdefault("y", 16)
                 t.setdefault("w", BOX_W)
+                t.setdefault("h", PAGE_H)
                 t.setdefault("collapsed", False)
+                t.setdefault("screen", "")
+                if t["kind"] == "page":
+                    t.setdefault("page", "settings")
+                    if not isinstance(t.get("state"), dict):
+                        t["state"] = {}
                 t["items"] = [i for i in t.get("items", []) if isinstance(i, dict)]
                 for it in t["items"]:
                     _fill_item(it)
@@ -164,7 +182,8 @@ class DashboardStore(QObject):
             for aid, label, _fn in m.actions():
                 items.append({"id": _id(), "kind": "item", "name": label, "path": "", "args": "", "hotkey": "",
                               "action": f"{key}:{aid}"})
-        return {"id": TOOLS_TAB, "title": "Tools", "x": x, "y": y, "w": BOX_W, "collapsed": False, "items": items}
+        return {"id": TOOLS_TAB, "kind": "items", "title": "Tools", "x": x, "y": y, "w": BOX_W, "h": PAGE_H,
+                "collapsed": False, "screen": "", "items": items}
 
     def schedule_save(self):
         self._save_timer.start()
@@ -195,11 +214,15 @@ class DashboardStore(QObject):
         if self.board(bid) is not None and bid != self.data.get("active"):
             self.data["active"] = bid
             self.schedule_save()
-            self.changed.emit()
+            self.switched.emit()
+            events.emit("dashboard.switched", self.board(bid)["name"])
 
-    def add_board(self, name: str, copy_from: str = "") -> dict:
+    def add_board(self, name: str, copy_from: str = "", empty: bool = False) -> dict:
+        """A new board: a copy of `copy_from`, completely empty, or with just the Tools tab."""
         b = {"id": _id(), "name": name.strip() or "Dashboard", "tabs": []}
-        if copy_from:
+        if empty:
+            pass
+        elif copy_from:
             import copy
             src = self.board(copy_from)
             if src:
@@ -223,6 +246,14 @@ class DashboardStore(QObject):
             b["name"] = name.strip()
             self._structural()
 
+    def move_board(self, bid: str, delta: int):
+        boards = self.data["boards"]
+        b = self.board(bid)
+        i = boards.index(b) if b else -1
+        if 0 <= i + delta < len(boards) and i >= 0:
+            boards.insert(i + delta, boards.pop(i))
+            self._structural()
+
     def delete_board(self, bid: str):
         if len(self.data["boards"]) < 2:
             return
@@ -232,14 +263,20 @@ class DashboardStore(QObject):
         self._structural()
 
     def move_tab_to_board(self, tid: str, bid: str):
-        src = self.board_of_tab(tid)
+        self.move_tabs_to_board([tid], bid)
+
+    def move_tabs_to_board(self, tids: list[str], bid: str):
         dst = self.board(bid)
-        t = self.tab(tid)
-        if src is None or dst is None or t is None or src is dst:
-            return
-        src["tabs"].remove(t)
-        dst["tabs"].append(t)
-        self._structural()
+        moved = False
+        for tid in tids:
+            src, t = self.board_of_tab(tid), self.tab(tid)
+            if src is None or dst is None or t is None or src is dst:
+                continue
+            src["tabs"].remove(t)
+            dst["tabs"].append(t)
+            moved = True
+        if moved:
+            self._structural()
 
     # ── queries ────────────────────────────────────────────────────────────
     def tabs(self) -> list[dict]:
@@ -275,8 +312,17 @@ class DashboardStore(QObject):
         self.schedule_save()
 
     # ── edits ──────────────────────────────────────────────────────────────
-    def add_tab(self, title: str, x: int, y: int) -> dict:
-        t = {"id": _id(), "title": title, "x": x, "y": y, "w": BOX_W, "collapsed": False, "items": []}
+    def add_tab(self, title: str, x: int, y: int, screen: str = "") -> dict:
+        t = {"id": _id(), "kind": "items", "title": title, "x": x, "y": y, "w": BOX_W, "h": PAGE_H,
+             "collapsed": False, "screen": screen, "items": []}
+        self.tabs().append(t)
+        self._structural()
+        return t
+
+    def add_page_tab(self, page: str, title: str, x: int, y: int, w: int, h: int, screen: str = "") -> dict:
+        """A whole overlay page (Themes, Settings...) as a box on the active board."""
+        t = {"id": _id(), "kind": "page", "page": page, "title": title, "x": x, "y": y, "w": w, "h": h,
+             "collapsed": False, "screen": screen, "state": {}, "items": []}
         self.tabs().append(t)
         self._structural()
         return t
@@ -288,13 +334,19 @@ class DashboardStore(QObject):
             self._structural()
 
     def delete_tab(self, tid: str):
+        self.delete_tabs([tid])
+
+    def delete_tabs(self, tids: list[str]):
+        gone = set(tids)
         for b in self.data["boards"]:
-            b["tabs"] = [t for t in b["tabs"] if t["id"] != tid]
+            b["tabs"] = [t for t in b["tabs"] if t["id"] not in gone]
         self._structural()
 
     def restore_tools(self, x: int, y: int):
         if not any(t["id"] == TOOLS_TAB for t in self.tabs()):
-            self.tabs().append(self.tools_tab(x, y))
+            t = self.tools_tab(x, y)
+            t.update({"kind": "items", "h": PAGE_H, "screen": ""})
+            self.tabs().append(t)
             self._structural()
 
     def add_item(self, tid: str, item: dict, index: int = -1):
@@ -387,6 +439,7 @@ class DashboardStore(QObject):
             return
         usage.record("items", iid, it.get("name", ""))
         usage.activity("run", it.get("name") or it.get("path") or "item")
+        events.emit("dashboard.item_run", it.get("name") or "")
         if it.get("kind") == "group":
             self._run_group(it)
             return
@@ -775,28 +828,57 @@ class ItemRow(QFrame):
         self.box.page.item_menu(self.box, self.item, e.globalPos())
 
 
-class _WidthGrip(QWidget):
-    def __init__(self, box: "TabBox"):
+def snap_to(v: float, g: int) -> int:
+    """Round to the snap grid; g of 0 or 1 = no grid (pixel by pixel)."""
+    return int(round(v / g) * g) if g > 1 else int(round(v))
+
+
+def _repolish(w: QWidget):
+    w.style().unpolish(w)
+    w.style().polish(w)
+
+
+class _Grip(QWidget):
+    """Resize handle on a box's right edge, bottom edge or bottom-right corner."""
+    CURSORS = {"r": Qt.CursorShape.SizeHorCursor, "b": Qt.CursorShape.SizeVerCursor,
+               "rb": Qt.CursorShape.SizeFDiagCursor}
+
+    def __init__(self, box: "_Box", edge: str):
         super().__init__(box)
         self.box = box
-        self.setCursor(Qt.CursorShape.SizeHorCursor)
+        self.edge = edge
+        self.setCursor(self.CURSORS[edge])
         self._start = None
+
+    def place(self):
+        w, h, t = self.box.width(), self.box.height(), 6
+        if self.edge == "r":
+            self.setGeometry(w - t, HEADER_H, t, max(0, h - HEADER_H - 2 * t))
+        elif self.edge == "b":
+            self.setGeometry(0, h - t, max(0, w - 2 * t), t)
+        else:
+            self.setGeometry(w - 2 * t, h - 2 * t, 2 * t, 2 * t)
+        self.setVisible(self.edge == "r" or not self.box.tab.get("collapsed"))
+        self.raise_()
 
     def mousePressEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton and not self.box.page.store.locked:
-            self._start = (e.globalPosition().x(), self.box.width())
+            self._start = (e.globalPosition().toPoint(), self.box.width(), self.box.body_height())
 
     def mouseMoveEvent(self, e):
-        if self._start:
-            w = int(self._start[1] + e.globalPosition().x() - self._start[0])
-            w = max(184, min(560, round(w / GRID) * GRID))
-            w = min(w, self.box.parentWidget().width() - self.box.x())
-            self.box.set_width(w)
+        if self._start is None:
+            return
+        p0, w0, h0 = self._start
+        d = e.globalPosition().toPoint() - p0
+        g = self.box.page.snap()
+        w = snap_to(w0 + d.x(), g) if "r" in self.edge else w0
+        h = snap_to(h0 + d.y(), g) if "b" in self.edge else h0
+        self.box.resize_to(w, h)
 
     def mouseReleaseEvent(self, e):
-        if self._start:
+        if self._start is not None:
             self._start = None
-            self.box.page.store.set_geometry(self.box.tab["id"], w=self.box.width())
+            self.box.resize_done()
 
 
 class _DropLine(QFrame):
@@ -807,23 +889,117 @@ class _DropLine(QFrame):
         self.hide()
 
 
-class TabBox(QFrame):
-    def __init__(self, page: "DashboardPage", tab: dict):
-        super().__init__(page)
+class _Box(QFrame):
+    """What every box on the dashboard shares: dragging by the header (on the snap grid, with the rest of
+    the selection, onto another screen), being selected, and the screen (canvas) it lives on."""
+
+    def __init__(self, page: "DashboardPage", tab: dict, canvas: "Canvas"):
+        super().__init__(canvas)
         self.page = page
         self.tab = tab
+        self.canvas = canvas
+        self.sig = None
         self.setObjectName("tabBox")
-        self.setAcceptDrops(True)
         self._press = None
         self._dragging = False
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(0)
+        self._group: list[tuple["_Box", QPoint]] = []
+        self._grab = QPoint()
 
+    def set_selected(self, on: bool):
+        if bool(self.property("selected")) != on:
+            self.setProperty("selected", on)
+            _repolish(self)
+
+    def body_height(self) -> int:
+        return self.height() - HEADER_H
+
+    def resize_to(self, w: int, h: int):
+        pass
+
+    def resize_done(self):
+        pass
+
+    def clicked(self):
+        """The header was clicked without moving: fold or unfold."""
+        self.set_collapsed(not self.tab.get("collapsed"))
+        self.page.store.set_geometry(self.tab["id"], collapsed=self.tab["collapsed"])
+
+    def set_collapsed(self, on: bool):
+        pass
+
+    def fit(self):
+        pass
+
+    def mousePressEvent(self, e):
+        if e.button() != Qt.MouseButton.LeftButton or e.position().y() > HEADER_H:
+            super().mousePressEvent(e)
+            return
+        if e.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier):
+            self.page.toggle_selected(self)
+            self._press = None
+            return
+        if self not in self.page.selected:
+            self.page.clear_selection()
+        self._press = (e.globalPosition().toPoint(), self.pos())
+        self._grab = e.position().toPoint()
+        self._group = [(b, b.pos()) for b in self.page.selected if b is not self and b.canvas is self.canvas]
+        self._dragging = False
+        for b, _p in self._group:
+            b.raise_()
+        self.raise_()
+        self.page.raise_dock()
+
+    def mouseMoveEvent(self, e):
+        if self._press is None or self.page.store.locked:
+            return
+        start, origin = self._press
+        d = e.globalPosition().toPoint() - start
+        if not self._dragging and d.manhattanLength() < 4:
+            return
+        if not self._dragging:
+            self._dragging = True
+            self.header.setCursor(Qt.CursorShape.ClosedHandCursor)
+            self.setProperty("active", True)
+            _repolish(self)
+        g = self.page.snap()
+        x, y = self.page.clamp(self.canvas, snap_to(origin.x() + d.x(), g), snap_to(origin.y() + d.y(), g),
+                               self.width())
+        self.move(x, y)
+        dx, dy = x - origin.x(), y - origin.y()
+        for b, o in self._group:
+            b.move(*self.page.clamp(b.canvas, o.x() + dx, o.y() + dy, b.width()))
+
+    def mouseReleaseEvent(self, e):
+        if self._press is None:
+            return
+        self._press = None
+        if not self._dragging:
+            self.clicked()
+            return
+        self._dragging = False
+        self.header.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setProperty("active", False)
+        _repolish(self)
+        target = self.page.canvas_at(widgets.global_cursor(e))
+        if target is not None and target is not self.canvas and not self._group:
+            at = widgets.global_cursor(e)
+            QTimer.singleShot(0, lambda: self.page.move_box_to_canvas(self, target, target.mapFromGlobal(at) - self._grab))
+            return
+        for b in [self] + [b for b, _p in self._group]:
+            b.fit()
+            self.page.store.set_geometry(b.tab["id"], x=b.x(), y=b.y())
+        self._group = []
+
+    def contextMenuEvent(self, e):
+        if e.pos().y() <= HEADER_H:
+            self.page.tab_menu(self, e.globalPos())
+
+    def _header(self, title: str, extra: list[QWidget] | None = None) -> QFrame:
         self.header = QFrame()
         self.header.setObjectName("tabHeader")
         self.header.setFixedHeight(HEADER_H)
-        self.header.setCursor(Qt.CursorShape.PointingHandCursor if page.store.locked else Qt.CursorShape.OpenHandCursor)
+        self.header.setCursor(Qt.CursorShape.PointingHandCursor if self.page.store.locked
+                              else Qt.CursorShape.OpenHandCursor)
         hl = QHBoxLayout(self.header)
         hl.setContentsMargins(11, 0, 9, 0)
         hl.setSpacing(9)
@@ -831,19 +1007,34 @@ class TabBox(QFrame):
         accent.setObjectName("tabAccent")
         accent.setFixedSize(3, 12)
         hl.addWidget(accent)
-        title = widgets.label(tab["title"].upper(), 11, 600, mono=True, spacing=0.14)
-        title.setObjectName("tabTitle")
-        title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        hl.addWidget(title, 1)
-        count = widgets.label(f"{sum(1 for i in tab['items'] if runnable(i)):02d}", 10, 500, mono=True, tone="muted")
-        hl.addWidget(count)
+        self.title_lbl = widgets.label(title.upper(), 11, 600, mono=True, spacing=0.14)
+        self.title_lbl.setObjectName("tabTitle")
+        self.title_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        hl.addWidget(self.title_lbl, 1)
+        for w in (accent, self.title_lbl):
+            w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        for w in extra or []:
+            hl.addWidget(w)
         self.chevron = widgets.label("", 10, tone="muted")
         self.chevron.setFixedWidth(14)
         self.chevron.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.chevron.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         hl.addWidget(self.chevron)
-        for w in (accent, title, count, self.chevron):
-            w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        lay.addWidget(self.header)
+        return self.header
+
+
+class TabBox(_Box):
+    """A box of items."""
+
+    def __init__(self, page: "DashboardPage", tab: dict, canvas: "Canvas"):
+        super().__init__(page, tab, canvas)
+        self.setAcceptDrops(True)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        count = widgets.label(f"{sum(1 for i in tab['items'] if runnable(i)):02d}", 10, 500, mono=True, tone="muted")
+        count.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        lay.addWidget(self._header(tab["title"], [count]))
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -866,7 +1057,7 @@ class TabBox(QFrame):
         bl.addStretch()
         self.scroll.setWidget(self.body)
         lay.addWidget(self.scroll)
-        self._grip = _WidthGrip(self)
+        self._grip = _Grip(self, "r")
         self._drop_line = _DropLine(self.body)
 
         self.move(int(tab.get("x", ORIGIN[0])), int(tab.get("y", ORIGIN[1])))
@@ -879,27 +1070,32 @@ class TabBox(QFrame):
         return sum(r.height() for r in self.rows) + 8
 
     def fit(self):
-        """Size to the content, but never past the bottom of the screen (the body scrolls instead)."""
+        """Size to the content, but never past the bottom of the screen or the toolbar (the body scrolls)."""
         if self.tab.get("collapsed"):
             h = HEADER_H + 2
         else:
-            room = max(HEADER_H + ROW_H + 12, self.parentWidget().height() - self.y() - GRID)
+            room = max(HEADER_H + ROW_H + 12, self.page.bottom_limit(self) - self.y())
             h = min(HEADER_H + 2 + self._body_height(), room)
         self.setFixedHeight(h)
-        self._grip.setGeometry(self.width() - 5, 0, 5, self.height())
-        self._grip.raise_()
+        self._grip.place()
 
     def set_width(self, w: int):
         self.setFixedWidth(w)
         self.fit()
+
+    def resize_to(self, w: int, h: int):
+        w = max(184, min(720, w))
+        self.set_width(min(w, self.canvas.width() - self.x()))
+
+    def resize_done(self):
+        self.page.store.set_geometry(self.tab["id"], w=self.width())
 
     def set_collapsed(self, on: bool):
         self.tab["collapsed"] = on
         self.scroll.setVisible(not on)
         self.chevron.setText("▸" if on else "▾")
         self.header.setProperty("collapsed", on)
-        self.header.style().unpolish(self.header)
-        self.header.style().polish(self.header)
+        _repolish(self.header)
         self.fit()
 
     def apply_filter(self, q: str) -> int:
@@ -911,64 +1107,12 @@ class TabBox(QFrame):
             for prop, val in (("match", hit), ("dim", bool(q) and not hit)):
                 if r.property(prop) != val:
                     r.setProperty(prop, val)
-                    r.style().unpolish(r)
-                    r.style().polish(r)
+                    _repolish(r)
                     for c in r.findChildren(QLabel):
-                        c.style().unpolish(c)
-                        c.style().polish(c)
+                        _repolish(c)
         if q and n and self.tab.get("collapsed"):
             self.set_collapsed(False)
         return n
-
-    # dragging by the header: a plain click (moved < 4 px) toggles collapse instead
-    def mousePressEvent(self, e):
-        if e.button() == Qt.MouseButton.LeftButton and e.position().y() <= HEADER_H:
-            self._press = (e.globalPosition().toPoint(), self.pos())
-            self._dragging = False
-            self.raise_()
-            self.page.raise_dock()
-        else:
-            super().mousePressEvent(e)
-
-    def mouseMoveEvent(self, e):
-        if self._press is None or self.page.store.locked:
-            return
-        start, origin = self._press
-        d = e.globalPosition().toPoint() - start
-        if not self._dragging and d.manhattanLength() < 4:
-            return
-        if not self._dragging:
-            self._dragging = True
-            self.header.setCursor(Qt.CursorShape.ClosedHandCursor)
-            self.setProperty("active", True)
-            self.style().unpolish(self)
-            self.style().polish(self)
-        canvas = self.parentWidget()
-        x = round((origin.x() + d.x()) / GRID) * GRID
-        y = round((origin.y() + d.y()) / GRID) * GRID
-        x = max(0, min(x, canvas.width() - self.width()))
-        y = max(0, min(y, canvas.height() - HEADER_H - 2))
-        self.move(x, y)
-
-    def mouseReleaseEvent(self, e):
-        if self._press is None:
-            return
-        self._press = None
-        if self._dragging:
-            self._dragging = False
-            self.header.setCursor(Qt.CursorShape.OpenHandCursor)
-            self.setProperty("active", False)
-            self.style().unpolish(self)
-            self.style().polish(self)
-            self.fit()
-            self.page.store.set_geometry(self.tab["id"], x=self.x(), y=self.y())
-        else:
-            self.set_collapsed(not self.tab.get("collapsed"))
-            self.page.store.set_geometry(self.tab["id"], collapsed=self.tab["collapsed"])
-
-    def contextMenuEvent(self, e):
-        if e.pos().y() <= HEADER_H:
-            self.page.tab_menu(self, e.globalPos())
 
     # ── drops: rows from any box, files from the file manager ──────────────
     def _accepts(self, md: QMimeData) -> bool:
@@ -1001,8 +1145,7 @@ class TabBox(QFrame):
         if self._accepts(e.mimeData()):
             e.acceptProposedAction()
             self.setProperty("active", True)
-            self.style().unpolish(self)
-            self.style().polish(self)
+            _repolish(self)
 
     def dragMoveEvent(self, e):
         if self._accepts(e.mimeData()):
@@ -1012,8 +1155,7 @@ class TabBox(QFrame):
     def dragLeaveEvent(self, e):
         self._drop_line.hide()
         self.setProperty("active", False)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        _repolish(self)
 
     def dropEvent(self, e):
         self.dragLeaveEvent(e)
@@ -1028,6 +1170,157 @@ class TabBox(QFrame):
         if paths:
             e.acceptProposedAction()
             QTimer.singleShot(0, lambda: self.page.store.add_paths(self.tab["id"], paths, index))
+
+
+class PageBox(_Box):
+    """A whole overlay page (Themes, Settings, Clipboard, Notes...) in a box you can move and resize.
+    The page is built a moment after the box (Settings takes a while) and remembers where it was."""
+
+    def __init__(self, page: "DashboardPage", tab: dict, canvas: "Canvas"):
+        super().__init__(page, tab, canvas)
+        self.inner: QWidget | None = None
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        full = widgets.icon_button("⤢", "Open it as the full page", 22, 12, ghost=True)
+        full.clicked.connect(lambda: self.page.launcher.overlay.show_page(self.tab["page"]))
+        close = widgets.icon_button("✕", "Take it off the dashboard", 22, 11, ghost=True)
+        close.clicked.connect(lambda: self.page.remove_boxes([self]))
+        lay.addWidget(self._header(tab.get("title") or page_name(tab["page"]), [full, close]))
+        self.body = QFrame()
+        self.body.setObjectName("pageBody")
+        self.bl = QVBoxLayout(self.body)
+        self.bl.setContentsMargins(0, 0, 0, 0)
+        wait = widgets.label("Loading…", 12, tone="muted")
+        wait.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.bl.addWidget(wait)
+        lay.addWidget(self.body, 1)
+        self._grips = [_Grip(self, e) for e in ("r", "b", "rb")]
+        self.move(int(tab.get("x", ORIGIN[0])), int(tab.get("y", ORIGIN[1])))
+        self.setFixedWidth(max(PAGE_MIN[0], int(tab.get("w", PAGE_W))))
+        self.set_collapsed(bool(tab.get("collapsed")))
+
+    def build(self):
+        if self.inner is not None:
+            return
+        self.inner = self.page.launcher.overlay._make_page(self.tab["page"])
+        widgets.clear_layout(self.bl)
+        self.bl.addWidget(self.inner)
+        restore = getattr(self.inner, "restore_state", None)
+        if callable(restore) and self.tab.get("state"):
+            try:
+                restore(self.tab["state"])
+            except Exception:
+                log.exception("could not restore the %s box", self.tab["page"])
+        if self.isVisible():
+            self.shown()
+
+    def shown(self):
+        fn = getattr(self.inner, "on_show", None)
+        if callable(fn):
+            fn()
+
+    def hidden(self):
+        self.save_state()
+        fn = getattr(self.inner, "on_hide", None)
+        if callable(fn):
+            fn()
+
+    def save_state(self):
+        fn = getattr(self.inner, "state", None)
+        if callable(fn):
+            try:
+                st = fn() or {}
+            except Exception:
+                log.exception("could not read the %s box's state", self.tab["page"])
+                return
+            if st != self.tab.get("state"):
+                self.tab["state"] = st
+                self.page.store.schedule_save()
+
+    def teardown(self):
+        self.save_state()
+        fn = getattr(self.inner, "teardown", None)
+        if callable(fn):
+            try:
+                fn()
+            except Exception:
+                log.exception("page teardown failed")
+
+    def body_height(self) -> int:
+        return int(self.tab.get("h", PAGE_H))
+
+    def fit(self):
+        if self.tab.get("collapsed"):
+            h = HEADER_H + 2
+        else:
+            room = max(HEADER_H + PAGE_MIN[1], self.page.bottom_limit(self) - self.y())
+            h = min(HEADER_H + 2 + self.body_height(), room)
+        self.setFixedHeight(h)
+        for g in self._grips:
+            g.place()
+
+    def resize_to(self, w: int, h: int):
+        w = max(PAGE_MIN[0], min(w, self.canvas.width() - self.x()))
+        self.tab["h"] = max(PAGE_MIN[1], min(h, self.canvas.height() - self.y() - HEADER_H))
+        self.setFixedWidth(w)
+        self.fit()
+
+    def resize_done(self):
+        self.page.store.set_geometry(self.tab["id"], w=self.width(), h=self.tab["h"])
+
+    def set_collapsed(self, on: bool):
+        self.tab["collapsed"] = on
+        self.body.setVisible(not on)
+        self.chevron.setText("▸" if on else "▾")
+        self.header.setProperty("collapsed", on)
+        _repolish(self.header)
+        self.fit()
+
+
+class Canvas(QWidget):
+    """One screen's worth of dashboard: the boxes on it, the selection box and the right-click menu.
+    A click on the open space never closes the overlay; a drag draws a selection box, like a desktop."""
+
+    def __init__(self, page: "DashboardPage", parent: QWidget, screen_name: str):
+        super().__init__(parent)
+        self.page = page
+        self.screen_name = screen_name
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(lambda pos: page.canvas_menu(self, pos))
+        self._from = None
+        self._base: list[_Box] = []
+        self._band = QFrame(self)
+        self._band.setObjectName("lumBand")
+        self._band.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._band.hide()
+
+    def mousePressEvent(self, e):
+        e.accept()
+        pos = e.position().toPoint()
+        if e.button() != Qt.MouseButton.LeftButton or self.childAt(pos) is not None:
+            return
+        add = bool(e.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier))
+        if not add:
+            self.page.clear_selection()
+        self._from = pos
+        self._base = list(self.page.selected)
+
+    def mouseMoveEvent(self, e):
+        if self._from is None:
+            return
+        r = QRect(self._from, e.position().toPoint()).normalized()
+        if not self._band.isVisible() and r.width() + r.height() < 6:
+            return
+        self._band.setGeometry(r)
+        self._band.show()
+        self._band.raise_()
+        hits = [b for b in self.page.boxes if b.canvas is self and b.geometry().intersects(r)]
+        self.page.set_selection(self._base + [b for b in hits if b not in self._base])
+
+    def mouseReleaseEvent(self, e):
+        self._from = None
+        self._band.hide()
 
 
 def dock_button(text: str, accent_prefix: str = "", variant: str = "") -> QPushButton:
@@ -1049,33 +1342,57 @@ def dock_button(text: str, accent_prefix: str = "", variant: str = "") -> QPushB
     return b
 
 
-class DashboardPage(QWidget):
-    """The tab boxes, straight on the overlay's full-screen layer, with a toolbar pill at the bottom centre."""
+def page_name(key: str) -> str:
+    return dict(ALL_PAGES).get(key, key.capitalize())
 
-    def __init__(self, launcher, host: QWidget | None = None):
+
+def boxable_pages() -> list[tuple[str, str]]:
+    """The overlay pages that can sit on the dashboard as a box."""
+    return [(k, n) for k, n in ALL_PAGES if k not in FULL_PAGES]
+
+
+class DashboardPage(QWidget):
+    """The boxes, straight on the overlay's full-screen layer of every screen, with a toolbar pill at the
+    bottom centre of the main one. Each board's boxes are built once and kept: switching boards only hides
+    one set and shows the other, and a change rebuilds only the boxes whose tab changed."""
+
+    def __init__(self, launcher, host: QWidget | None = None, main_screen: str = "",
+                 extra: dict[str, QWidget] | None = None):
         super().__init__(host)
         self.launcher = launcher
         self.store: DashboardStore = launcher.dashboard
-        self.boxes: list[TabBox] = []
+        self.selected: list[_Box] = []
+        self._boxes: dict[str, dict[str, _Box]] = {}          # board id -> tab id -> box
+        self._queue: list[PageBox] = []
+        self._pump_timer = QTimer(self)
+        self._pump_timer.setSingleShot(True)
+        self._pump_timer.timeout.connect(self._pump)
         if host is not None:
             self.setGeometry(host.rect())
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._canvas_menu)
-        self._press_empty = False
+        self.main = Canvas(self, self, main_screen)
+        self.main.setGeometry(self.rect())
+        self.canvases: dict[str, Canvas] = {main_screen: self.main}
+        for name, surf in (extra or {}).items():
+            c = Canvas(self, surf, name)
+            c.setGeometry(surf.rect())
+            c.show()
+            self.canvases[name] = c
 
         self.dock = QFrame(self)
         self.dock.setObjectName("lumDock")
+        self.dock.mousePressEvent = lambda e: e.accept()
         dl = QHBoxLayout(self.dock)
         dl.setContentsMargins(5, 5, 5, 5)
         dl.setSpacing(6)
         self.boards_box = QHBoxLayout()
         self.boards_box.setSpacing(2)
         dl.addLayout(self.boards_box)
-        add = dock_button("New tab", "＋")
-        add.clicked.connect(lambda: self.new_tab())
+        add = dock_button("Add", "＋")
+        add.setToolTip("A new tab of items, or a page (Themes, Settings, Clipboard…) as a box")
+        add.clicked.connect(lambda: self._add_menu(add.mapToGlobal(add.rect().topLeft())))
         dl.addWidget(add)
         tidy = dock_button("Tidy up", variant="ghost")
-        tidy.setToolTip("Line every tab up in columns")
+        tidy.setToolTip("Line every box up in columns")
         tidy.clicked.connect(self.tidy)
         dl.addWidget(tidy)
         self.lock_btn = dock_button("", variant="ghost")
@@ -1097,60 +1414,180 @@ class DashboardPage(QWidget):
         self.hint = widgets.label("", 12, tone="muted")
         self.hint.setContentsMargins(8, 0, 10, 0)
         self.hint.setToolTip("Double-click an item to run it · right-click for options · drag items between boxes "
-                             "· drop files from your file manager onto a box")
+                             "· drop files from your file manager onto a box · drag on the open space to select")
         dl.addWidget(self.hint)
 
-        self.empty = widgets.label("No tabs yet. Click ＋ New tab, name it (e.g. Scripts), then right-click its "
-                                   "header → Add item.", 13, tone="muted")
-        self.empty.setParent(self)
+        self.empty = widgets.label("This dashboard is empty. Click ＋ Add for a tab of items or a page, or "
+                                   "right-click anywhere.", 13, tone="muted")
+        self.empty.setParent(self.main)
+        self.empty.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.store.changed.connect(self.refresh)
+        self.store.switched.connect(self._switched)
         self.store.running_changed.connect(self.refresh)
         self.refresh()
 
     def teardown(self):
-        for sig in (self.store.changed, self.store.running_changed):
+        for sig, slot in ((self.store.changed, self.refresh), (self.store.running_changed, self.refresh),
+                          (self.store.switched, self._switched)):
             try:
-                sig.disconnect(self.refresh)
+                sig.disconnect(slot)
             except TypeError:
                 pass
+        self._pump_timer.stop()
+        for boxes in self._boxes.values():
+            for b in boxes.values():
+                if isinstance(b, PageBox):
+                    b.teardown()
+        self.store.schedule_save()
 
     @property
     def canvas(self) -> QWidget:
-        return self
+        return self.main
+
+    @property
+    def boxes(self) -> list[_Box]:
+        """The active board's boxes."""
+        return list(self._boxes.get(self.store.active_board()["id"], {}).values())
 
     def raise_dock(self):
         self.dock.raise_()
 
+    def snap(self) -> int:
+        return max(0, int(self.launcher.settings.get("dashboard.snap", GRID) or 0))
+
     # ── building ───────────────────────────────────────────────────────────
-    def refresh(self):
-        for b in self.boxes:
-            b.setParent(None)
-            b.deleteLater()
-        self.boxes = [TabBox(self, t) for t in self.store.tabs()]
-        for b in self.boxes:
-            b.show()
-        self.empty.setVisible(not self.boxes)
+    def canvas_for(self, tab: dict) -> "Canvas":
+        return self.canvases.get(tab.get("screen") or "") or self.main
+
+    def _sig(self, tab: dict) -> str:
+        return json.dumps([tab.get("title"), tab.get("items"), [self.store.is_running(i["id"]) for i in tab["items"]],
+                           self.store.locked], sort_keys=True, default=str)
+
+    def _drop_box(self, b: _Box):
+        if b in self.selected:
+            self.selected.remove(b)
+        if isinstance(b, PageBox):
+            if b in self._queue:
+                self._queue.remove(b)
+            b.teardown()
+        b.hide()
+        b.setParent(None)
+        b.deleteLater()
+
+    def _sync_board(self, board: dict, force: bool = False):
+        """Make the cached boxes match the board: new tabs get a box, changed ones a new box, gone ones none."""
+        cache = self._boxes.setdefault(board["id"], {})
+        want = {t["id"]: t for t in board["tabs"]}
+        for tid in list(cache):
+            b = cache[tid]
+            if want.get(tid) is not b.tab or isinstance(b, PageBox) != (b.tab.get("kind") == "page"):
+                self._drop_box(cache.pop(tid))
+        for t in board["tabs"]:
+            b = cache.get(t["id"])
+            canvas = self.canvas_for(t)
+            if t.get("kind") == "page":
+                if b is None:
+                    b = cache[t["id"]] = PageBox(self, t, canvas)
+                    self._queue.append(b)
+                else:
+                    b.title_lbl.setText((t.get("title") or page_name(t["page"])).upper())
+                    if b.canvas is not canvas:
+                        self._reparent(b, canvas, b.pos())
+                continue
+            sig = self._sig(t)
+            if b is not None and (force or b.sig != sig or b.canvas is not canvas):
+                self._drop_box(cache.pop(t["id"]))
+                b = None
+            if b is None:
+                b = cache[t["id"]] = TabBox(self, t, canvas)
+                b.sig = sig
+        if self._queue and not self._pump_timer.isActive():
+            self._pump_timer.start(30)
+
+    def _pump(self):
+        """Build the page boxes' pages one per event-loop pass, the active board's first."""
+        if not self._queue:
+            return
+        active = {id(b) for b in self.boxes}
+        self._queue.sort(key=lambda b: id(b) not in active)
+        b = self._queue.pop(0)
+        try:
+            b.build()
+        except Exception:
+            log.exception("could not build the %s box", b.tab.get("page"))
+        if self._queue:
+            self._pump_timer.start(40 if id(self._queue[0]) in active else 250)
+
+    def refresh(self, force: bool = False):
+        boards = {b["id"] for b in self.store.boards()}
+        for bid in list(self._boxes):
+            if bid not in boards:
+                for b in self._boxes.pop(bid).values():
+                    self._drop_box(b)
+        if force:
+            for bid in list(self._boxes):
+                if bid != self.store.active_board()["id"]:
+                    for b in self._boxes.pop(bid).values():
+                        self._drop_box(b)
+        self._show_active(force)
         self._build_boards()
         locked = self.store.locked
         self.lock_btn.setChecked(locked)
         self.lock_btn.setText("🔒 Locked" if locked else "🔓 Lock")
         self.lock_btn.setToolTip("Unlock to move boxes and items again" if locked else
                                  "Lock the layout: no moving boxes or dragging items")
-        self.hint.setText("Layout locked" if locked else "Drag headers and items · drop files on a box")
+        self._set_hint()
         if self.search.text():
             self._filter(self.search.text())
         self._clamp()
         self.raise_dock()
 
-    def _build_boards(self):
+    def _switched(self):
+        self.clear_selection()
+        self._show_active()
+        self._build_boards()
+        if self.search.text():
+            self._filter(self.search.text())
+        self._clamp()
+        self.raise_dock()
+
+    def _show_active(self, force: bool = False):
+        active = self.store.active_board()
+        self.setUpdatesEnabled(False)
+        try:
+            for bid, boxes in self._boxes.items():
+                if bid == active["id"]:
+                    continue
+                for b in boxes.values():
+                    if b.isVisible():
+                        if isinstance(b, PageBox):
+                            b.hidden()
+                        b.hide()
+            self._sync_board(active, force)
+            for t in active["tabs"]:
+                b = self._boxes[active["id"]].get(t["id"])
+                if b is not None and not b.isVisible():
+                    b.show()
+                    b.raise_()
+                    if isinstance(b, PageBox) and b.inner is not None:
+                        b.shown()
+            self.selected = [b for b in self.selected if b.isVisible()]
+            self.empty.setVisible(not active["tabs"])
+        finally:
+            self.setUpdatesEnabled(True)
+
+    def _build_boards(self, compact: bool | None = None):
         widgets.clear_layout(self.boards_box)
         boards = self.store.boards()
-        if len(boards) > 1:
+        active = self.store.active_board()
+        if compact is None:
+            compact = len(boards) > 1 and self._boards_too_wide()
+        if len(boards) > 1 and not compact:
             for b in boards:
                 btn = QPushButton(b["name"])
                 btn.setObjectName("boardTab")
                 btn.setCheckable(True)
-                btn.setChecked(b["id"] == self.store.active_board()["id"])
+                btn.setChecked(b["id"] == active["id"])
                 btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 btn.setFixedHeight(32)
                 btn.clicked.connect(lambda _, bid=b["id"]: self.store.switch_board(bid))
@@ -1158,70 +1595,194 @@ class DashboardPage(QWidget):
                 btn.customContextMenuRequested.connect(
                     lambda pos, bid=b["id"], w=btn: self._board_menu(bid, w.mapToGlobal(pos)))
                 self.boards_box.addWidget(btn)
-        more = dock_button("▾" if len(boards) > 1 else "Dashboards ▾", variant="ghost")
-        more.setToolTip("New dashboard, rename, delete…")
-        more.clicked.connect(lambda: self._board_menu(self.store.active_board()["id"],
-                                                      more.mapToGlobal(more.rect().topLeft()), above=True))
+        if compact:
+            more = QPushButton(f"{active['name']}  ▾")
+            more.setObjectName("boardTab")
+            more.setCheckable(True)
+            more.setChecked(True)
+            more.setCursor(Qt.CursorShape.PointingHandCursor)
+            more.setFixedHeight(32)
+        else:
+            more = dock_button("▾" if len(boards) > 1 else "Dashboards ▾", variant="ghost")
+        more.setToolTip("Switch dashboard, new dashboard, rename, delete…")
+        more.clicked.connect(lambda: self._board_menu(active["id"], more.mapToGlobal(more.rect().topLeft()),
+                                                      above=True))
         self.boards_box.addWidget(more)
         sep = QFrame()
         sep.setObjectName("lumDockSep")
         sep.setFixedSize(1, 18)
         self.boards_box.addWidget(sep)
+        for i in range(self.boards_box.count()):
+            w = self.boards_box.itemAt(i).widget()
+            if w is not None:
+                w.show()            # now, not on the next pass, so the toolbar is measured with them
+
+    def _boards_too_wide(self) -> bool:
+        """Would one pill per board make the toolbar wider than the screen leaves room for?"""
+        fm = self.fontMetrics()
+        pills = sum(fm.horizontalAdvance(b["name"]) + 30 for b in self.store.boards())
+        return pills + 560 > self.width() - 120
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
+        self.main.setGeometry(self.rect())
         self._clamp()
+
+    def _set_hint(self):
+        self.hint.setText("Layout locked" if self.store.locked else "Drag headers and items · drop files on a box")
 
     def _clamp(self):
         cw, ch = self.width(), self.height()
         if cw < 50 or ch < 50:
             return
+        self.hint.show()
+        self.dock.layout().activate()
         self.dock.adjustSize()
+        if self.dock.width() > cw - 48:
+            self.hint.hide()                    # many boards: the hint goes first
+            self.dock.layout().activate()
+            self.dock.adjustSize()
         self.dock.move((cw - self.dock.width()) // 2, ch - 28 - self.dock.height())
         self.empty.adjustSize()
         self.empty.move((cw - self.empty.width()) // 2, ch // 3)
         for b in self.boxes:
-            x = max(0, min(b.x(), cw - b.width()))
-            y = max(0, min(b.y(), ch - HEADER_H - 2))
+            x, y = self.clamp(b.canvas, b.x(), b.y(), b.width())
             if (x, y) != (b.x(), b.y()):
                 b.move(x, y)
             b.fit()
 
+    def clamp(self, canvas: QWidget, x: int, y: int, w: int) -> tuple[int, int]:
+        return (max(0, min(int(x), canvas.width() - w)), max(0, min(int(y), canvas.height() - HEADER_H - 2)))
+
+    def bottom_limit(self, box: _Box) -> int:
+        """How far down a box may reach: above the toolbar if it would run into it, else the screen's edge."""
+        bottom = box.canvas.height() - GRID
+        if box.canvas is self.main and self.dock.isVisible():
+            d = self.dock.geometry()
+            if box.x() < d.right() and box.x() + box.width() > d.left() and box.y() < d.top():
+                bottom = d.top() - 12
+        return bottom
+
     def on_show(self):
         QTimer.singleShot(0, self._clamp)
+        for b in self.boxes:
+            if isinstance(b, PageBox) and b.inner is not None and b.isVisible():
+                b.shown()
+        if self._queue and not self._pump_timer.isActive():
+            self._pump_timer.start(30)
 
     def on_hide(self):
         if self.search.text():
             self.search.clear()
+        for b in self.boxes:
+            if isinstance(b, PageBox) and b.inner is not None:
+                b.hidden()
 
-    def _columns(self) -> int:
-        return max(1, (self.width() - ORIGIN[0] * 2 + GAP) // (BOX_W + GAP))
+    def origin(self, canvas: QWidget) -> tuple[int, int]:
+        """Where the first box goes: on the main screen below the clock and the status chips."""
+        if canvas is not self.main:
+            return ORIGIN[0], 64
+        below = self.launcher.overlay.left_chrome_bottom()
+        return ORIGIN[0], max(ORIGIN[1], snap_to(below + 28, GRID))
 
-    def _free_spot(self) -> QPoint:
-        cols = self._columns()
-        n = len(self.store.tabs())
-        return QPoint(ORIGIN[0] + (n % cols) * (BOX_W + GAP), ORIGIN[1] + (n // cols) * 56)
+    def _columns(self, canvas: QWidget) -> int:
+        return max(1, (canvas.width() - ORIGIN[0] * 2 + GAP) // (BOX_W + GAP))
 
-    # a click on the open screen closes the overlay, like a click on the dimmed area; presses that bubble up from
-    # a box, a row or the toolbar are swallowed here so they never reach the backdrop
-    def mousePressEvent(self, e):
-        self._press_empty = (e.button() == Qt.MouseButton.LeftButton
-                             and self.childAt(e.position().toPoint()) is None)
-        e.accept()
+    def _free_spot(self, canvas: QWidget | None = None) -> QPoint:
+        canvas = canvas or self.main
+        cols = self._columns(canvas)
+        n = sum(1 for b in self.boxes if b.canvas is canvas)
+        x0, y0 = self.origin(canvas)
+        return QPoint(x0 + (n % cols) * (BOX_W + GAP), y0 + (n // cols) * 56)
 
-    def mouseReleaseEvent(self, e):
-        if self._press_empty and self.rect().contains(e.position().toPoint()):
-            self.launcher.overlay.outside_click()
-        self._press_empty = False
+    # ── selection ──────────────────────────────────────────────────────────
+    def set_selection(self, boxes: list[_Box]):
+        for b in self.selected:
+            if b not in boxes:
+                b.set_selected(False)
+        for b in boxes:
+            b.set_selected(True)
+        self.selected = list(boxes)
+
+    def clear_selection(self):
+        self.set_selection([])
+
+    def toggle_selected(self, box: _Box):
+        self.set_selection([b for b in self.selected if b is not box] if box in self.selected
+                           else self.selected + [box])
+
+    def select_all(self):
+        self.set_selection(self.boxes)
+
+    def overlay_key(self, e) -> bool:
+        """Keys while the overlay shows the dashboard (and no text box has the focus)."""
+        k = e.key()
+        ctrl = bool(e.modifiers() & Qt.KeyboardModifier.ControlModifier)
+        if k == Qt.Key.Key_Delete and self.selected:
+            self.remove_boxes(self.selected)
+            return True
+        if ctrl and k == Qt.Key.Key_A:
+            self.select_all()
+            return True
+        if k == Qt.Key.Key_Escape and self.selected:
+            self.clear_selection()
+            return True
+        return False
+
+    def remove_boxes(self, boxes: list[_Box]):
+        boxes = list(boxes)
+        if not boxes or self.store.locked and not widgets.confirm(self, "Layout locked", "The layout is locked. "
+                                                                  "Remove them anyway?", yes="Remove"):
+            return
+        n_items = sum(len(b.tab["items"]) for b in boxes)
+        if len(boxes) == 1 and isinstance(boxes[0], PageBox):
+            text = f'Take the {boxes[0].tab.get("title") or "page"} box off the dashboard?'
+        else:
+            text = f"Delete {len(boxes)} box(es)" + (f" with {n_items} item(s)" if n_items else "") + "?"
+        if widgets.confirm(self, "Remove", text, yes="Remove", danger=True):
+            self.store.delete_tabs([b.tab["id"] for b in boxes])
+
+    # ── screens ────────────────────────────────────────────────────────────
+    def canvas_at(self, gp: QPoint) -> "Canvas | None":
+        for c in self.canvases.values():
+            if c.isVisible() and QRect(c.mapToGlobal(QPoint(0, 0)), c.size()).contains(gp):
+                return c
+        return None
+
+    def _reparent(self, b: _Box, canvas: "Canvas", at: QPoint):
+        b.setParent(canvas)
+        b.canvas = canvas
+        b.move(*self.clamp(canvas, at.x(), at.y(), b.width()))
+        b.fit()
+        b.show()
+        b.raise_()
+
+    def move_box_to_canvas(self, b: _Box, canvas: "Canvas", at: QPoint):
+        g = self.snap()
+        self._reparent(b, canvas, QPoint(snap_to(at.x(), g), snap_to(at.y(), g)))
+        b.tab["screen"] = canvas.screen_name
+        self.store.set_geometry(b.tab["id"], x=b.x(), y=b.y(), screen=canvas.screen_name)
+        if isinstance(b, TabBox):
+            b.sig = self._sig(b.tab)
+
+    def _screen_menu(self, m, boxes: list[_Box]):
+        others = [c for c in self.canvases.values() if c.isVisible()]
+        if len(others) < 2:
+            return
+        sub = m.addMenu("Move to screen")
+        for c in self.canvases.values():
+            a = sub.addAction(("●  " if all(b.canvas is c for b in boxes) else "     ") + (c.screen_name or "Main"),
+                              lambda c=c: [self.move_box_to_canvas(b, c, b.pos()) for b in boxes])
+            a.setEnabled(not all(b.canvas is c for b in boxes))
 
     # ── search, lock ───────────────────────────────────────────────────────
     def _filter(self, text: str):
         q = text.strip().lower()
-        total = sum(b.apply_filter(q) for b in self.boxes)
+        total = sum(b.apply_filter(q) for b in self.boxes if isinstance(b, TabBox))
         if q:
             self.hint.setText(f"{total} match{'es' if total != 1 else ''} · Enter runs the first")
         else:
-            self.hint.setText("Layout locked" if self.store.locked else "Drag headers and items · drop files on a box")
+            self._set_hint()
         self._clamp()
 
     def _run_first_match(self):
@@ -1229,7 +1790,7 @@ class DashboardPage(QWidget):
         if not q:
             return
         for b in self.boxes:
-            for r in b.rows:
+            for r in getattr(b, "rows", []):
                 if runnable(r.item) and q in r.search_text():
                     self.run(r.item["id"])
                     return
@@ -1243,11 +1804,23 @@ class DashboardPage(QWidget):
         self.launcher.overlay.hide()
         QTimer.singleShot(150, lambda: self.store.run_item(iid, args))
 
-    def new_tab(self, at: QPoint | None = None):
+    def new_tab(self, at: QPoint | None = None, canvas: QWidget | None = None):
         name, ok = widgets.ask_text(self, "New tab", "Name of the tab (e.g. Scripts, Games, Work):")
         if ok and name.strip():
-            p = at or self._free_spot()
-            self.store.add_tab(name.strip(), round(p.x() / GRID) * GRID, round(p.y() / GRID) * GRID)
+            canvas = canvas or self.main
+            p = at or self._free_spot(canvas)
+            g = self.snap()
+            self.store.add_tab(name.strip(), snap_to(p.x(), g), snap_to(p.y(), g),
+                               "" if canvas is self.main else canvas.screen_name)
+
+    def add_page(self, key: str, at: QPoint | None = None, canvas: QWidget | None = None):
+        canvas = canvas or self.main
+        p = at or self._free_spot(canvas)
+        w = min(PAGE_W, max(PAGE_MIN[0], canvas.width() - p.x() - 24))
+        h = min(PAGE_H, max(PAGE_MIN[1], canvas.height() - p.y() - HEADER_H - 96))
+        g = self.snap()
+        self.store.add_page_tab(key, page_name(key), snap_to(p.x(), g), snap_to(p.y(), g), w, h,
+                                "" if canvas is self.main else canvas.screen_name)
 
     def add_item(self, tab: dict, kind: str = "item", index: int = -1):
         if kind in ("separator", "heading"):
@@ -1275,7 +1848,7 @@ class DashboardPage(QWidget):
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.store.update_item(item["id"], **{k: dlg.item.get(k, "") for k in
                                                   ("name", "path", "args", "hotkey", "cwd", "admin", "ask_args",
-                                                   "group") if k in dlg.item})
+                                                   "terminal", "group") if k in dlg.item})
 
     def run_with_args(self, item: dict):
         text, ok = widgets.ask_text(self, item.get("name") or "Run", "Arguments:", item.get("args", ""))
@@ -1283,17 +1856,27 @@ class DashboardPage(QWidget):
             self.run(item["id"], text)
 
     def tidy(self):
+        """Line the boxes up in columns (a page box spans as many columns as it is wide), screen by screen."""
         if self.store.locked:
             return
-        cols = self._columns()
-        heights = [ORIGIN[1]] * cols
-        for b in self.boxes:
-            c = heights.index(min(heights))
-            x, y = ORIGIN[0] + c * (BOX_W + GAP), heights[c]
-            b.move(x, y)
-            b.set_width(BOX_W)
-            heights[c] = y + b.height() + GAP
-            self.store.set_geometry(b.tab["id"], x=x, y=y, w=BOX_W)
+        for canvas in self.canvases.values():
+            boxes = [b for b in self.boxes if b.canvas is canvas]
+            if not boxes:
+                continue
+            x0, y0 = self.origin(canvas)
+            cols = self._columns(canvas)
+            heights = [y0] * cols
+            for b in boxes:
+                if isinstance(b, TabBox):
+                    b.set_width(BOX_W)
+                span = min(cols, max(1, -(-(b.width() + GAP) // (BOX_W + GAP))))
+                c = min(range(cols - span + 1), key=lambda i: (max(heights[i:i + span]), i))
+                x, y = x0 + c * (BOX_W + GAP), max(heights[c:c + span])
+                b.move(x, y)
+                b.fit()
+                for i in range(c, c + span):
+                    heights[i] = y + b.height() + GAP
+                self.store.set_geometry(b.tab["id"], x=x, y=y, w=b.width())
 
     # ── menus ──────────────────────────────────────────────────────────────
     def item_menu(self, box: TabBox, item: dict, pos):
@@ -1314,7 +1897,7 @@ class DashboardPage(QWidget):
             m.addAction("Set hotkey…", lambda: self.edit_item(item, focus="hotkey"))
         elif kind == "heading":
             m.addAction("Rename…", lambda: self._rename_item(item))
-        others = [t for t in self.store.tabs() if t["id"] != box.tab["id"]]
+        others = [t for t in self.store.tabs() if t["id"] != box.tab["id"] and t.get("kind") != "page"]
         if others:
             sub = m.addMenu("Move to tab")
             for t in others:
@@ -1339,59 +1922,130 @@ class DashboardPage(QWidget):
         m.addAction("Delete…" if runnable(item) else "Delete", lambda: self._delete_item(item))
         m.exec(pos)
 
-    def tab_menu(self, box: TabBox, pos):
+    def tab_menu(self, box: _Box, pos):
         tab = box.tab
+        several = box in self.selected and len(self.selected) > 1
+        group = list(self.selected) if several else [box]
         m = widgets.menu(self)
-        m.addAction("Add item…", lambda: self.add_item(tab))
-        m.addAction("Add files…", lambda: self.add_files(tab))
-        m.addAction("Add group (runs several items)…", lambda: self.add_item(tab, "group"))
-        m.addAction("Add heading…", lambda: self.add_item(tab, "heading"))
-        m.addAction("Add separator", lambda: self.add_item(tab, "separator"))
+        if isinstance(box, PageBox):
+            m.addAction(f"Open {page_name(tab['page'])} as the full page",
+                        lambda: self.launcher.overlay.show_page(tab["page"]))
+            m.addAction("Rename box…", lambda: self._rename_tab(tab))
+        else:
+            m.addAction("Add item…", lambda: self.add_item(tab))
+            m.addAction("Add files…", lambda: self.add_files(tab))
+            m.addAction("Add group (runs several items)…", lambda: self.add_item(tab, "group"))
+            m.addAction("Add heading…", lambda: self.add_item(tab, "heading"))
+            m.addAction("Add separator", lambda: self.add_item(tab, "separator"))
+            m.addSeparator()
+            m.addAction("Rename tab…", lambda: self._rename_tab(tab))
+            m.addAction("Sort items A–Z", lambda: self.store.sort_tab(tab["id"]))
         m.addSeparator()
-        m.addAction("Rename tab…", lambda: self._rename_tab(tab))
-        m.addAction("Sort items A–Z", lambda: self.store.sort_tab(tab["id"]))
         others = [b for b in self.store.boards() if b["id"] != self.store.active_board()["id"]]
         if others:
-            sub = m.addMenu("Move to dashboard")
+            sub = m.addMenu(f"Move {len(group)} boxes to dashboard" if several else "Move to dashboard")
             for b in others:
-                sub.addAction(b["name"], lambda bid=b["id"]: self.store.move_tab_to_board(tab["id"], bid))
+                sub.addAction(b["name"], lambda bid=b["id"]: self.store.move_tabs_to_board(
+                    [x.tab["id"] for x in group], bid))
+        self._screen_menu(m, group)
         m.addSeparator()
-        m.addAction("Delete tab…", lambda: self._delete_tab(tab))
+        if several:
+            m.addAction(f"Remove the {len(group)} selected boxes…", lambda: self.remove_boxes(group))
+        elif isinstance(box, PageBox):
+            m.addAction("Take it off the dashboard", lambda: self.remove_boxes([box]))
+        else:
+            m.addAction("Delete tab…", lambda: self.remove_boxes([box]))
         m.exec(pos)
 
-    def _canvas_menu(self, pos):
+    def _add_menu(self, pos: QPoint, canvas: QWidget | None = None, at: QPoint | None = None, into=None):
+        m = into or widgets.menu(self)
+        m.addAction("Tab of items…", lambda: self.new_tab(at, canvas))
+        sub = m.addMenu("Page") if into is not None else m
+        if into is None:
+            m.addSeparator()
+            head = m.addAction("PAGES  (resizable boxes)")
+            head.setEnabled(False)
+        for key, name in boxable_pages():
+            sub.addAction(name, lambda k=key: self.add_page(k, at, canvas))
+        if into is None:
+            m.exec(QPoint(pos.x(), pos.y() - m.sizeHint().height() - 4))
+
+    def canvas_menu(self, canvas: "Canvas", pos: QPoint):
         m = widgets.menu(self)
-        m.addAction("New tab here…", lambda: self.new_tab(pos))
+        sub = m.addMenu("＋  Add here")
+        self._add_menu(pos, canvas, pos, into=sub)
+        if self.selected:
+            m.addSeparator()
+            head = m.addAction(f"{len(self.selected)} SELECTED")
+            head.setEnabled(False)
+            sel = list(self.selected)
+            m.addAction("Fold them", lambda: [b.set_collapsed(True) or self.store.set_geometry(
+                b.tab["id"], collapsed=True) for b in sel])
+            m.addAction("Unfold them", lambda: [b.set_collapsed(False) or self.store.set_geometry(
+                b.tab["id"], collapsed=False) for b in sel])
+            others = [b for b in self.store.boards() if b["id"] != self.store.active_board()["id"]]
+            if others:
+                mv = m.addMenu("Move to dashboard")
+                for b in others:
+                    mv.addAction(b["name"], lambda bid=b["id"]: self.store.move_tabs_to_board(
+                        [x.tab["id"] for x in sel], bid))
+            self._screen_menu(m, sel)
+            m.addAction("Remove them…", lambda: self.remove_boxes(sel))
+        m.addSeparator()
+        m.addAction("Select all   (Ctrl+A)", self.select_all)
         m.addAction("Tidy up", self.tidy)
+        snap = m.addMenu("Snap to a grid")
+        cur = self.snap()
+        for v, text in ((0, "Off (smooth, pixel by pixel)"), (4, "4 px"), (8, "8 px"), (16, "16 px"),
+                        (32, "32 px")):
+            a = snap.addAction(text, lambda v=v: self._set_snap(v))
+            a.setCheckable(True)
+            a.setChecked(cur == v or (v == 0 and cur <= 1))
         if not any(t["id"] == TOOLS_TAB for t in self.store.tabs()):
             m.addAction("Bring back the Tools tab", lambda: self.store.restore_tools(pos.x(), pos.y()))
         m.addSeparator()
         m.addAction("Unlock layout" if self.store.locked else "Lock layout", self._toggle_lock)
-        m.exec(self.canvas.mapToGlobal(pos))
+        m.exec(canvas.mapToGlobal(pos))
+
+    def _set_snap(self, v: int):
+        s = self.launcher.settings
+        s.set("dashboard.snap", v)
+        s.save_quiet()
 
     def _board_menu(self, bid: str, pos, above: bool = False):
         b = self.store.board(bid)
         if b is None:
             return
         m = widgets.menu(self)
-        if len(self.store.boards()) > 1:
-            for other in self.store.boards():
-                a = m.addAction(("●  " if other["id"] == self.store.active_board()["id"] else "     ") + other["name"],
-                                lambda o=other["id"]: self.store.switch_board(o))
+        boards = self.store.boards()
+        if len(boards) > 1:
+            for other in boards:
+                m.addAction(("●  " if other["id"] == self.store.active_board()["id"] else "     ") + other["name"],
+                            lambda o=other["id"]: self.store.switch_board(o))
             m.addSeparator()
-        m.addAction("New dashboard…", lambda: self._new_board(""))
-        m.addAction(f"Duplicate “{b['name']}”…", lambda: self._new_board(bid))
+        m.addAction("New dashboard…", self._new_board)
         m.addAction(f"Rename “{b['name']}”…", lambda: self._rename_board(b))
+        if len(boards) > 1:
+            i = boards.index(b)
+            if i > 0:
+                m.addAction(f"Move “{b['name']}” left", lambda: self.store.move_board(bid, -1))
+            if i < len(boards) - 1:
+                m.addAction(f"Move “{b['name']}” right", lambda: self.store.move_board(bid, 1))
         d = m.addAction(f"Delete “{b['name']}”…", lambda: self._delete_board(b))
-        d.setEnabled(len(self.store.boards()) > 1)
+        d.setEnabled(len(boards) > 1)
         if above:
             pos = QPoint(pos.x(), pos.y() - m.sizeHint().height() - 4)
         m.exec(pos)
 
-    def _new_board(self, copy_from: str):
+    def _new_board(self):
+        cur = self.store.active_board()
+        how = widgets.choose(self, "New dashboard", "How should the new dashboard start?",
+                             ["Empty", "With the Tools tab", f"A copy of “{cur['name']}”"])
+        if how is None:
+            return
         name, ok = widgets.ask_text(self, "New dashboard", "Name (e.g. Work, Gaming):")
         if ok and name.strip():
-            self.store.add_board(name, copy_from)
+            self.store.add_board(name, cur["id"] if how.startswith("A copy") else "", empty=how == "Empty")
 
     def _rename_board(self, b: dict):
         name, ok = widgets.ask_text(self, "Rename dashboard", "New name:", b["name"])
@@ -1401,7 +2055,7 @@ class DashboardPage(QWidget):
     def _delete_board(self, b: dict):
         n = sum(len(t["items"]) for t in b["tabs"])
         if widgets.confirm(self, "Delete dashboard", f'Delete the dashboard "{b["name"]}" with its {len(b["tabs"])} '
-                                                     f"tab(s) and {n} item(s)?", yes="Delete", danger=True):
+                                                     f"box(es) and {n} item(s)?", yes="Delete", danger=True):
             self.store.delete_board(b["id"])
 
     def _terminal_here(self, folder: str):
@@ -1422,12 +2076,6 @@ class DashboardPage(QWidget):
             self.store.delete_item(item["id"])
 
     def _rename_tab(self, tab):
-        name, ok = widgets.ask_text(self, "Rename tab", "New name:", tab["title"])
+        name, ok = widgets.ask_text(self, "Rename", "New name:", tab["title"])
         if ok and name.strip():
             self.store.rename_tab(tab["id"], name)
-
-    def _delete_tab(self, tab):
-        n = len(tab["items"])
-        extra = f" and its {n} item(s)" if n else ""
-        if widgets.confirm(self, "Delete tab", f'Delete the tab "{tab["title"]}"{extra}?', yes="Delete", danger=True):
-            self.store.delete_tab(tab["id"])

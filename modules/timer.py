@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QRectF, QSize, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen, QColor
 
-from core import DATA_DIR, theme, widgets, sounds, save_json, load_json, usage
+from core import DATA_DIR, theme, widgets, sounds, save_json, load_json, usage, events
 from core.module import Module
 from core.timeparse import parse_duration, parse_clock
 
@@ -483,6 +483,7 @@ class TimerPanel(widgets.FloatingPanel):
             self.caption.setText(f"of {fmt_clock(self.duration_ms, False)[0]}" + (f" · {label}" if label else ""))
 
     def _finish(self):
+        events.emit("timer.finished", self.cfg.get("label") or fmt_clock(self.duration_ms, False)[0])
         self._log_run()
         self._running = False
         self._finished = True

@@ -1,8 +1,9 @@
 # Luminescent (formerly UsefulScripts / AllinOne)
 
-One background app for **Windows 11** and **Linux** (Hyprland, tested on CachyOS) that keeps every little tool a hotkey
-away: a GeForce-overlay style
-**hub** (Dashboard, Themes, Clipboard, Settings, and optional Notes, Timers, Calculator, Today and Usage pages), plus
+One background app for **Windows 11** and **Linux** (made for Hyprland, tested on CachyOS; see
+[Which Linux?](#which-linux) for other distros and desktops) that keeps every little tool a hotkey away: a
+GeForce-overlay style **hub** (Dashboard, Automation, Themes, Clipboard, Settings, and optional Notes, Timers,
+Calculator, Today and Usage pages), plus
 **Notes**, **Screen Doodle**, **Timers / Stopwatches**, **Calculator**, **Colour Picker**, **Screen Text Grab**,
 **Prompt Log**, **Reminders**, **Hearing Guard**, **Ghost Vault**, the **Metadata Stripper**, a **Window Snapper**, a
 **Screen Ruler**, **Media Controls**, a **QR Code** maker and a **System Monitor**. Everything runs in one process with
@@ -13,7 +14,8 @@ one keyboard hook.
 The [Releases page](https://github.com/ForsakenBlank/Luminescent/releases/latest) has ready-made builds:
 
 * **Windows**: `Luminescent-windows.zip`. Unzip it anywhere and run `Luminescent.exe`.
-* **Linux**: `Luminescent-linux.tar.gz`. Unpack it and run `Luminescent/Luminescent` (Hyprland needed for hotkeys).
+* **Linux**: `Luminescent-linux.tar.gz`. Unpack it and run `Luminescent/Luminescent` (Hyprland needed for hotkeys;
+  the build needs glibc 2.35 or newer, which every distro from 2022 on has).
 
 A download starts completely fresh. Your settings, notes, timers, themes and the rest live in your own data
 folder, not next to the program: `~/.local/share/Luminescent` on Linux, `%LOCALAPPDATA%\Luminescent` on Windows.
@@ -49,17 +51,33 @@ A **sparkle** appears in the tray in your theme's accent colour. **Click it** (o
 the overlay. Right-click it for the dashboard items, quick actions, modules, Settings, Restart and Quit.
 Settings → General → **Run at login** starts it when you sign in (an autostart entry on Linux, the Run key on Windows).
 
+## Which Linux?
+
+Luminescent is made for **Hyprland** and tested on **CachyOS**. It is plain Python + Qt 6, so it starts on any
+distro (Arch, Fedora, Ubuntu, Debian, openSUSE…) and on any desktop (KDE, GNOME, Sway, X11…), but some parts lean on
+Hyprland:
+
+| Works everywhere | Needs Hyprland | Needs a wlroots compositor (Hyprland, Sway…) or X11 |
+|---|---|---|
+| The overlay, Dashboard, Automation, Themes, Clipboard, Settings, every panel opened from the tray or the command palette, Notes, Timers, Calculator, Reminders, Hearing Guard (PipeWire / PulseAudio), Media Controls (playerctl), QR codes, System Monitor, Vault, Metadata | **Global hotkeys** (they are Hyprland binds), so also Doodle's hold-Alt, the Automation **Hotkey** node and hotkeys on dashboard items; windows placed exactly where they belong; the frosted background; apps opening above the overlay; the Keybinds editor | Colour Picker, Text Grab and Doodle's "copy the screen" (they take a screenshot with `grim` on Wayland); the Automation **Type text** node (`wtype`, or `ydotool` anywhere) |
+
+So on another desktop you use it from the **tray icon** (click = overlay, right-click = everything else) instead
+of hotkeys. Running from source needs Python 3.11+; the ready-made Linux download needs glibc 2.35 or newer. Only
+CachyOS + Hyprland is tested, so other setups may have rough edges.
+
 ## The overlay
 
-`Ctrl+Shift+Space` dims every screen and shows the hub. `Esc`, the ✕ or a click on the dimmed area hides it; the
-app keeps running, so it reopens instantly. **Quit everything** lives in Settings → General.
+`Ctrl+Shift+Space` dims every screen and shows the hub. `Esc`, the ✕ or a click on the dimmed area around a panel
+hides it; the app keeps running, so it reopens instantly. The Dashboard works like a desktop: clicking it never
+closes the overlay. **Quit everything** lives in Settings → General.
 
 `Ctrl+1…9` switch pages. Start typing on the Dashboard or Themes page and the command palette opens with what you
 typed. The top-left corner shows the time, running timers, the Hearing Guard level and the next reminder. Settings →
 Overlay & Interface picks the pages in the navigation bar (Notes, Timers, Calculator, Today and Usage can be added),
 the screen it opens on and the frosted background.
 
-* **Dashboard**: movable "tab boxes". `＋ New tab`, name it (Scripts, Games, Work…), right-click its header →
+* **Dashboard**: movable "tab boxes" on every screen. `＋ Add` → **Tab of items**, name it (Scripts, Games, Work…),
+  right-click its header →
   **Add item** and point the item at a script, program, file, folder, URL or command. Double-click an item to run it;
   right-click for Run / Edit / Rename / Change file / Set hotkey / Move / Delete. Drag a header to move a box (it snaps
   to a grid), click the header to fold it, drag its right edge to resize. **Tidy up** lines them all up.
@@ -68,7 +86,18 @@ the screen it opens on and the frosted background.
   anywhere, overlay open or not. The tray menu lists every item too.
   Tip: add your auto clicker (or any program) as an item, give it a hotkey, and it is one key, one click in the tray
   or one search in the palette away.
-  More: several dashboards (Work, Gaming…) from the toolbar; drag items between boxes and drop files from Dolphin
+  **Pages as boxes**: `＋ Add` (or right-click the open space → Add here) puts Themes, Clipboard, Settings, Notes,
+  Timers, Calculator, Today or Usage on the dashboard as a box you drag and **resize** (right edge, bottom edge,
+  corner). Each dashboard remembers its boxes, where they are and what they show (the Settings section, the
+  Clipboard folder, the open note…), also after a restart. ⤢ opens the full page, ✕ takes the box off.
+  **Select like a desktop**: drag on the open space to draw a selection box, Ctrl/Shift+click headers to add to it;
+  drag one selected box and the others come along, `Delete` removes them, `Ctrl+A` selects all, and the right-click
+  menu folds, moves or removes the whole selection. **Several screens**: drag a box onto another screen (or
+  right-click → Move to screen). **Snap**: boxes snap to an 8 px grid while you drag; right-click the open space →
+  Snap to a grid (or Settings → Dashboard) changes it, and **Off** moves them pixel by pixel, perfectly smooth.
+  A **new dashboard** can start empty, with the Tools tab, or as a copy; switching between them is instant (their
+  boxes are kept, not rebuilt), and with many dashboards the toolbar folds them into one menu.
+  More: drag items between boxes and drop files from Dolphin
   onto a box; real program and file icons; per item **run as administrator**, a working folder, **ask for
   arguments** and **run a command in a terminal window**; headings and separators; **groups** that run several
   items in order; a lock button and a search box; running items get a green dot and a **Stop**; folder items have
@@ -88,6 +117,31 @@ the screen it opens on and the frosted background.
   has its own hotkeys, sizes, sounds… and a theme can switch to one. General, Overlay and Dashboard settings are shared.
   A hotkey that clashes is flagged while you record it. General has **Show on start** (which panels open by
   themselves), the **tray menu** editor and a weekly automatic backup (last 5 kept).
+* **Automation**: a huge workspace you move around in (right- or middle-drag, Space + drag; the wheel zooms) where
+  you place nodes and wire them together, like Upload Labs. Drag from a port to another to wire them: **round
+  ports** carry pulses ("this happened, now do that"), each carrying a bit of text; **diamond ports** carry values,
+  and a field with a ◆ next to it takes its value from the wire instead of its box. Pulses run along the wires
+  as glowing dots with a peek at what they carry. Right-click or double-click the space to add a node (or drop a
+  wire on the open space to pick one that fits). It all runs in the background, overlay open or not.
+  In any text field `{input}` is the text that came in, `{var:name}` a variable, and `{date}`, `{time}`, `{now}`,
+  `{clipboard}`, `{newline}` what they say. Example: **Every… 5 s** → **Run command** (a terminal window or the
+  background; one command per line, each after the last finishes) → **done** → **Show a notification**.
+  * **Triggers**: Every N seconds, At a time of day (16:00, weekdays…), On a date (3 October 2028), Hotkey,
+    Button (▶ on the node, the command palette or the tray), Luminescent events (started, overlay opened, theme
+    changed, a timer finished, a reminder, Hearing Guard over the limit…), a program starts or stops, a file or
+    folder changes, the clipboard changes, idle / back, CPU / memory / battery over or under a line.
+  * **Actions**: Run command, Open a program / file / URL, Close a program, any Luminescent tool, open or close a
+    page, run a dashboard item, switch dashboard or theme, start a timer, a notification, a big message, **Ask me**
+    (a box pops up, what you type goes on), play a sound, say it out loud, type text, press keys, copy to the
+    clipboard, web requests (Discord webhooks, APIs), download a file, copy / move / delete files, write to a file,
+    set a variable, switch a workspace on or off, and Show (see what a wire carries).
+  * **Logic**: Wait, If (contains, equals, regex, > <…), Gate, Count, Only once, Cooldown, Sequence, Take turns,
+    Random chance, Repeat. **Values**: Text, Number, Variable, Join text, Maths, Date / time, Clipboard text, Read a
+    file, Replace text, Change text (upper case, first line, length…), Random number. And a **Note** to write on.
+  * **Workspaces** (bottom left): several, each with its own on/off switch; export one to a `.lumflow` file to
+    share it. `Ctrl+Z` / `Ctrl+Y` undo and redo, `Ctrl+C` / `Ctrl+V` / `Ctrl+D` copy, paste and duplicate, `Delete`
+    removes, `F` fits everything in view. **Variables** keeps values between restarts. Settings → Automation pauses
+    everything (also from the tray or a hotkey) and has a safety stop for wire loops.
 * **Notes / Timers / Calculator pages**: the same notes, timers and history as the floating panels, full size.
 * **Today**: what you did today (dashboard runs, tools, how long timers ran), and earlier days with ‹ ›.
 * **Usage**: your most used dashboard items, hotkeys and tools, and uses per day.
@@ -116,6 +170,7 @@ the screen it opens on and the frosted background.
 | Window snapper | `Super+Alt+←/→/↑/↓` | Half, then third, then two thirds (press again). Corners in Settings |
 | Screen ruler | `Ctrl+Alt+R` | Drag to measure. Shift keeps it level, click copies W×H |
 | Media, QR code, System monitor | (set in Settings) | Also in the command palette and the tray |
+| Automation | (set in Settings) | Pause / resume every automation |
 | Quit | `Ctrl+U` | Quit everything (asks first) |
 
 Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never flash the drawing on.
@@ -175,7 +230,7 @@ responsive. **Performance mode** (Settings → Overlay & Interface) drops the gl
 
 ## Backups
 
-Settings → General → **Export backup…** zips settings, notes, timers, reminders, hearing history, dashboard, themes,
+Settings → General → **Export backup…** zips settings, notes, timers, reminders, hearing history, dashboard, automations, themes,
 profiles and calculator. **Import backup…** zips your current files to `data/backups/` first, then restarts.
 The vault is never included.
 
@@ -201,7 +256,9 @@ core/              settings + profiles, hotkeys, theme + theme profiles, widgets
                    hypr (Hyprland socket: binds, window placement), hyprbinds (reads/edits your Hyprland binds), clip,
                    convert (calculator units, currency, dates), usage (stats + today's log), desktop (launcher entry,
                    icons, Dolphin menu), timeparse
-ui/                overlay, dashboard, themes page, command palette, cheat sheet, toasts, Today and Usage pages
+                   automation (the Automation engine and its node types), events (what happened, for automations)
+ui/                overlay, dashboard, automation (the node editor), themes page, command palette, cheat sheet,
+                   toasts, Today and Usage pages
 modules/           one file per tool (+ vault_store.py: vault crypto, no UI)
 data/              your notes, timers, dashboard, themes… (created on first start, never in git)
 ```

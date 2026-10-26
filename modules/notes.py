@@ -1120,6 +1120,13 @@ class NotesPage(QWidget):
         if len(self.notes()) > before:
             self.open(self.notes()[-1]["id"])
 
+    def state(self) -> dict:
+        return {"note": self.current_id}
+
+    def restore_state(self, st: dict):
+        if any(n.get("id") == st.get("note") for n in self.notes()):
+            self.open(st["note"])
+
     # ── the open note ──────────────────────────────────────────────────────
     def open(self, nid: str):
         self.current_id = nid

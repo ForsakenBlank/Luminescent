@@ -31,6 +31,20 @@ game mode, quiet hours, activation key, a built-in auto clicker) are not in here
 - [x] Mark an item as running and offer "Stop" for scripts started from it
 - [x] Item groups: one item that runs multiple items in order
 
+- [x] Tidy up starts below the clock and status chips (no more overlap with the reminder chip)
+- [x] Clicking the dashboard never closes the overlay; drag on it for a selection box, like a desktop
+- [x] Themes, Settings, Clipboard, Notes… as resizable boxes on the dashboard (they remember their page and spot)
+- [x] New dashboards can start empty; switching dashboards is instant; the toolbar no longer overflows
+- [x] Dashboard boxes on every screen (multi-monitor)
+- [x] Snap-to-grid setting for moving boxes (off = smooth)
+
+## Automation
+- [x] Automation page in the nav bar: a big workspace of nodes wired together (Upload Labs style), with pulses along the wires
+- [x] Triggers: every N seconds, time of day, date, hotkey, button, Luminescent events, programs, files, clipboard, idle, CPU/RAM/battery
+- [x] Actions: commands (background or terminal), programs, files, web requests, notifications, ask me, type text, keys, sounds, speech, Luminescent tools and pages
+- [x] Logic and values: wait, if, gate, count, once, cooldown, sequence, repeat, variables, join text, maths, date/time
+- [x] Several workspaces with on/off switches, undo/redo, copy/paste, export/import
+
 ## Themes
 - [x] Import / export a single theme as a file (to share themes)
 - [x] Generate a theme from one accent colour (picks matching shades for you)

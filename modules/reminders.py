@@ -734,7 +734,7 @@ class RemindersEditor(QWidget):
         tip = QLabel("e.g. a daily 08:00 reminder that switches to Light and a 20:00 one that switches to Dark. "
                      "Untick the pop-up and notification for a silent switch.")
         tip.setWordWrap(True)
-        tip.setStyleSheet(f"color: {p.text_muted}; font-size: 11px;")
+        tip.setStyleSheet(f"color: {p.text_muted}; font-size: {theme.fs(11)}px;")
         form.addRow("", tip)
 
         test = widgets.button("▶ Test this reminder now")

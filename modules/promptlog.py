@@ -209,7 +209,7 @@ class PromptLogPanel(widgets.FloatingPanel):
         lay.addWidget(self.search)
         self.list = QListWidget()
         self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.list.setStyleSheet(f"QListWidget {{ font-family: {theme.MONO_CSS}; font-size: 12px; }}")
+        self.list.setStyleSheet(f"QListWidget {{ font-family: {theme.MONO_CSS}; font-size: {theme.fs(12)}px; }}")
         self.list.itemDoubleClicked.connect(lambda it: self._copy([it]))
         self.list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.list.customContextMenuRequested.connect(self._menu)

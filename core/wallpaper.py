@@ -5,7 +5,10 @@ A theme's `wallpaper` can be a picture (.jpg/.png/.webp...) or a Wallpaper
 Engine project (project.json, its folder, or a .pkg/.mp4 inside it).
 
 Pictures go to whatever draws your wallpaper, the first one that answers:
-Noctalia (`noctalia msg wallpaper-set`), swww, hyprpaper, swaybg.
+Noctalia (`noctalia msg wallpaper-set`), swww, hyprpaper, swaybg. A .gif plays when swww draws it;
+videos (.mp4, .webm, .mkv, .mov) play with mpvpaper, one per screen, looped and silent.
+Settings → Overlay & Interface → "Wallpaper command" replaces all of that with your own command
+({file} is the wallpaper), for a wallpaper tool or plugin of your own.
 Wallpaper Engine projects need linux-wallpaperengine (AUR); it is given the
 project folder and started once per screen.  Both run on a worker thread so a
 slow wallpaper tool never stalls the UI.
@@ -23,7 +26,10 @@ from core import IS_WIN
 log = logging.getLogger("wallpaper")
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif"}
+VIDEO_EXT = {".mp4", ".webm", ".mkv", ".mov"}
+CUSTOM_COMMAND = ""                 # Settings → Overlay & Interface → Wallpaper command (set by the launcher)
 _engine_procs: list[subprocess.Popen] = []
+_video_procs: list[subprocess.Popen] = []
 _swaybg: subprocess.Popen | None = None
 
 
@@ -128,10 +134,54 @@ def _open_engine(exe: str, path: str):
         log.info("Wallpaper Engine: %s", proj)
 
 
+def _stop(procs: list):
+    for p in procs:
+        if p.poll() is None:
+            p.terminate()
+    procs.clear()
+
+
+def _set_video(path: str):
+    exe = shutil.which("mpvpaper")
+    if not exe:
+        raise FileNotFoundError("Video wallpapers need mpvpaper (sudo pacman -S mpvpaper).")
+    _stop(_video_procs)
+    for name in _monitors() or ["ALL"]:
+        _video_procs.append(subprocess.Popen([exe, "-o", "no-audio --loop", name, path], start_new_session=True,
+                                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+    log.info("video wallpaper set to %s", path)
+
+
+def _custom(path: str, on_error=None):
+    import shlex
+
+    def work():
+        q = f'"{path}"' if IS_WIN else shlex.quote(path)
+        cmd = CUSTOM_COMMAND.replace("{file}", q) if "{file}" in CUSTOM_COMMAND else f"{CUSTOM_COMMAND} {q}"
+        try:
+            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
+            if r.returncode != 0:
+                raise OSError((r.stderr or r.stdout).strip()[-300:] or f"exit code {r.returncode}")
+            log.info("wallpaper set to %s (own command)", path)
+        except Exception as e:
+            log.warning("wallpaper command failed: %s", e)
+            if on_error:
+                on_error(str(e))
+
+    threading.Thread(target=work, name="wallpaper", daemon=True).start()
+
+
 def apply(path: str, engine_exe: str = "", on_error=None):
     """Switch the desktop wallpaper in the background. `on_error(text)` is called from the worker thread."""
     path = os.path.expandvars(os.path.expanduser((path or "").strip().strip('"')))
     if not path:
+        return
+    if CUSTOM_COMMAND.strip():
+        _custom(path, on_error)
+        return
+    if IS_WIN:
+        from core import wallpaper_win
+        wallpaper_win.apply(path, engine_exe, on_error)
         return
 
     def work():
@@ -139,11 +189,15 @@ def apply(path: str, engine_exe: str = "", on_error=None):
             if not os.path.exists(path):
                 raise FileNotFoundError(f"{path} does not exist")
             if is_image(path):
-                for p in _engine_procs:          # a picture replaces a running Wallpaper Engine project
-                    if p.poll() is None:
-                        p.terminate()
+                _stop(_engine_procs)              # a picture replaces a running Wallpaper Engine project
+                _stop(_video_procs)
                 log.info("wallpaper set to %s (%s)", path, _set_picture(path))
                 return
+            if os.path.splitext(path)[1].lower() in VIDEO_EXT:
+                _stop(_engine_procs)
+                _set_video(path)
+                return
+            _stop(_video_procs)
             exe = find_wallpaper_engine(engine_exe)
             if not exe:
                 raise FileNotFoundError("linux-wallpaperengine was not found. Install it (AUR) or set its path in "
@@ -157,5 +211,27 @@ def apply(path: str, engine_exe: str = "", on_error=None):
     threading.Thread(target=work, name="wallpaper", daemon=True).start()
 
 
+def pick_from_folder(folder: str, how: str, state: dict) -> str:
+    """A wallpaper from a folder: "random" (never the same one twice in a row) or "next" (in name order;
+    `state["last"]` remembers where it was)."""
+    folder = os.path.expandvars(os.path.expanduser(folder.strip().strip('"')))
+    try:
+        files = sorted((f for f in os.listdir(folder)
+                        if os.path.splitext(f)[1].lower() in IMAGE_EXT | (set() if IS_WIN else VIDEO_EXT)),
+                       key=str.lower)
+    except OSError:
+        return ""
+    if not files:
+        return ""
+    last = state.get("last", "")
+    if how == "random":
+        import random
+        choice = random.choice([f for f in files if f != last] or files)
+    else:
+        choice = files[(files.index(last) + 1) % len(files)] if last in files else files[0]
+    state["last"] = choice
+    return os.path.join(folder, choice)
+
+
 if IS_WIN:
-    from core.wallpaper_win import apply, find_wallpaper_engine, is_image  # noqa: E402,F811
+    from core.wallpaper_win import find_wallpaper_engine, is_image  # noqa: E402,F811

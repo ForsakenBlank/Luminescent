@@ -13,6 +13,7 @@ a `tone` property (primary / secondary / muted / accent) so they restyle live.
 Button variants:  btn.setProperty("variant", "primary" | "ghost" | "danger")
 """
 import os
+import re
 import glob
 from dataclasses import dataclass, fields
 
@@ -96,6 +97,30 @@ class Palette:
 
 P = Palette()
 _FIELDS = {f.name for f in fields(Palette)}
+
+# Settings → Overlay & Interface → Text size. Every font Luminescent sets goes through fs() or qfont().
+TEXT_SCALE = 1.0
+
+
+def set_text_scale(scale) -> bool:
+    """Returns True when it changed (the caller then restyles)."""
+    global TEXT_SCALE
+    try:
+        scale = min(1.6, max(0.8, float(scale)))
+    except (TypeError, ValueError):
+        scale = 1.0
+    changed = abs(scale - TEXT_SCALE) > 0.001
+    TEXT_SCALE = scale
+    return changed
+
+
+def fs(px: float) -> int:
+    """A font size in pixels at the chosen text size."""
+    return max(1, round(px * TEXT_SCALE))
+
+
+def _scale_css(css: str) -> str:
+    return re.sub(r"font-size:\s*(\d+(?:\.\d+)?)px", lambda m: f"font-size: {fs(float(m.group(1)))}px", css)
 
 
 def luminance(hex_colour: str) -> float:
@@ -255,10 +280,14 @@ def load_fonts():
         QFontDatabase.addApplicationFont(path)
 
 
-def qfont(px: float, weight: int = 400, mono: bool = False, spacing: float = 0.0, family: str = ""):
-    """A QFont in pixels. `spacing` is letter spacing in em (0.14 = the design's .14em)."""
+def qfont(px: float, weight: int = 400, mono: bool = False, spacing: float = 0.0, family: str = "",
+          scaled: bool = True):
+    """A QFont in pixels. `spacing` is letter spacing in em (0.14 = the design's .14em). `scaled` follows the
+    Text size setting (off for text drawn on a zoomable canvas, which has its own zoom)."""
     from PyQt6.QtGui import QFont
     f = QFont(family or (MONO_FAMILY if mono else P.font_family))
+    if scaled:
+        px *= TEXT_SCALE
     f.setPixelSize(max(1, round(px)))
     f.setWeight(QFont.Weight(weight))
     if spacing:
@@ -359,7 +388,7 @@ def stylesheet() -> str:
     rs = max(0, r - 4)          # small controls: buttons, inputs
     rb = max(0, r - 2)          # boxes inside a panel
     mono = MONO_CSS
-    return f"""
+    return _scale_css(f"""
     QWidget {{
         color: {p.text_primary};
     }}
@@ -608,4 +637,4 @@ def stylesheet() -> str:
     #paletteList::item:selected {{ background: transparent; }}
 
     #cheatCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {r}px; }}
-    """
+    """)

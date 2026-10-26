@@ -58,6 +58,7 @@ def build(onefile: bool, release: bool = False) -> str:
         "--distpath", os.path.join(HERE, "dist"), "--workpath", os.path.join(HERE, "build"),
         "--specpath", os.path.join(HERE, "build"),
         "--add-data", f"{info}{os.pathsep}.",
+        "--add-data", f"{os.path.join(HERE, 'CHANGELOG.md')}{os.pathsep}.",
         "--add-data", f"{os.path.join(ASSETS, 'fonts')}{os.pathsep}assets/fonts",
         "--add-data", f"{os.path.join(ASSETS, 'luminescent-256.png')}{os.pathsep}assets",
         "--add-data", f"{os.path.join(ASSETS, 'luminescent-mark.png')}{os.pathsep}assets",

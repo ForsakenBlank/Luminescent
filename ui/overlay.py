@@ -295,15 +295,26 @@ class _Keys(QObject):
 
 
 class _Activation(QObject):
-    """A click on the overlay focuses it, and Hyprland then draws it over the panels: lift them again."""
+    """A click anywhere on the overlay (a nav button, the dashboard, a page) focuses it, and the compositor
+    then draws it over the panels: lift them again. Watches the whole app, because a click on a child widget
+    never reaches the backdrop window itself."""
 
     def __init__(self, overlay: "MainOverlay"):
         super().__init__()
         self.o = overlay
+        self._soon = QTimer()
+        self._soon.setSingleShot(True)
+        self._soon.setInterval(80)
+        self._soon.timeout.connect(self._lift)
+
+    def _lift(self):
+        self.o.raise_panels()
+        QTimer.singleShot(250, self.o.raise_panels)      # once more for a compositor that is slow to restack
 
     def eventFilter(self, obj, e):
-        if e.type() in (QEvent.Type.WindowActivate, QEvent.Type.MouseButtonPress):
-            QTimer.singleShot(80, self.o.raise_panels)
+        if e.type() in (QEvent.Type.WindowActivate, QEvent.Type.MouseButtonPress) and isinstance(obj, QWidget) \
+                and self.o.is_visible() and obj.window() in self.o._backdrops:
+            self._soon.start()
         return False
 
 
@@ -335,6 +346,7 @@ class MainOverlay:
         self._keys = _Keys(self)
         self._activation = _Activation(self)
         QApplication.instance().installEventFilter(self._keys)
+        QApplication.instance().installEventFilter(self._activation)
 
     # ── building ───────────────────────────────────────────────────────────
     def _perf(self) -> bool:
@@ -362,7 +374,6 @@ class MainOverlay:
             b = _Backdrop(scr.geometry(), dim, blur, scr.name())
             b.clicked_outside.connect(self._outside_click)
             b.escape.connect(self.hide)
-            b.installEventFilter(self._activation)
             self._backdrops.append(b)
             if scr is prim:
                 self._primary = b
@@ -599,7 +610,14 @@ class MainOverlay:
         if self.is_visible():
             self.hide()
         else:
-            self.open("dashboard")
+            self.open(self.start_page())
+
+    def start_page(self) -> str:
+        """Where the overlay opens: the Dashboard, or the page you were on (Settings → Overlay)."""
+        last = str(self.settings.get("ui.last_page", "") or "")
+        if self.settings.get("ui.remember_page", False) and last in self.nav_order():
+            return last
+        return "dashboard"
 
     def open(self, section: str = "dashboard", sub: str = ""):
         if self._primary is None or self._screen_sig != self._screens_signature():
@@ -726,6 +744,9 @@ class MainOverlay:
 
     def _hide_now(self):
         events.emit("overlay.closed")
+        if self.settings.get("ui.last_page", "") != self._current:
+            self.settings.set("ui.last_page", self._current)
+            self.settings.save_quiet()
         self._tick.stop()
         for b in self._backdrops:
             b.hide()

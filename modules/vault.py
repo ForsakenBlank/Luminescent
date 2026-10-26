@@ -98,7 +98,7 @@ class PasswordDialog(QDialog):
                                          for w in ([self.pw] + ([self.pw2] if confirm else []))])
         lay.addWidget(show, 0, Qt.AlignmentFlag.AlignLeft)
         self.err = QLabel("")
-        self.err.setStyleSheet("color: #FF6B6B; font-size: 11px;")
+        self.err.setStyleSheet(f"color: #FF6B6B; font-size: {theme.fs(11)}px;")
         lay.addWidget(self.err)
         row = QHBoxLayout()
         if forgot:
@@ -150,12 +150,12 @@ class RecoveryKeyDialog(QDialog):
         box = QLineEdit(key_text)
         box.setReadOnly(True)
         box.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        box.setStyleSheet(f"font-family: {theme.MONO_CSS}; font-size: 15px; letter-spacing: 1px;")
+        box.setStyleSheet(f"font-family: {theme.MONO_CSS}; font-size: {theme.fs(15)}px; letter-spacing: 1px;")
         lay.addWidget(box)
         if saved_to:
             note = QLabel(f"A copy was written to:\n{saved_to}\nMove it somewhere safe.")
             note.setWordWrap(True)
-            note.setStyleSheet(f"color: {theme.P.text_secondary}; font-size: 11px;")
+            note.setStyleSheet(f"color: {theme.P.text_secondary}; font-size: {theme.fs(11)}px;")
             lay.addWidget(note)
         row = QHBoxLayout()
         copy = widgets.button("Copy")
@@ -211,7 +211,7 @@ class DropZone(QFrame):
         a.setStyleSheet(f"color: {theme.P.text_muted}; border: none;")
         h = QLabel("Drop files or folders here, or click to browse")
         h.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        h.setStyleSheet(f"color: {theme.P.text_muted}; border: none; font-size: 11px;")
+        h.setStyleSheet(f"color: {theme.P.text_muted}; border: none; font-size: {theme.fs(11)}px;")
         for w in (a, h):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             lay.addWidget(w)
@@ -275,7 +275,7 @@ class FileCard(QFrame):
             col.setSpacing(0)
             col.addWidget(label)
             w = QLabel(f"in {where}")
-            w.setStyleSheet(f"border: none; color: {theme.P.text_muted}; font-size: 10px;")
+            w.setStyleSheet(f"border: none; color: {theme.P.text_muted}; font-size: {theme.fs(10)}px;")
             col.addWidget(w)
             lay.addLayout(col, 1)
         else:
@@ -372,7 +372,7 @@ class VaultWindow(widgets.FloatingPanel):
 
         # header extras
         self.lock_label = QLabel("")
-        self.lock_label.setStyleSheet(f"color: {theme.P.text_muted}; font-size: 10px; border: none;")
+        self.lock_label.setStyleSheet(f"color: {theme.P.text_muted}; font-size: {theme.fs(10)}px; border: none;")
         self.header_right.addWidget(self.lock_label)
         gear = widgets.icon_button("⚙", "Vault options", 24, 13, ghost=True)
         gear.clicked.connect(self._options_menu)
@@ -460,7 +460,7 @@ class VaultWindow(widgets.FloatingPanel):
         pl = QHBoxLayout(self.prog)
         pl.setContentsMargins(14, 4, 14, 6)
         self.prog_label = QLabel("")
-        self.prog_label.setStyleSheet(f"color: {theme.P.text_secondary}; font-size: 10px; border: none;")
+        self.prog_label.setStyleSheet(f"color: {theme.P.text_secondary}; font-size: {theme.fs(10)}px; border: none;")
         self.prog_bar = QProgressBar()
         self.prog_bar.setFixedHeight(5)
         pl.addWidget(self.prog_label)
@@ -599,7 +599,7 @@ class VaultWindow(widgets.FloatingPanel):
         def crumb(text, path, last=False):
             b = QPushButton(text)
             b.setProperty("variant", "ghost")
-            b.setStyleSheet(f"QPushButton {{ color: {theme.P.text_primary if last else theme.P.primary}; font-size: 11px; }}")
+            b.setStyleSheet(f"QPushButton {{ color: {theme.P.text_primary if last else theme.P.primary}; font-size: {theme.fs(11)}px; }}")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda: self._jump(path))
             return b

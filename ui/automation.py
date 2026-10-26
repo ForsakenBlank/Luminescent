@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
     QGraphicsItem, QListWidget, QListWidgetItem, QFileDialog, QDialog, QTableWidget, QTableWidgetItem,
     QHeaderView, QDateEdit, QApplication
 )
-from PyQt6.QtCore import Qt, QRectF, QPointF, QPoint, QTimer, QDate, QEvent
+from PyQt6.QtCore import Qt, QSize, QRectF, QPointF, QPoint, QTimer, QDate, QEvent
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QPainterPathStroker, QPolygonF, QFontMetrics, QCursor
 
 from core import theme, widgets
@@ -269,7 +269,7 @@ class NodeItem(QGraphicsObject):
         p.restore()
         p.fillRect(QRectF(10, 11, 3, HEAD - 22), self.colour)
         p.setPen(QColor(P.text_primary))
-        p.setFont(theme.qfont(12, 600))
+        p.setFont(theme.qfont(12, 600, scaled=False))
         fm = QFontMetrics(p.font())
         title = self.data.get("title") or self.spec.title
         room = self.w - 24 - (34 if not self.run_rect.isNull() else 8)
@@ -280,10 +280,10 @@ class NodeItem(QGraphicsObject):
             p.setBrush(QColor(P.bg_card))
             p.drawRoundedRect(self.run_rect, 5, 5)
             p.setPen(QColor(P.primary_text))
-            p.setFont(theme.qfont(10, 600))
+            p.setFont(theme.qfont(10, 600, scaled=False))
             p.drawText(self.run_rect, Qt.AlignmentFlag.AlignCenter, "▶")
         # port labels
-        p.setFont(theme.qfont(10.5, 500, mono=True))
+        p.setFont(theme.qfont(10.5, 500, mono=True, scaled=False))
         p.setPen(QColor(P.text_secondary))
         for port, pt in self.ports.items():
             if port.startswith("field:"):
@@ -304,7 +304,7 @@ class NodeItem(QGraphicsObject):
         elif rt is None and not self.page.eng.running(self.ws) and self.spec.cat == "trigger":
             status = "workspace off"
         if status:
-            p.setFont(theme.qfont(10.5, 500, mono=True))
+            p.setFont(theme.qfont(10.5, 500, mono=True, scaled=False))
             p.setPen(QColor(theme.DANGER if status.startswith("⚠") else P.text_muted))
             fm = QFontMetrics(p.font())
             p.drawText(QRectF(12, self.h - FOOT, self.w - 24, FOOT - 4), Qt.AlignmentFlag.AlignVCenter,
@@ -439,7 +439,7 @@ class PulseLayer(QGraphicsObject):
     def paint(self, p: QPainter, opt, widget=None):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         now = time.monotonic()
-        p.setFont(theme.qfont(10, 500, mono=True))
+        p.setFont(theme.qfont(10, 500, mono=True, scaled=False))
         for w, t0, text in self.pulses:
             t = min(1.0, (now - t0) / self.DURATION)
             t = 1 - (1 - t) ** 2
@@ -678,7 +678,8 @@ class GraphView(QGraphicsView):
 
 # ── the node picker ───────────────────────────────────────────────────────────
 class NodePicker(QFrame):
-    """A search box over every node type. `want` limits it to nodes with a port that fits a dragged wire."""
+    """A search box over every node type. `want` limits it to nodes with a port that fits a dragged wire.
+    Each node shows its name and what it does, so you can pick one without hovering for a tooltip."""
 
     def __init__(self, parent: QWidget, on_pick, want: str = ""):
         super().__init__(parent, Qt.WindowType.Popup)
@@ -686,19 +687,27 @@ class NodePicker(QFrame):
         self.on_pick = on_pick
         self.want = want
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(8, 8, 8, 8)
-        lay.setSpacing(6)
+        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setSpacing(8)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Add a node: type to search…")
+        self.search.setFont(theme.qfont(15))
+        self.search.setMinimumHeight(38)
         self.search.textChanged.connect(self._fill)
         self.search.installEventFilter(self)
         lay.addWidget(self.search)
         self.list = QListWidget()
-        self.list.setObjectName("paletteList")
+        self.list.setObjectName("nodePickList")
+        p = theme.P
+        self.list.setStyleSheet(f"#nodePickList {{ background: transparent; border: none; }}"
+                                f" #nodePickList::item {{ border-radius: {max(0, p.radius - 4)}px; padding: 0; }}"
+                                f" #nodePickList::item:selected, #nodePickList::item:hover"
+                                f" {{ background: {p.bg_card_hover}; }}")
+        self.list.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         self.list.itemActivated.connect(self._picked)
         self.list.itemClicked.connect(self._picked)
         lay.addWidget(self.list)
-        self.setFixedSize(380, 460)
+        self.setFixedSize(theme.fs(440), theme.fs(560))
         self._fill("")
 
     def _fits(self, t) -> bool:
@@ -708,10 +717,33 @@ class NodePicker(QFrame):
                  + ["field:" + f.key for f in t.fields if f.pin])
         return any(compatible(self.want, p) for p in ports)
 
+    def _row(self, t, col: str) -> QWidget:
+        w = QWidget()
+        w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        rl = QHBoxLayout(w)
+        rl.setContentsMargins(10, 7, 10, 7)
+        rl.setSpacing(10)
+        dot = QFrame()
+        dot.setFixedSize(4, theme.fs(30))
+        dot.setStyleSheet(f"background: {col}; border-radius: 2px;")
+        rl.addWidget(dot, 0, Qt.AlignmentFlag.AlignTop)
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        text.addWidget(widgets.label(t.title, 14, 600))
+        if t.help:
+            h = widgets.label(t.help if len(t.help) < 140 else t.help[:139].rsplit(" ", 1)[0] + "…", 12,
+                              tone="muted")
+            h.setWordWrap(True)
+            text.addWidget(h)
+        text.addStretch()
+        rl.addLayout(text, 1)
+        return w
+
     def _fill(self, text: str):
         q = text.strip().lower()
         self.list.clear()
         first = None
+        width = self.width() - 40
         for cat, name, col in CATEGORIES:
             types = [t for t in TYPES.values() if t.cat == cat and self._fits(t)
                      and (not q or q in t.title.lower() or q in t.help.lower() or q in t.id)]
@@ -720,13 +752,19 @@ class NodePicker(QFrame):
             head = QListWidgetItem(name.upper())
             head.setFlags(Qt.ItemFlag.NoItemFlags)
             head.setForeground(QColor(col))
-            head.setFont(theme.qfont(10, 600, mono=True, spacing=0.1))
+            head.setFont(theme.qfont(11, 600, mono=True, spacing=0.1))
             self.list.addItem(head)
             for t in types:
-                it = QListWidgetItem(f"   {t.title}")
+                it = QListWidgetItem()
                 it.setData(Qt.ItemDataRole.UserRole, t.id)
                 it.setToolTip(t.help)
+                row = self._row(t, col)
+                row.setFixedWidth(width)
+                lay = row.layout()
+                h = lay.heightForWidth(width) if lay.hasHeightForWidth() else row.sizeHint().height()
+                it.setSizeHint(QSize(width, h))
                 self.list.addItem(it)
+                self.list.setItemWidget(it, row)
                 first = first or it
         if first is not None:
             self.list.setCurrentItem(first)

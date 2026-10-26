@@ -8,6 +8,11 @@ then the window closes and Ctrl+V is sent to whatever you were using.
 Ctrl+click also presses Enter and re-opens the grid in the same folder.
 Folders open in place; the breadcrumb (or Backspace) goes back up.
 
+The search box looks through every folder (names and text). Drag a card onto another card to put it in a new
+place, onto a folder (or a folder in the breadcrumb) to move it there. Right-click → Favourite puts a clip in the
+row at the top of the root folder. Resting the mouse on a card shows a bigger preview.
+The order, favourites and folder colours live in <snippets folder>/.luminescent.json.
+
 Thumbnails are generated on a background thread so big folders open instantly.
 """
 import os
@@ -18,13 +23,14 @@ import subprocess
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QScrollArea, QGridLayout, QVBoxLayout, QHBoxLayout, QFrame, QColorDialog,
+    QApplication, QWidget, QLabel, QScrollArea, QGridLayout, QVBoxLayout, QHBoxLayout, QFrame, QColorDialog,
     QLineEdit, QSizePolicy
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QFile, QSize, QRect
-from PyQt6.QtGui import QPixmap, QImage, QImageReader, QColor, QPainter, QPainterPath, QPen, QShortcut, QKeySequence
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QFile, QSize, QRect, QPoint, QMimeData, QUrl
+from PyQt6.QtGui import (QPixmap, QImage, QImageReader, QColor, QPainter, QPainterPath, QPen, QShortcut, QKeySequence,
+                         QDrag)
 
-from core import theme, widgets, runner, save_json, load_json, clip
+from core import theme, widgets, runner, save_json, load_json, clip, desktop
 from core.module import Module
 
 log = logging.getLogger("snippets")
@@ -116,6 +122,148 @@ CODE_EXT = {".py"}
 PREVIEW_H = 128
 FOOT_H = 34
 THUMB = QSize(360, 260)
+DRAG_MIME = "application/x-luminescent-snippet"
+SEARCH_LIMIT = 200
+
+
+class _Draggable(QFrame):
+    """A card that can be clicked (on release) or dragged onto another card, a folder or the breadcrumb."""
+    clicked = pyqtSignal(object)
+    menu_requested = pyqtSignal(object)
+    dropped = pyqtSignal(str, object)            # dragged path, this card
+    hovered = pyqtSignal(object, bool)
+
+    path = ""
+    view: "SnippetsView | None" = None
+
+    def _init_drag(self):
+        self._press: QPoint | None = None
+        self.setAcceptDrops(True)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._press = e.position().toPoint()
+
+    def mouseMoveEvent(self, e):
+        if self._press is not None and \
+                (e.position().toPoint() - self._press).manhattanLength() >= QApplication.startDragDistance():
+            self._press = None
+            self.hovered.emit(self, False)
+            self._start_drag()
+
+    def mouseReleaseEvent(self, e):
+        if self._press is not None and e.button() == Qt.MouseButton.LeftButton:
+            self._press = None
+            self.clicked.emit(e)
+
+    def _start_drag(self):
+        md = QMimeData()
+        md.setData(DRAG_MIME, self.path.encode("utf-8"))
+        md.setUrls([QUrl.fromLocalFile(self.path)])     # other apps get the file (a copy, never a move)
+        drag = QDrag(self)
+        drag.setMimeData(md)
+        shot = self.grab()
+        drag.setPixmap(shot.scaledToWidth(min(180, shot.width()), Qt.TransformationMode.SmoothTransformation))
+        drag.setHotSpot(QPoint(20, 20))
+        drag.exec(Qt.DropAction.CopyAction)
+
+    def _mark(self, on: bool):
+        self.setProperty("dropTarget", on)
+        self.setStyleSheet(f"#clipCard {{ border: 1px solid {theme.P.primary}; }}" if on else "")
+
+    def dragEnterEvent(self, e):
+        src = bytes(e.mimeData().data(DRAG_MIME)).decode("utf-8") if e.mimeData().hasFormat(DRAG_MIME) else ""
+        if src and src != self.path:
+            e.acceptProposedAction()
+            self._mark(True)
+        else:
+            e.ignore()
+
+    def dragLeaveEvent(self, e):
+        self._mark(False)
+
+    def dropEvent(self, e):
+        self._mark(False)
+        src = bytes(e.mimeData().data(DRAG_MIME)).decode("utf-8")
+        e.acceptProposedAction()
+        QTimer.singleShot(0, lambda: self.dropped.emit(src, self))   # after the drag has finished
+
+    def enterEvent(self, e):
+        self.hovered.emit(self, True)
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self.hovered.emit(self, False)
+        super().leaveEvent(e)
+
+    def contextMenuEvent(self, e):
+        self.menu_requested.emit(e.globalPos())
+
+
+class HoverPreview(QFrame):
+    """The bigger look at a card: the picture, the whole text or the colour."""
+
+    def __init__(self, parent: QWidget):
+        super().__init__(parent, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
+        self.setObjectName("clipPreviewTip")
+        p = theme.P
+        self.setStyleSheet(f"#clipPreviewTip {{ background: {p.bg_base}; border: 1px solid {p.border};"
+                           f" border-radius: {p.radius}px; }}")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(10, 10, 10, 10)
+        self.label = QLabel()
+        self.label.setWordWrap(True)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        lay.addWidget(self.label)
+
+    def show_for(self, card: "Card", thumb: QImage | None):
+        lbl = self.label
+        lbl.setPixmap(QPixmap())
+        lbl.setText("")
+        lbl.setStyleSheet("")
+        lbl.setMinimumSize(0, 0)
+        lbl.setMaximumSize(16777215, 16777215)
+        kind = card.kind
+        if kind == "image":
+            r = QImageReader(card.path)
+            r.setAutoTransform(True)
+            if r.size().isValid():
+                r.setScaledSize(r.size().scaled(QSize(560, 420), Qt.AspectRatioMode.KeepAspectRatio)
+                                if r.size().width() > 560 or r.size().height() > 420 else r.size())
+            img = r.read()
+            if img.isNull():
+                return
+            lbl.setPixmap(QPixmap.fromImage(img))
+        elif kind == "video":
+            if thumb is None:
+                return
+            lbl.setPixmap(QPixmap.fromImage(thumb).scaled(QSize(560, 420), Qt.AspectRatioMode.KeepAspectRatio,
+                                                         Qt.TransformationMode.SmoothTransformation))
+        elif kind in ("text", "code", "link"):
+            try:
+                with open(card.path, "r", encoding="utf-8", errors="ignore") as f:
+                    text = f.read(4000)
+            except OSError:
+                return
+            lbl.setFont(theme.qfont(12, mono=kind == "code"))
+            lbl.setTextFormat(Qt.TextFormat.PlainText)
+            lbl.setText(text.rstrip() + ("…" if len(text) >= 4000 else ""))
+            lbl.setMaximumWidth(520)
+            lbl.setMaximumHeight(480)
+        elif kind == "colour":
+            lbl.setFixedSize(220, 140)
+            lbl.setStyleSheet(f"background: {card.colour}; border-radius: 6px;")
+        else:
+            return
+        self.adjustSize()
+        g = card.mapToGlobal(QPoint(card.width() + 10, 0))
+        scr = QApplication.screenAt(card.mapToGlobal(card.rect().center()))
+        area = scr.availableGeometry() if scr else QRect(0, 0, 99999, 99999)
+        if g.x() + self.width() > area.right():
+            g = card.mapToGlobal(QPoint(-self.width() - 10, 0))
+        g.setY(max(area.top(), min(g.y(), area.bottom() - self.height())))
+        self.move(g)
+        self.show()
 
 
 def _age(path: str) -> str:
@@ -205,12 +353,12 @@ class _Picture(QWidget):
         p.end()
 
 
-class FolderCard(QFrame):
-    clicked = pyqtSignal(object)
-    menu_requested = pyqtSignal(object)
-
-    def __init__(self, name: str, count: int, colour: str):
+class FolderCard(_Draggable):
+    def __init__(self, path: str, count: int, colour: str):
         super().__init__()
+        self._init_drag()
+        self.path = path
+        name = os.path.basename(path)
         self.kind = "folder"
         self.search_text = name.lower()
         self.setObjectName("clipCard")
@@ -231,22 +379,17 @@ class FolderCard(QFrame):
         lay.addWidget(name_lbl, 1)
         lay.addWidget(n)
 
-    def mousePressEvent(self, e):
-        self.clicked.emit(e)
 
-    def contextMenuEvent(self, e):
-        self.menu_requested.emit(e.globalPos())
-
-
-class Card(QFrame):
+class Card(_Draggable):
     """A clip: a 128 px preview (text, code, link, picture, file or colour) over a footer with its kind and age."""
-    clicked = pyqtSignal(object)
-    menu_requested = pyqtSignal(object)
 
-    def __init__(self, path: str, kind: str, body: str = "", title: str = ""):
+    def __init__(self, path: str, kind: str, body: str = "", title: str = "", where: str = "", fav: bool = False):
         super().__init__()
+        self._init_drag()
         self.kind = kind
         self.path = path
+        self.fav = fav                      # in the favourites row
+        self.colour = body if kind == "colour" else ""
         self.picture: _Picture | None = None
         self.search_text = f"{os.path.basename(path)} {body}".lower()
         self.setObjectName("clipCard")
@@ -310,6 +453,10 @@ class Card(QFrame):
         foot.setContentsMargins(12, 0, 12, 0)
         foot.setSpacing(8)
         foot.addWidget(widgets.label(kind.upper(), 9, 500, mono=True, spacing=0.08, tone="muted"))
+        if where:
+            w = widgets.label(where, 9.5, mono=True, tone="accent")
+            w.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            foot.addWidget(w, 1)
         foot.addStretch()
         foot.addWidget(widgets.label(_age(path), 10, mono=True, tone="muted"))
         holder = QWidget()
@@ -318,17 +465,12 @@ class Card(QFrame):
         lay.addWidget(holder)
         for w in self.findChildren(QWidget):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.setToolTip(os.path.basename(path))
+        if kind in ("file",):
+            self.setToolTip(os.path.basename(path))     # the others get the bigger hover preview instead
 
     def set_image(self, image: QImage | None):
         if image is not None and self.picture is not None:
             self.picture.set_image(image)
-
-    def mousePressEvent(self, e):
-        self.clicked.emit(e)
-
-    def contextMenuEvent(self, e):
-        self.menu_requested.emit(e.globalPos())
 
 
 class SnippetsView(QWidget):
@@ -346,6 +488,16 @@ class SnippetsView(QWidget):
         self._worker: ThumbWorker | None = None
         self._cards: dict[str, Card] = {}
         self._all: list[QWidget] = []
+        self._preview: HoverPreview | None = None
+        self._hover_card = None
+        self._hover_timer = QTimer(self)
+        self._hover_timer.setSingleShot(True)
+        self._hover_timer.setInterval(650)
+        self._hover_timer.timeout.connect(self._show_preview)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(220)
+        self._search_timer.timeout.connect(self.load)
         pad = 24 if embedded else 16
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -361,10 +513,10 @@ class SnippetsView(QWidget):
         bar.addLayout(self.crumbs)
         bar.addStretch()
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search clips")
+        self.search.setPlaceholderText("Search every folder")
         self.search.setFixedSize(220, 30)
         self.search.setStyleSheet("QLineEdit { padding-right: 52px; }")
-        self.search.textChanged.connect(self._apply_filter)
+        self.search.textChanged.connect(lambda _t: self._search_timer.start())
         hint = widgets.label("CTRL+F", 10, mono=True, tone="muted")
         hint.setParent(self.search)
         hint.adjustSize()
@@ -375,7 +527,7 @@ class SnippetsView(QWidget):
                   context=Qt.ShortcutContext.WidgetWithChildrenShortcut)
         folder = widgets.button("New folder", "ghost")
         folder.clicked.connect(self.new_folder)
-        opn = widgets.button("Open in Explorer", "ghost")
+        opn = widgets.button("Open folder", "ghost")
         opn.clicked.connect(lambda: runner.open_path(self.path) if os.path.isdir(self.path) else None)
         save = widgets.button("Paste here", "primary", tooltip="Saves the text, image or files on the clipboard "
                                                                  "into this folder")
@@ -394,9 +546,12 @@ class SnippetsView(QWidget):
         body = QVBoxLayout(self.grid_widget)
         body.setContentsMargins(pad, 4, pad, pad)
         body.setSpacing(20)
+        self.fav_head = widgets.label("FAVOURITES", 10, 600, mono=True, spacing=0.12, tone="muted")
+        body.addWidget(self.fav_head)
+        self.fav_grid = QGridLayout()
         self.folder_grid = QGridLayout()
         self.grid = QGridLayout()
-        for g in (self.folder_grid, self.grid):
+        for g in (self.fav_grid, self.folder_grid, self.grid):
             g.setSpacing(12)
             g.setAlignment(Qt.AlignmentFlag.AlignTop)
             for i in range(self.cols):
@@ -451,7 +606,23 @@ class SnippetsView(QWidget):
             if not last:
                 lbl.setCursor(Qt.CursorShape.PointingHandCursor)
                 lbl.mousePressEvent = lambda e, t=target: self._open_folder(t)
+                self._crumb_drop(lbl, target)
             self.crumbs.addWidget(lbl)
+
+    def _crumb_drop(self, lbl: QLabel, target: str):
+        """Drop a card on a folder in the breadcrumb to move it up there."""
+        lbl.setAcceptDrops(True)
+
+        def enter(e):
+            if e.mimeData().hasFormat(DRAG_MIME):
+                e.acceptProposedAction()
+
+        def drop(e):
+            src = bytes(e.mimeData().data(DRAG_MIME)).decode("utf-8")
+            e.acceptProposedAction()
+            QTimer.singleShot(0, lambda: self._move_into(src, target))
+        lbl.dragEnterEvent = enter
+        lbl.dropEvent = drop
 
     def _kind(self, path: str) -> tuple[str, str, str]:
         """(kind, body, title) for a file: text, code, link, colour, image, video or file."""
@@ -479,71 +650,202 @@ class SnippetsView(QWidget):
             return "text", content[:300] or short, ""
         return "file", short, ""
 
+    def _connect(self, card, full: str):
+        card.view = self
+        card.clicked.connect(lambda e, p=full: self._card_clicked(e, p))
+        card.menu_requested.connect(lambda pos, p=full: self._card_menu(p, pos))
+        card.dropped.connect(self._dropped)
+        card.hovered.connect(self._hovered)
+
+    def _file_card(self, full: str, jobs: list, where: str = "", fav: bool = False) -> Card:
+        kind, body, title = self._kind(full)
+        card = Card(full, kind, body, title, where, fav)
+        self._connect(card, full)
+        self._all.append(card)
+        if kind in ("image", "video"):
+            self._cards.setdefault(full, card)
+            cached = self.m.thumb_cache.get(full)
+            try:
+                mtime = os.path.getmtime(full)
+            except OSError:
+                mtime = None
+            if cached and cached[0] == mtime:
+                card.set_image(cached[1])
+            else:
+                jobs.append((full, kind))
+        return card
+
+    def _where(self, full: str) -> str:
+        rel = os.path.relpath(os.path.dirname(full), self.root)
+        return "" if rel == "." else rel
+
     def load(self):
         self.stop()
-        widgets.clear_layout(self.folder_grid)
-        widgets.clear_layout(self.grid)
+        self._hide_preview()
+        for g in (self.fav_grid, self.folder_grid, self.grid):
+            widgets.clear_layout(g)
         self._cards = {}
         self._all = []
         at_root = self.at_root()
+        query = self.search.text().strip().lower()
         self._build_crumbs()
         self.title_changed.emit("Clipboard" if at_root else os.path.basename(self.path), at_root)
         self.empty.setText("")
-        try:
-            names = sorted(os.listdir(self.path),
-                           key=lambda n: (not os.path.isdir(os.path.join(self.path, n)), n.lower()))
-        except Exception as e:
-            self.empty.setText(f"Cannot open folder:\n{self.path}\n\n{e}")
-            return
-        names = [n for n in names if not n.startswith(".")]
-        colours = self.m.folder_colours()
-        accents = [theme.P.primary, "#3DBE96", "#E0894E", "#5B9BE6", theme.P.text_muted]
+        self.fav_head.hide()
         jobs = []
-        nf = nc = 0
-        for n in names:
-            full = os.path.join(self.path, n)
-            if os.path.isdir(full):
-                try:
-                    count = sum(1 for x in os.listdir(full) if not x.startswith("."))
-                except OSError:
-                    count = 0
-                card = FolderCard(n, count, colours.get(os.path.normcase(full)) or accents[nf % len(accents)])
-                card.clicked.connect(lambda e, p=full: self._card_clicked(e, p))
-                card.menu_requested.connect(lambda pos, p=full: self._card_menu(p, pos))
-                self.folder_grid.addWidget(card, nf // self.cols, nf % self.cols)
-                nf += 1
-                self._all.append(card)
-                continue
-            kind, body, title = self._kind(full)
-            card = Card(full, kind, body, title)
-            card.clicked.connect(lambda e, p=full: self._card_clicked(e, p))
-            card.menu_requested.connect(lambda pos, p=full: self._card_menu(p, pos))
-            self.grid.addWidget(card, nc // self.cols, nc % self.cols)
-            nc += 1
-            self._all.append(card)
-            if kind in ("image", "video"):
-                self._cards[full] = card
-                cached = self.m.thumb_cache.get(full)
-                try:
-                    mtime = os.path.getmtime(full)
-                except OSError:
-                    mtime = None
-                if cached and cached[0] == mtime:
-                    card.set_image(cached[1])
-                else:
-                    jobs.append((full, kind))
-        if not names:
-            self.empty.setText("This folder is empty. Copy something and press Paste here.")
-        self._apply_filter(self.search.text())
+        if query:
+            self._load_search(query, jobs)
+        else:
+            if not self._load_folder(at_root, jobs):
+                return
         if jobs:
             self._worker = ThumbWorker(jobs, THUMB)
             self._worker.ready.connect(self._thumb_ready)
             self._worker.start()
 
+    def _load_folder(self, at_root: bool, jobs: list) -> bool:
+        try:
+            names = os.listdir(self.path)
+        except Exception as e:
+            self.empty.setText(f"Cannot open folder:\n{self.path}\n\n{e}")
+            return False
+        names = [n for n in names if not n.startswith(".")]
+        order = {n: i for i, n in enumerate(self.m.order_of(self.path))}
+        dirs = sorted((n for n in names if os.path.isdir(os.path.join(self.path, n))), key=str.lower)
+        files = sorted((n for n in names if not os.path.isdir(os.path.join(self.path, n))),
+                       key=lambda n: (order.get(n, len(order)), n.lower()))
+        if at_root:
+            favs = [f for f in self.m.favourites() if os.path.isfile(f)]
+            for i, full in enumerate(favs):
+                self.fav_grid.addWidget(self._file_card(full, jobs, self._where(full), fav=True),
+                                        i // self.cols, i % self.cols)
+            self.fav_head.setVisible(bool(favs))
+        colours = self.m.folder_colours()
+        accents = [theme.P.primary, "#3DBE96", "#E0894E", "#5B9BE6", theme.P.text_muted]
+        for nf, n in enumerate(dirs):
+            full = os.path.join(self.path, n)
+            try:
+                count = sum(1 for x in os.listdir(full) if not x.startswith("."))
+            except OSError:
+                count = 0
+            card = FolderCard(full, count, colours.get(os.path.normcase(full)) or accents[nf % len(accents)])
+            self._connect(card, full)
+            self.folder_grid.addWidget(card, nf // self.cols, nf % self.cols)
+            self._all.append(card)
+        for nc, n in enumerate(files):
+            full = os.path.join(self.path, n)
+            self.grid.addWidget(self._file_card(full, jobs), nc // self.cols, nc % self.cols)
+        if not names:
+            self.empty.setText("This folder is empty. Copy something and press Paste here.")
+        return True
+
+    def _load_search(self, query: str, jobs: list):
+        """Every folder under the root: folder names, file names and what text clips say."""
+        found_dirs, found = [], []
+        for dirpath, dirnames, filenames in os.walk(self.root):
+            dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+            for d in dirnames:
+                if query in d.lower():
+                    found_dirs.append(os.path.join(dirpath, d))
+            for n in sorted(filenames, key=str.lower):
+                if n.startswith("."):
+                    continue
+                full = os.path.join(dirpath, n)
+                hit = query in n.lower()
+                if not hit and os.path.splitext(n)[1].lower() in TEXT_EXT:
+                    try:
+                        with open(full, "r", encoding="utf-8", errors="ignore") as f:
+                            hit = query in f.read(20000).lower()
+                    except OSError:
+                        pass
+                if hit:
+                    found.append(full)
+            if len(found) >= SEARCH_LIMIT:
+                break
+        colours = self.m.folder_colours()
+        for nf, full in enumerate(found_dirs[:SEARCH_LIMIT]):
+            try:
+                count = sum(1 for x in os.listdir(full) if not x.startswith("."))
+            except OSError:
+                count = 0
+            card = FolderCard(full, count, colours.get(os.path.normcase(full)) or theme.P.primary)
+            self._connect(card, full)
+            self.folder_grid.addWidget(card, nf // self.cols, nf % self.cols)
+            self._all.append(card)
+        for nc, full in enumerate(found[:SEARCH_LIMIT]):
+            self.grid.addWidget(self._file_card(full, jobs, self._where(full)), nc // self.cols, nc % self.cols)
+        if not found and not found_dirs:
+            self.empty.setText(f'Nothing in any folder matches "{query}".')
+        elif len(found) >= SEARCH_LIMIT:
+            self.empty.setText(f"Showing the first {SEARCH_LIMIT} matches.")
+
     def _apply_filter(self, text: str):
-        q = text.strip().lower()
-        for c in self._all:
-            c.setVisible(not q or q in c.search_text)
+        self.load()
+
+    # ── drag and drop ──────────────────────────────────────────────────────
+    def _dropped(self, src: str, target):
+        if not os.path.exists(src):
+            return
+        if isinstance(target, FolderCard):
+            self._move_into(src, target.path)
+        elif getattr(target, "fav", False):
+            if src in self.m.favourites():
+                self.m.reorder_favourite(src, target.path)
+            else:
+                self.m.set_favourite(src, True, before=target.path)
+            self.load()
+        elif os.path.isfile(target.path):
+            folder = os.path.dirname(target.path)
+            if os.path.normcase(os.path.dirname(src)) != os.path.normcase(folder):
+                src = self._move_into(src, folder, reload=False)
+                if not src:
+                    return
+            if os.path.isfile(src):
+                self.m.place_before(src, target.path)
+            self.load()
+
+    def _move_into(self, src: str, folder: str, reload: bool = True) -> str:
+        """Move a clip (or folder) into `folder`. Returns its new path, '' if it could not move."""
+        if os.path.normcase(os.path.dirname(src)) == os.path.normcase(folder):
+            return src
+        if os.path.isdir(src) and os.path.normcase(folder + os.sep).startswith(os.path.normcase(src + os.sep)):
+            return ""                       # not into itself
+        dst = _unique(os.path.join(folder, os.path.basename(src)))
+        try:
+            shutil.move(src, dst)
+        except OSError as e:
+            widgets.error(self, "Move", str(e))
+            return ""
+        self.m.path_moved(src, dst)
+        if reload:
+            self.load()
+        return dst
+
+    # ── hover preview ──────────────────────────────────────────────────────
+    def _hovered(self, card, inside: bool):
+        if inside and isinstance(card, Card) and card.kind not in ("file",):
+            self._hover_card = card
+            self._hover_timer.start()
+        elif self._hover_card is card or not inside:
+            self._hover_card = None
+            self._hover_timer.stop()
+            self._hide_preview()
+
+    def _show_preview(self):
+        card = self._hover_card
+        if card is None or not card.isVisible() or not card.underMouse():
+            return
+        if self._preview is None:
+            self._preview = HoverPreview(self.window())
+        cached = self.m.thumb_cache.get(card.path)
+        try:
+            self._preview.show_for(card, cached[1] if cached else None)
+        except RuntimeError:
+            pass
+
+    def _hide_preview(self):
+        if self._preview is not None:
+            self._preview.hide()
 
     def _thumb_ready(self, path: str, image):
         card = self._cards.get(path)
@@ -574,10 +876,13 @@ class SnippetsView(QWidget):
         else:
             m.addAction("Copy (don't paste)", lambda: self.m.copy_snippet(path))
             m.addAction("Open file", lambda: runner.open_path(path))
+            fav = path in self.m.favourites()
+            m.addAction("☆  Remove from favourites" if fav else "★  Favourite (row at the top)",
+                        lambda: (self.m.set_favourite(path, not fav), self.load()))
         m.addAction("Rename…", lambda: self._rename(path))
-        m.addAction("Show in Explorer", lambda: subprocess.Popen(["explorer", "/select,", path]))
+        m.addAction("Show in the file manager", lambda: desktop.reveal(path))
         m.addSeparator()
-        m.addAction("Delete… (to the Recycle Bin)", lambda: self._delete(path))
+        m.addAction("Delete… (to the Trash)", lambda: self._delete(path))
         m.exec(pos)
 
     def _folder_colour(self, path: str):
@@ -591,14 +896,16 @@ class SnippetsView(QWidget):
         name, ok = widgets.ask_text(self, "Rename", "New name:", os.path.basename(path))
         if not ok or not name.strip() or name.strip() == os.path.basename(path):
             return
+        dst = os.path.join(os.path.dirname(path), name.strip())
         try:
-            os.rename(path, os.path.join(os.path.dirname(path), name.strip()))
+            os.rename(path, dst)
+            self.m.path_moved(path, dst)
         except OSError as e:
             widgets.error(self, "Rename", str(e))
         self.load()
 
     def _delete(self, path: str):
-        if not widgets.confirm(self, "Delete", f'Move "{os.path.basename(path)}" to the Recycle Bin?',
+        if not widgets.confirm(self, "Delete", f'Move "{os.path.basename(path)}" to the Trash?',
                                yes="Delete", danger=True):
             return
         err = recycle(path)
@@ -629,6 +936,11 @@ class SnippetsView(QWidget):
 
     def teardown(self):
         self.stop()
+        self._hide_preview()
+
+    def hideEvent(self, e):
+        self._hide_preview()
+        super().hideEvent(e)
 
     def on_show(self):
         root = os.path.normpath(self.m.s("base_path", ""))
@@ -754,20 +1066,90 @@ class SnippetsModule(Module):
     def _meta_path(self) -> str:
         return os.path.join(self.s("base_path", ""), ".luminescent.json")
 
-    def folder_colours(self) -> dict:
+    def _meta(self) -> dict:
         d = load_json(self._meta_path(), {})
-        cols = d.get("folder_colours", {}) if isinstance(d, dict) else {}
-        root = self.s("base_path", "")
-        return {os.path.normcase(os.path.join(root, k)): v for k, v in cols.items()}
+        return d if isinstance(d, dict) else {}
 
-    def set_folder_colour(self, path: str, colour: str):
-        d = load_json(self._meta_path(), {})
-        d = d if isinstance(d, dict) else {}
-        d.setdefault("folder_colours", {})[os.path.relpath(path, self.s("base_path", ""))] = colour
+    def _save_meta(self, d: dict):
         try:
             save_json(self._meta_path(), d, indent=2)
         except OSError as e:
-            self.ctx.notify(self.title, f"Could not save the folder colour: {e}")
+            self.ctx.notify(self.title, f"Could not save the clipboard folder's settings: {e}")
+
+    def _rel(self, path: str) -> str:
+        return os.path.relpath(path, self.s("base_path", ""))
+
+    def _abs(self, rel: str) -> str:
+        return os.path.normpath(os.path.join(self.s("base_path", ""), rel))
+
+    def folder_colours(self) -> dict:
+        cols = self._meta().get("folder_colours", {})
+        return {os.path.normcase(self._abs(k)): v for k, v in cols.items()} if isinstance(cols, dict) else {}
+
+    def set_folder_colour(self, path: str, colour: str):
+        d = self._meta()
+        d.setdefault("folder_colours", {})[self._rel(path)] = colour
+        self._save_meta(d)
+
+    def favourites(self) -> list[str]:
+        favs = self._meta().get("favourites", [])
+        return [self._abs(f) for f in favs if isinstance(f, str)] if isinstance(favs, list) else []
+
+    def set_favourite(self, path: str, on: bool, before: str = ""):
+        d = self._meta()
+        favs = [f for f in d.get("favourites", []) if isinstance(f, str) and f != self._rel(path)]
+        if on:
+            rel_before = self._rel(before) if before else ""
+            favs.insert(favs.index(rel_before) if rel_before in favs else len(favs), self._rel(path))
+        d["favourites"] = favs
+        self._save_meta(d)
+
+    def reorder_favourite(self, path: str, before: str):
+        self.set_favourite(path, True, before)
+
+    def order_of(self, folder: str) -> list[str]:
+        order = self._meta().get("order", {})
+        names = order.get(self._rel(folder), []) if isinstance(order, dict) else []
+        return [n for n in names if isinstance(n, str)]
+
+    def place_before(self, path: str, before: str):
+        """Put clip `path` just before `before` in their folder's order."""
+        folder = os.path.dirname(before)
+        try:
+            names = [n for n in os.listdir(folder) if not n.startswith(".") and not os.path.isdir(os.path.join(folder, n))]
+        except OSError:
+            return
+        known = {n: i for i, n in enumerate(self.order_of(folder))}
+        names.sort(key=lambda n: (known.get(n, len(known)), n.lower()))
+        me, target = os.path.basename(path), os.path.basename(before)
+        if me in names:
+            names.remove(me)
+        names.insert(names.index(target) if target in names else len(names), me)
+        d = self._meta()
+        d.setdefault("order", {})[self._rel(folder)] = names
+        self._save_meta(d)
+
+    def path_moved(self, old: str, new: str):
+        """A clip or folder was moved or renamed: keep its favourite, colour and place."""
+        d = self._meta()
+        ro, rn = self._rel(old), self._rel(new)
+        favs = d.get("favourites", [])
+        if isinstance(favs, list):
+            d["favourites"] = [rn + f[len(ro):] if f == ro or f.startswith(ro + os.sep) else f for f in favs]
+        cols = d.get("folder_colours", {})
+        if isinstance(cols, dict):
+            d["folder_colours"] = {(rn + k[len(ro):] if k == ro or k.startswith(ro + os.sep) else k): v
+                                   for k, v in cols.items()}
+        order = d.get("order", {})
+        if isinstance(order, dict):
+            folder = self._rel(os.path.dirname(old))
+            if folder in order and os.path.basename(old) in order[folder]:
+                names = order[folder]
+                if os.path.dirname(old) == os.path.dirname(new):
+                    names[names.index(os.path.basename(old))] = os.path.basename(new)
+                else:
+                    names.remove(os.path.basename(old))
+        self._save_meta(d)
 
     # ── clipboard → file ───────────────────────────────────────────────────
     def save_clipboard(self, folder: str) -> tuple[str, list[str]]:

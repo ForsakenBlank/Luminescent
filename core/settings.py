@@ -285,7 +285,8 @@ SCHEMA = [
             "sums (e.g. pin 950*12 as rent, then type rent/4).", [
         Field("enabled", "Enable Calculator", "bool", True),
         Field("hotkey", "Show / hide hotkey", "hotkey", "ctrl+alt+=",
-              "Tip: Enter calculates, ↑/↓ walk through history, Ctrl+C with an empty box copies the last result."),
+              "Tip: Enter calculates, Ctrl+Enter calculates, copies and closes, ↑/↓ walk through history. "
+                   "Try 5 km to mi, 20 usd to eur, today + 45 days or 0xff."),
         Field("bg_opacity", "Panel opacity", "opacity", 0.92),
         Field("decimals", "Maximum decimal places", "int", 10, min=0, max=15),
         Field("thousands", "Show thousands separators (1,234,567)", "bool", True),

@@ -339,8 +339,8 @@ class TimerPanel(widgets.FloatingPanel):
         label = self.cfg.get("label") or ("Timer" if self.mode == "timer" else "Stopwatch")
         if self.mode == "timer":
             left = self.duration_ms - self.elapsed_ms()
-            return f"{label} — {'DONE' if self._finished else fmt_ms(left, False) + ' left'}"
-        return f"{label} — {fmt_ms(self.elapsed_ms(), False)}"
+            return f"{label}: {'DONE' if self._finished else fmt_ms(left, False) + ' left'}"
+        return f"{label}: {fmt_ms(self.elapsed_ms(), False)}"
 
     # ── laps ───────────────────────────────────────────────────────────────
     def lap(self):
@@ -390,7 +390,7 @@ class TimerPanel(widgets.FloatingPanel):
         self.time_label.setProperty("tone", "accent2" if done else "primary")
         self.time_label.style().unpolish(self.time_label)
         self.time_label.style().polish(self.time_label)
-        self.set_title(self._title_text() + ("  —  DONE" if done else ""))
+        self.set_title(self._title_text() + ("  ·  DONE" if done else ""))
 
     # ── controls ───────────────────────────────────────────────────────────
     def _log_run(self):

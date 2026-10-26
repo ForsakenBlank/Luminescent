@@ -93,10 +93,10 @@ class TodayPage(QWidget):
         tools = [e for e in entries if e.get("kind") == "tool"]
         timed = sum(float(e.get("secs") or 0) for e in entries if e.get("kind") == "timer")
         widgets.clear_layout(self.summary)
-        first = entries[0]["t"][11:16] if entries else "—"
-        last = entries[-1]["t"][11:16] if entries else "—"
+        first = entries[0]["t"][11:16] if entries else "-"
+        last = entries[-1]["t"][11:16] if entries else "-"
         for value, label in ((str(len(runs)), "things run"), (fmt_secs(timed) if timed else "0m", "on timers"),
-                             (str(len(tools)), "tools used"), (f"{first}–{last}" if entries else "—", "first to last")):
+                             (str(len(tools)), "tools used"), (f"{first} to {last}" if entries else "-", "first to last")):
             self.summary.addWidget(self._chip(value, label))
         self.summary.addStretch()
 
@@ -152,7 +152,7 @@ class TodayPage(QWidget):
             r.addWidget(widgets.label(f"×{n}", 11, mono=True, tone="muted"))
             self.top.addLayout(r)
         if not counts:
-            self.top.addWidget(widgets.label("—", 12, tone="muted"))
+            self.top.addWidget(widgets.label("-", 12, tone="muted"))
 
     def on_show(self):
         usage.flush()

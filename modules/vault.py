@@ -3,6 +3,9 @@ Ghost Vault UI. Storage/crypto lives in vault_store.py.
 
 The vault runs as your normal user. If the configured folder is not writable
 you get a clear message pointing at Settings → Ghost Vault.
+
+The search box finds names anywhere in the vault (names only: the contents stay encrypted).
+Pictures get thumbnails, decrypted in memory on a worker thread and never written to disk.
 """
 from pathlib import Path
 
@@ -10,8 +13,8 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QLineEdit,
     QFileDialog, QProgressBar, QScrollArea, QGridLayout, QDialog, QMessageBox
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer, QPoint, QMimeData
-from PyQt6.QtGui import QFont, QDrag
+from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer, QPoint, QMimeData, QBuffer, QByteArray, QSize
+from PyQt6.QtGui import QFont, QDrag, QImage, QImageReader, QPixmap
 
 from core import theme, widgets, runner, clip
 from core.module import Module
@@ -22,6 +25,44 @@ OPENABLE = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".mp4", ".mov", ".
 ICONS = {".png": "🖼️", ".jpg": "🖼️", ".jpeg": "🖼️", ".gif": "🖼️", ".webp": "🖼️", ".mp4": "🎬", ".mov": "🎬",
          ".avi": "🎬", ".mkv": "🎬", ".mp3": "🎵", ".wav": "🎵", ".flac": "🎵", ".pdf": "📕", ".txt": "📝",
          ".py": "🐍", ".zip": "🗜️", ".rar": "🗜️", ".7z": "🗜️"}
+
+
+THUMB_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+THUMB_PX = 40
+
+
+class ThumbLoader(QThread):
+    """Decrypts pictures in memory and shrinks them to thumbnails. Emits (name, QImage)."""
+    ready = pyqtSignal(str, QImage)
+
+    def __init__(self, store: VaultStore, path: list[str], names: list[str]):
+        super().__init__()
+        self.store, self.path, self.names = store, list(path), names
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+
+    def run(self):
+        for name in self.names:
+            if self._stop:
+                return
+            try:
+                data = self.store.read_bytes(self.path, name)
+                buf = QBuffer()
+                buf.setData(QByteArray(data))
+                buf.open(QBuffer.OpenModeFlag.ReadOnly)
+                r = QImageReader(buf)
+                r.setAutoTransform(True)
+                if r.size().isValid():
+                    r.setScaledSize(r.size().scaled(QSize(THUMB_PX * 2, THUMB_PX * 2),
+                                                    Qt.AspectRatioMode.KeepAspectRatioByExpanding))
+                img = r.read()
+                del data
+                if not img.isNull() and not self._stop:
+                    self.ready.emit(name, img)
+            except Exception:
+                continue
 
 
 # ── dialogs ───────────────────────────────────────────────────────────────────
@@ -206,7 +247,7 @@ class FileCard(QFrame):
     double_clicked = pyqtSignal(str)
     dropped_onto = pyqtSignal(str, str)   # (dragged name, this folder name)
 
-    def __init__(self, name: str, is_dir: bool, unlocked_copy: bool = False, is_up: bool = False):
+    def __init__(self, name: str, is_dir: bool, unlocked_copy: bool = False, is_up: bool = False, where: str = ""):
         super().__init__()
         self.name = name
         self.is_dir = is_dir
@@ -220,14 +261,25 @@ class FileCard(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(10, 0, 8, 0)
         lay.setSpacing(8)
-        icon = QLabel("⬆" if is_up else ("📁" if is_dir else ICONS.get(Path(name).suffix.lower(), "📄")))
-        icon.setStyleSheet("border: none; font-size: 18px;")
+        self.icon = QLabel("⬆" if is_up else ("📁" if is_dir else ICONS.get(Path(name).suffix.lower(), "📄")))
+        self.icon.setStyleSheet("border: none; font-size: 18px;")
+        self.icon.setFixedSize(THUMB_PX, THUMB_PX)
+        self.icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label = QLabel(".. (up)" if is_up else name)
         label.setFont(QFont(theme.P.font_family, 10))
         label.setStyleSheet("border: none;")
-        label.setToolTip(name)
-        lay.addWidget(icon)
-        lay.addWidget(label, 1)
+        label.setToolTip(f"{where}/{name}" if where else name)
+        lay.addWidget(self.icon)
+        if where:
+            col = QVBoxLayout()
+            col.setSpacing(0)
+            col.addWidget(label)
+            w = QLabel(f"in {where}")
+            w.setStyleSheet(f"border: none; color: {theme.P.text_muted}; font-size: 10px;")
+            col.addWidget(w)
+            lay.addLayout(col, 1)
+        else:
+            lay.addWidget(label, 1)
         if not is_dir:
             lock = QLabel("🔓" if unlocked_copy else "🔒")
             lock.setToolTip("A decrypted copy exists on disk" if unlocked_copy else "Encrypted")
@@ -235,6 +287,12 @@ class FileCard(QFrame):
             lay.addWidget(lock)
         for w in self.findChildren(QLabel):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def set_thumb(self, img: QImage):
+        px = QPixmap.fromImage(img).scaled(THUMB_PX, THUMB_PX, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                           Qt.TransformationMode.SmoothTransformation)
+        x, y = (px.width() - THUMB_PX) // 2, (px.height() - THUMB_PX) // 2
+        self.icon.setPixmap(px.copy(x, y, THUMB_PX, THUMB_PX))
 
     def _style(self, sel: bool, hover_drop: bool = False):
         p = theme.P
@@ -302,6 +360,8 @@ class VaultWindow(widgets.FloatingPanel):
         self.selected: set[str] = set()
         self.cards: dict[str, FileCard] = {}
         self._worker: Worker | None = None
+        self._thumbs: ThumbLoader | None = None
+        self._thumb_cache: dict[str, QImage] = {}        # blob -> thumbnail, memory only, gone when the vault locks
         self._closing = False
         self._close_pending = False
 
@@ -322,9 +382,17 @@ class VaultWindow(widgets.FloatingPanel):
         self.bc = QFrame()
         self.bc.setFixedHeight(34)
         widgets.style(self.bc, f"background: {theme.P.bg_frame}; border: none; border-bottom: 1px solid {theme.P.border};")
-        self.bc_layout = QHBoxLayout(self.bc)
-        self.bc_layout.setContentsMargins(12, 0, 12, 0)
+        bc_row = QHBoxLayout(self.bc)
+        bc_row.setContentsMargins(12, 0, 8, 0)
+        self.bc_layout = QHBoxLayout()
         self.bc_layout.setSpacing(4)
+        bc_row.addLayout(self.bc_layout, 1)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search the vault")
+        self.search.setClearButtonEnabled(True)
+        self.search.setFixedSize(220, 26)
+        self.search.textChanged.connect(lambda _t: (self.touch(), self.reload()))
+        bc_row.addWidget(self.search)
         self.body.addWidget(self.bc)
 
         # grid + drop zone
@@ -425,6 +493,7 @@ class VaultWindow(widgets.FloatingPanel):
         super().mousePressEvent(e)
 
     def reload(self):
+        self._stop_thumbs()
         widgets.clear_layout(self.grid)
         self.cards = {}
         self.selected = set()
@@ -438,6 +507,23 @@ class VaultWindow(widgets.FloatingPanel):
             col += 1
             if col >= 4:
                 col, row = 0, row + 1
+
+        query = self.search.text().strip()
+        if query:
+            found = self.store.find(query)
+            for path, name, is_dir in found:
+                card = FileCard(name, is_dir, where="/".join(path) or "the top")
+                card.left_clicked.connect(lambda _n, p=path, n=name: self._reveal(p, n))
+                card.double_clicked.connect(lambda _n, p=path, n=name, d=is_dir: self._reveal(p, n, open_it=True))
+                place(card)
+            if not found:
+                e = QLabel(f'Nothing in the vault is called anything like "{query}".')
+                e.setStyleSheet(f"color: {theme.P.text_muted}; border: none;")
+                self.grid.addWidget(e, 0, 0, 1, 4)
+            self.drop.hide()
+            self._update_buttons()
+            return
+        self.drop.show()
 
         if self.path:
             up = FileCard("..", True, is_up=True)
@@ -458,6 +544,54 @@ class VaultWindow(widgets.FloatingPanel):
             e.setStyleSheet(f"color: {theme.P.text_muted}; border: none;")
             self.grid.addWidget(e, 0, 0, 1, 4)
         self._update_buttons()
+        self._load_thumbs(node)
+
+    # ── search and thumbnails ──────────────────────────────────────────────
+    def _reveal(self, path: list[str], name: str, open_it: bool = False):
+        """A search result was clicked: go to its folder with it selected (double-click: open it)."""
+        self.search.blockSignals(True)
+        self.search.clear()
+        self.search.blockSignals(False)
+        self._jump(path)
+        if name in self.cards:
+            if open_it:
+                self._double(name)
+            else:
+                self.selected = {name}
+                self.cards[name].set_selected(True)
+                self._update_buttons()
+
+    def _load_thumbs(self, node: dict):
+        if not self.m.s("thumbnails", True):
+            return
+        todo = []
+        for name, val in node.items():
+            if isinstance(val, str) and Path(name).suffix.lower() in THUMB_EXT and name in self.cards:
+                if val in self._thumb_cache:
+                    self.cards[name].set_thumb(self._thumb_cache[val])
+                else:
+                    todo.append(name)
+        if todo:
+            self._thumbs = ThumbLoader(self.store, self.path, todo)
+            self._thumbs.ready.connect(self._thumb_ready)
+            self._thumbs.start()
+
+    def _thumb_ready(self, name: str, img: QImage):
+        try:
+            blob = self.store.node(self.path).get(name)
+        except Exception:
+            return
+        if isinstance(blob, str):
+            self._thumb_cache[blob] = img
+        card = self.cards.get(name)
+        if card is not None:
+            card.set_thumb(img)
+
+    def _stop_thumbs(self):
+        if self._thumbs is not None:
+            self._thumbs.stop()
+            self._thumbs.wait(2000)
+            self._thumbs = None
 
     def _breadcrumb(self):
         widgets.clear_layout(self.bc_layout)
@@ -787,6 +921,8 @@ class VaultWindow(widgets.FloatingPanel):
         self._lock_timer.stop()
         self._countdown.stop()
         self._dim.close()
+        self._stop_thumbs()                       # it reads with the key that lock() wipes
+        self._thumb_cache.clear()
         self.store.lock()
         self.m.window_closed(self)
         super().closeEvent(e)

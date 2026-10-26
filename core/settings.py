@@ -348,6 +348,8 @@ SCHEMA = [
               os.path.join(os.path.expanduser("~"), "Documents", "VaultDecrypted")),
         Field("lock_minutes", "Auto-lock after (minutes of inactivity)", "int", 5, min=1, max=240),
         Field("secure_delete_passes", "Overwrite passes on secure delete", "int", 3, min=1, max=10),
+        Field("thumbnails", "Show picture thumbnails", "bool", True,
+              "Pictures are decrypted in memory only to draw their thumbnail; nothing is written to disk."),
     ]),
 
     Section("metadata", "Metadata Stripper", "🧹", "View and remove metadata from images and videos.", [

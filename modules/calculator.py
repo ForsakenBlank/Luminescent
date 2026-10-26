@@ -253,7 +253,7 @@ class CalcPanel(widgets.FloatingPanel):
                          drag_needs_edit_mode=False, close_hides=True)
         self.base_btn = widgets.button("DEC", "ghost", "Show whole-number results in decimal, hex, binary or octal")
         self.base_btn.setFixedHeight(24)
-        self.base_btn.setStyleSheet("QPushButton { padding: 0 6px; font-size: 10px; }")
+        self.base_btn.setStyleSheet(f"QPushButton {{ padding: 0 6px; font-size: {theme.fs(10)}px; }}")
         self.base_btn.setFont(theme.qfont(10, 600, mono=True))
         self.base_btn.clicked.connect(self._next_base)
         self.header_right.addWidget(self.base_btn)
@@ -303,7 +303,7 @@ class CalcPanel(widgets.FloatingPanel):
         self.input.setPlaceholderText("12*4.5 + 10%")
         self.input.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.input.setFont(theme.qfont(26, 500, mono=True))
-        self.input.setStyleSheet("QLineEdit { background: transparent; border: none; padding: 0; font-size: 26px; }")
+        self.input.setStyleSheet(f"QLineEdit {{ background: transparent; border: none; padding: 0; font-size: {theme.fs(26)}px; }}")
         self.input.textChanged.connect(self._live)
         self.input.installEventFilter(self)
         disp.addWidget(self.input)
@@ -323,7 +323,7 @@ class CalcPanel(widgets.FloatingPanel):
         if embedded:
             self.close_btn.hide()
             self.input.setFont(theme.qfont(32, 500, mono=True))
-            self.input.setStyleSheet("QLineEdit { background: transparent; border: none; padding: 0; font-size: 32px; }")
+            self.input.setStyleSheet(f"QLineEdit {{ background: transparent; border: none; padding: 0; font-size: {theme.fs(32)}px; }}")
         else:
             self.geometry_changed.connect(m.schedule_save)
         self.escape_pressed.connect(self._escape)
@@ -354,7 +354,7 @@ class CalcPanel(widgets.FloatingPanel):
                     bg, fg, hover = p.bg_card, p.text_primary, p.bg_card_hover
                 fam = ' font-family: "Segoe UI Symbol";' if k == "⌫" else ""   # Geist Mono has no ⌫
                 b.setStyleSheet(f"QPushButton {{ background: {bg}; color: {fg}; border: none; border-radius: 6px;"
-                                f" padding: 0; font-size: 13px; font-weight: 500;{fam} }}"
+                                f" padding: 0; font-size: {theme.fs(13)}px; font-weight: 500;{fam} }}"
                                 f"QPushButton:hover {{ background: {hover}; }}")
                 b.clicked.connect(lambda _, key=k: self._key(key))
                 g.addWidget(b, r, c)

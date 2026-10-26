@@ -20,8 +20,10 @@ The [Releases page](https://github.com/ForsakenBlank/Luminescent/releases/latest
 A download starts completely fresh. Your settings, notes, timers, themes and the rest live in your own data
 folder, not next to the program: `~/.local/share/Luminescent` on Linux, `%LOCALAPPDATA%\Luminescent` on Windows.
 
-**Updating**: Luminescent tells you when a new version is out (tray → Update available). Download it and replace the
-old program folder with the new one: your data folder is not touched, so everything is still there.
+**Updating**: Luminescent tells you when a new version is out. Tray → **Update now** downloads it, swaps it in and
+restarts (also in the command palette: "Update Luminescent now"). Your data folder is not touched, so everything is
+still there, and a short "what is new" message shows after the restart. If the program folder is read-only, the
+release page opens instead and you replace the folder by hand.
 
 ## Run it from source
 
@@ -41,8 +43,9 @@ is written to your config), and Hyprland places its windows, so it needs Hyprlan
 windows work but there are no global hotkeys. Optional system packages are listed at the end of requirements.txt
 (Tesseract for Text Grab, ffmpeg for video metadata, playerctl for Media Controls).
 
-After pulling a new version, install the requirements once more (`.venv/bin/pip install -r requirements.txt`, or
-`.venv\Scripts\pip install -r requirements.txt` on Windows).
+Tray → **Update now** works here too: it runs `git pull` and installs the requirements, then restarts. By hand:
+`git pull`, then `.venv/bin/pip install -r requirements.txt` (`.venv\Scripts\pip install -r requirements.txt` on
+Windows).
 
 A few things are Linux-only: the Keybinds panel can edit Hyprland binds (on Windows it lists Luminescent's hotkeys),
 the frosted overlay background, and apps opening above the overlay. "Super" in hotkeys is the Windows key.
@@ -74,7 +77,8 @@ closes the overlay. **Quit everything** lives in Settings → General.
 `Ctrl+1…9` switch pages. Start typing on the Dashboard or Themes page and the command palette opens with what you
 typed. The top-left corner shows the time, running timers, the Hearing Guard level and the next reminder. Settings →
 Overlay & Interface picks the pages in the navigation bar (Notes, Timers, Calculator, Today and Usage can be added),
-the screen it opens on and the frosted background.
+the screen it opens on, the frosted background, the **Text size** (85% to 150%, every panel, page and menu) and
+whether it opens on the page you were on last.
 
 * **Dashboard**: movable "tab boxes" on every screen. `＋ Add` → **Tab of items**, name it (Scripts, Games, Work…),
   right-click its header →
@@ -129,12 +133,17 @@ the screen it opens on and the frosted background.
   * **Triggers**: Every N seconds, At a time of day (16:00, weekdays…), On a date (3 October 2028), Hotkey,
     Button (▶ on the node, the command palette or the tray), Luminescent events (started, overlay opened, theme
     changed, a timer finished, a reminder, Hearing Guard over the limit…), a program starts or stops, a file or
-    folder changes, the clipboard changes, idle / back, CPU / memory / battery over or under a line.
+    folder changes, the clipboard changes, idle / back, CPU / GPU load, CPU / GPU temperature, memory or battery over or under a line, a window gets
+    the focus, the internet goes away or comes back.
   * **Actions**: Run command, Open a program / file / URL, Close a program, any Luminescent tool, open or close a
     page, run a dashboard item, switch dashboard or theme, start a timer, a notification, a big message, **Ask me**
     (a box pops up, what you type goes on), play a sound, say it out loud, type text, press keys, copy to the
     clipboard, web requests (Discord webhooks, APIs), download a file, copy / move / delete files, write to a file,
-    set a variable, switch a workspace on or off, and Show (see what a wire carries).
+    set a variable, switch a workspace on or off, **Set wallpaper** (a picture, GIF or video, or the next / a
+    random one from a folder: wire a timer to it for a slideshow), **Volume** (set, up, down, mute), **Lock /
+    sleep / shut down**, **Keep awake** on / off, **Open a note**, **Warning on screen** (a big warning in the
+    middle of the screen, above everything, until you click Got it) and Show (see what a wire carries).
+    Example: **CPU / GPU / temperature** (CPU temperature above 80 °C for 10 s) → **Warning on screen**.
   * **Logic**: Wait, If (contains, equals, regex, > <…), Gate, Count, Only once, Cooldown, Sequence, Take turns,
     Random chance, Repeat. **Values**: Text, Number, Variable, Join text, Maths, Date / time, Clipboard text, Read a
     file, Replace text, Change text (upper case, first line, length…), Random number. And a **Note** to write on.
@@ -171,6 +180,7 @@ the screen it opens on and the frosted background.
 | Screen ruler | `Ctrl+Alt+R` | Drag to measure. Shift keeps it level, click copies W×H |
 | Media, QR code, System monitor | (set in Settings) | Also in the command palette and the tray |
 | Automation | (set in Settings) | Pause / resume every automation |
+| Keep awake | (set in Settings → General) | The PC does not sleep while it is on. Also in the tray and the palette |
 | Quit | `Ctrl+U` | Quit everything (asks first) |
 
 Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never flash the drawing on.
@@ -218,6 +228,9 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   snapped). The undo hotkey puts it back into the tiling layout (Linux) or where it was (Windows).
 * **Screen Ruler**, **Media Controls** (any MPRIS player, needs `playerctl`), **QR Code** (the clipboard as a QR code;
   copy it as a picture or save PNG / SVG) and **System Monitor** (CPU, RAM, GPU, network with a minute of history).
+* **Wallpapers**: themes and the Set wallpaper node use Noctalia, swww (which plays GIFs), hyprpaper or swaybg on
+  Linux, mpvpaper for videos, and Windows' own setting on Windows. Settings → Overlay & Interface → **Wallpaper
+  command** hands the file to your own tool instead (`mytool set {file}`).
 * **Your own terminal**: Settings → Overlay & Interface → "Your own terminal follows the theme too" adds one
   include line to kitty.conf on Linux (it asks first and keeps a backup), or gives your Windows Terminal profiles the
   Luminescent colours on Windows.

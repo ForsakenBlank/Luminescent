@@ -1126,7 +1126,7 @@ class HearingPanel(widgets.FloatingPanel):
         seg.setObjectName("segBox")
         seg.setStyleSheet(f"#segBox {{ background: {p.bg_frame}; border: 1px solid {p.border}; border-radius: 15px; }}"
                           f"#segBox QPushButton {{ background: transparent; border: none; border-radius: 12px;"
-                          f" padding: 5px 12px; color: {p.text_muted}; font-size: 12px; }}"
+                          f" padding: 5px 12px; color: {p.text_muted}; font-size: {theme.fs(12)}px; }}"
                           f"#segBox QPushButton:checked {{ background: {p.bg_card}; color: {p.text_primary}; }}")
         sl = QHBoxLayout(seg)
         sl.setContentsMargins(2, 2, 2, 2)
@@ -1151,7 +1151,7 @@ class HearingPanel(widgets.FloatingPanel):
         ctl.addWidget(self.limit_label)
         ctl.addStretch()
         cal = widgets.button("Calibrate…", "ghost")
-        cal.setStyleSheet("QPushButton { font-size: 12px; padding: 4px 6px; }")
+        cal.setStyleSheet(f"QPushButton {{ font-size: {theme.fs(12)}px; padding: 4px 6px; }}")
         cal.clicked.connect(lambda: CalibrateDialog(m, self).exec())
         ctl.addWidget(cal)
         body.addLayout(ctl)

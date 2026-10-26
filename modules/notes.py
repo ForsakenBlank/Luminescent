@@ -87,7 +87,7 @@ def markdown_view(font_px: int) -> QTextBrowser:
     p = theme.P
     view.setStyleSheet(f"""
         QTextBrowser {{ background: transparent; border: none; padding: 12px 14px;
-                        font-size: {font_px}px; color: {p.text_primary}; }}
+                        font-size: {theme.fs(font_px)}px; color: {p.text_primary}; }}
     """)
     view.document().setDefaultStyleSheet(f"a {{ color: {p.primary_text}; }} code {{ background: {p.bg_card}; }}")
     return view
@@ -155,7 +155,7 @@ class TodoItem(QFrame):
         self.check.setStyleSheet(
             f"QPushButton {{ background: {p.primary if on else 'transparent'}; color: {p.on_primary};"
             f" border: 2px solid {p.primary if on else p.text_muted}; border-radius: 4px; padding: 0;"
-            f" font-size: 10px; font-weight: 600; }}"
+            f" font-size: {theme.fs(10)}px; font-weight: 600; }}"
             f"QPushButton:hover {{ border-color: {p.primary}; }}"
         )
         f = theme.qfont(self._font_size + 1)
@@ -252,7 +252,7 @@ class TodoList(QWidget):
         rl.addWidget(self.input, 1)
         if not compact:
             clear_done = widgets.button("Clear done", "ghost", "Remove completed items")
-            clear_done.setStyleSheet("QPushButton { font-size: 12px; padding: 4px 6px; }")
+            clear_done.setStyleSheet(f"QPushButton {{ font-size: {theme.fs(12)}px; padding: 4px 6px; }}")
             clear_done.clicked.connect(self.clear_done)
             rl.addWidget(clear_done)
         outer.addWidget(row)
@@ -386,7 +386,7 @@ class StickyNote(widgets.FloatingPanel):
             ed = QTextEdit()
             ed.setPlaceholderText("Start typing…")
             ed.setStyleSheet(f"QTextEdit {{ background: transparent; border: none; padding: 10px 12px;"
-                             f" font-size: {font}px; color: {theme.P.text_primary}; }}")
+                             f" font-size: {theme.fs(font)}px; color: {theme.P.text_primary}; }}")
             ed.setPlainText(self.note.get("content", ""))
             ed.textChanged.connect(lambda: self._typed(ed))
             self._view = ed
@@ -770,7 +770,7 @@ class NotePanel(widgets.FloatingPanel):
                                                  if self.m.s("markdown", True) else ""))
         ed.setStyleSheet(f"""
             QTextEdit {{ background: transparent; border: none; padding: 12px 14px;
-                         font-size: {font}px; color: {p.text_primary}; }}
+                         font-size: {theme.fs(font)}px; color: {p.text_primary}; }}
         """)
         ed.setPlainText(note.get("content", ""))
         ed.textChanged.connect(self._editor_changed)
@@ -1162,7 +1162,7 @@ class NotesPage(QWidget):
             ed.setAcceptRichText(False)
             ed.setPlaceholderText("Start typing…")
             ed.setStyleSheet(f"QTextEdit {{ background: transparent; border: none; padding: 8px 18px;"
-                             f" font-size: {font}px; color: {theme.P.text_primary}; }}")
+                             f" font-size: {theme.fs(font)}px; color: {theme.P.text_primary}; }}")
             ed.setPlainText(note.get("content", ""))
             ed.textChanged.connect(lambda: self._typed(ed))
             self._view = ed

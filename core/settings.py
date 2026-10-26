@@ -34,6 +34,7 @@ DEFAULT_PROFILE = "default"
 
 # Field types understood by settings_ui:
 #   hotkey  text  dir  file  int  float  opacity  bool  color  choice  custom  widget (not stored)
+#   hidden (stored, but not shown on the Settings page)
 @dataclass
 class Field:
     key: str
@@ -94,7 +95,7 @@ START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard"), ("sysmon", "Sy
 TRAY_ITEMS = [("open", "Open Luminescent"), ("palette", "Command palette"), ("dashboard", "Dashboard items"),
               ("automation", "Automation (pause, buttons, workspaces)"),
               ("modules", "Modules submenu"), ("actions", "Module actions (Snippets, Notes, Calculator…)"),
-              ("colours", "Recent colours"), ("reset", "Reset stuck keys"), ("settings", "Settings"),
+              ("colours", "Recent colours"), ("keepawake", "Keep awake"), ("reset", "Reset stuck keys"), ("settings", "Settings"),
               ("log", "Open log file"), ("restart", "Restart"), ("quit", "Quit")]
 
 
@@ -126,7 +127,13 @@ SCHEMA = [
               "show it with the sparkle icon.",
               "A Luminescent shortcut in your Start menu, so Start and search find it.")),
         Field("check_updates", "Tell me when a new version is out", "bool", True,
-              "Asks GitHub once a day. Updating keeps your notes and settings."),
+              "Asks GitHub once a day. Tray → Update now downloads it, installs it and restarts; your notes and "
+              "settings are kept."),
+        Field("whats_new", "Show what is new after an update", "bool", True),
+        Field("seen_version", "", "hidden", ""),
+        Field("keep_awake_hotkey", "Keep awake on / off hotkey", "hotkey", "",
+              "Stops the screen going dark and the PC going to sleep until you turn it off again (also in the tray, "
+              "the command palette and the Automation \"Keep awake\" node)."),
         Field("auto_backup", "Back up automatically once a week", "bool", True,
               "Zips your setup into data/backups (weekly-….zip) and keeps the last 5."),
         Field("pass_keys", "Hotkeys also reach the app you are in", "bool", True, _os(
@@ -157,6 +164,13 @@ SCHEMA = [
         Field("nav_order", "Navigation bar", "custom", [k for k, _ in NAV_SECTIONS],
               "Tick the pages you want in the bar and put them in order. Ctrl+1…9 switch pages while the overlay "
               "is open. Notes, Timers and Calculator pages are the same notes, timers and history as the panels."),
+        Field("text_scale", "Text size", "choice", 1.0,
+              "Makes the text in every panel, page, menu and pop-up bigger or smaller.", restart=True,
+              choices=[(0.85, "Small (85%)"), (1.0, "Normal (100%)"), (1.1, "Large (110%)"),
+                       (1.2, "Larger (120%)"), (1.35, "Huge (135%)"), (1.5, "Biggest (150%)")]),
+        Field("remember_page", "Open on the page I was on last", "bool", False,
+              "Off: the overlay always opens on the Dashboard."),
+        Field("last_page", "", "hidden", "dashboard"),
         Field("overlay_screen", "Open the overlay on", "choice", "primary",
               choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")]),
         Field("type_to_search", "Type anywhere on the overlay to search", "bool", True,
@@ -185,6 +199,11 @@ SCHEMA = [
               "Only needed if themes use Wallpaper Engine projects and linux-wallpaperengine is not on PATH.",
               "Only needed if themes use Wallpaper Engine projects and Steam's copy is not found by itself."),
               file_filter=_os("All files (*)", "Programs (*.exe);;All files (*)")),
+        Field("wallpaper_command", "Wallpaper command (optional)", "text", "",
+              "Your own command for changing the wallpaper, used by themes and the Automation \"Set wallpaper\" "
+              "node instead of the built-in ones. {file} is the picture or video, e.g. mytool set {file}. "
+              "Blank: " + _os("Noctalia, swww (plays .gif), hyprpaper or swaybg; videos with mpvpaper.",
+                              "Windows' own wallpaper setting.")),
         Field("terminal_scheme", "Use the Luminescent colours in the terminal", "bool", True,
               _os("kitty, alacritty and foot windows opened by Luminescent get the theme's colours (passed on the "
                   "command line, so your terminal config is not touched).",
@@ -619,6 +638,10 @@ def _migrate(data: dict, saved: dict):
         tray = (saved.get("general") or {}).get("tray_items")
         if isinstance(tray, list) and "automation" not in tray:
             data["general"]["tray_items"] = list(tray) + ["automation"]
+    gen = saved.get("general") or {}
+    if isinstance(gen.get("tray_items"), list) and "keep_awake_hotkey" not in gen \
+            and "keepawake" not in data["general"]["tray_items"]:
+        data["general"]["tray_items"] = list(data["general"]["tray_items"]) + ["keepawake"]
     if "start_panels" not in (saved.get("general") or {}):
         panels = []
         if (saved.get("notes") or {}).get("show_on_start", True):

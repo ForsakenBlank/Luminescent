@@ -111,7 +111,7 @@ class ThemeCard(QFrame):
         check.setAlignment(Qt.AlignmentFlag.AlignCenter)
         if active:
             check.setStyleSheet(f"background: {theme.P.primary}; color: {theme.P.on_primary}; border-radius: 9px;"
-                                f" font-size: 10px;")
+                                f" font-size: {theme.fs(10)}px;")
         row.addWidget(check)
         lay.addLayout(row)
         for w in (img, name, check):

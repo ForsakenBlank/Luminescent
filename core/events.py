@@ -23,6 +23,7 @@ NAMES = [
     ("reminder.fired", "A reminder went off"),
     ("hearing.over_limit", "Hearing Guard: over the limit"),
     ("clipboard.changed", "Clipboard changed"),
+    ("keepawake.changed", "Keep awake turned on or off"),
 ]
 
 

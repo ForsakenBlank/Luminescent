@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QBrush
 
-from core import widgets, hyprbinds, hypr
+from core import widgets, hyprbinds, hypr, theme
 from core import hotkeys as hk
 from core.module import Module
 
@@ -109,7 +109,7 @@ class KeybindsPanel(widgets.FloatingPanel):
         head.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         head.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         head.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.tree.setStyleSheet("QTreeWidget { font-size: 12px; }")
+        self.tree.setStyleSheet(f"QTreeWidget {{ font-size: {theme.fs(12)}px; }}")
         self.tree.itemDoubleClicked.connect(lambda *_: self._open())
         lay.addWidget(self.tree, 1)
 

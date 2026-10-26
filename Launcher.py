@@ -27,7 +27,7 @@ from PyQt6.QtCore import QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
 from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, IS_WIN, VERSION, theme, widgets, autostart, terminal,
-                  wallpaper, hypr, runner, desktop, usage, backup, events)
+                  wallpaper, hypr, runner, desktop, usage, backup, events, keepawake)
 from core.settings import Settings, SCHEMA, ALL_PAGES
 from core.hotkeys import HotkeyManager, pretty
 from core.module import ModuleContext
@@ -76,16 +76,25 @@ class Launcher:
             log.info("migrated values from the old config.py into settings.json")
 
         theme.load_fonts()
+        theme.set_text_scale(self.settings.get("ui.text_scale", 1.0))
+        wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
         self.themes = ThemeStore(self.settings)
         self.themes.use_active()
         self._restyle()
         app.setQuitOnLastWindowClosed(False)
 
         from ui.toast import ToastManager
-        from core.updates import UpdateChecker
+        from core.updates import UpdateChecker, Updater, clean_old
         self.toasts = ToastManager(self.settings)
         self.updates = UpdateChecker()
         self.updates.found.connect(self._update_found)
+        self.updater = Updater()
+        self.updater.progress.connect(lambda msg: self.notify(f"Updating {APP_NAME}", msg, 2500))
+        self.updater.finished.connect(self._update_installed)
+        clean_old()
+        self.keep_awake = keepawake.get()
+        self.keep_awake.changed.connect(lambda _on: (self._build_menu(), self._update_tooltip()))
+        self.keep_awake.changed.connect(lambda on: events.emit("keepawake.changed", "on" if on else "off"))
         self.hotkeys = HotkeyManager()
         self.hotkeys.pass_keys = bool(self.settings.get("general.pass_keys", True))
         terminal.set_preferred(self.settings.get("dashboard.terminal", ""))
@@ -148,7 +157,8 @@ class Launcher:
             self._timers_changed()
 
         app.aboutToQuit.connect(self.shutdown)
-        QTimer.singleShot(3000, self.overlay.prewarm)     # first open of Settings etc. without the wait
+        QTimer.singleShot(3000, self.overlay.prewarm)
+        QTimer.singleShot(4000, self._whats_new)     # first open of Settings etc. without the wait
         if self.settings.migrated_from_old_config:
             QTimer.singleShot(1500, lambda: self.toast(
                 APP_NAME, "Your old config.py settings were imported. Press "
@@ -163,7 +173,7 @@ class Launcher:
     def _restyle(self):
         self.app.setStyleSheet(theme.stylesheet())
         f = QFont(theme.P.font_family)
-        f.setPixelSize(13)              # the global QSS must not set font-size, or setFont() breaks
+        f.setPixelSize(theme.fs(13))    # the global QSS must not set font-size, or setFont() breaks
         self.app.setFont(f)
 
     def _theme_applied(self, t: dict):
@@ -283,6 +293,16 @@ class Launcher:
         self.notify(m.title, f"{m.title} has no action '{aid}' any more.")
 
     def apply_settings(self):
+        if theme.set_text_scale(self.settings.get("ui.text_scale", 1.0)):
+            self._restyle()
+            for key, m in self.modules.items():
+                if m.running:
+                    try:
+                        m.retheme()
+                    except Exception:
+                        log.exception("retheme failed for %s", key)
+            QTimer.singleShot(0, self.overlay.rebuild)
+        wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
         self.hotkeys.unregister_all("launcher")
         self._register_global_hotkeys()
         for key, m in self.modules.items():
@@ -368,9 +388,7 @@ class Launcher:
             return
         log.info("update available: %s", tag)
         self._update_url = url
-        how = ("download it from the release page" if FROZEN or not os.path.isdir(os.path.join(APP_DIR, ".git"))
-               else "run git pull in the Luminescent folder")
-        self.toast(f"{APP_NAME} {tag} is out", f"You have {VERSION}. Tray → Update available, or {how}. "
+        self.toast(f"{APP_NAME} {tag} is out", f"You have {VERSION}. Tray → Update now installs it and restarts. "
                                                "Your notes and settings are kept.")
         self._build_menu()
 
@@ -378,6 +396,60 @@ class Launcher:
         import webbrowser
         from core.updates import PAGE
         webbrowser.open(getattr(self, "_update_url", "") or PAGE)
+
+    def install_update(self):
+        """Tray → Update now: download and install the new version, then restart into it."""
+        from core.updates import can_install, is_git
+        if self.updater.busy:
+            self.notify(APP_NAME, "The update is already on its way.", 2500)
+            return
+        if not self.updates.latest and not is_git():
+            self.notify(APP_NAME, "Checking for a new version…", 2500)
+            self._check_updates(force=True)
+            return
+        if not can_install() or not (self.updates.asset or is_git()):
+            self.notify(APP_NAME, "This copy can not update itself (the folder is read-only or not a download); "
+                                  "opening the release page instead.", 5000)
+            self.open_update_page()
+            return
+        self.notify(f"Updating {APP_NAME}", f"Getting {self.updates.latest or 'the latest version'}…", 3000)
+        self.updater.install(self.updates.asset)
+
+    def _update_installed(self, ok: bool, msg: str):
+        if not ok:
+            log.warning("update failed: %s", msg)
+            self.notify("Update failed", f"{msg}\nYou can download it from the release page instead.", 8000)
+            return
+        if msg:
+            self.notify(APP_NAME, msg, 6000)
+        log.info("update installed, restarting")
+        if FROZEN and IS_WIN:
+            # the helper script swaps the folders once this process is gone and starts the new one
+            self.shutdown()
+            os._exit(0)
+        QTimer.singleShot(1500 if msg else 300, self.restart)
+
+    def toggle_keep_awake(self):
+        err = self.keep_awake.toggle("Turned on from Luminescent")
+        if err:
+            self.notify(APP_NAME, f"Keep awake could not start: {err}")
+        else:
+            self.notify(APP_NAME, "Keep awake is on: the PC will not sleep." if self.keep_awake.on
+                        else "Keep awake is off.", 2500)
+
+    def _whats_new(self):
+        """After an update: what changed, from CHANGELOG.md (once per version)."""
+        seen = self.settings.get("general.seen_version", "")
+        if seen == VERSION:
+            return
+        self.settings.set("general.seen_version", VERSION)
+        self.settings.save_quiet()
+        if not seen or not self.settings.get("general.whats_new", True) or "--smoke" in sys.argv:
+            return                      # a first start has nothing to compare with
+        from core.updates import changes_since
+        text = changes_since(seen)
+        if text:
+            widgets.message(None, f"What is new in {APP_NAME} {VERSION}", text)
 
     def next_theme(self):
         t = self.themes.next_theme()
@@ -395,6 +467,7 @@ class Launcher:
             (s.get("ui.cheatsheet_hotkey", ""), lambda: self.cheatsheet.trigger(s.get("ui.cheatsheet_hotkey", "")),
              "cheat sheet"),
             (s.get("ui.theme_cycle_hotkey", ""), self.next_theme, "next theme"),
+            (s.get("general.keep_awake_hotkey", ""), self.toggle_keep_awake, "keep awake"),
         ]
         from core.settings import NAV_SECTIONS
         for key, _name in NAV_SECTIONS:
@@ -448,6 +521,8 @@ class Launcher:
                              "settings", "settings"))
         for label, fn in (("Next theme", self.next_theme), ("Reset stuck keys", self.reset_keys),
                           ("Check for updates", lambda: self._check_updates(force=True)),
+                          ("Update Luminescent now", self.install_update),
+                          ("Keep awake on / off", self.toggle_keep_awake),
                           ("Show the hotkey cheat sheet", self._cheat_toggle),
                           ("Open the log file", self.open_log), ("Restart Luminescent", self.restart),
                           ("Quit Luminescent…", self.confirm_quit)):
@@ -469,10 +544,11 @@ class Launcher:
         head = menu.addAction(f"{APP_NAME} {VERSION}")
         head.setEnabled(False)
         if self.updates.latest:
-            menu.addAction(f"⬆  Update available: {self.updates.latest}", self.open_update_page)
+            menu.addAction(f"⬆  Update now to {self.updates.latest}", self.install_update)
+            menu.addAction("    What changed (release page)", self.open_update_page)
         if "open" in shown:
             menu.addAction(f"✦  Open {APP_NAME}   ({pretty(self.settings.get('ui.overlay_hotkey', ''))})",
-                           lambda: self.overlay.open("dashboard"))
+                           lambda: self.overlay.open(self.overlay.start_page()))
         if "palette" in shown:
             menu.addAction(f"⌕  Command palette   ({pretty(self.settings.get('ui.palette_hotkey', ''))})",
                            self.open_palette)
@@ -508,6 +584,13 @@ class Launcher:
             if m.running and callable(extra) and "colours" in shown:
                 extra(menu)
         menu.addSeparator()
+        if "keepawake" in shown:
+            ka = QAction("☕  Keep awake" + (f"   ({pretty(self.settings.get('general.keep_awake_hotkey', ''))})"
+                                            if self.settings.get("general.keep_awake_hotkey") else ""), menu,
+                         checkable=True)
+            ka.setChecked(self.keep_awake.on)
+            ka.triggered.connect(lambda _c: self.toggle_keep_awake())
+            menu.addAction(ka)
         if "reset" in shown:
             menu.addAction("⌨  Reset stuck keys", self.reset_keys)
         if "settings" in shown or not shown:
@@ -564,6 +647,8 @@ class Launcher:
     def _update_tooltip(self):
         timer = self.modules.get("timer")
         lines = [APP_NAME]
+        if self.keep_awake.on:
+            lines.append("Keep awake is on")
         if timer and timer.running and self.settings.get("ui.tray_timers", True):
             lines += timer.tooltip_lines()
         text = "\n".join(lines)
@@ -650,6 +735,7 @@ class Launcher:
             except Exception:
                 log.exception("error stopping %s", key)
         self.hotkeys.shutdown()
+        self.keep_awake.shutdown()
         self.tray.hide()
 
 

@@ -692,7 +692,7 @@ class SettingsPage(QWidget):
         root.addLayout(main, 1)
 
         for i, section in enumerate(SCHEMA):
-            b = _SideButton(section.title, sum(1 for f in section.fields if f.type != "widget"))
+            b = _SideButton(section.title, sum(1 for f in section.fields if f.type not in ("widget", "hidden")))
             b.clicked.connect(lambda _, k=i: self._select(k))
             self.side_group.addButton(b)
             shl.addWidget(b)
@@ -799,6 +799,8 @@ class SettingsPage(QWidget):
 
         rows = []
         for f in section.fields:
+            if f.type == "hidden":
+                continue
             w = self._make_widget(section.key, f)
             if f.type != "widget":
                 self._widgets[f"{section.key}.{f.key}"] = (f, w)
@@ -927,7 +929,8 @@ class SettingsPage(QWidget):
         q = text.strip().lower()
         first = -1
         for i, section in enumerate(SCHEMA):
-            hay = " ".join([section.title, section.description] + [f.label + " " + f.help for f in section.fields]).lower()
+            hay = " ".join([section.title, section.description] + [f.label + " " + f.help for f in section.fields
+                                                                   if f.type != "hidden"]).lower()
             hide = bool(q) and q not in hay
             self.side_buttons[i].setHidden(hide)
             if not hide and first < 0:

@@ -267,7 +267,7 @@ class DropArea(QFrame):
         icon.setStyleSheet(f"color: {theme.P.text_muted}; border: none;")
         hint = QLabel("Drop an image, video or a whole folder here, or click to browse")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet(f"color: {theme.P.text_muted}; border: none; font-size: 11px;")
+        hint.setStyleSheet(f"color: {theme.P.text_muted}; border: none; font-size: {theme.fs(11)}px;")
         for w in (icon, hint):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             lay.addWidget(w)
@@ -355,7 +355,7 @@ class MetaPanel(widgets.FloatingPanel):
         self.view = QTextEdit()
         self.view.setReadOnly(True)
         self.view.setPlaceholderText("Metadata will appear here after loading a file…")
-        self.view.setStyleSheet(f"QTextEdit {{ font-family: {theme.MONO_CSS}; font-size: 11px; }}")
+        self.view.setStyleSheet(f"QTextEdit {{ font-family: {theme.MONO_CSS}; font-size: {theme.fs(11)}px; }}")
         body.addWidget(self.view, 1)
 
         self.status = QLabel("")

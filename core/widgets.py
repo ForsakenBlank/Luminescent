@@ -248,7 +248,7 @@ class AnchorBar(QWidget):
 
         if hint:
             lbl = QLabel(hint)
-            lbl.setStyleSheet(f"color: {theme.P.text_secondary}; font-size: 11px; padding-right: 6px;")
+            lbl.setStyleSheet(f"color: {theme.P.text_secondary}; font-size: {theme.fs(11)}px; padding-right: 6px;")
             layout.addWidget(lbl)
 
         for key, icon in ANCHOR_ICONS.items():

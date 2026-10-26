@@ -37,7 +37,7 @@ from datetime import datetime, date, timedelta
 from PyQt6.QtCore import QObject, QTimer, QProcess, QFileSystemWatcher, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
-from core import DATA_DIR, IS_WIN, save_json, load_json, events, runner, clip, sounds, hypr
+from core import DATA_DIR, IS_WIN, save_json, load_json, events, runner, clip, sounds, hypr, system
 
 log = logging.getLogger("automation")
 
@@ -534,7 +534,8 @@ class Watchers(QObject):
     def __init__(self, eng: AutomationEngine):
         super().__init__()
         self.eng = eng
-        self.subs: dict[str, set] = {"proc": set(), "idle": set(), "sys": set(), "clip": set()}
+        self.subs: dict[str, set] = {"proc": set(), "idle": set(), "sys": set(), "clip": set(), "win": set(),
+                                     "net": set()}
         self.timer = QTimer(self)
         self.timer.setInterval(2000)
         self.timer.timeout.connect(self._tick)
@@ -565,9 +566,23 @@ class Watchers(QObject):
             for n in list(self.subs["idle"]):
                 n.check(secs)
         if self.subs["sys"]:
+            want = {n.raw("metric") for n in self.subs["sys"]}
             vals = {"cpu": self.cpu(), "ram": ram_percent(), "battery": battery_percent()}
+            if "cpu_temp" in want:
+                vals["cpu_temp"] = system.cpu_temp()
+            if want & {"gpu", "gpu_temp"}:
+                g = system.gpu.read() or {}
+                vals["gpu"], vals["gpu_temp"] = g.get("load"), g.get("temp")
             for n in list(self.subs["sys"]):
                 n.check(vals)
+        if self.subs["win"]:
+            app, title = system.focused_window()
+            for n in list(self.subs["win"]):
+                n.check(app, title)
+        if self.subs["net"]:
+            up = system.online.read()
+            for n in list(self.subs["net"]):
+                n.check(up)
         if self.subs["clip"] and hypr.wayland():
             # an unfocused Wayland client is not told about clipboard changes: look every two seconds
             self._clip_changed(poll=True)
@@ -1075,13 +1090,20 @@ class IdleTrigger(Node):
             self.fire("back")
 
 
-@node("threshold", "CPU / memory / battery", "trigger", outs=["crossed", "back"], values=["percent"], fields=[
-    F("metric", "Watch", "choice", "cpu", choices=[("cpu", "CPU"), ("ram", "Memory (RAM)"),
-                                                   ("battery", "Battery")]),
+METRICS = [("cpu", "CPU load (%)"), ("cpu_temp", "CPU temperature (°C)"), ("gpu", "GPU load (%)"),
+           ("gpu_temp", "GPU temperature (°C)"), ("ram", "Memory (RAM, %)"), ("battery", "Battery (%)")]
+_UNIT = {"cpu_temp": " °C", "gpu_temp": " °C"}
+
+
+@node("threshold", "CPU / GPU / temperature / battery", "trigger", outs=["crossed", "back"], values=["percent"],
+      fields=[
+    F("metric", "Watch", "choice", "cpu", choices=METRICS),
     F("op", "When it is", "choice", "above", choices=[("above", "above"), ("below", "below")]),
-    F("value", "Percent", "number", 90),
+    F("value", "Line (% or °C)", "number", 90),
     F("for_s", "For at least (seconds)", "number", 10)],
-    help="Fires when the level crosses your line and stays there, and again when it is back.")
+    help="Fires when the level crosses your line and stays there, and again when it is back. Temperatures "
+         "and GPU load come from the sensors (Linux; on Windows only an NVIDIA GPU can be read). Wire it to "
+         "\"Warning on screen\" for a proper heads-up, e.g. CPU temperature above 80 °C.")
 class ThresholdTrigger(Node):
     def start(self):
         self.since = None
@@ -1093,11 +1115,14 @@ class ThresholdTrigger(Node):
         self.eng.watch.remove("sys", self)
 
     def check(self, vals: dict):
-        v = vals.get(self.raw("metric"))
+        metric = self.raw("metric")
+        v = vals.get(metric)
         if v is None:
-            self.set_status("⚠ not available here" if self.raw("metric") == "battery" else "…")
+            self.set_status("⚠ not available here" if metric in ("battery", "cpu_temp", "gpu", "gpu_temp")
+                            else "…")
             return
         self.level = v
+        unit = _UNIT.get(metric, " %")
         line = self.num("value", default=90)
         bad = v > line if self.raw("op") == "above" else v < line
         now = time.monotonic()
@@ -1111,10 +1136,64 @@ class ThresholdTrigger(Node):
             if self.over:
                 self.over = False
                 self.fire("back", f"{v:.0f}")
-        self.set_status(f"{v:.0f} %")
+        self.set_status(f"{v:.0f}{unit}")
 
     def value(self, port, inp):
         return f"{self.level:.0f}" if self.level is not None else ""
+
+
+@node("window", "Window focused", "trigger", outs=["focused", "left"], values=["title"], fields=[
+    F("match", "App or title contains", "text", "", hint="firefox, Visual Studio Code, YouTube…")],
+    help="Fires when you switch to a window whose app or title contains the text, and when you leave it. "
+         "Its input is the window title." + ("" if IS_WIN else " Needs Hyprland."))
+class WindowTrigger(Node):
+    def start(self):
+        self.inside = None
+        self.title = ""
+        self.eng.watch.add("win", self)
+
+    def stop(self):
+        self.eng.watch.remove("win", self)
+
+    def check(self, app: str, title: str):
+        want = str(self.raw("match") or "").strip().lower()
+        if not want:
+            self.set_status("⚠ type part of an app name or title")
+            return
+        inside = want in app.lower() or want in title.lower()
+        if inside:
+            self.title = title
+        if self.inside is not None and inside != self.inside:
+            self.fire("focused" if inside else "left", title)
+        if inside != self.inside:
+            self.set_status("in it" if inside else "elsewhere")
+        self.inside = inside
+
+    def value(self, port, inp):
+        return self.title
+
+
+@node("network", "Internet on / off", "trigger", outs=["online", "offline"], values=["online"],
+      help="Fires when the internet goes away and when it comes back (checked every 10 seconds).")
+class NetTrigger(Node):
+    def start(self):
+        self.up = None
+        self.eng.watch.add("net", self)
+
+    def stop(self):
+        self.eng.watch.remove("net", self)
+
+    def check(self, up: bool | None):
+        if up is None:
+            return
+        if self.up is not None and up != self.up:
+            self.fire("online" if up else "offline")
+        if up != self.up:
+            self.set_status("online" if up else "offline")
+        self.up = up
+
+    def value(self, port, inp):
+        return "yes" if self.up else "no"
 
 
 # ── actions ───────────────────────────────────────────────────────────────────
@@ -1489,12 +1568,16 @@ class WorkspaceNode(Node):
     F("title", "Title", "text", "Luminescent", pin=True),
     F("message", "Message", "multiline", "{input}", pin=True),
     F("style", "Show as", "choice", "card", choices=[("card", "A Luminescent card"),
-                                                     ("desktop", "A desktop notification")])],
-    help="A small card in the corner (or a desktop notification).")
+                                                     ("desktop", "A desktop notification"),
+                                                     ("center", "A warning in the middle of the screen")])],
+    help="A small card in the corner, a desktop notification, or a big warning in the middle of the screen.")
 class Notify(Node):
     def receive(self, port, inp):
         title, msg = str(self.f("title", inp)), str(self.f("message", inp))
-        if self.raw("style") == "desktop":
+        if self.raw("style") == "center":
+            from ui import alert
+            alert.show(title, msg, "info")
+        elif self.raw("style") == "desktop":
             self.eng.launcher.toast(title, msg)
         else:
             try:
@@ -1796,6 +1879,153 @@ class WriteFile(Node):
         except OSError as e:
             self.set_status(f"⚠ {e}")
             self.fire("failed", str(e))
+
+
+@node("alert", "Warning on screen", "action", ins=["run"], outs=["ok"], fields=[
+    F("title", "Title", "text", "Heads up", pin=True),
+    F("text", "Message", "multiline", "{input}", pin=True),
+    F("level", "Look", "choice", "warning", choices=[("warning", "Warning (amber)"),
+                                                      ("danger", "Danger (red)"), ("info", "Info (theme colour)"),
+                                                      ("ok", "Good news (green)")]),
+    F("seconds", "Close by itself after (seconds, 0 = stay)", "number", 0),
+    F("sound", "Play a sound", "choice", "alarm", choices=[("none", "No sound"), ("chime", "Chime"),
+                                                           ("alarm", "Alarm")])],
+    help="A big warning in the middle of the screen, above everything, that stays until you click Got it. "
+         "ok fires when it closes. A new one with the same title replaces the old one.")
+class AlertNode(Node):
+    def receive(self, port, inp):
+        from ui import alert
+        if self.raw("sound") != "none":
+            sounds.play(str(self.raw("sound")), "")
+        alert.show(str(self.f("title", inp)), str(self.f("text", inp)), str(self.raw("level") or "warning"),
+                   self.num("seconds", inp), on_close=lambda: self.fire("ok", inp))
+
+
+@node("wallpaper", "Set wallpaper", "action", ins=["run"], outs=["done", "failed"], fields=[
+    F("mode", "Use", "choice", "file", choices=[("file", "This picture, GIF or video"),
+                                                ("next", "The next one in a folder"),
+                                                ("random", "A random one from a folder")]),
+    F("path", "Picture or folder", "file", "", pin=True, hint="a file, or a folder for next / random")],
+    help="Changes the desktop wallpaper. Wire a timer (Every… 30 min) to it for a slideshow. "
+         + ("Windows shows the first frame of a GIF." if IS_WIN else
+            "GIFs play with swww, videos with mpvpaper.")
+         + " Settings → Overlay & Interface → Wallpaper command lets your own tool do it instead.")
+class WallpaperNode(Node):
+    def receive(self, port, inp):
+        from core import wallpaper
+        path = str(self.f("path", inp)).strip()
+        mode = self.raw("mode")
+        if mode in ("next", "random"):
+            folder = path if os.path.isdir(os.path.expanduser(path)) else os.path.dirname(path)
+            state = dict(self.data.get("state") or {})
+            path = wallpaper.pick_from_folder(folder, mode, state)
+            if not path:
+                self.set_status("⚠ no pictures in that folder")
+                self.fire("failed", inp)
+                return
+            self.save_state(last=state.get("last", ""))
+        if not path:
+            self.set_status("⚠ pick a picture")
+            self.fire("failed", inp)
+            return
+        self._err = ""
+        wallpaper.apply(path, self.eng.settings.get("ui.wallpaper_engine_exe", ""),
+                        on_error=lambda msg: setattr(self, "_err", msg))
+        self.set_status(os.path.basename(path))
+        QTimer.singleShot(1500, lambda: self._after(path, inp))
+
+    def _after(self, path, inp):
+        if not self.alive:
+            return
+        if self._err:
+            self.set_status("⚠ " + self._err)
+            self.fire("failed", self._err)
+        else:
+            self.fire("done", path)
+
+
+@node("volume", "Volume", "action", ins=["run"], outs=["done"], values=["volume"], fields=[
+    F("mode", "Do", "choice", "set", choices=[("set", "Set it to"), ("up", "Turn it up by"),
+                                              ("down", "Turn it down by"), ("mute", "Mute"),
+                                              ("unmute", "Unmute"), ("toggle_mute", "Mute / unmute")]),
+    F("amount", "Percent", "number", 50, pin=True)],
+    help="The volume of your default speakers or headphones. The volume port reads it as a number.")
+class VolumeNode(Node):
+    def receive(self, port, inp):
+        err = system.set_volume(str(self.raw("mode")), self.num("amount", inp, 50))
+        if err:
+            self.set_status("⚠ " + err)
+            return
+        got = system.get_volume()
+        self.set_status(f"{got[0]:.0f} %{' (muted)' if got[1] else ''}" if got else "")
+        self.fire("done", inp)
+
+    def value(self, port, inp):
+        got = system.get_volume()
+        return f"{got[0]:.0f}" if got else ""
+
+
+@node("power", "Lock / sleep / shut down", "action", ins=["run"], outs=["done"], fields=[
+    F("action", "Do", "choice", "lock", choices=system.POWER_ACTIONS),
+    F("ask", "Ask me first", "bool", True)],
+    help="Locks the screen, turns the screens off, sleeps, signs out, restarts or shuts down the PC.")
+class PowerNode(Node):
+    def receive(self, port, inp):
+        action = str(self.raw("action"))
+        label = dict(system.POWER_ACTIONS).get(action, action)
+        if self.raw("ask") and action not in ("lock", "screen_off"):
+            from core import widgets
+            if not widgets.confirm(None, "Automation", f"{self.label()}: {label.lower()} now?", yes=label):
+                return
+        self.fire("done", inp)
+        # after the pulse went out, so a done → notification still shows before the screen locks
+        QTimer.singleShot(300, lambda: self._do(action))
+
+    def _do(self, action):
+        err = system.power(action)
+        if err:
+            self.set_status("⚠ " + err)
+
+
+@node("keep_awake", "Keep awake", "action", ins=["run"], outs=["done"], values=["on"], fields=[
+    F("mode", "Turn it", "choice", "on", choices=[("on", "on"), ("off", "off"), ("toggle", "the other way")])],
+    help="Stops the screen going dark and the PC going to sleep (until it is turned off, or Luminescent "
+         "quits). E.g. Program starts (a game, OBS) → on, Program stops → off. Also in the tray.")
+class KeepAwakeNode(Node):
+    def receive(self, port, inp):
+        from core import keepawake
+        ka = keepawake.get()
+        mode = self.raw("mode")
+        on = (not ka.on) if mode == "toggle" else mode == "on"
+        err = ka.set(on, f"Automation: {self.label()}")
+        self.set_status(("⚠ " + err) if err else ("keeping awake" if ka.on else "off"))
+        if not err:
+            self.fire("done", inp)
+
+    def value(self, port, inp):
+        from core import keepawake
+        return "yes" if keepawake.get().on else "no"
+
+
+def _notes(eng) -> list:
+    m = eng.launcher.modules.get("notes")
+    panel = getattr(m, "panel", None)
+    if panel is None:
+        return []
+    return [(n.get("id", ""), n.get("name") or "Note") for n in panel.data["notes"]]
+
+
+@node("open_note", "Open a note", "action", ins=["run"], outs=["done"], fields=[
+    F("note", "Note", "choice", "", choices=_notes)],
+    help="Shows the Notes panel on that note.")
+class OpenNote(Node):
+    def receive(self, port, inp):
+        m = self.eng.launcher.modules.get("notes")
+        if m is None or not m.running:
+            self.set_status("⚠ the Notes module is off")
+            return
+        m.show_note_id(str(self.raw("note")))
+        self.fire("done", inp)
 
 
 @node("show", "Show", "action", ins=["in"], outs=["out"],

@@ -33,10 +33,18 @@ ICON_SIZES = (16, 22, 24, 32, 48, 64, 128, 256, 512)
 MARK = os.path.join(APP_DIR, "assets", "luminescent-mark.png")
 
 
+def _quote(arg: str) -> str:
+    """Quote one Exec= argument the way the desktop entry spec wants it (double quotes, not the shell's single
+    ones, which launchers do not understand): the project folder can have a space in it."""
+    if arg and not any(c in arg for c in ' \t\n"\'\\><~|&;$*?#()`'):
+        return arg
+    return '"' + "".join("\\" + c if c in '"`$\\' else c for c in arg) + '"'
+
+
 def exec_line() -> str:
     if FROZEN:
-        return shlex.quote(os.path.abspath(sys.executable))
-    return shlex.quote(os.path.join(APP_DIR, "start.sh"))
+        return _quote(os.path.abspath(sys.executable))
+    return _quote(os.path.join(APP_DIR, "start.sh"))
 
 
 def _entry_text() -> str:
@@ -89,6 +97,40 @@ def install_entry() -> str:
     except (OSError, subprocess.SubprocessError) as e:
         log.warning("could not install the launcher entry: %s", e)
         return str(e)
+
+
+SERVICE_MENU = os.path.join(_DATA, "kio", "servicemenus", "luminescent-strip-metadata.desktop")
+
+
+def install_service_menu() -> str:
+    """Dolphin's right-click "Strip metadata" for images, videos and folders. Returns '' or an error."""
+    text = "\n".join([
+        "[Desktop Entry]",
+        "Type=Service",
+        "MimeType=image/*;video/*;inode/directory;",
+        "X-KDE-ServiceTypes=KonqPopupMenu/Plugin",
+        "Actions=strip;",
+        "",
+        "[Desktop Action strip]",
+        "Name=Strip metadata (Luminescent)",
+        "Icon=edit-clear-all",
+        f"Exec={exec_line()} --strip-metadata %F",
+        "",
+    ])
+    try:
+        if _write_if_changed(SERVICE_MENU, text):
+            log.info("Dolphin menu written: %s", SERVICE_MENU)
+        os.chmod(SERVICE_MENU, 0o755)            # Plasma 6 only runs service menus that are executable
+        return ""
+    except OSError as e:
+        return str(e)
+
+
+def remove_service_menu():
+    try:
+        os.remove(SERVICE_MENU)
+    except FileNotFoundError:
+        pass
 
 
 def remove_entry():

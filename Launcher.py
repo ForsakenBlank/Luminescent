@@ -8,6 +8,7 @@ this ONE process; its hotkeys are Hyprland binds (core.hotkeys), and settings.js
 drives it all.
 
     python Launcher.py --smoke     build every page and pop-up once, then quit (used to test a build)
+    python Launcher.py --strip-metadata <files or folders>   clean copies into the Metadata save folder
 """
 import os
 import sys
@@ -310,6 +311,12 @@ class Launcher:
             desktop.install_entry()
         else:
             desktop.remove_entry()
+        if self.settings.get("metadata.dolphin_menu", False) and self._enabled("metadata"):
+            err = desktop.install_service_menu()
+            if err:
+                self.notify(APP_NAME, f"Could not add the Dolphin menu: {err}")
+        else:
+            desktop.remove_service_menu()
 
     def _auto_backup(self):
         """Once a week: zip the setup into data/backups/weekly-<date>.zip and keep the newest five."""
@@ -629,6 +636,10 @@ def _smoke(launcher: "Launcher", app: QApplication):
 
 
 def main():
+    if "--strip-metadata" in sys.argv:          # Dolphin's right-click menu: no window, no lock needed
+        from modules.metadata import cli
+        i = sys.argv.index("--strip-metadata")
+        return cli(sys.argv[i + 1:])
     # Native Wayland: Qt then knows the real screen layout, and core.hypr places the windows.
     # (Under XWayland Hyprland maps multi-monitor coordinates inconsistently.)
     if os.environ.get("WAYLAND_DISPLAY"):

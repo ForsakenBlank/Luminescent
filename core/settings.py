@@ -358,6 +358,9 @@ SCHEMA = [
         Field("save_dir", "Save stripped files to", "dir",
               os.path.join(os.path.expanduser("~"), "Documents", "MetaStripped")),
         Field("jpeg_quality", "JPEG quality when re-saving", "int", 95, min=50, max=100),
+        Field("dolphin_menu", "Right-click → Strip metadata in Dolphin", "bool", False,
+              "Adds a Dolphin service menu (~/.local/share/kio/servicemenus). Clean copies go to the folder above "
+              "and a notification says how many."),
     ]),
 
     Section("hearing", "Hearing Guard", "🎧",

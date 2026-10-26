@@ -2,9 +2,17 @@
 Metadata Stripper: show and remove EXIF/other metadata from images and videos.
 
 Images use Pillow; videos use ffprobe/ffmpeg if they are on PATH.
+
+A whole folder can be stripped at once (drop it on the panel, or "Strip a folder…"): clean copies go to
+the save folder, in the same sub-folders, or the originals are replaced after you confirm. With the
+Dolphin menu on (Settings → Metadata Stripper), right-clicking files or folders in Dolphin offers
+"Strip metadata", which runs `start.sh --strip-metadata <paths>` (cli() below) and says where the clean
+copies went.
 """
 import os
+import sys
 import json
+import shutil
 import tempfile
 import subprocess
 from pathlib import Path
@@ -123,6 +131,93 @@ def strip_video(src: Path, dst: Path):
         raise RuntimeError(r.stderr.decode(errors="ignore")[-400:] or "ffmpeg failed")
 
 
+def media_in(folder: Path) -> list[Path]:
+    """Every image and video under `folder` (sub-folders too), hidden ones left out."""
+    out = []
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+        for n in sorted(files):
+            if not n.startswith(".") and Path(n).suffix.lower() in SUPPORTED_IMAGE | SUPPORTED_VIDEO:
+                out.append(Path(root) / n)
+    return out
+
+
+def _free(dst: Path) -> Path:
+    i = 1
+    stem, ext = dst.stem, dst.suffix
+    while dst.exists():
+        dst = dst.with_name(f"{stem}_{i}{ext}")
+        i += 1
+    return dst
+
+
+def strip_one(src: Path, dst: Path, jpeg_quality: int = 95):
+    if src.suffix.lower() in SUPPORTED_VIDEO:
+        strip_video(src, dst)
+    else:
+        strip_image(src, dst, jpeg_quality)
+
+
+def strip_folder(folder: Path, out_root: Path | None, jpeg_quality: int = 95, progress=None) -> tuple[int, list[str]]:
+    """Strip every image and video in `folder`. Clean copies go to out_root/<folder name>/<same sub-folders>;
+    out_root None replaces the originals. Returns (files done, errors)."""
+    files = media_in(folder)
+    done, errors = 0, []
+    target_root = None if out_root is None else _free(out_root / folder.name)
+    for i, src in enumerate(files):
+        try:
+            if target_root is None:
+                tmp = src.with_name(f".{src.stem}.lumstrip{src.suffix}")
+                strip_one(src, tmp, jpeg_quality)
+                os.replace(tmp, src)
+            else:
+                dst = target_root / src.relative_to(folder)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                strip_one(src, _free(dst), jpeg_quality)
+            done += 1
+        except Exception as e:
+            errors.append(f"{src.name}: {e}")
+            try:
+                src.with_name(f".{src.stem}.lumstrip{src.suffix}").unlink(missing_ok=True)
+            except OSError:
+                pass
+        if progress:
+            progress(i + 1, len(files))
+    return done, errors
+
+
+def cli(paths: list[str]) -> int:
+    """`start.sh --strip-metadata <files or folders>` (Dolphin's right-click menu): clean copies to the save
+    folder, then a desktop notification. No window, no running Luminescent needed."""
+    from core import HOME_DIR, load_json
+    saved = load_json(os.path.join(HOME_DIR, "settings.json"), {}) or {}
+    sec = saved.get("metadata", {}) if isinstance(saved, dict) else {}
+    out_root = Path(os.path.expanduser(sec.get("save_dir") or os.path.join("~", "Documents", "MetaStripped")))
+    quality = int(sec.get("jpeg_quality", 95))
+    out_root.mkdir(parents=True, exist_ok=True)
+    done, errors = 0, []
+    for raw in paths:
+        p = Path(raw)
+        if p.is_dir():
+            d, e = strip_folder(p, out_root, quality)
+            done, errors = done + d, errors + e
+        elif p.suffix.lower() in SUPPORTED_IMAGE | SUPPORTED_VIDEO:
+            try:
+                strip_one(p, _free(out_root / p.name), quality)
+                done += 1
+            except Exception as e:
+                errors.append(f"{p.name}: {e}")
+        else:
+            errors.append(f"{p.name}: not an image or video")
+    msg = f"{done} file{'s' if done != 1 else ''} cleaned into {out_root}"
+    if errors:
+        msg += f"\n{len(errors)} failed: " + "; ".join(errors[:3])
+    if shutil.which("notify-send"):
+        subprocess.run(["notify-send", "-a", "Luminescent", "Metadata Stripper", msg])
+    print(msg)
+    return 0 if not errors else 1
+
+
 class Worker(QThread):
     done = pyqtSignal(bool, str)
 
@@ -153,7 +248,7 @@ class DropArea(QFrame):
         icon.setFont(QFont(theme.P.font_family, 30))
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon.setStyleSheet(f"color: {theme.P.text_muted}; border: none;")
-        hint = QLabel("Drop an image or video here, or click to browse")
+        hint = QLabel("Drop an image, video or a whole folder here, or click to browse")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setStyleSheet(f"color: {theme.P.text_muted}; border: none; font-size: 11px;")
         for w in (icon, hint):
@@ -183,7 +278,7 @@ class DropArea(QFrame):
         urls = e.mimeData().urls()
         self._style(False)
         if urls:
-            self.file_dropped.emit(urls[0].toLocalFile())
+            self.file_dropped.emit(urls[0].toLocalFile())        # a folder is stripped as a whole
 
 
 class MetaPanel(widgets.FloatingPanel):
@@ -205,6 +300,12 @@ class MetaPanel(widgets.FloatingPanel):
         self.drop = DropArea()
         self.drop.file_dropped.connect(self.load_file)
         body.addWidget(self.drop)
+        folder_row = QHBoxLayout()
+        folder_row.addStretch()
+        self.folder_btn = widgets.button("📁 Strip a whole folder…", "ghost")
+        self.folder_btn.clicked.connect(self.pick_folder)
+        folder_row.addWidget(self.folder_btn)
+        body.addLayout(folder_row)
 
         self.preview = QLabel()
         self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -273,7 +374,47 @@ class MetaPanel(widgets.FloatingPanel):
             b.hide()
         self._set_status("")
 
+    def pick_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "Strip every image and video in…", os.path.expanduser("~"))
+        if path:
+            self.strip_folder(path)
+
+    def strip_folder(self, path: str):
+        folder = Path(path)
+        n = len(media_in(folder))
+        if not n:
+            self._set_status(f"No images or videos in {folder.name}.", err=True)
+            return
+        out = Path(self.m.s("save_dir", ""))
+        how = widgets.choose(self, "Strip a folder",
+                             f"{n} image{'s' if n != 1 else ''} and video{'s' if n != 1 else ''} in “{folder.name}” "
+                             f"(sub-folders too).\n\nSave clean copies to {out / folder.name}, or replace the "
+                             f"originals?", ["Save clean copies", "Replace the originals"])
+        if how is None:
+            return
+        if how.startswith("Replace") and not widgets.confirm(
+                self, "Replace the originals", f"Overwrite {n} files with metadata-free versions? Their EXIF, "
+                                               "GPS and other metadata is gone for good.", yes="Replace", danger=True):
+            return
+        target = None if how.startswith("Replace") else out
+        result = {}
+
+        def work():
+            if target is not None:
+                target.mkdir(parents=True, exist_ok=True)
+            result["r"] = strip_folder(folder, target, int(self.m.s("jpeg_quality", 95)))
+
+        def ok():
+            done, errors = result.get("r", (0, []))
+            where = "in place" if target is None else f"into {target / folder.name}"
+            self._set_status(f"Cleaned {done} file{'s' if done != 1 else ''} {where}." +
+                             (f" {len(errors)} failed: {'; '.join(errors[:3])}" if errors else ""), err=bool(errors))
+        self._run(work, ok, f"Stripping {n} files…")
+
     def load_file(self, path: str):
+        if os.path.isdir(path):
+            self.strip_folder(path)
+            return
         p = Path(path)
         ext = p.suffix.lower()
         if ext not in SUPPORTED_IMAGE | SUPPORTED_VIDEO:
@@ -314,12 +455,12 @@ class MetaPanel(widgets.FloatingPanel):
         if self._worker and self._worker.isRunning():
             return
         self._set_status(label)
-        self.strip_copy_btn.setEnabled(False)
-        self.strip_save_btn.setEnabled(False)
+        for b in (self.strip_copy_btn, self.strip_save_btn, self.folder_btn):
+            b.setEnabled(False)
 
         def done(ok, err):
-            self.strip_copy_btn.setEnabled(True)
-            self.strip_save_btn.setEnabled(True)
+            for b in (self.strip_copy_btn, self.strip_save_btn, self.folder_btn):
+                b.setEnabled(True)
             if ok:
                 on_ok()
             else:
@@ -330,10 +471,7 @@ class MetaPanel(widgets.FloatingPanel):
         self._worker.start()
 
     def _strip_to(self, dst: Path):
-        if self._is_video:
-            strip_video(self._file, dst)
-        else:
-            strip_image(self._file, dst, int(self.m.s("jpeg_quality", 95)))
+        strip_one(self._file, dst, int(self.m.s("jpeg_quality", 95)))
 
     def strip_and_copy(self):
         if not self._file:

@@ -27,7 +27,8 @@ from PyQt6.QtCore import QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
 from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, IS_WIN, VERSION, theme, widgets, autostart, terminal,
-                  wallpaper, hypr, runner, desktop, usage, backup, events, keepawake)
+                  wallpaper, hypr, runner, desktop, usage, backup, events, keepawake, anim)
+from core.guard import Faults, StartGuard, alive, part_of, safely
 from core.settings import Settings, SCHEMA, ALL_PAGES
 from core.hotkeys import HotkeyManager, pretty
 from core.module import ModuleContext
@@ -35,6 +36,7 @@ from core.themes import ThemeStore
 import modules as module_registry
 
 LOG_FILE = os.path.join(DATA_DIR, "launcher.log")
+START_FILE = os.path.join(DATA_DIR, "starting.json")
 ICON_PNG = os.path.join(DATA_DIR, "luminescent.png")
 log = logging.getLogger("launcher")
 
@@ -66,12 +68,18 @@ def make_icon(light: bool, accent: str = "") -> QIcon:
 
 
 class Launcher:
-    def __init__(self, app: QApplication):
+    def __init__(self, app: QApplication, start_guard: StartGuard | None = None):
         self.app = app
+        self.start_guard = start_guard
+        self.safe_mode = bool(start_guard and start_guard.safe_mode)
+        self.faults = Faults()
         self.settings = Settings()
+        anim.init(self.settings)
         setup_logging(bool(self.settings.get("general.log_to_file", True)))
         log.info("=== starting %s (pid %s, %s, data in %s) ===", VERSION, os.getpid(), "exe" if FROZEN else "source",
                  HOME_DIR)
+        if self.safe_mode:
+            log.warning("safe mode: the last %d starts did not get going", start_guard.failed_starts)
         if self.settings.migrated_from_old_config:
             log.info("migrated values from the old config.py into settings.json")
 
@@ -131,10 +139,11 @@ class Launcher:
 
         self._register_global_hotkeys()
         for key in self.modules:
-            if self._enabled(key):
+            if self._enabled(key) and not self.safe_mode:
                 self._start_module(key)
         self.dashboard.register_hotkeys()
-        self.automation.start()
+        if not self.safe_mode:
+            self.automation.start()          # safe mode: nothing runs until a normal restart
         self.dashboard.changed.connect(self._build_menu)
         self.automation.changed.connect(self._build_menu)
         self._build_menu()
@@ -167,6 +176,14 @@ class Launcher:
             QTimer.singleShot(2500, lambda: self.toast(
                 "Some modules failed to load", "\n".join(f"{k}: {v}" for k, v in self.module_errors.items()), 10000))
         QTimer.singleShot(1500, lambda: events.emit("luminescent.started", VERSION))
+        if self.start_guard is not None:
+            QTimer.singleShot(20_000, self.start_guard.ok)       # 20 s in without a crash: the start is fine
+        if self.safe_mode:
+            QTimer.singleShot(1200, lambda: widgets.message(
+                None, f"{APP_NAME}: safe mode",
+                "Luminescent did not get going the last two times it started, so it started in safe mode: no "
+                "modules, no page boxes on the dashboard and automations paused.\n\nThe overlay, Settings and the "
+                "log (tray → Open log file) work. Tray → Restart normally when you are ready to try again."))
         log.info("ready: %s", ", ".join(k for k in self.modules if self.modules[k].running) or "no modules running")
 
     # ── look ───────────────────────────────────────────────────────────────
@@ -176,23 +193,28 @@ class Launcher:
         f.setPixelSize(theme.fs(13))    # the global QSS must not set font-size, or setFont() breaks
         self.app.setFont(f)
 
-    def _theme_applied(self, t: dict):
-        events.emit("theme.changed", t.get("name", ""))
+    def _restyle_all(self):
+        """The app's style sheet and every module's panels in the new look (the overlay is rebuilt around it)."""
         self._restyle()
-        self.icon = make_icon(theme.is_light(), theme.P.primary)
-        self.app.setWindowIcon(self.icon)
-        self.tray.setIcon(self.icon)
-        self._write_terminal_scheme()
         for key, m in self.modules.items():
             if m.running:
                 try:
                     m.retheme()
                 except Exception:
                     log.exception("retheme failed for %s", key)
-        QTimer.singleShot(0, self.overlay.rebuild)
+
+    def _theme_applied(self, t: dict):
+        events.emit("theme.changed", t.get("name", ""))
+        # the old overlay goes first, then the new style sheet, so Qt does not restyle widgets about to vanish
+        QTimer.singleShot(0, lambda: self.overlay.rebuild(between=self._restyle_all))
+        self.icon = make_icon(theme.is_light(), theme.P.primary)
+        self.app.setWindowIcon(self.icon)
+        self.tray.setIcon(self.icon)
+        safely(self._write_terminal_scheme, "terminal colours")
         if self._palette is not None:
-            self._palette.close()
-            self._palette.deleteLater()
+            if alive(self._palette):
+                self._palette.close()
+                self._palette.deleteLater()
             self._palette = None
         if t.get("wallpaper") and not self.settings.get("ui.performance_mode", False):
             wallpaper.apply(t["wallpaper"], self.settings.get("ui.wallpaper_engine_exe", ""),
@@ -294,14 +316,7 @@ class Launcher:
 
     def apply_settings(self):
         if theme.set_text_scale(self.settings.get("ui.text_scale", 1.0)):
-            self._restyle()
-            for key, m in self.modules.items():
-                if m.running:
-                    try:
-                        m.retheme()
-                    except Exception:
-                        log.exception("retheme failed for %s", key)
-            QTimer.singleShot(0, self.overlay.rebuild)
+            QTimer.singleShot(0, lambda: self.overlay.rebuild(between=self._restyle_all))
         wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
         self.hotkeys.unregister_all("launcher")
         self._register_global_hotkeys()
@@ -319,12 +334,12 @@ class Launcher:
                 log.exception("apply_settings failed for %s", key)
                 self.notify(m.title, f"Could not apply settings: {e}")
             self._enabled_snapshot[key] = want
-        self.dashboard.register_hotkeys()
-        self.automation.apply_settings()
-        self.overlay.settings_applied()
+        safely(self.dashboard.register_hotkeys, "dashboard hotkeys")
+        safely(self.automation.apply_settings, "automation settings")
+        safely(self.overlay.settings_applied, "overlay settings")
         self._build_menu()
-        self._sync_autostart()
-        self._sync_desktop_entry()
+        safely(self._sync_autostart, "startup entry")
+        safely(self._sync_desktop_entry, "desktop entry")
         terminal.set_preferred(self.settings.get("dashboard.terminal", ""))
         self._sync_own_terminal(asked=True)
         if self.settings.get("ui.terminal_scheme", True):
@@ -483,6 +498,8 @@ class Launcher:
         self.overlay.open("settings", section if isinstance(section, str) else "")
 
     def open_palette(self, text: str = ""):
+        if self._palette is not None and not alive(self._palette):
+            self._palette = None
         if self._palette is None:
             from ui.palette import CommandPalette
             self._palette = CommandPalette(self)
@@ -525,6 +542,7 @@ class Launcher:
                           ("Keep awake on / off", self.toggle_keep_awake),
                           ("Show the hotkey cheat sheet", self._cheat_toggle),
                           ("Open the log file", self.open_log), ("Restart Luminescent", self.restart),
+                          ("Restart in safe mode (no modules, automations paused)", lambda: self.restart(safe=True)),
                           ("Quit Luminescent…", self.confirm_quit)):
             out.append(Entry(f"lum:{label}", label, fn, APP_NAME, "luminescent"))
         return out
@@ -541,7 +559,7 @@ class Launcher:
     def _build_menu(self):
         shown = set(self.settings.get("general.tray_items") or [])
         menu = QMenu()
-        head = menu.addAction(f"{APP_NAME} {VERSION}")
+        head = menu.addAction(f"{APP_NAME} {VERSION}" + ("   (safe mode)" if self.safe_mode else ""))
         head.setEnabled(False)
         if self.updates.latest:
             menu.addAction(f"⬆  Update now to {self.updates.latest}", self.install_update)
@@ -597,6 +615,8 @@ class Launcher:
             menu.addAction("⚙  Settings…", lambda: self.open_settings())
         if "log" in shown:
             menu.addAction("📄  Open log file", self.open_log)
+        if self.safe_mode:
+            menu.addAction("🛟  Safe mode: restart normally", self.restart)
         if "restart" in shown:
             menu.addAction("🔄  Restart", self.restart)
         if "quit" in shown or not shown:
@@ -703,20 +723,51 @@ class Launcher:
             return
         m.fire(rem, preview=True)
 
+    # ── when something breaks ──────────────────────────────────────────────
+    def handle_error(self, exc_type, exc, tb) -> str:
+        """The excepthook calls this for every unhandled error. Returns a line for the error toast."""
+        part = part_of(tb)
+        deleted = exc_type is RuntimeError and "has been deleted" in str(exc)
+        if part in ("overlay", "dashboard", "automation", "settings") and deleted:
+            # a page kept hold of a widget the overlay already threw away: build the overlay again from scratch
+            QTimer.singleShot(0, self.overlay.repair)
+            return "The overlay was rebuilt to recover."
+        if self.faults.add(part):
+            if part.startswith("module:"):
+                key = part.split(":", 1)[1]
+                m = self.modules.get(key)
+                if m is not None and m.running:
+                    log.error("%s kept failing: stopping it for this session", key)
+                    safely(self._stop_module, f"stopping {key}", key)
+                    self.module_errors[key] = f"stopped after repeated errors ({exc_type.__name__}: {exc})"
+                    self._enabled_snapshot[key] = False
+                    QTimer.singleShot(0, self._build_menu)
+                    return (f"{m.title} kept failing, so it was switched off until the next start. Tray → "
+                            f"Modules turns it back on.")
+            elif part:
+                QTimer.singleShot(0, self.overlay.repair)
+                self.faults.forgive(part)
+                return "The overlay kept failing and was rebuilt."
+        return ""
+
     # ── lifecycle ──────────────────────────────────────────────────────────
     def confirm_quit(self):
         if widgets.confirm(None, f"Quit {APP_NAME}", "Close Luminescent and every module?", yes="Quit"):
             self.app.quit()
 
-    def restart(self):
-        log.info("restarting")
-        self.shutdown()
+    def restart(self, safe: bool = False):
+        log.info("restarting%s", " in safe mode" if safe else "")
+        safely(self.shutdown, "shutdown")
+        env = dict(os.environ)
+        env.pop("LUMINESCENT_SAFE_MODE", None)
+        if safe:
+            env["LUMINESCENT_SAFE_MODE"] = "1"
         if FROZEN:
             subprocess.Popen([sys.executable], cwd=os.path.dirname(sys.executable), close_fds=True,
-                             start_new_session=True)
+                             start_new_session=True, env=env)
         else:
             subprocess.Popen([sys.executable, os.path.abspath(__file__)], cwd=APP_DIR, close_fds=True,
-                             start_new_session=True)
+                             start_new_session=True, env=env)
         os._exit(0)
 
     def shutdown(self):
@@ -724,19 +775,18 @@ class Launcher:
             return
         self._shut = True
         log.info("shutting down")
-        usage.flush()
-        self.toasts.clear()
-        self.overlay.shutdown()             # first: dashboard page boxes write where they were
-        self.dashboard.save_now()
-        self.automation.shutdown()
+        safely(usage.flush, "usage.flush")
+        safely(self.toasts.clear, "toasts.clear")
+        safely(self.overlay.shutdown, "overlay.shutdown")     # first: dashboard page boxes write where they were
+        safely(self.dashboard.save_now, "dashboard.save_now")
+        safely(self.automation.shutdown, "automation.shutdown")
         for key in list(self.modules):
-            try:
-                self.modules[key]._stop()
-            except Exception:
-                log.exception("error stopping %s", key)
-        self.hotkeys.shutdown()
-        self.keep_awake.shutdown()
-        self.tray.hide()
+            safely(self.modules[key]._stop, f"stopping {key}")
+        safely(self.hotkeys.shutdown, "hotkeys.shutdown")
+        safely(self.keep_awake.shutdown, "keep_awake.shutdown")
+        safely(self.tray.hide, "tray.hide")
+        if self.start_guard is not None:
+            self.start_guard.ok()
 
 
 def _smoke(launcher: "Launcher", app: QApplication):
@@ -796,6 +846,7 @@ def main():
         return 0
 
     hypr.init(app)                  # only now: it replaces the binds of an earlier instance
+    guard = None if smoke else StartGuard(START_FILE)
     launcher = None
     last_balloon = [0.0]
 
@@ -803,14 +854,29 @@ def main():
         # PyQt aborts the process on an unhandled exception in a slot unless a hook is installed.
         text = "".join(traceback.format_exception(exc_type, exc, tb))
         logging.getLogger("unhandled").error(text)
+        extra = ""
+        if launcher is not None:
+            try:
+                extra = launcher.handle_error(exc_type, exc, tb)
+            except Exception:
+                logging.getLogger("unhandled").exception("the error handler failed too")
         # One balloon per 15 s at most: showing a toast from inside a mouse handler can
         # swallow the drag in progress, so repeated errors must not spam it.
-        if launcher and time.monotonic() - last_balloon[0] > 15:
+        if launcher and (extra or time.monotonic() - last_balloon[0] > 15):
             last_balloon[0] = time.monotonic()
-            launcher.notify(f"{APP_NAME} error", f"{exc_type.__name__}: {exc}\n(see data/launcher.log)", 8000)
+            launcher.notify(f"{APP_NAME} error", f"{exc_type.__name__}: {exc}\n" + (extra + "\n" if extra else "")
+                            + "(see data/launcher.log)", 8000)
 
     sys.excepthook = excepthook
-    launcher = Launcher(app)
+    try:
+        launcher = Launcher(app, guard)
+    except Exception:
+        # the start itself broke: log it and say so instead of vanishing (the next start may be in safe mode)
+        logging.getLogger("unhandled").exception("Luminescent could not start")
+        QMessageBox.critical(None, APP_NAME, "Luminescent could not start:\n\n" + traceback.format_exc(limit=3)
+                             + "\nStart it again; after two failed starts it starts in safe mode.")
+        lock.unlock()
+        return 1
     if smoke:
         _smoke(launcher, app)
     code = app.exec()

@@ -24,11 +24,12 @@ from dataclasses import dataclass, field as dc_field
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from core import APP_DIR, HOME_DIR, DATA_DIR, IS_WIN, save_json, load_json
+from core.anim import KINDS as ANIM_KINDS, SPEEDS as ANIM_SPEEDS
 
 SETTINGS_FILE = os.path.join(HOME_DIR, "settings.json")
 PROFILES_FILE = os.path.join(DATA_DIR, "profiles.json")
 PROFILES_DIR = os.path.join(DATA_DIR, "profiles")
-SHARED_SECTIONS = {"general", "ui", "dashboard", "automation"}
+SHARED_SECTIONS = {"general", "ui", "animations", "dashboard", "automation"}
 DEFAULT_PROFILE = "default"
 
 
@@ -171,8 +172,11 @@ SCHEMA = [
         Field("remember_page", "Open on the page I was on last", "bool", False,
               "Off: the overlay always opens on the Dashboard."),
         Field("last_page", "", "hidden", "dashboard"),
-        Field("overlay_screen", "Open the overlay on", "choice", "primary",
-              choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")]),
+        Field("settings_search_only", "", "hidden", False),
+        Field("overlay_screen", "Open the overlay on", "choice", "cursor",
+              choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")],
+              help="The page switcher, panels and the dashboard's toolbar go to that screen. Dashboard boxes you "
+                   "put on a particular screen stay there."),
         Field("type_to_search", "Type anywhere on the overlay to search", "bool", True,
               "Start typing on the Dashboard or Themes page and the command palette opens with what you typed."),
         Field("show_clock", "Clock and date in the top-left corner", "bool", True),
@@ -191,7 +195,7 @@ SCHEMA = [
                   "into your tiling layout when the overlay closes.",
                   "Linux (Hyprland) only; on Windows new windows already open on top.")),
         Field("performance_mode", "Performance mode", "bool", False,
-              "No glow, shadows, fade animations or background images. Use it on a slow PC or while gaming."),
+              "No glow, shadows, animations or background images. Use it on a slow PC or while gaming."),
         Field("tray_timers", "Show running timers in the tray tooltip", "bool", True,
               "Hover the tray icon to see what is left. Only updates while a timer runs."),
         Field("wallpaper_engine_exe", _os("linux-wallpaperengine program", "Wallpaper Engine (wallpaper64.exe)"),
@@ -216,6 +220,12 @@ SCHEMA = [
               "Luminescent colours. Turning it off undoes it."),
     ]),
 
+    Section("animations", "Animations", "〰",
+            "Every animation in Luminescent. Performance mode (Overlay & Interface) turns all of them off.", [
+        Field("enabled", "Animations", "bool", True, "Off: everything appears and moves instantly."),
+        Field("speed", "Speed", "choice", "normal", choices=ANIM_SPEEDS),
+    ] + [Field(key, label, "bool", True, help) for key, label, help in ANIM_KINDS]),
+
     Section("dashboard", "Dashboard & Scripts", "▦", "How dashboard items start.", [
         Field("use_terminal", _os("Run scripts (.py, .sh...) in a terminal window",
                                   "Run scripts (.py, .bat, .ps1...) in Windows Terminal"), "bool", True,
@@ -232,6 +242,14 @@ SCHEMA = [
         Field("show_icons", "Show program and file icons on items", "bool", True,
               "Taken from the program's app entry, your icon theme or the file type."),
         Field("group_delay_ms", "Pause between the items of a group (ms)", "int", 400, min=0, max=10000),
+        Field("tidy_style", "Tidy up arranges the boxes in", "choice", "columns",
+              choices=[("columns", "Columns (every box keeps its width)"), ("grid", "A grid (tabs the same width)"),
+                       ("rows", "Rows (left to right, then the next row)")],
+              help="Also under the arrow next to Tidy up. With boxes selected only those are tidied; Ctrl+Z "
+                   "puts them back."),
+        Field("tidy_order", "Tidy up order", "choice", "position",
+              choices=[("position", "Keep the order they are in"), ("name", "By name, A to Z"),
+                       ("size", "Biggest first")]),
         Field("snap", "Snap boxes to a grid while moving (px)", "int", 8,
               "0 = off: boxes follow the mouse pixel by pixel, perfectly smooth. Also in the dashboard's "
               "right-click menu.", min=0, max=64),
@@ -243,8 +261,6 @@ SCHEMA = [
         Field("enabled", "Run automations", "bool", True,
               "Off pauses every workspace (the Automation page still opens, so you can keep editing)."),
         Field("pause_hotkey", "Pause / resume all automations", "hotkey", ""),
-        Field("animate", "Show pulses travelling along the wires", "bool", True,
-              "Only drawn while the Automation page is open. Off in performance mode."),
         Field("max_rate", "Safety stop: pause a workspace that fires more than this many times a second",
               "int", 200, "Stops a wire loop (a node wired back into itself) from freezing Luminescent.",
               min=10, max=5000),
@@ -638,6 +654,12 @@ def _migrate(data: dict, saved: dict):
         tray = (saved.get("general") or {}).get("tray_items")
         if isinstance(tray, list) and "automation" not in tray:
             data["general"]["tray_items"] = list(tray) + ["automation"]
+    auto = saved.get("automation") or {}
+    if "animations" not in saved:
+        if "animate" in auto:
+            data["animations"]["pulses"] = bool(auto["animate"])
+        if ui.get("overlay_screen") == "primary":
+            data["ui"]["overlay_screen"] = "cursor"
     gen = saved.get("general") or {}
     if isinstance(gen.get("tray_items"), list) and "keep_awake_hotkey" not in gen \
             and "keepawake" not in data["general"]["tray_items"]:

@@ -12,8 +12,12 @@ they are shown.
 
 Performance: nothing runs while it is hidden. The dim, dots, background image
 and glow are painted once into a cached pixmap per screen (a QGraphicsEffect
-would re-render every child on every repaint), and performance mode drops the
-glow, the background image and the fade.
+would re-render every child on every repaint); the panel's glow is a second
+layer on top, so switching pages is one blit. Performance mode drops the glow,
+the background image and every animation (core.anim).
+
+If a page breaks the overlay (a widget gone that something still used), repair()
+throws everything away and builds it again, so the hub keeps working.
 """
 import os
 import logging
@@ -22,12 +26,14 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QStackedWidget, QButtonGroup,
-    QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox, QComboBox
+    QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox, QComboBox, QGraphicsOpacityEffect
 )
-from PyQt6.QtCore import Qt, QRect, QRectF, QPointF, QTimer, QPropertyAnimation, QEasingCurve, QEvent, QObject, pyqtSignal
-from PyQt6.QtGui import QPainter, QColor, QPixmap, QPen, QRadialGradient
+from PyQt6.QtCore import (Qt, QRect, QRectF, QPointF, QTimer, QEasingCurve, QEvent, QObject, QCoreApplication,
+                          pyqtSignal)
+from PyQt6.QtGui import QPainter, QColor, QPixmap, QPen, QRadialGradient, QBrush
 
-from core import hypr, theme, widgets, events, APP_NAME
+from core import hypr, theme, widgets, events, anim, APP_NAME
+from core.guard import alive
 from core.settings import NAV_SECTIONS, ALL_PAGES, REQUIRED_PAGES
 
 log = logging.getLogger("overlay")
@@ -36,6 +42,8 @@ _FLAGS = Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint 
 DOT_STEP = 20
 PANEL_TOP = 96          # panel pages start below the docked switcher
 FULL_PAGES = ("dashboard", "automation")    # pages that fill the screen instead of sitting in the panel
+_KEYPRESS = QEvent.Type.KeyPress
+_ACTIVATING = frozenset((QEvent.Type.WindowActivate, QEvent.Type.MouseButtonPress))
 
 
 class _Backdrop(QWidget):
@@ -57,21 +65,48 @@ class _Backdrop(QWidget):
         self.glow = False
         self.primary = False
         self.image_path, self.image_opacity = "", 0.35
-        self._cache: QPixmap | None = None
+        self.reveal = 1.0                          # 0..1 while fading in or out
+        self._base: QPixmap | None = None          # dim, picture, dots, top glow
+        self._base_key = None
+        self._cache: QPixmap | None = None         # the base plus the panel's glow
         self._cache_key = None
         self._pressed_outside = False
 
     def invalidate(self):
+        self._base_key = None
         self._cache_key = None
         self.update()
 
-    def _key(self):
-        pr = self.panel.geometry() if self.panel is not None and self.panel.isVisible() else None
-        pr = (pr.x(), pr.y(), pr.width(), pr.height()) if pr is not None else None
-        return (self.width(), self.height(), round(self.dim, 3), self.glow, self.primary, self.image_path,
-                round(self.image_opacity, 2), pr, theme.P.primary, theme.P.text_primary, theme.P.radius)
+    def set_reveal(self, v: float):
+        self.reveal = max(0.0, min(1.0, v))
+        self.update()
 
-    def _render(self) -> QPixmap:
+    def _panel_rect(self):
+        if self.panel is not None and alive(self.panel) and self.panel.isVisible():
+            g = self.panel.geometry()
+            return g.x(), g.y(), g.width(), g.height()
+        return None
+
+    def _bkey(self):
+        return (self.width(), self.height(), round(self.dim, 3), self.glow, self.primary, self.image_path,
+                round(self.image_opacity, 2), theme.P.primary, theme.P.text_primary, theme.is_light())
+
+    @staticmethod
+    def _dot_tile() -> QPixmap:
+        tile = QPixmap(DOT_STEP, DOT_STEP)
+        tile.fill(QColor(0, 0, 0, 0))
+        p = QPainter(tile)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        dot = QColor(theme.P.text_primary)
+        dot.setAlphaF(0.085 if not theme.is_light() else 0.12)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(dot)
+        off = DOT_STEP / 2
+        p.drawEllipse(QPointF(off, off), 1.1, 1.1)
+        p.end()
+        return tile
+
+    def _render_base(self) -> QPixmap:
         w, h = self.width(), self.height()
         out = QPixmap(w, h)
         out.fill(QColor(0, 0, 0, 0))
@@ -87,18 +122,12 @@ class _Backdrop(QWidget):
                 p.setOpacity(max(0.0, min(1.0, self.image_opacity)))
                 p.drawPixmap((w - px.width()) // 2, (h - px.height()) // 2, px)
                 p.setOpacity(1.0)
-        # the dot grid, edge to edge
-        dot = QColor(theme.P.text_primary)
-        dot.setAlphaF(0.085 if not theme.is_light() else 0.12)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(dot)
-        off = DOT_STEP // 2
-        for y in range(off, h, DOT_STEP):
-            for x in range(off, w, DOT_STEP):
-                p.drawEllipse(QPointF(x, y), 1.1, 1.1)
+        # the dot grid, edge to edge: one tiled brush instead of thousands of little circles
+        p.fillRect(0, 0, w, h, QBrush(self._dot_tile()))
         if self.glow and self.primary:
             # a soft halo hanging from the top-centre edge, behind the page switcher
             c = QColor(theme.P.primary)
+            p.setPen(Qt.PenStyle.NoPen)
             p.save()
             p.translate(w / 2, 0)
             p.scale(1.0, 0.4)
@@ -112,35 +141,59 @@ class _Backdrop(QWidget):
             p.setBrush(grad)
             p.drawEllipse(QPointF(0, 0), 450, 450)
             p.restore()
-        if self.panel is not None and self.panel.isVisible():
-            pr = QRectF(self.panel.geometry())
-            rad = theme.P.radius
-            if self.glow:
-                c = QColor(theme.P.primary)
-                steps = 26
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                for i in range(1, steps + 1):
-                    c.setAlphaF(theme.glow_alpha() * 0.16 * (1 - i / (steps + 1)) ** 2)
-                    p.setPen(QPen(c, 6))
-                    d = i * 6 - 2
-                    p.drawRoundedRect(pr.adjusted(-d, -d, d, d), rad + d, rad + d)
-            ring = QColor(theme.P.primary)
-            ring.setAlphaF(0.16)
-            p.setPen(QPen(ring, 1))
-            p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(pr.adjusted(-1.5, -1.5, 1.5, 1.5), rad + 1.5, rad + 1.5)
         p.end()
         return out
 
-    def paintEvent(self, e):
-        key = self._key()
+    def _render_panel(self, base: QPixmap, rect) -> QPixmap:
+        out = QPixmap(base)
+        p = QPainter(out)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pr = QRectF(*rect)
+        rad = theme.P.radius
+        if self.glow:
+            c = QColor(theme.P.primary)
+            steps = 26
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            for i in range(1, steps + 1):
+                c.setAlphaF(theme.glow_alpha() * 0.16 * (1 - i / (steps + 1)) ** 2)
+                p.setPen(QPen(c, 6))
+                d = i * 6 - 2
+                p.drawRoundedRect(pr.adjusted(-d, -d, d, d), rad + d, rad + d)
+        ring = QColor(theme.P.primary)
+        ring.setAlphaF(0.16)
+        p.setPen(QPen(ring, 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRoundedRect(pr.adjusted(-1.5, -1.5, 1.5, 1.5), rad + 1.5, rad + 1.5)
+        p.end()
+        return out
+
+    def _pixmap(self) -> QPixmap:
+        bkey = self._bkey()
+        if self._base is None or bkey != self._base_key:
+            self._base = self._render_base()
+            self._base_key = bkey
+            self._cache_key = None
+        rect = self._panel_rect()
+        if rect is None:
+            return self._base
+        key = (bkey, rect, theme.P.radius)
         if self._cache is None or key != self._cache_key:
-            self._cache = self._render()
+            self._cache = self._render_panel(self._base, rect)
             self._cache_key = key
+        return self._cache
+
+    def paintEvent(self, e):
+        px = self._pixmap()
         p = QPainter(self)
-        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
         p.setClipRegion(e.region())
-        p.drawPixmap(0, 0, self._cache)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+        if self.reveal >= 0.999:
+            p.drawPixmap(0, 0, px)
+        else:
+            p.fillRect(e.rect(), QColor(0, 0, 0, 0))
+            p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+            p.setOpacity(self.reveal)
+            p.drawPixmap(0, 0, px)
         p.end()
 
     def resizeEvent(self, e):
@@ -261,7 +314,12 @@ class _Keys(QObject):
         self.o = overlay
 
     def eventFilter(self, obj, e):
-        if e.type() != QEvent.Type.KeyPress or not self.o.is_visible():
+        # every event of the whole app passes here: one type() call and out for nearly all of them
+        t = e.type()
+        if t in _ACTIVATING:
+            self.o._activation.seen(obj)
+            return False
+        if t != _KEYPRESS or not self.o.is_visible():
             return False
         win = QApplication.activeWindow()
         if win is None or win not in self.o._backdrops:
@@ -311,11 +369,9 @@ class _Activation(QObject):
         self.o.raise_panels()
         QTimer.singleShot(250, self.o.raise_panels)      # once more for a compositor that is slow to restack
 
-    def eventFilter(self, obj, e):
-        if e.type() in (QEvent.Type.WindowActivate, QEvent.Type.MouseButtonPress) and isinstance(obj, QWidget) \
-                and self.o.is_visible() and obj.window() in self.o._backdrops:
+    def seen(self, obj):
+        if isinstance(obj, QWidget) and self.o.is_visible() and obj.window() in self.o._backdrops:
             self._soon.start()
-        return False
 
 
 class MainOverlay:
@@ -335,38 +391,63 @@ class MainOverlay:
         self._chrome: list[QWidget] = []
         self._pages: dict[str, QWidget] = {}
         self._nav_buttons: dict[str, QPushButton] = {}
+        self._nav_group: QButtonGroup | None = None
+        self._pill: QFrame | None = None            # the sliding marker under the page switcher
+        self._pill_on = False
         self._current = "dashboard"
-        self._anims = []
+        self._host_name = ""
         self._screen_sig = None
         self._clock: _Clock | None = None
         self._status: _Status | None = None
+        self._last_repair = 0.0
+        self._opening = False
         self._tick = QTimer()
         self._tick.setInterval(1000)
         self._tick.timeout.connect(self._tick_chrome)
+        self._idle = QTimer()                      # builds the other pages while the overlay is open
+        self._idle.setSingleShot(True)
+        self._idle.timeout.connect(self._idle_build)
         self._keys = _Keys(self)
         self._activation = _Activation(self)
-        QApplication.instance().installEventFilter(self._keys)
-        QApplication.instance().installEventFilter(self._activation)
+        QApplication.instance().installEventFilter(self._keys)       # also tells _activation about clicks
 
     # ── building ───────────────────────────────────────────────────────────
     def _perf(self) -> bool:
         return bool(self.settings.get("ui.performance_mode", False))
 
     def _host_screen(self):
-        if self.settings.get("ui.overlay_screen", "primary") == "cursor":
+        if self.settings.get("ui.overlay_screen", "cursor") == "cursor":
             return widgets.cursor_screen() or QApplication.primaryScreen()
         return QApplication.primaryScreen()
 
     def _blur(self) -> bool:
         return bool(self.settings.get("ui.blur", True)) and not self._perf()
 
-    def _screens_signature(self):
+    def _screens_signature(self, host: str = ""):
+        # host: keep the screen it is on now (while it is open it does not jump to the mouse)
         return (tuple((s.geometry().x(), s.geometry().y(), s.geometry().width(), s.geometry().height())
-                      for s in QApplication.screens()), self._host_screen().name(), self._blur(),
+                      for s in QApplication.screens()), host or self._host_screen().name(), self._blur(),
                 tuple(self.nav_order()))
 
-    def _build(self):
-        self._destroy()
+    def _build(self, keep_pages: bool = False):
+        kept = self._destroy(keep_pages)
+        try:
+            self._build_windows()
+        except Exception:
+            log.exception("could not build the overlay")
+            self._destroy()
+            for page in kept.values():
+                page.deleteLater()
+            raise
+        known = dict(ALL_PAGES)
+        for key, page in kept.items():
+            if key in known and alive(page):
+                self._pages[key] = page
+                self.stack.addWidget(page)
+            elif alive(page):
+                page.deleteLater()
+
+    def _build_windows(self):
         dim = float(self.settings.get("ui.overlay_dim", 0.64))
         prim = self._host_screen()
         blur = self._blur()
@@ -379,7 +460,9 @@ class MainOverlay:
                 self._primary = b
         if self._primary is None:
             self._primary = self._backdrops[0]
+            prim = QApplication.screens()[0]
         self._primary.primary = True
+        self._host_name = prim.name()
         # bars and docks (Noctalia...) stay on top of the overlay: keep the chrome in the space they leave free
         g = prim.geometry()
         a = hypr.available_geometry(prim)
@@ -396,7 +479,7 @@ class MainOverlay:
             surf.setGeometry(0, top, b.width(), b.height() - top - bottom)
             surf.hide()
             self._extra_surfaces[scr.name()] = surf
-        self._screen_sig = self._screens_signature()
+        self._screen_sig = self._screens_signature(self._host_name)
 
     def _build_chrome(self, host: _Backdrop):
         W, H = host.width(), host.height()
@@ -448,6 +531,11 @@ class MainOverlay:
         nl = QHBoxLayout(nav)
         nl.setContentsMargins(6, 6, 6, 7)
         nl.setSpacing(2)
+        self._pill_on = anim.on("nav")
+        self._pill = QFrame(nav)
+        self._pill.setObjectName("lumNavPill")
+        self._pill.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._pill.hide()
         self._nav_group = QButtonGroup(nav)
         self._nav_group.setExclusive(True)
         self._nav_buttons = {}
@@ -455,6 +543,7 @@ class MainOverlay:
         for i, key in enumerate(self.nav_order()):
             b = QPushButton(names[key])
             b.setProperty("nav", True)
+            b.setProperty("pill", self._pill_on)
             b.setCheckable(True)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             hk = self.settings.get(self._nav_hotkey_key(key), "") if key in dict(NAV_SECTIONS) else ""
@@ -468,8 +557,10 @@ class MainOverlay:
             nl.addWidget(b)
             self._nav_buttons[key] = b
         dl.addWidget(nav)
+        nl.activate()
         dock.adjustSize()
         dock.move((W - dock.width()) // 2, top)
+        self._pill.lower()
 
         # top-right: the hotkey hint and a round ✕
         right = QWidget(host)
@@ -480,6 +571,8 @@ class MainOverlay:
         combo = self.settings.get("ui.overlay_hotkey", "")
         if combo:
             rl.addWidget(widgets.label(pretty(combo).upper(), 10, 500, mono=True, spacing=0.08, tone="muted"))
+        if getattr(self.launcher, "safe_mode", False):
+            rl.addWidget(widgets.label("SAFE MODE", 10, 600, mono=True, spacing=0.08, tone="danger"))
         close = QPushButton("✕")
         close.setObjectName("lumClose")
         close.setFixedSize(36, 36)
@@ -495,6 +588,26 @@ class MainOverlay:
         for c in self._chrome:
             c.raise_()
 
+    def _place_pill(self, key: str, animate: bool):
+        pill = self._pill
+        if not alive(pill):
+            return
+        b = self._nav_buttons.get(key)
+        if not self._pill_on or b is None:
+            pill.hide()
+            return
+        nav = pill.parentWidget()
+        if nav is not None and nav.layout() is not None:
+            nav.layout().activate()                  # the buttons' real places, not Qt's defaults
+        target = b.geometry()
+        if not pill.isVisible() or not animate:
+            anim.stop(pill)
+            pill.setGeometry(target)
+            pill.show()
+            pill.lower()
+        else:
+            anim.geometry(pill, target, "nav", 230)
+
     @staticmethod
     def _nav_hotkey_key(key: str) -> str:
         return "ui.hotkey_settings_page" if key == "settings" else f"ui.hotkey_{key}"
@@ -509,8 +622,23 @@ class MainOverlay:
                 order.insert(0 if k == "dashboard" else len(order), k)
         return order
 
-    def _destroy(self):
-        for page in self._pages.values():
+    def _destroy(self, keep_pages: bool = False) -> dict:
+        """Throw the overlay away. keep_pages: the panel pages (Settings, Themes...) are taken out first and
+        returned, so a move to another screen does not have to build them again."""
+        kept = {}
+        self._idle.stop()
+        for key, page in list(self._pages.items()):
+            if not alive(page):
+                continue
+            if keep_pages and key not in FULL_PAGES and alive(self.stack):
+                try:
+                    self.stack.removeWidget(page)
+                    page.hide()
+                    page.setParent(None)
+                    kept[key] = page
+                    continue
+                except RuntimeError:
+                    log.exception("could not keep the %s page", key)
             closer = getattr(page, "teardown", None)
             if closer:
                 try:
@@ -518,8 +646,14 @@ class MainOverlay:
                 except Exception:
                     log.exception("page teardown failed")
         for b in self._backdrops:
-            b.close()
-            b.deleteLater()
+            if not alive(b):
+                continue
+            try:
+                anim.stop(b)
+                b.close()
+                b.deleteLater()
+            except RuntimeError:
+                log.exception("could not close an overlay window")
         self._backdrops = []
         self._primary = None
         self.panel = None
@@ -528,15 +662,19 @@ class MainOverlay:
         self._extra_surfaces = {}
         self._chrome = []
         self._pages = {}
+        self._nav_buttons = {}
+        self._nav_group = None
+        self._pill = None
         self._clock = self._status = None
+        self._screen_sig = None
         self._tick.stop()
+        return kept
 
     def _make_page(self, key: str) -> QWidget:
         try:
             if key == "dashboard":
                 from ui.dashboard import DashboardPage
-                return DashboardPage(self.launcher, self.surface, self._host_screen().name(),
-                                     dict(self._extra_surfaces))
+                return DashboardPage(self.launcher, self.surface, self._host_name, dict(self._extra_surfaces))
             if key == "automation":
                 from ui.automation import AutomationPage
                 return AutomationPage(self.launcher, self.surface)
@@ -581,8 +719,8 @@ class MainOverlay:
     def refresh_page_later(self, key: str):
         def go():
             old = self._pages.pop(key, None)
-            if old is not None:
-                if self.stack is not None and self.stack.indexOf(old) >= 0:
+            if alive(old):
+                if alive(self.stack) and self.stack.indexOf(old) >= 0:
                     self.stack.removeWidget(old)
                 old.hide()
                 old.deleteLater()
@@ -604,7 +742,7 @@ class MainOverlay:
 
     # ── showing ────────────────────────────────────────────────────────────
     def is_visible(self) -> bool:
-        return self._primary is not None and self._primary.isVisible()
+        return alive(self._primary) and self._primary.isVisible()
 
     def toggle(self):
         if self.is_visible():
@@ -619,18 +757,39 @@ class MainOverlay:
             return last
         return "dashboard"
 
-    def open(self, section: str = "dashboard", sub: str = ""):
-        if self._primary is None or self._screen_sig != self._screens_signature():
-            self._build()
+    def open(self, section: str = "dashboard", sub: str = "", fade: bool = True):
+        try:
+            self._open(section, sub, fade)
+        except Exception:
+            # something in the old overlay was broken: start over from nothing, once
+            log.exception("opening the overlay failed: building it again")
+            self._hard_reset()
+            try:
+                self._open(section, sub, fade)
+            except Exception:
+                log.exception("the overlay could not be opened")
+                self._hard_reset()
+                self.launcher.notify(APP_NAME, "The overlay could not be opened (see the log). Tray → Restart, or "
+                                               "Restart in safe mode from the command palette, can help.", 8000)
+
+    def _open(self, section: str, sub: str, fade: bool):
+        visible = self.is_visible()
+        if self._primary is None or self._screen_sig != self._screens_signature(self._host_name if visible else ""):
+            self._build(keep_pages=True)
+            visible = False
         self._apply_look()
-        self.show_page(section or "dashboard", sub)
-        if not self.is_visible():
-            perf = self._perf()
+        self._opening = True
+        try:
+            self.show_page(section or "dashboard", sub)
+        finally:
+            self._opening = False
+        if not visible:
+            start = 0.0 if fade and anim.on("overlay") else 1.0
             for b in self._backdrops:
-                b.setWindowOpacity(1.0 if perf else 0.0)
+                b.set_reveal(start)
                 b.show()
                 b.raise_()
-            if not perf:
+            if start < 1.0:
                 self._fade(1.0)
         widgets.bring_to_front(self._primary)
         self._tick_chrome()
@@ -640,12 +799,43 @@ class MainOverlay:
         # panels that were open (Calculator, Notes…) stay above the overlay; the backdrop's map and focus
         # put it on top of them, so lift them again once it is up
         QTimer.singleShot(250, self.raise_panels)
+        self._idle.start(900)
+
+    def _hard_reset(self):
+        try:
+            self._destroy()
+        except Exception:
+            log.exception("could not tear the overlay down cleanly")
+            self._backdrops, self._primary, self._pages = [], None, {}
+            self.panel = self.stack = self.surface = None
+            self._extra_surfaces, self._chrome, self._nav_buttons = {}, [], {}
+            self._screen_sig = None
+
+    def repair(self, key: str = ""):
+        """Something on the overlay broke: build all of it again (at most every few seconds)."""
+        import time
+        now = time.monotonic()
+        if now - self._last_repair < 3:
+            return
+        self._last_repair = now
+        was_open, cur = self.is_visible(), key or self._current
+        log.warning("repairing the overlay (was on %s)", cur)
+        self._hard_reset()
+        if was_open:
+            self.open(cur, fade=False)
+        else:
+            QTimer.singleShot(1500, self.prewarm)
 
     def focus_page(self):
         page = self._pages.get(self._current)
-        focus = getattr(page, "focus_target", None)
-        QTimer.singleShot(0, lambda: (focus() if callable(focus) else self._primary.setFocus()
-                                      if self._primary is not None else None))
+        focus = getattr(page, "focus_target", None) if alive(page) else None
+
+        def go():
+            if callable(focus) and alive(page):
+                focus()
+            elif alive(self._primary):
+                self._primary.setFocus()
+        QTimer.singleShot(0, go)
 
     def raise_panels(self):
         """Put Luminescent's own floating panels (Calculator, Notes, Timers…) back above the overlay."""
@@ -659,9 +849,9 @@ class MainOverlay:
         if not self.is_visible():
             self._tick.stop()
             return
-        if self._clock is not None and self._clock.isVisible():
+        if alive(self._clock) and self._clock.isVisible():
             self._clock.tick()
-        if self._status is not None:
+        if alive(self._status):
             if self.settings.get("ui.show_status", True) and self._current != "automation":
                 self._status.tick()
             else:
@@ -680,14 +870,25 @@ class MainOverlay:
     def show_page(self, key: str, sub: str = ""):
         if self.stack is None:
             return
+        try:
+            self._show_page(key, sub)
+        except RuntimeError:
+            # a page kept a widget that is gone: rebuild everything instead of leaving a blank overlay
+            log.exception("showing the %s page failed", key)
+            QTimer.singleShot(0, lambda: self.repair(key))
+
+    def _show_page(self, key: str, sub: str):
         if key not in self._nav_buttons and key not in dict(ALL_PAGES):
             key = "dashboard"
+        was, was_full = self._current, self._current in FULL_PAGES and self.surface.isVisible()
         old = self._pages.get(self._current)
-        if old is not None and self._current != key:
+        if alive(old) and self._current != key:
             off = getattr(old, "on_hide", None)
             if callable(off):
                 off()
         page = self._pages.get(key)
+        if page is not None and not alive(page):
+            page = None
         if page is None:
             page = self._make_page(key)
             self._pages[key] = page
@@ -700,7 +901,7 @@ class MainOverlay:
         self.panel.setVisible(not full)
         for k in FULL_PAGES:
             other = self._pages.get(k)
-            if other is not None and k != key:
+            if alive(other) and k != key:
                 other.hide()
         if full:
             page.setGeometry(self.surface.rect())
@@ -708,39 +909,89 @@ class MainOverlay:
         else:
             self.stack.setCurrentWidget(page)
         # the node editor uses the whole screen: the clock and chips would sit on top of the nodes
-        if self._clock is not None:
+        if alive(self._clock):
             self._clock.setVisible(key != "automation" and bool(self.settings.get("ui.show_clock", True)))
-        if self._status is not None and key == "automation":
+        if alive(self._status) and key == "automation":
             self._status.hide()
         for c in self._chrome:
-            c.raise_()
+            if alive(c):
+                c.raise_()
         if key in self._nav_buttons:
             self._nav_buttons[key].setChecked(True)
-        else:
+        elif self._nav_group is not None:
             checked = self._nav_group.checkedButton()
             if checked is not None:
                 self._nav_group.setExclusive(False)
                 checked.setChecked(False)
                 self._nav_group.setExclusive(True)
+        switching = key != was and self.is_visible() and not getattr(self, "_opening", False)
+        self._place_pill(key, switching)
         self._current = key
-        self._primary.invalidate()
+        if alive(self._primary):
+            self._primary.invalidate()
+        if switching:
+            # the page fades in; coming from the dashboard the whole panel does
+            target = page if full else (self.panel if was_full else self.stack)
+            anim.fade(target, 0.0, 1.0, "pages", 170)
         if sub and hasattr(page, "open_section"):
             page.open_section(sub)
         on_show = getattr(page, "on_show", None)
         if callable(on_show):
             on_show()
 
+    def _fade_targets(self) -> list[QWidget]:
+        out = [self.panel, self.surface, *self._extra_surfaces.values(), *self._chrome]
+        return [w for w in out if alive(w) and w.isVisible() and (w.graphicsEffect() is None or
+                                                                   isinstance(w.graphicsEffect(),
+                                                                              QGraphicsOpacityEffect))]
+
+    def _fade(self, to: float, then=None):
+        """Fade the overlay in or out. Window opacity does nothing on Wayland, so the backdrops paint
+        themselves fainter and the widgets on them get an opacity effect for the length of the fade."""
+        if not alive(self._primary):
+            if then:
+                then()
+            return
+        start = self._primary.reveal
+        effects = []
+        for w in self._fade_targets():
+            eff = w.graphicsEffect()
+            if eff is None:
+                eff = QGraphicsOpacityEffect(w)
+                eff.setOpacity(start)
+                w.setGraphicsEffect(eff)
+            effects.append((w, eff))
+        backdrops = list(self._backdrops)
+
+        def frame(v):
+            for b in backdrops:
+                if alive(b):
+                    b.set_reveal(v)
+            for _w, eff in effects:
+                if alive(eff):
+                    eff.setOpacity(v)
+
+        def done():
+            for w, eff in effects:
+                if alive(w) and w.graphicsEffect() is eff:
+                    w.setGraphicsEffect(None)
+            if then:
+                then()
+        anim.value(start, to, frame, "overlay", 150 if to > 0 else 120, done, self._primary,
+                   QEasingCurve.Type.OutCubic if to > 0 else QEasingCurve.Type.InCubic, "reveal")
+
     def hide(self):
         if not self.is_visible():
             return
         page = self._pages.get(self._current)
-        on_hide = getattr(page, "on_hide", None)
+        on_hide = getattr(page, "on_hide", None) if alive(page) else None
         if callable(on_hide):
             on_hide()
-        if self._perf():
-            self._hide_now()
-        else:
+        self._idle.stop()
+        if anim.on("overlay"):
             self._fade(0.0, self._hide_now)
+        else:
+            self._hide_now()
 
     def _hide_now(self):
         events.emit("overlay.closed")
@@ -749,8 +1000,9 @@ class MainOverlay:
             self.settings.save_quiet()
         self._tick.stop()
         for b in self._backdrops:
-            b.hide()
-            b.setWindowOpacity(1.0)
+            if alive(b):
+                b.hide()
+                b.set_reveal(1.0)
         sync = hypr.sync()
         for addr in self._floated:                  # back into the tiling layout
             if sync is not None:
@@ -767,22 +1019,6 @@ class MainOverlay:
         sync.float_on_top(addr, widgets.cursor_screen_geometry())
         self._floated.append(addr)
 
-    def _fade(self, to: float, then=None):
-        for a in self._anims:
-            a.stop()
-        self._anims = []
-        for b in self._backdrops:
-            a = QPropertyAnimation(b, b"windowOpacity")
-            a.setDuration(120)
-            a.setStartValue(b.windowOpacity())
-            a.setEndValue(to)
-            a.setEasingCurve(QEasingCurve.Type.OutCubic)
-            self._anims.append(a)
-        if then and self._anims:
-            self._anims[0].finished.connect(then)
-        for a in self._anims:
-            a.start()
-
     def _outside_click(self):
         if self.settings.get("ui.click_outside_closes", True):
             self.hide()
@@ -797,19 +1033,56 @@ class MainOverlay:
         top = getattr(self, "_insets", (0, 0))[0]
         y = 0
         for w in (self._clock, self._status):
-            if w is not None and (w.isVisible() or w is self._status):
+            if alive(w) and (w.isVisible() or w is self._status):
                 y = max(y, w.y() + (w.height() if w.isVisible() else 0))
-        if self._status is not None and self.settings.get("ui.show_status", True):
+        if alive(self._status) and self.settings.get("ui.show_status", True):
             y += 2 * 34
         return max(0, y - top)
 
     # ── changes ────────────────────────────────────────────────────────────
-    def rebuild(self):
-        """Theme or navigation changed: rebuild everything, keeping the current page if it is open."""
+    def _snapshots(self) -> dict[str, QPixmap]:
+        out = {}
+        for b in self._backdrops:
+            if alive(b) and b.isVisible():
+                try:
+                    out[b.screen_name] = b.grab()
+                except RuntimeError:
+                    pass
+        return out
+
+    def _crossfade(self, snaps: dict[str, QPixmap]):
+        """Lay a picture of the old look over the new one and fade it away."""
+        for b in self._backdrops:
+            px = snaps.get(b.screen_name)
+            if px is None:
+                continue
+            curtain = QLabel(b)
+            curtain.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            curtain.setPixmap(px)
+            curtain.setScaledContents(True)
+            curtain.setGeometry(b.rect())
+            curtain.show()
+            curtain.raise_()
+            anim.fade(curtain, 1.0, 0.0, "theme", 280, then=curtain.deleteLater,
+                      curve=QEasingCurve.Type.InOutQuad)
+
+    def rebuild(self, between=None):
+        """Theme, text size or navigation changed: rebuild everything, keeping the current page if it is open.
+        between() runs once the old overlay is gone (restyling widgets that are about to be deleted would only
+        cost time)."""
         was_open, cur = self.is_visible(), self._current
-        self._destroy()
+        snaps = self._snapshots() if was_open and anim.on("theme") else {}
+        self._hard_reset()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        if between is not None:
+            try:
+                between()
+            except Exception:
+                log.exception("restyling failed")
         if was_open:
-            self.open(cur)
+            self.open(cur, fade=False)
+            if snaps:
+                self._crossfade(snaps)
         else:
             QTimer.singleShot(1500, self.prewarm)
 
@@ -818,14 +1091,23 @@ class MainOverlay:
         open (Settings takes most of a second to build) is instant. Nothing is shown."""
         if self.is_visible():
             return
-        if self._primary is None or self._screen_sig != self._screens_signature():
-            self._build()
+        try:
+            if self._primary is None or self._screen_sig != self._screens_signature():
+                self._build(keep_pages=True)
+        except Exception:
+            log.exception("could not prepare the overlay")
+            self._hard_reset()
+            return
         keys = list(self._nav_buttons) if keys is None else keys
         while keys and keys[0] in self._pages:
             keys.pop(0)
         if not keys:
             return
-        key = keys.pop(0)
+        self._prepare(keys.pop(0))
+        if keys:
+            QTimer.singleShot(200, lambda: self.prewarm(keys))
+
+    def _prepare(self, key: str):
         try:
             page = self._make_page(key)
         except Exception:
@@ -836,28 +1118,42 @@ class MainOverlay:
             self.stack.addWidget(page)
         else:
             page.hide()
-        if keys:
-            QTimer.singleShot(200, lambda: self.prewarm(keys))
+
+    def _idle_build(self):
+        """While the overlay is open: build one page that is not built yet, so switching to it is instant."""
+        if not self.is_visible() or self.stack is None:
+            return
+        if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
+            self._idle.start(500)                  # not in the middle of a drag
+            return
+        todo = [k for k in self._nav_buttons if k not in self._pages]
+        if not todo:
+            return
+        self._prepare(todo[0])
+        if len(todo) > 1:
+            self._idle.start(350)
 
     def settings_applied(self):
         """Settings were saved: pick up a new nav order / dim / performance mode without closing."""
         if self._primary is None:
             return
-        if list(self._nav_buttons) != self.nav_order() or self._screen_sig != self._screens_signature():
+        if list(self._nav_buttons) != self.nav_order() or self._pill_on != anim.on("nav") \
+                or self._screen_sig != self._screens_signature(self._host_name):
             QTimer.singleShot(0, self.rebuild)
             return
         self._apply_look()
-        if self._clock is not None:
+        if alive(self._clock):
             self._clock.setVisible(bool(self.settings.get("ui.show_clock", True)))
         page = self._pages.get("dashboard")
-        if page is not None and hasattr(page, "refresh"):
+        if alive(page) and hasattr(page, "refresh"):
             page.refresh(force=True)
         auto = self._pages.get("automation")
-        if auto is not None and hasattr(auto, "settings_applied"):
+        if alive(auto) and hasattr(auto, "settings_applied"):
             auto.settings_applied()
 
     def page(self, key: str):
-        return self._pages.get(key)
+        page = self._pages.get(key)
+        return page if alive(page) else None
 
     def shutdown(self):
         self._destroy()

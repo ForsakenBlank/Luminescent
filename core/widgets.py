@@ -13,7 +13,7 @@ from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, 
                           QPropertyAnimation, QEasingCurve)
 from PyQt6.QtGui import QPainter, QColor, QPixmap
 
-from core import IS_WIN, theme, hypr
+from core import IS_WIN, theme, hypr, anim
 
 log = logging.getLogger("widgets")
 _uid = 0
@@ -539,21 +539,45 @@ class FloatingPanel(QWidget):
     # ── behaviour ──────────────────────────────────────────────────────────
     def close_requested(self):
         if self._close_hides:
-            self.hide()
+            self.fade_hide()
         else:
             self.close()
 
+    def fade_hide(self):
+        """Hide, fading the panel out first when panel animations are on."""
+        if not self.isVisible() or self.property("fading_out"):
+            return
+        if not anim.on("panels"):
+            self.hide()
+            return
+        self.setProperty("fading_out", True)
+
+        def done():
+            self.setProperty("fading_out", False)
+            self.hide()
+            self.container.setGraphicsEffect(None)
+        anim.fade(self.container, 1.0, 0.0, "panels", 140, then=done, curve=QEasingCurve.Type.InCubic)
+
     def show_and_raise(self, activate: bool = True):
+        if self.property("fading_out"):
+            anim.stop(self.container)
+            self.setProperty("fading_out", False)
+            self.container.setGraphicsEffect(None)
         self.show()
         raise_window(self)
         if activate and not self.testAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating):
             bring_to_front(self)
 
     def toggle(self):
-        if self.isVisible():
-            self.hide()
+        if self.isVisible() and not self.property("fading_out"):
+            self.fade_hide()
         else:
             self.show_and_raise()
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if not e.spontaneous():
+            anim.fade(self.container, 0.0, 1.0, "panels", 160)
 
     def center_on(self, screen: QRect | None = None):
         s = screen or primary_geometry()

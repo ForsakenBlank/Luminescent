@@ -1,5 +1,12 @@
 # Luminescent (formerly UsefulScripts / AllinOne)
 
+> [!WARNING]
+> **This app is vibe coded.** It was built mostly by chatting with an AI coding assistant, not written line by
+> line by an experienced developer. It works, but expect rough edges and bugs. Keep backups of your setup:
+> **Settings → General → Backup → Export backup…** saves your settings, notes, timers, reminders, dashboard,
+> automations and themes into one zip (Luminescent also makes a weekly one in `data/backups`). The Ghost Vault is
+> never part of a backup, so keep your own copy of anything you put in there.
+
 One background app for **Windows 11** and **Linux** (made for Hyprland, tested on CachyOS; see
 [Which Linux?](#which-linux) for other distros and desktops) that keeps every little tool a hotkey away: a
 GeForce-overlay style **hub** (Dashboard, Automation, Themes, Clipboard, Settings, and optional Notes, Timers,
@@ -77,14 +84,17 @@ closes the overlay. **Quit everything** lives in Settings → General.
 `Ctrl+1…9` switch pages. Start typing on the Dashboard or Themes page and the command palette opens with what you
 typed. The top-left corner shows the time, running timers, the Hearing Guard level and the next reminder. Settings →
 Overlay & Interface picks the pages in the navigation bar (Notes, Timers, Calculator, Today and Usage can be added),
-the screen it opens on, the frosted background, the **Text size** (85% to 150%, every panel, page and menu) and
-whether it opens on the page you were on last.
+the screen it opens on (the one with the mouse by default), the frosted background, the **Text size** (85% to 150%,
+every panel, page and menu) and whether it opens on the page you were on last.
 
 * **Dashboard**: movable "tab boxes" on every screen. `＋ Add` → **Tab of items**, name it (Scripts, Games, Work…),
   right-click its header →
   **Add item** and point the item at a script, program, file, folder, URL or command. Double-click an item to run it;
   right-click for Run / Edit / Rename / Change file / Set hotkey / Move / Delete. Drag a header to move a box (it snaps
-  to a grid), click the header to fold it, drag its right edge to resize. **Tidy up** lines them all up.
+  to a grid), click the header to fold it, drag its right edge to resize. **Tidy up** lines them up and they glide
+  into place: in **columns** (every box keeps its width), a **grid** or **rows**, in their current order, by name or
+  biggest first (the ▾ next to it, or Settings → Dashboard). With boxes selected only those are tidied, and
+  **Undo** / `Ctrl+Z` puts them back.
   `.py` / `.sh` scripts open in your terminal (kitty here; kitty, alacritty and foot get the Luminescent colours)
   and stay open so you can read the output (Settings → Dashboard & Scripts). The **Tools** tab runs Luminescent's own actions. Item hotkeys work
   anywhere, overlay open or not. The tray menu lists every item too.
@@ -96,8 +106,11 @@ whether it opens on the page you were on last.
   Clipboard folder, the open note…), also after a restart. ⤢ opens the full page, ✕ takes the box off.
   **Select like a desktop**: drag on the open space to draw a selection box, Ctrl/Shift+click headers to add to it;
   drag one selected box and the others come along, `Delete` removes them, `Ctrl+A` selects all, and the right-click
-  menu folds, moves or removes the whole selection. **Several screens**: drag a box onto another screen (or
-  right-click → Move to screen). **Snap**: boxes snap to an 8 px grid while you drag; right-click the open space →
+  menu folds, moves or removes the whole selection. **Several screens**: drag a box (or the whole selection) onto
+  another screen and drop it there (or right-click → Move to screen); right-click menus and pop-ups open on the
+  screen you clicked. **A different dashboard per screen**: right-click the open space on another screen → **This
+  screen shows** → Always "Work" (or the dashboards menu → Show on screen); that screen keeps showing it whichever
+  dashboard the toolbar switches to, and each dashboard remembers where its boxes are. **Snap**: boxes snap to an 8 px grid while you drag; right-click the open space →
   Snap to a grid (or Settings → Dashboard) changes it, and **Off** moves them pixel by pixel, perfectly smooth.
   A **new dashboard** can start empty, with the Tools tab, or as a copy; switching between them is instant (their
   boxes are kept, not rebuilt), and with many dashboards the toolbar folds them into one menu.
@@ -117,7 +130,8 @@ whether it opens on the page you were on last.
   clipboard (text, an image, copied files) into the folder you are in. Folders can be coloured (right-click).
   The search box looks through every folder. Drag a card onto another to reorder, onto a folder (or the breadcrumb)
   to move it; right-click → **Favourite** puts it in the row at the top. Rest the mouse on a card for a bigger preview.
-* **Settings**: every option, grouped by module, with a search box. **Settings profiles** at the top: each profile
+* **Settings**: every option, grouped by module, with a search box that highlights what you typed and counts the
+  matches per section. Tick **Only matching settings** under it to hide every setting that does not mention it. **Settings profiles** at the top: each profile
   has its own hotkeys, sizes, sounds… and a theme can switch to one. General, Overlay and Dashboard settings are shared.
   A hotkey that clashes is flagged while you record it. General has **Show on start** (which panels open by
   themselves), the **tray menu** editor and a weekly automatic backup (last 5 kept).
@@ -239,7 +253,28 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
 
 Nothing polls while hidden: the overlay, palette and cheat sheet only exist while shown, the tray tooltip only ticks
 while a timer runs, and work that can block (OCR, wallpaper changes) runs on worker threads so the keyboard hook stays
-responsive. **Performance mode** (Settings → Overlay & Interface) drops the glow, fade and background images.
+responsive. Settings take a moment to build only for the section you open (the rest follow in the background), a
+theme change throws the old overlay away before restyling, and the dotted background is painted once per screen.
+**Performance mode** (Settings → Overlay & Interface) drops the glow, every animation and background images.
+
+## Animations
+
+The overlay fades in and out, pages and Settings sections fade in, a marker slides along the page switcher,
+dashboard boxes glide when you tidy, fold or move them, themes crossfade, notifications and panels fade, and the
+Automation page zooms smoothly. **Settings → Animations** has a master switch, a speed (Fast, Normal, Relaxed) and
+one switch per animation. Performance mode turns them all off.
+
+## When something breaks
+
+* An error shows a small "Luminescent error" card and goes into `data/launcher.log`.
+* If the overlay itself gets into a bad state (the "wrapped C/C++ object ... has been deleted" kind of error), it is
+  thrown away and built again on the spot instead of staying blank.
+* A module that keeps failing (6 errors in a minute) is switched off until the next start, so the rest keeps
+  working; Tray → Modules turns it back on.
+* **Restart** always restarts, even when a part of Luminescent is broken.
+* **Safe mode**: if Luminescent does not get going two starts in a row, the next start runs without modules, page
+  boxes or automations, so you can still open Settings, read the log and fix things. Tray → **Safe mode: restart
+  normally** leaves it. "Restart in safe mode" is also in the command palette.
 
 ## Backups
 

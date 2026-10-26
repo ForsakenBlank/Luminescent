@@ -339,8 +339,8 @@ class KeybindsModule(Module):
         if self.panel is None:
             with self.themed():
                 self.panel = KeybindsPanel(self)
-        if self.panel.isVisible():
-            self.panel.hide()
+        if self.panel.isVisible() and not self.panel.property("fading_out"):
+            self.panel.fade_hide()
         else:
             self.panel.reload()
             self.panel.show_and_raise()

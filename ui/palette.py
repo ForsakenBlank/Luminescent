@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, QTimer, QRect, QRectF, QEvent
 from PyQt6.QtGui import QColor, QPainter, QPen
 
-from core import DATA_DIR, theme, widgets, save_json, load_json, clip
+from core import DATA_DIR, theme, widgets, save_json, load_json, clip, anim
 
 log = logging.getLogger("palette")
 
@@ -233,6 +233,7 @@ class CommandPalette(QWidget):
         self.move(g.center().x() - self.width() // 2, g.top() + int(g.height() * 0.18) - self.GLOW)
         self.show()
         self.raise_()
+        anim.fade(self.box, 0.0, 1.0, "panels", 140)
         widgets.bring_to_front(self)
         self.input.setFocus()
         self.input.end(False)

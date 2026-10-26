@@ -7,9 +7,9 @@ A new warning with the same title replaces the old one, so a node that fires eve
 not pile them up.
 """
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QPushButton
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import Qt, QTimer
 
-from core import theme, widgets
+from core import theme, widgets, anim
 
 LEVELS = [("warning", "Warning (amber)"), ("danger", "Danger (red)"), ("info", "Info (theme colour)"),
           ("ok", "Good news (green)")]
@@ -40,6 +40,7 @@ class CenterAlert(QWidget):
         box.setStyleSheet(f"#alertBox {{ background: {p.bg_base}; border: 2px solid {c};"
                           f" border-radius: {p.radius + 4}px; }}")
         outer.addWidget(box)
+        self.box = box
         lay = QVBoxLayout(box)
         lay.setContentsMargins(34, 28, 34, 24)
         lay.setSpacing(12)
@@ -96,12 +97,7 @@ class CenterAlert(QWidget):
         self.raise_()
         widgets.bring_to_front(self)
         widgets.raise_window(self)
-        a = QPropertyAnimation(self, b"windowOpacity", self)
-        a.setDuration(160)
-        a.setStartValue(0.0)
-        a.setEndValue(1.0)
-        a.setEasingCurve(QEasingCurve.Type.OutCubic)
-        a.start()
+        anim.fade(self.box, 0.0, 1.0, "panels", 160)
 
     def keyPressEvent(self, e):
         if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Escape, Qt.Key.Key_Space):

@@ -32,7 +32,7 @@ import logging
 from PyQt6.QtCore import QObject, QTimer, QSocketNotifier, QEvent, QPoint, QRect, Qt, pyqtSignal
 from PyQt6.QtGui import QCursor
 from PyQt6.QtNetwork import QLocalSocket
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget, QDialog
 
 log = logging.getLogger("hypr")
 
@@ -456,13 +456,33 @@ class WindowSync(QObject):
         self._pending.remove(w)
         self._addr[w] = addr
         self._by_addr[addr] = w
-        if w.testAttribute(Qt.WidgetAttribute.WA_Moved):
+        if isinstance(w, QDialog):
+            self._centre_dialog(w, addr)
+        elif w.testAttribute(Qt.WidgetAttribute.WA_Moved):
             self._move(addr, w)
         else:
             self._read_back(w, addr)
         if w in self._want_focus:
             self._want_focus.discard(w)
             self.focus(w)
+
+    def _centre_dialog(self, w: QWidget, addr: str):
+        """Dialogs (ask a name, confirm, pick a file or colour...) go in the middle of the window that opened
+        them, else of the screen with the mouse. Qt works their spot out from window positions it can not
+        know on Wayland, which put them in the top-left corner."""
+        parent = w.parentWidget().window() if w.parentWidget() is not None else None
+        if parent is not None and parent.isVisible() and parent is not w:
+            area = parent.frameGeometry()
+        else:
+            area = available_geometry(screen_at_cursor())
+        c = self._client(addr)
+        if c and isinstance(c.get("size"), list):
+            dw, dh = int(c["size"][0]), int(c["size"][1])
+        else:
+            dw, dh = w.width(), w.height()
+        x, y = area.center().x() - dw // 2, area.center().y() - dh // 2
+        self._set_qt_pos(w, x, y)
+        dispatch(f"hl.dsp.window.move({{ x = {x}, y = {y}, window = {lstr('address:' + addr)} }})")
 
     def _client(self, addr: str) -> dict | None:
         return next((c for c in query("clients") or [] if c.get("address") == addr), None)

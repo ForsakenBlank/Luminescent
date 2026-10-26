@@ -7,11 +7,28 @@ One background app for Linux (Hyprland, tested on CachyOS) that keeps every litt
 **Screen Ruler**, **Media Controls**, a **QR Code** maker and a **System Monitor**. Everything runs in one process with
 one keyboard hook.
 
-## Run it
+## Download
+
+The [Releases page](https://github.com/ForsakenBlank/Luminescent/releases/latest) has ready-made builds:
+
+* **Windows**: `Luminescent-windows.zip`. Unzip it anywhere and run `Luminescent.exe`.
+* **Linux**: `Luminescent-linux.tar.gz`. Unpack it and run `Luminescent/Luminescent` (Hyprland needed for hotkeys).
+
+A download starts completely fresh. Your settings, notes, timers, themes and the rest live in your own data
+folder, not next to the program: `~/.local/share/Luminescent` on Linux, `%LOCALAPPDATA%\Luminescent` on Windows.
+
+**Updating**: Luminescent tells you when a new version is out (tray → Update available). Download it and replace the
+old program folder with the new one: your data folder is not touched, so everything is still there.
+
+## Run it from source
 
 ```
-./start.sh           (first run makes .venv and installs requirements.txt)
+./start.sh           (Linux; first run makes .venv and installs requirements.txt)
+Start.bat            (Windows)
 ```
+
+From source, your setup lives in this folder (`settings.json` and `data/`), which git ignores: `git pull` updates
+the code and leaves your notes and settings alone.
 
 Inside a Hyprland session. Hotkeys are Hyprland binds that Luminescent adds while it runs (nothing is written
 to your config), and Hyprland places its windows, so it needs Hyprland; under another compositor the windows
@@ -175,8 +192,7 @@ core/              settings + profiles, hotkeys, theme + theme profiles, widgets
                    icons, Dolphin menu), timeparse
 ui/                overlay, dashboard, themes page, command palette, cheat sheet, toasts, Today and Usage pages
 modules/           one file per tool (+ vault_store.py: vault crypto, no UI)
-data/              notes, timers, dashboard, themes, calculator, colours, profiles, hearing, launcher.log
-_old/              snapshots of earlier versions
+data/              your notes, timers, dashboard, themes… (created on first start, never in git)
 ```
 
 Something not working? Tray → **Open log file**. If a hotkey fires when it should not (e.g. R acts like Alt+R) or

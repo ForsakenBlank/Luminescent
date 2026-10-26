@@ -115,6 +115,8 @@ SCHEMA = [
         Field("desktop_entry", "List Luminescent in app launchers and docks", "bool", True,
               "Adds ~/.local/share/applications/luminescent.desktop and its icon, so Noctalia's launcher and dock "
               "show it with the sparkle icon."),
+        Field("check_updates", "Tell me when a new version is out", "bool", True,
+              "Asks GitHub once a day. Updating keeps your notes and settings."),
         Field("auto_backup", "Back up automatically once a week", "bool", True,
               "Zips your setup into data/backups (weekly-….zip) and keeps the last 5."),
         Field("pass_keys", "Hotkeys also reach the app you are in", "bool", True,
@@ -516,7 +518,7 @@ def _migrate_old_config(data: dict, raw: dict) -> bool:
     Retired sections (appearance → themes.json, file_launcher → dashboard.json) go into `raw`,
     where those migrations look for them.
     """
-    for candidate in (os.path.join(APP_DIR, "_old", "config.py"), os.path.join(APP_DIR, "config.py")):
+    for candidate in (os.path.join(APP_DIR, "config.py"),):
         if not os.path.exists(candidate):
             continue
         try:

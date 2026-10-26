@@ -26,8 +26,8 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
 from PyQt6.QtCore import QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
-from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, theme, widgets, autostart, terminal, wallpaper, hypr,
-                  runner, desktop, usage, backup)
+from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, VERSION, theme, widgets, autostart, terminal,
+                  wallpaper, hypr, runner, desktop, usage, backup)
 from core.settings import Settings, SCHEMA, ALL_PAGES
 from core.hotkeys import HotkeyManager, pretty
 from core.module import ModuleContext
@@ -70,7 +70,8 @@ class Launcher:
         self.app = app
         self.settings = Settings()
         setup_logging(bool(self.settings.get("general.log_to_file", True)))
-        log.info("=== starting (pid %s, %s, data in %s) ===", os.getpid(), "exe" if FROZEN else "source", HOME_DIR)
+        log.info("=== starting %s (pid %s, %s, data in %s) ===", VERSION, os.getpid(), "exe" if FROZEN else "source",
+                 HOME_DIR)
         if self.settings.migrated_from_old_config:
             log.info("migrated values from the old config.py into settings.json")
 
@@ -81,7 +82,10 @@ class Launcher:
         app.setQuitOnLastWindowClosed(False)
 
         from ui.toast import ToastManager
+        from core.updates import UpdateChecker
         self.toasts = ToastManager(self.settings)
+        self.updates = UpdateChecker()
+        self.updates.found.connect(self._update_found)
         self.hotkeys = HotkeyManager()
         self.hotkeys.pass_keys = bool(self.settings.get("general.pass_keys", True))
         terminal.set_preferred(self.settings.get("dashboard.terminal", ""))
@@ -125,6 +129,7 @@ class Launcher:
         self._sync_desktop_entry()
         self._write_terminal_scheme()
         QTimer.singleShot(20_000, self._auto_backup)
+        QTimer.singleShot(30_000, self._check_updates)
         self._backup_timer = QTimer()
         self._backup_timer.setInterval(6 * 3600 * 1000)
         self._backup_timer.timeout.connect(self._auto_backup)
@@ -342,6 +347,27 @@ class Launcher:
             except OSError:
                 pass
 
+    def _check_updates(self, force: bool = False):
+        if force or (self.settings.get("general.check_updates", True) and not os.environ.get("LUMINESCENT_HOME")):
+            self.updates.check(force)
+
+    def _update_found(self, tag: str, url: str):
+        if not tag:
+            self.notify(APP_NAME, f"You have the latest version ({VERSION}).", 3000)
+            return
+        log.info("update available: %s", tag)
+        self._update_url = url
+        how = ("download it from the release page" if FROZEN or not os.path.isdir(os.path.join(APP_DIR, ".git"))
+               else "run git pull in the Luminescent folder")
+        self.toast(f"{APP_NAME} {tag} is out", f"You have {VERSION}. Tray → Update available, or {how}. "
+                                               "Your notes and settings are kept.")
+        self._build_menu()
+
+    def open_update_page(self):
+        import webbrowser
+        from core.updates import PAGE
+        webbrowser.open(getattr(self, "_update_url", "") or PAGE)
+
     def next_theme(self):
         t = self.themes.next_theme()
         if t is not None:
@@ -409,6 +435,7 @@ class Launcher:
             out.append(Entry(f"settings:{s.key}", f"Settings › {s.title}", lambda k=s.key: self.open_settings(k),
                              "settings", "settings"))
         for label, fn in (("Next theme", self.next_theme), ("Reset stuck keys", self.reset_keys),
+                          ("Check for updates", lambda: self._check_updates(force=True)),
                           ("Show the hotkey cheat sheet", self._cheat_toggle),
                           ("Open the log file", self.open_log), ("Restart Luminescent", self.restart),
                           ("Quit Luminescent…", self.confirm_quit)):
@@ -427,8 +454,10 @@ class Launcher:
     def _build_menu(self):
         shown = set(self.settings.get("general.tray_items") or [])
         menu = QMenu()
-        head = menu.addAction(APP_NAME)
+        head = menu.addAction(f"{APP_NAME} {VERSION}")
         head.setEnabled(False)
+        if self.updates.latest:
+            menu.addAction(f"⬆  Update available: {self.updates.latest}", self.open_update_page)
         if "open" in shown:
             menu.addAction(f"✦  Open {APP_NAME}   ({pretty(self.settings.get('ui.overlay_hotkey', ''))})",
                            lambda: self.overlay.open("dashboard"))

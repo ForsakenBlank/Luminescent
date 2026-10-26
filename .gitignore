@@ -9,3 +9,9 @@ data/*.bad
 build/
 dist/
 .venv/
+# your own setup: never in the repo, so a download starts fresh and git pull keeps yours
+settings.json
+data/
+_old/
+assets/build_info.json
+refresh-*.md

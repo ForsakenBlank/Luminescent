@@ -7,10 +7,9 @@ never goes stale when the folder or the virtualenv moves: `sync` rewrites it.
 """
 import os
 import sys
-import shlex
 import logging
 
-from core import APP_DIR, APP_NAME, FROZEN
+from core import APP_DIR, APP_NAME, FROZEN, IS_WIN
 
 log = logging.getLogger("autostart")
 
@@ -20,9 +19,10 @@ LAUNCHER = os.path.join(APP_DIR, "Launcher.py")
 
 
 def command() -> str:
+    from core.desktop import _quote          # desktop-entry quoting: the folder may have a space in it
     if FROZEN:
-        return shlex.quote(sys.executable)
-    return f"{shlex.quote(sys.executable)} {shlex.quote(LAUNCHER)}"
+        return _quote(sys.executable)
+    return f"{_quote(sys.executable)} {_quote(LAUNCHER)}"
 
 
 def _entry_text() -> str:
@@ -86,3 +86,7 @@ def sync(want_enabled: bool) -> str:
     if not want_enabled and cur is not None:
         return set_enabled(False)
     return ""
+
+
+if IS_WIN:
+    from core.autostart_win import command, current, is_enabled, set_enabled, sync  # noqa: E402,F811

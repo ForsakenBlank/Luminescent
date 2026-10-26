@@ -397,10 +397,12 @@ class MainOverlay:
         logo.move(36, top + 30)
         self._clock = _Clock(host)
         self._clock.move(38, top + 30 + logo.height() + 22)
-        self._clock.setVisible(bool(self.settings.get("ui.show_clock", True)))
+        show_clock = bool(self.settings.get("ui.show_clock", True))
+        self._clock.setVisible(show_clock)
         self._status = _Status(self.launcher, host)
+        # isVisible() is still False here (the overlay is not on screen yet), so go by the setting
         self._status.move(36, top + 30 + logo.height() + 22 + (self._clock.sizeHint().height() + 18
-                                                               if self._clock.isVisible() else 0))
+                                                               if show_clock else 0))
         self._status.hide()
 
         # page switcher hanging from the top-centre edge: a 2 px accent line over the pills

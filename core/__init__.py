@@ -6,17 +6,23 @@ import shutil
 import logging
 
 APP_NAME = "Luminescent"          # shown in the tray, menus, dialogs and the startup entry
+VERSION = "1.0.0"                 # the release tag is v<VERSION>; core/updates.py compares against it
+REPO = "ForsakenBlank/Luminescent"
 
 FROZEN = bool(getattr(sys, "frozen", False))
+IS_WIN = sys.platform == "win32"
 
 # Where the code lives (the bundle's _internal folder in the exe).
 APP_DIR = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Where settings.json and data/ live. Running from source that is the project folder, as before.
-# A built binary keeps them in ~/.local/share/Luminescent so a rebuilt or moved build never loses them.
+# A built binary keeps them in ~/.local/share/Luminescent (%LOCALAPPDATA%\Luminescent on Windows) so a rebuilt,
+# moved or updated build never loses them.
 # LUMINESCENT_HOME overrides both (tests, a second portable copy).
 if os.environ.get("LUMINESCENT_HOME"):
     HOME_DIR = os.path.abspath(os.environ["LUMINESCENT_HOME"])
+elif FROZEN and IS_WIN:
+    HOME_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/AppData/Local"), APP_NAME)
 elif FROZEN:
     HOME_DIR = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"), APP_NAME)
 else:

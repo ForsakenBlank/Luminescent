@@ -6,15 +6,23 @@ tesseract-data-<language> you read).  The screens are grabbed once when the
 hotkey is pressed (grim), dimmed, and you drag a rectangle (Esc or right-click
 cancels).  Recognition runs on a worker thread.  If Tesseract is missing only
 this module is unavailable.
+
+With "Show the text in an editable box" on, the result opens in a small panel
+first: fix what OCR got wrong, then Copy (Ctrl+Enter). Esc throws it away.
+
+Windows: Windows' own OCR engine (Windows.Media.Ocr through the winrt packages) is used, so nothing
+has to be installed; Tesseract (C:\\Program Files\\Tesseract-OCR) is the fallback.
 """
 import os
+import sys
 import shutil
 import tempfile
 import threading
 import subprocess
 
-from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QRect, QPoint, pyqtSignal, QObject
+from PyQt6.QtWidgets import QApplication, QWidget, QPlainTextEdit, QHBoxLayout
+from PyQt6.QtCore import Qt, QRect, QPoint, QTimer, pyqtSignal, QObject
+from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap, QImage
 
 from core import theme, widgets, clip
@@ -33,9 +41,52 @@ def _languages(exe: str) -> str:
     return "+".join(["eng"] + [x for x in langs if x != "eng"] if "eng" in langs else langs)
 
 
-def _ocr_file(path: str, keep_lines: bool) -> str:
-    """Blocking: run Tesseract on an image file. Raises RuntimeError with a readable message."""
+def _windows_ocr(path: str, keep_lines: bool) -> str:
+    """Blocking: Windows' own OCR on an image file. Raises ImportError without the winrt packages."""
+    import asyncio
+    from winrt.windows.media.ocr import OcrEngine
+    from winrt.windows.graphics.imaging import BitmapDecoder
+    from winrt.windows.storage import StorageFile, FileAccessMode
+
+    async def run():
+        engine = OcrEngine.try_create_from_user_profile_languages()
+        if engine is None:
+            raise RuntimeError("Windows has no OCR language installed. Add one in Windows Settings → Time & "
+                               "language → Language & region (e.g. English with 'Optical character recognition').")
+        f = await StorageFile.get_file_from_path_async(path)
+        stream = await f.open_async(FileAccessMode.READ)
+        try:
+            bitmap = await (await BitmapDecoder.create_async(stream)).get_software_bitmap_async()
+            result = await engine.recognize_async(bitmap)
+        finally:
+            stream.close()
+        lines = [ln.text for ln in result.lines]
+        return "\n".join(lines) if keep_lines else " ".join(lines)
+
+    return asyncio.run(run())
+
+
+def _tesseract() -> str:
     exe = shutil.which("tesseract")
+    if not exe and sys.platform == "win32":
+        for base in (os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("LOCALAPPDATA", "")):
+            cand = os.path.join(base, "Tesseract-OCR", "tesseract.exe")
+            if os.path.isfile(cand):
+                return cand
+    return exe or ""
+
+
+def _ocr_file(path: str, keep_lines: bool) -> str:
+    """Blocking: run OCR on an image file. Raises RuntimeError with a readable message."""
+    if sys.platform == "win32":
+        try:
+            return _windows_ocr(path, keep_lines)
+        except ImportError:
+            if not _tesseract():
+                raise RuntimeError("The Windows OCR packages are missing. Run:\npip install winrt-Windows.Media.Ocr "
+                                   "winrt-Windows.Graphics.Imaging winrt-Windows.Storage "
+                                   "winrt-Windows.Storage.Streams winrt-Windows.Globalization")
+    exe = _tesseract()
     if not exe:
         raise RuntimeError("Tesseract is not installed. Run:\nsudo pacman -S tesseract tesseract-data-eng")
     # --psm 6: one block of text, which is what a dragged box usually is
@@ -108,6 +159,49 @@ class _Selector(QWidget):
 
 class _Bridge(QObject):
     done = pyqtSignal(str, str)          # text, error
+
+
+class ReviewPanel(widgets.FloatingPanel):
+    """The grabbed text in an editable box: Copy (Ctrl+Enter) puts it on the clipboard."""
+
+    def __init__(self, m: "TextGrabModule", text: str):
+        self.m = m
+        super().__init__("Text Grab", min_size=(320, 180), opacity=0.96, close_hides=False)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.set_title("Text Grab", "check the text")
+        self.edit = QPlainTextEdit(text)
+        self.edit.setFont(theme.qfont(13))
+        self.edit.setStyleSheet("QPlainTextEdit { background: transparent; border: none; padding: 10px 12px; }")
+        self.body.addWidget(self.edit, 1)
+        row = QHBoxLayout()
+        row.setContentsMargins(12, 6, 12, 12)
+        row.addWidget(widgets.label("Ctrl+Enter copies · Esc closes", 11, tone="muted"))
+        row.addStretch()
+        cancel = widgets.button("Cancel", "ghost")
+        cancel.clicked.connect(self.close)
+        copy = widgets.button("Copy", "primary")
+        copy.clicked.connect(self.copy)
+        row.addWidget(cancel)
+        row.addWidget(copy)
+        self.body.addLayout(row)
+        for keys in ("Ctrl+Return", "Ctrl+Enter"):
+            QShortcut(QKeySequence(keys), self, activated=self.copy)
+        self.escape_pressed.connect(self.close)
+        lines = text.count("\n") + 1
+        self.resize(min(720, max(380, max((len(x) for x in text.splitlines()), default=20) * 8 + 60)),
+                    min(560, 130 + lines * 22))
+        self.center_on(widgets.cursor_screen_geometry())
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        QTimer.singleShot(0, lambda: (widgets.bring_to_front(self), self.edit.setFocus()))
+
+    def copy(self):
+        text = self.edit.toPlainText()
+        if text.strip():
+            clip.set_text(text)
+            self.m.ctx.notify(self.m.title, "Copied.", 1500)
+        self.close()
 
 
 class TextGrabModule(Module):
@@ -188,6 +282,11 @@ class TextGrabModule(Module):
             return
         if not text.strip():
             self.ctx.notify(self.title, "No text found in that area.", 2500)
+            return
+        if self.s("review", False):
+            with self.themed():
+                panel = ReviewPanel(self, text.strip())
+            panel.show_and_raise()
             return
         clip.set_text(text)
         preview = text.replace("\n", " ")

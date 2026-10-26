@@ -117,15 +117,20 @@ class KeybindsPanel(widgets.FloatingPanel):
         self.count.setObjectName("lumHint")
         lay.addWidget(self.count)
         btns = QHBoxLayout()
+        editable = hypr.available()          # adding / changing binds edits your Hyprland config
         for text, fn, variant in (("Add bind…", self._add, "primary"), ("Change keys…", self._change, ""),
                                   ("Open in editor", self._open, ""), ("Remove…", self._delete, "danger")):
-            b = widgets.button(text, variant)
+            if not editable and text != "Open in editor":
+                continue
+            b = widgets.button("Open its settings" if not editable else text, variant)
             b.clicked.connect(fn)
             btns.addWidget(b)
         btns.addStretch()
         lay.addLayout(btns)
         hint = QLabel("Double-click opens the line in your config (or a Luminescent hotkey's settings). Red rows "
-                      "share their keys with another bind. Binds made in a loop are edited in the file.")
+                      "share their keys with another bind. Binds made in a loop are edited in the file."
+                      if editable else
+                      "Every Luminescent hotkey. Double-click one to change it in Settings; red rows share their keys.")
         hint.setObjectName("lumHint")
         hint.setWordWrap(True)
         lay.addWidget(hint)
@@ -332,7 +337,8 @@ class KeybindsModule(Module):
 
     def toggle(self):
         if self.panel is None:
-            self.panel = KeybindsPanel(self)
+            with self.themed():
+                self.panel = KeybindsPanel(self)
         if self.panel.isVisible():
             self.panel.hide()
         else:

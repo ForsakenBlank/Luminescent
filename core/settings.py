@@ -23,7 +23,7 @@ from dataclasses import dataclass, field as dc_field
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from core import APP_DIR, HOME_DIR, DATA_DIR, save_json, load_json
+from core import APP_DIR, HOME_DIR, DATA_DIR, IS_WIN, save_json, load_json
 
 SETTINGS_FILE = os.path.join(HOME_DIR, "settings.json")
 PROFILES_FILE = os.path.join(DATA_DIR, "profiles.json")
@@ -58,6 +58,11 @@ class Section:
     fields: list
 
 
+def _os(linux: str, windows: str) -> str:
+    """The text (or value) that is true on this system."""
+    return windows if IS_WIN else linux
+
+
 ANCHOR_CHOICES = [
     ("tl", "Top left"), ("tc", "Top centre"), ("tr", "Top right"),
     ("ml", "Middle left"), ("mc", "Centre of screen"), ("mr", "Middle right"),
@@ -75,12 +80,14 @@ AUDIO_FILTER = "Audio (*.wav *.mp3 *.ogg *.flac *.m4a);;All files (*)"
 
 NAV_SECTIONS = [("dashboard", "Dashboard"), ("themes", "Themes"), ("clipboard", "Clipboard"), ("settings", "Settings")]
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
-EXTRA_PAGES = []   # Notes, Timers, Calculator, Today, Usage pages: not built yet
+EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
+               ("stats", "Usage")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
 # panels that can open by themselves when Luminescent starts (Settings → General → Show on start)
-START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard")]
+START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard"), ("sysmon", "System Monitor"),
+                ("media", "Media controls")]
 
 # what the tray menu can list (Settings → General → Tray menu)
 TRAY_ITEMS = [("open", "Open Luminescent"), ("palette", "Command palette"), ("dashboard", "Dashboard items"),
@@ -91,10 +98,11 @@ TRAY_ITEMS = [("open", "Open Luminescent"), ("palette", "Command palette"), ("da
 
 SCHEMA = [
     Section("general", "General", "⚙", "Launcher-wide options. These are the same in every settings profile.", [
-        Field("run_at_startup", "Run at login", "bool", False,
+        Field("run_at_startup", "Run at login", "bool", False, _os(
               "Adds ~/.config/autostart/luminescent.desktop, which UWSM and most sessions start by themselves. "
               "If you also start it from your Hyprland config (exec-once / hl.exec_cmd), remove that so it "
-              "does not launch twice."),
+              "does not launch twice.",
+              "Adds Luminescent to your user's Run key in the registry, so it starts when you sign in.")),
         Field("force_quit_hotkey", "Quit everything hotkey", "hotkey", "ctrl+u",
               "Asks for confirmation, then closes Luminescent and every module. The ✕ on the overlay only hides it."),
         Field("settings_hotkey", "Open settings hotkey", "hotkey", "ctrl+alt+s",
@@ -103,21 +111,26 @@ SCHEMA = [
               "Small notifications when modules are toggled, things are copied or errors happen."),
         Field("notify_style", "Notification style", "choice", "luminescent",
               choices=[("luminescent", "Luminescent cards (top-right, in the theme's colours)"),
-                       ("system", "Desktop notifications (Noctalia, mako, dunst…)")],
+                       ("system", _os("Desktop notifications (Noctalia, mako, dunst…)", "Windows notifications"))],
               help="Reminders and dose warnings always use desktop notifications as well, so they also show up "
                    "in your notification history."),
         Field("start_panels", "Show on start", "custom", ["notes"],
               "Panels that open by themselves when Luminescent starts."),
         Field("tray_items", "Tray menu", "custom", [k for k, _ in TRAY_ITEMS],
               "What the tray icon's right-click menu lists."),
-        Field("desktop_entry", "List Luminescent in app launchers and docks", "bool", True,
+        Field("desktop_entry", _os("List Luminescent in app launchers and docks", "Add Luminescent to the Start menu"),
+              "bool", True, _os(
               "Adds ~/.local/share/applications/luminescent.desktop and its icon, so Noctalia's launcher and dock "
-              "show it with the sparkle icon."),
+              "show it with the sparkle icon.",
+              "A Luminescent shortcut in your Start menu, so Start and search find it.")),
+        Field("check_updates", "Tell me when a new version is out", "bool", True,
+              "Asks GitHub once a day. Updating keeps your notes and settings."),
         Field("auto_backup", "Back up automatically once a week", "bool", True,
               "Zips your setup into data/backups (weekly-….zip) and keeps the last 5."),
-        Field("pass_keys", "Hotkeys also reach the app you are in", "bool", True,
+        Field("pass_keys", "Hotkeys also reach the app you are in", "bool", True, _os(
               "On (as on Windows): Hyprland runs the hotkey and still passes the keys on. Off: Luminescent's "
               "hotkeys are taken away from other apps (Ctrl+B is no longer bold in your editor...).",
+              "On Windows the keys always reach the app as well; this only changes something on Linux."),
               restart=True),
         Field("log_to_file", "Write a log file (data/launcher.log)", "bool", True,
               "Useful for finding out why something went wrong."),
@@ -148,36 +161,49 @@ SCHEMA = [
         Field("show_clock", "Clock and date in the top-left corner", "bool", True),
         Field("show_status", "Status strip (running timers, Hearing Guard, next reminder)", "bool", True),
         Field("blur", "Frosted (blurred) background", "bool", True,
-              "Hyprland blurs what is behind the overlay. Off in performance mode."),
+              _os("Hyprland blurs what is behind the overlay. Off in performance mode.",
+                  "Linux (Hyprland) only for now; on Windows the overlay is dimmed without blur.")),
         Field("theme_cycle_hotkey", "Next theme hotkey", "hotkey", "",
               "Switches to the next theme in the active theme's folder (or the next of all themes)."),
         Field("overlay_dim", "Dim the screen behind the overlay", "opacity", 0.64),
         Field("click_outside_closes", "Clicking the dimmed area closes the overlay", "bool", True),
         Field("apps_over_overlay", "Apps opened while the overlay is up appear on top of it", "bool", True,
-              "Super+E, a dashboard item...: the new window floats, centred, above the overlay, and goes back "
-              "into your tiling layout when the overlay closes."),
+              _os("Super+E, a dashboard item...: the new window floats, centred, above the overlay, and goes back "
+                  "into your tiling layout when the overlay closes.",
+                  "Linux (Hyprland) only; on Windows new windows already open on top.")),
         Field("performance_mode", "Performance mode", "bool", False,
               "No glow, shadows, fade animations or background images. Use it on a slow PC or while gaming."),
         Field("tray_timers", "Show running timers in the tray tooltip", "bool", True,
               "Hover the tray icon to see what is left. Only updates while a timer runs."),
-        Field("wallpaper_engine_exe", "linux-wallpaperengine program", "file", "",
+        Field("wallpaper_engine_exe", _os("linux-wallpaperengine program", "Wallpaper Engine (wallpaper64.exe)"),
+              "file", "", _os(
               "Only needed if themes use Wallpaper Engine projects and linux-wallpaperengine is not on PATH.",
-              file_filter="All files (*)"),
+              "Only needed if themes use Wallpaper Engine projects and Steam's copy is not found by itself."),
+              file_filter=_os("All files (*)", "Programs (*.exe);;All files (*)")),
         Field("terminal_scheme", "Use the Luminescent colours in the terminal", "bool", True,
-              "kitty, alacritty and foot windows opened by Luminescent get the theme's colours (passed on the "
-              "command line, so your terminal config is not touched)."),
+              _os("kitty, alacritty and foot windows opened by Luminescent get the theme's colours (passed on the "
+                  "command line, so your terminal config is not touched).",
+                  "Windows Terminal tabs opened by Luminescent use a Luminescent colour scheme (added as a Terminal "
+                  "fragment, so your own Terminal settings are not touched).")),
+        Field("own_terminal", "Your own terminal follows the theme too", "bool", False,
+              "Asks first. Linux: adds one include line to ~/.config/kitty/kitty.conf (a backup goes to "
+              "data/terminal-backups) and writes luminescent-theme.conf next to it, rewritten and reloaded whenever "
+              "the theme changes. Windows: your PowerShell and Command Prompt profiles in Windows Terminal get the "
+              "Luminescent colours. Turning it off undoes it."),
     ]),
 
     Section("dashboard", "Dashboard & Scripts", "▦", "How dashboard items start.", [
-        Field("use_terminal", "Run scripts (.py, .sh...) in a terminal window", "bool", True,
+        Field("use_terminal", _os("Run scripts (.py, .sh...) in a terminal window",
+                                  "Run scripts (.py, .bat, .ps1...) in Windows Terminal"), "bool", True,
               "Off: they run in the background and their output is not shown."),
         Field("terminal", "Terminal program", "text", "",
-              "e.g. kitty, alacritty, foot. Blank: $TERMINAL, else the first one installed."),
+              _os("e.g. kitty, alacritty, foot. Blank: $TERMINAL, else the first one installed.",
+                  "Blank: Windows Terminal (wt), else a console window.")),
         Field("keep_open", "Keep the script's window open after it finishes", "bool", True,
               "So you can read its output and errors."),
         Field("python_path", "Python for scripts", "file", "",
-              "Leave blank to use the Python Luminescent runs with (or python3 from PATH for a built binary).",
-              file_filter="Python (python python3*);;All files (*)"),
+              "Leave blank to use the Python Luminescent runs with (or the one on PATH for a built version).",
+              file_filter=_os("Python (python python3*);;All files (*)", "Python (python.exe pythonw.exe);;All files (*)")),
         Field("show_in_tray", "List dashboard items in the tray menu", "bool", True),
         Field("show_icons", "Show program and file icons on items", "bool", True,
               "Taken from the program's app entry, your icon theme or the file type."),
@@ -270,7 +296,7 @@ SCHEMA = [
         Field("finish_sound_file", "Custom sound file", "file", "", file_filter=AUDIO_FILTER),
         Field("flash_on_finish", "Flash the panel when a timer finishes", "bool", True),
         Field("progress", "Countdown progress", "choice", "ring",
-              choices=[("ring", "A ring around the time"), ("bar", "A thin bar along the bottom"), ("none", "None")]),
+              choices=[("ring", "A ring beside the time"), ("bar", "A thin bar along the bottom"), ("none", "None")]),
         Field("restore_on_start", "Restore open timers on start", "bool", True),
         Field("bg_opacity", "Panel opacity", "opacity", 0.85),
         Field("default_width", "Default width", "int", 260, min=120, max=2000),
@@ -285,7 +311,8 @@ SCHEMA = [
             "sums (e.g. pin 950*12 as rent, then type rent/4).", [
         Field("enabled", "Enable Calculator", "bool", True),
         Field("hotkey", "Show / hide hotkey", "hotkey", "ctrl+alt+=",
-              "Tip: Enter calculates, ↑/↓ walk through history, Ctrl+C with an empty box copies the last result."),
+              "Tip: Enter calculates, Ctrl+Enter calculates, copies and closes, ↑/↓ walk through history. "
+              "Try 5 km to mi, 20 usd to eur, today + 45 days or 0xff."),
         Field("bg_opacity", "Panel opacity", "opacity", 0.92),
         Field("decimals", "Maximum decimal places", "int", 10, min=0, max=15),
         Field("thousands", "Show thousands separators (1,234,567)", "bool", True),
@@ -307,8 +334,10 @@ SCHEMA = [
     ]),
 
     Section("textgrab", "Screen Text Grab", "🔤",
-            "Drag a box around any text on screen and it is copied to the clipboard. Uses Tesseract: "
-            "sudo pacman -S tesseract tesseract-data-eng (add tesseract-data-<lang> for other languages).", [
+            "Drag a box around any text on screen and it is copied to the clipboard. " + _os(
+            "Uses Tesseract: sudo pacman -S tesseract tesseract-data-eng (add tesseract-data-<lang> for other "
+            "languages).",
+            "Uses Windows' own text recognition (the languages you have in Windows Settings)."), [
         Field("enabled", "Enable Text Grab", "bool", True),
         Field("hotkey", "Grab text hotkey", "hotkey", "ctrl+alt+o"),
         Field("keep_lines", "Keep line breaks", "bool", True),
@@ -318,17 +347,20 @@ SCHEMA = [
     ]),
 
     Section("promptlog", "Prompt Log", "⌨",
-            "Browse, search and delete your fish, bash or zsh command history, plus everything the Dashboard "
-            "launched.", [
+            _os("Browse, search and delete your fish, bash or zsh command history, plus everything the Dashboard "
+                "launched.",
+                "Browse, search and delete your PowerShell command history, plus everything the Dashboard "
+                "launched."), [
         Field("enabled", "Enable Prompt Log", "bool", True),
         Field("hotkey", "Open hotkey", "hotkey", ""),
         Field("dedupe", "Hide repeated commands (newest kept)", "bool", True),
     ]),
 
     Section("keybinds", "Keybinds", "⌨",
-            "Every keybind on the system in one list: your Hyprland binds (with what they really run) and "
-            "Luminescent's hotkeys, clashes in red. Add, re-key or remove Hyprland binds; your config file gets "
-            "the change (a backup goes to data/hypr-backups) and Hyprland reloads it.", [
+            _os("Every keybind on the system in one list: your Hyprland binds (with what they really run) and "
+                "Luminescent's hotkeys, clashes in red. Add, re-key or remove Hyprland binds; your config file gets "
+                "the change (a backup goes to data/hypr-backups) and Hyprland reloads it.",
+                "Every Luminescent hotkey in one list, clashes in red."), [
         Field("enabled", "Enable Keybinds", "bool", True),
         Field("hotkey", "Open hotkey", "hotkey", "ctrl+alt+k"),
     ]),
@@ -337,12 +369,16 @@ SCHEMA = [
         Field("enabled", "Enable Vault", "bool", True),
         Field("hotkey", "Open hotkey", "hotkey", "ctrl+alt+q"),
         Field("storage_path", "Vault folder (encrypted blobs live here)", "dir",
-              os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"), ".idx"),
-              "Must be writable by your user (no sudo). Not under ~/.cache: cleaners empty that."),
+              _os(os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"), ".idx"),
+                  os.path.join(os.environ.get("LOCALAPPDATA", HOME_DIR), "Microsoft", "Windows", "Caches", ".idx")),
+              _os("Must be writable by your user (no sudo). Not under ~/.cache: cleaners empty that.",
+                  "Must be writable without administrator rights.")),
         Field("decrypt_output", "Decrypted files go to", "dir",
               os.path.join(os.path.expanduser("~"), "Documents", "VaultDecrypted")),
         Field("lock_minutes", "Auto-lock after (minutes of inactivity)", "int", 5, min=1, max=240),
         Field("secure_delete_passes", "Overwrite passes on secure delete", "int", 3, min=1, max=10),
+        Field("thumbnails", "Show picture thumbnails", "bool", True,
+              "Pictures are decrypted in memory only to draw their thumbnail; nothing is written to disk."),
     ]),
 
     Section("metadata", "Metadata Stripper", "🧹", "View and remove metadata from images and videos.", [
@@ -351,6 +387,12 @@ SCHEMA = [
         Field("save_dir", "Save stripped files to", "dir",
               os.path.join(os.path.expanduser("~"), "Documents", "MetaStripped")),
         Field("jpeg_quality", "JPEG quality when re-saving", "int", 95, min=50, max=100),
+        Field("dolphin_menu", _os("Right-click → Strip metadata in Dolphin", "Right-click → Strip metadata in Explorer"),
+              "bool", False, _os(
+              "Adds a Dolphin service menu (~/.local/share/kio/servicemenus). Clean copies go to the folder above "
+              "and a notification says how many.",
+              "Adds Strip metadata (Luminescent) to the right-click menu of pictures, videos and folders (on "
+              "Windows 11 it is under Show more options). Clean copies go to the folder above.")),
     ]),
 
     Section("hearing", "Hearing Guard", "🎧",
@@ -395,6 +437,54 @@ SCHEMA = [
         Field("catch_up_minutes", "Fire missed reminders if less than (minutes) late", "int", 120,
               "If the PC was asleep or off when a reminder was due, it still fires on wake unless it is later "
               "than this.", min=0, max=1440),
+    ]),
+]
+
+SCHEMA += [
+    Section("snapper", "Window Snapper", "▣",
+            "Hotkeys that put the active window in a half, a third or a corner of its screen. The window floats "
+            "while it is snapped; press a direction again for the next size (half, third, two thirds).", [
+        Field("enabled", "Enable Window Snapper", "bool", True),
+        Field("left_hotkey", "Left (half, third, two thirds)", "hotkey", "super+alt+left"),
+        Field("right_hotkey", "Right (half, third, two thirds)", "hotkey", "super+alt+right"),
+        Field("up_hotkey", "Up (top half, fill the screen)", "hotkey", "super+alt+up"),
+        Field("down_hotkey", "Down (bottom half, centred)", "hotkey", "super+alt+down"),
+        Field("top_left_hotkey", "Top-left quarter", "hotkey", ""),
+        Field("top_right_hotkey", "Top-right quarter", "hotkey", ""),
+        Field("bottom_left_hotkey", "Bottom-left quarter", "hotkey", ""),
+        Field("bottom_right_hotkey", "Bottom-right quarter", "hotkey", ""),
+        Field("centre_third_hotkey", "Centre third", "hotkey", ""),
+        Field("tile_hotkey", "Undo (back into tiling on Linux, back where it was on Windows)", "hotkey", ""),
+        Field("gap", "Gap around snapped windows (px)", "int", 8, min=0, max=100),
+    ]),
+    Section("ruler", "Screen Ruler", "📏",
+            "Freeze the screen and drag between two points to measure them in pixels. Shift keeps the line level, "
+            "click copies W×H, Ctrl+click the distance.", [
+        Field("enabled", "Enable Screen Ruler", "bool", True),
+        Field("hotkey", "Measure hotkey", "hotkey", "ctrl+alt+r"),
+    ]),
+    Section("media", "Media Controls", "♪",
+            "What is playing in any player (Spotify, Firefox, mpv…) with previous / play-pause / next. " +
+            _os("Needs playerctl: sudo pacman -S playerctl.", "Uses Windows' media sessions."), [
+        Field("enabled", "Enable Media Controls", "bool", True),
+        Field("hotkey", "Show / hide the panel", "hotkey", ""),
+        Field("play_hotkey", "Play / pause", "hotkey", ""),
+        Field("next_hotkey", "Next track", "hotkey", ""),
+        Field("previous_hotkey", "Previous track", "hotkey", ""),
+        Field("bg_opacity", "Panel opacity", "opacity", 0.92),
+    ]),
+    Section("qr", "QR Code", "▦",
+            "Shows the text or link on the clipboard as a QR code to scan with a phone. Copy it as a picture or "
+            "save it as PNG or SVG.", [
+        Field("enabled", "Enable QR codes", "bool", True),
+        Field("hotkey", "QR code of the clipboard", "hotkey", ""),
+    ]),
+    Section("sysmon", "System Monitor", "📈",
+            "CPU, memory, GPU and network with a minute of history in a small floating panel. Only measures while "
+            "it is on screen.", [
+        Field("enabled", "Enable System Monitor", "bool", True),
+        Field("hotkey", "Show / hide hotkey", "hotkey", ""),
+        Field("bg_opacity", "Panel opacity", "opacity", 0.88),
     ]),
 ]
 
@@ -456,7 +546,7 @@ def _migrate_old_config(data: dict, raw: dict) -> bool:
     Retired sections (appearance → themes.json, file_launcher → dashboard.json) go into `raw`,
     where those migrations look for them.
     """
-    for candidate in (os.path.join(APP_DIR, "_old", "config.py"), os.path.join(APP_DIR, "config.py")):
+    for candidate in (os.path.join(APP_DIR, "config.py"),):
         if not os.path.exists(candidate):
             continue
         try:

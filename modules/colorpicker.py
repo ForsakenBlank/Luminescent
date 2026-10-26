@@ -186,11 +186,41 @@ class ColorPickerModule(Module):
         for c in self.recent:
             px = QPixmap(14, 14)
             px.fill(QColor(c))
-            sub.addAction(QIcon(px), self.fmt(QColor(c)), lambda col=c: self.copy(QColor(col)))
+            one = sub.addMenu(QIcon(px), self.fmt(QColor(c)))
+            one.addAction("Copy", lambda col=c: self.copy(QColor(col)))
+            one.addSeparator()
+            one.addAction("Use as the theme's accent", lambda col=c: self.to_theme(col))
+            one.addAction("New dark theme from it", lambda col=c: self.new_theme(col, False))
+            one.addAction("New light theme from it", lambda col=c: self.new_theme(col, True))
 
     def palette_entries(self, Entry) -> list:
-        return [Entry(f"colour:{c}", f"Colour {self.fmt(QColor(c))}", lambda col=c: self.copy(QColor(col)),
-                      "copy", "colour") for c in self.recent]
+        out = []
+        for c in self.recent:
+            out.append(Entry(f"colour:{c}", f"Colour {self.fmt(QColor(c))}", lambda col=c: self.copy(QColor(col)),
+                             "copy", "colour"))
+            out.append(Entry(f"colour-accent:{c}", f"Accent colour {c}", lambda col=c: self.to_theme(col),
+                             "use as the theme's accent", "colour"))
+            out.append(Entry(f"colour-theme:{c}", f"New theme from {c}", lambda col=c: self.new_theme(col, False),
+                             "a dark theme around this colour", "colour"))
+        return out
+
+    # ── into a theme ───────────────────────────────────────────────────────
+    def to_theme(self, colour: str):
+        """The active theme gets this colour as its accent."""
+        launcher = self.ctx.launcher
+        if launcher is None:
+            return
+        store = launcher.themes
+        store.set_accent(store.active()["id"], colour)
+        self.ctx.notify(self.title, f"{colour.upper()} is now the accent of {store.active()['name']}.", 2500)
+
+    def new_theme(self, colour: str, light: bool):
+        launcher = self.ctx.launcher
+        if launcher is None:
+            return
+        t = launcher.themes.from_accent(colour, light, f"Picked {colour.upper()}")
+        launcher.apply_theme(t["id"])
+        self.ctx.notify(self.title, f"New theme “{t['name']}” (Themes page to rename or change it).", 3000)
 
     def fmt(self, c: QColor) -> str:
         return colour_text(c, self.s("format", "hex"), bool(self.s("uppercase", True)))

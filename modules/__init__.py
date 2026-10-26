@@ -22,6 +22,11 @@ REGISTRY = [
     ("textgrab", "modules.textgrab:TextGrabModule"),
     ("promptlog", "modules.promptlog:PromptLogModule"),
     ("keybinds", "modules.keybinds:KeybindsModule"),
+    ("snapper", "modules.snapper:SnapperModule"),
+    ("ruler", "modules.ruler:RulerModule"),
+    ("media", "modules.media:MediaModule"),
+    ("qr", "modules.qr:QrModule"),
+    ("sysmon", "modules.sysmon:SysmonModule"),
 ]
 # The File Launcher was retired on 2026-10-25: its shortcuts moved into the Dashboard (ui/dashboard.py).
 

@@ -523,7 +523,8 @@ class RemindersModule(Module):
         if pos_key == "default":
             pos_key = self.s("popup_position", "br")
         screen = widgets.cursor_screen_geometry() if self.s("popup_screen") == "cursor" else widgets.primary_geometry()
-        popup = ReminderPopup(rem, int(self.s("snooze_minutes", 10)), int(self.s("popup_timeout", 0)))
+        with self.themed():
+            popup = ReminderPopup(rem, int(self.s("snooze_minutes", 10)), int(self.s("popup_timeout", 0)))
         popup.dismissed.connect(self._popup_closed)
         popup.snoozed.connect(self._popup_snoozed)
         # stack below/above other popups at the same anchor

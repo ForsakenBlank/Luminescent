@@ -380,6 +380,29 @@ class VaultStore:
             self.save_index()
         return dst
 
+    def read_bytes(self, path: list[str], name: str) -> bytes:
+        """A file's contents, decrypted in memory only (thumbnails). Nothing is written to disk."""
+        blob = self.node(path).get(name)
+        if not isinstance(blob, str):
+            raise VaultError(f"{name} is not a file")
+        return _open(self.key, (self.folder / blob).read_bytes())
+
+    def find(self, query: str, limit: int = 300) -> list[tuple[list[str], str, bool]]:
+        """(folder path, name, is a folder) for every name in the vault that contains `query`."""
+        q = query.strip().lower()
+        out = []
+
+        def walk(node: dict, path: list[str]):
+            for name, val in sorted(node.items(), key=lambda kv: kv[0].lower()):
+                if len(out) >= limit:
+                    return
+                if q in name.lower():
+                    out.append((path, name, isinstance(val, dict)))
+                if isinstance(val, dict):
+                    walk(val, path + [name])
+        walk(self.index["tree"], [])
+        return out
+
     def decrypt_folder(self, path: list[str], name: str, temp: bool, progress=None):
         folder = self.node(path + [name])
         out = self.out / name

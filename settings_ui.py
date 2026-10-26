@@ -1051,9 +1051,11 @@ class SettingsPage(QWidget):
         other = self.launcher.dashboard.hotkey_users().get(combo)
         if other:
             return f"Also used by {other}"
-        for keys in hk.to_hyprland(combo) if hk.validate(combo) == "" else []:
-            clash = self.launcher.hotkeys._conflict(keys)
-            if clash:
+        conflict = getattr(self.launcher.hotkeys, "_conflict", None)
+        if conflict is None or hk.validate(combo) != "":
+            return ""                            # windows has no hyprland binds to clash with
+        for keys in hk.to_hyprland(combo):
+            if conflict(keys):
                 return "Already a Hyprland bind in your config"
         return ""
 

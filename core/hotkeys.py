@@ -25,7 +25,7 @@ import logging
 
 from PyQt6.QtCore import QObject, QTimer
 
-from core import hypr, usage
+from core import IS_WIN, hypr, usage
 
 log = logging.getLogger("hotkeys")
 
@@ -78,7 +78,7 @@ def pretty(combo: str) -> str:
     """'ctrl+shift+m' -> 'Ctrl+Shift+M' for menus and tooltips."""
     if not combo:
         return "(none)"
-    names = {"ctrl": "Ctrl", "alt": "Alt", "shift": "Shift", "windows": "Super", "esc": "Esc",
+    names = {"ctrl": "Ctrl", "alt": "Alt", "shift": "Shift", "windows": "Win" if IS_WIN else "Super", "esc": "Esc",
              "enter": "Enter", "space": "Space", "tab": "Tab", "backspace": "Backspace",
              "delete": "Delete", "insert": "Insert", "home": "Home", "end": "End",
              "page up": "PgUp", "page down": "PgDn", "up": "↑", "down": "↓", "left": "←", "right": "→"}
@@ -451,3 +451,8 @@ class HotkeyManager(QObject):
     @staticmethod
     def release_modifiers():
         """Nothing to do on Wayland: send() delivers exactly the modifiers it names."""
+
+
+if IS_WIN:
+    # Windows: a global keyboard hook instead of Hyprland binds (same interface)
+    from core.hotkeys_win import HotkeyManager, validate, key_state, key_is_physically_down  # noqa: E402,F811

@@ -32,7 +32,7 @@ import logging
 from PyQt6.QtCore import QObject, QTimer, QSocketNotifier, QEvent, QPoint, QRect, Qt, pyqtSignal
 from PyQt6.QtGui import QCursor
 from PyQt6.QtNetwork import QLocalSocket
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget, QDialog
 
 log = logging.getLogger("hypr")
 
@@ -45,7 +45,7 @@ RULES_VERSION = 3                    # bump when the rules below change: the old
 BIND_DESC = "Luminescent"
 
 _sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
-_runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+_runtime = os.environ.get("XDG_RUNTIME_DIR") or (f"/run/user/{os.getuid()}" if hasattr(os, "getuid") else "")
 SOCKET = os.path.join(_runtime, "hypr", _sig, ".socket.sock") if _sig else ""
 EVENT_SOCKET = os.path.join(_runtime, "hypr", _sig, ".socket2.sock") if _sig else ""
 FIFO_DIR = os.path.join(_runtime, "luminescent")
@@ -456,13 +456,36 @@ class WindowSync(QObject):
         self._pending.remove(w)
         self._addr[w] = addr
         self._by_addr[addr] = w
-        if w.testAttribute(Qt.WidgetAttribute.WA_Moved):
+        if isinstance(w, QDialog):
+            self._centre_dialog(w, addr)
+            self._dialog_on_top(w)
+            # a panel raised a moment later (Notes re-raises itself after opening) must not cover it
+            QTimer.singleShot(250, lambda d=w: self._dialog_on_top(d) if d in self._addr and d.isVisible() else None)
+        elif w.testAttribute(Qt.WidgetAttribute.WA_Moved):
             self._move(addr, w)
         else:
             self._read_back(w, addr)
         if w in self._want_focus:
             self._want_focus.discard(w)
             self.focus(w)
+
+    def _centre_dialog(self, w: QWidget, addr: str):
+        """Dialogs (ask a name, confirm, pick a file or colour...) go in the middle of the window that opened
+        them, else of the screen with the mouse. Qt works their spot out from window positions it can not
+        know on Wayland, which put them in the top-left corner."""
+        parent = w.parentWidget().window() if w.parentWidget() is not None else None
+        if parent is not None and parent.isVisible() and parent is not w:
+            area = parent.frameGeometry()
+        else:
+            area = available_geometry(screen_at_cursor())
+        c = self._client(addr)
+        if c and isinstance(c.get("size"), list):
+            dw, dh = int(c["size"][0]), int(c["size"][1])
+        else:
+            dw, dh = w.width(), w.height()
+        x, y = area.center().x() - dw // 2, area.center().y() - dh // 2
+        self._set_qt_pos(w, x, y)
+        dispatch(f"hl.dsp.window.move({{ x = {x}, y = {y}, window = {lstr('address:' + addr)} }})")
 
     def _client(self, addr: str) -> dict | None:
         return next((c for c in query("clients") or [] if c.get("address") == addr), None)
@@ -487,6 +510,28 @@ class WindowSync(QObject):
         addr = self._addr.get(w)
         if addr:
             dispatch(f"hl.dsp.window.alter_zorder({{ mode = \"top\", window = {lstr('address:' + addr)} }})")
+        # an open dialog always stays above Luminescent's other windows: it blocks clicks on them, so one
+        # hidden behind a panel left you stuck
+        for d in self._open_dialogs():
+            if d is not w:
+                self._dialog_on_top(d, focus=False)
+
+    def _open_dialogs(self) -> list[QWidget]:
+        modal = QApplication.activeModalWidget()
+        out = [d for d in self._addr if isinstance(d, QDialog) and d.isVisible()]
+        if modal is not None and modal in out:
+            out.remove(modal)
+            out.append(modal)                    # the modal one last, so it ends up on top
+        return out
+
+    def _dialog_on_top(self, d: QWidget, focus: bool = True):
+        addr = self._addr.get(d)
+        if not addr:
+            return
+        target = lstr("address:" + addr)
+        dispatch(f"hl.dsp.window.alter_zorder({{ mode = \"top\", window = {target} }})")
+        if focus:
+            dispatch(f"hl.dsp.focus({{ window = {target} }})")
 
     def float_on_top(self, addr: str, area: QRect):
         """Make another program's window float, centred on `area`, above Luminescent's windows."""

@@ -8,7 +8,12 @@ Calculator: a floating, resizable pop-out with history and named pins.
     pin 950*12 as "rent", then type rent/4.
   - Functions: sqrt cbrt abs round floor ceil sin cos tan asin acos atan ln log log2 exp fact min max hypot;
     constants pi e tau. Trig uses degrees or radians (setting).
-  - Ctrl+C with an empty box copies the last result.
+  - Ctrl+C with an empty box copies the last result; Ctrl+Enter calculates, copies the result and closes.
+  - Conversions and dates (core/convert.py): "5 km to mi", "20 usd to eur", "today + 45 days",
+    "days until 25/12/2026".
+  - DEC / HEX / BIN / OCT in the header shows whole-number results in that base; 0x1F, 0b101, &, |, xor,
+    << and >> work in sums.
+  - Pins can go in folders and get a colour (right-click a pin). The history is grouped by day.
 
 Evaluation walks a whitelisted AST (no eval), with limits so 9**9**9 can not hang the launcher.
 History and pins are kept in data/calculator.json.
@@ -21,13 +26,14 @@ import time
 import operator
 
 from PyQt6.QtWidgets import (
-    QFrame, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout, QGridLayout, QPushButton, QWidget,
+    QFrame, QLineEdit, QListWidget, QListWidgetItem, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QWidget,
     QStyledItemDelegate, QStyle
 )
 from PyQt6.QtCore import Qt, QTimer, QEvent, QSize, QRect
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QPixmap, QIcon
+from datetime import date, timedelta
 
-from core import DATA_DIR, theme, widgets, save_json, load_json, clip
+from core import DATA_DIR, theme, widgets, save_json, load_json, clip, convert
 from core.module import Module
 
 SAVE_PATH = os.path.join(DATA_DIR, "calculator.json")
@@ -72,6 +78,12 @@ RESERVED = set(FUNCS) | set(CONSTS) | {"ans", "mod"}
 
 _BIN = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,
         ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod, ast.Pow: operator.pow}
+_BITS = {ast.BitAnd: operator.and_, ast.BitOr: operator.or_, ast.BitXor: operator.xor,
+         ast.LShift: operator.lshift, ast.RShift: operator.rshift}
+BASES = [("dec", "DEC"), ("hex", "HEX"), ("bin", "BIN"), ("oct", "OCT")]
+_PLAIN = re.compile(r"-?(?:0[xbo][0-9A-Fa-f ]+|[\d,]*\.?\d+(?:e[+-]?\d+)?)")
+PIN_COLOURS = [("Red", "#E5484D"), ("Orange", "#F76B15"), ("Yellow", "#FFC53D"), ("Green", "#30A46C"),
+               ("Blue", "#3E63DD"), ("Purple", "#8E4EC6")]
 _UN = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 
 
@@ -83,6 +95,9 @@ def _prepare(text: str) -> str:
         t = f"({m.group(1)})*(1{m.group(2)}{m.group(3)}/100)"
     t = re.sub(r"(\d+(?:\.\d+)?|\))\s*%", r"\1/100", t)          # 50% -> 50/100
     t = re.sub(r"\bmod\b", "%", t)
+    t = re.sub(r"\bxor\b", "^", t)          # after ^ became **, so xor is the only ^ left
+    t = re.sub(r"\band\b", "&", t)
+    t = re.sub(r"\bor\b", "|", t)
     return t
 
 
@@ -107,8 +122,20 @@ def evaluate(text: str, variables: dict | None = None):
             if isinstance(n.op, ast.Pow) and (abs(b) > MAX_POW or (abs(a) > 1 and abs(b) * math.log10(abs(a)) > 4000)):
                 raise CalcError("that power is too big")
             return _BIN[type(n.op)](a, b)
+        if isinstance(n, ast.BinOp) and type(n.op) in _BITS:
+            a, b = ev(n.left), ev(n.right)
+            if a != int(a) or b != int(b):
+                raise CalcError("&, |, xor, << and >> need whole numbers")
+            if isinstance(n.op, ast.LShift) and b > 4096:
+                raise CalcError("that shift is too big")
+            return _BITS[type(n.op)](int(a), int(b))
         if isinstance(n, ast.UnaryOp) and type(n.op) in _UN:
             return _UN[type(n.op)](ev(n.operand))
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Invert):
+            v = ev(n.operand)
+            if v != int(v):
+                raise CalcError("~ needs a whole number")
+            return ~int(v)
         if isinstance(n, ast.Name):
             if n.id in names:
                 return names[n.id]
@@ -123,7 +150,13 @@ def evaluate(text: str, variables: dict | None = None):
     return value
 
 
-def fmt(value, decimals: int = 10, thousands: bool = True) -> str:
+def fmt(value, decimals: int = 10, thousands: bool = True, base: str = "dec") -> str:
+    if base != "dec" and isinstance(value, (int, float)) and float(value).is_integer() and abs(value) < 2 ** 64:
+        v = int(value)
+        digits = {"hex": f"{abs(v):X}", "bin": f"{abs(v):b}", "oct": f"{abs(v):o}"}[base]
+        if base == "bin" and thousands:
+            digits = " ".join(digits[max(0, i - 4):i] for i in range(len(digits), 0, -4)[::-1])
+        return ("-" if v < 0 else "") + {"hex": "0x", "bin": "0b", "oct": "0o"}[base] + digits
     if isinstance(value, int) or (isinstance(value, float) and value.is_integer() and abs(value) < 1e15):
         v = int(value)
         return f"{v:,}" if thousands else str(v)
@@ -131,6 +164,19 @@ def fmt(value, decimals: int = 10, thousands: bool = True) -> str:
         return f"{value:.{min(decimals, 8)}e}"
     text = f"{value:,.{decimals}f}" if thousands else f"{value:.{decimals}f}"
     return text.rstrip("0").rstrip(".")
+
+
+def _day_name(day: str) -> str:
+    today = date.today()
+    if day == today.isoformat():
+        return "Today"
+    if day == (today - timedelta(days=1)).isoformat():
+        return "Yesterday"
+    try:
+        d = date.fromisoformat(day)
+    except ValueError:
+        return "Earlier"
+    return f"{d:%a} {d.day} {d:%b}" + (f" {d.year}" if d.year != today.year else "")
 
 
 def pin_name(name: str) -> str:
@@ -154,13 +200,24 @@ class _RowDelegate(QStyledItemDelegate):
         pal = theme.P
         r = option.rect
         p.save()
+        if "header" in d:
+            # a day in the history, a folder of pins: small caps in the muted colour, a hairline after it
+            p.setFont(theme.qfont(9.5, 600, mono=True, spacing=0.1))
+            p.setPen(QColor(d.get("colour") or pal.text_muted))
+            text = d["header"].upper()
+            p.drawText(QRect(r.left(), r.top(), r.width(), r.height()), Qt.AlignmentFlag.AlignVCenter, text)
+            x = r.left() + p.fontMetrics().horizontalAdvance(text) + 8
+            p.setPen(QColor(pal.border))
+            p.drawLine(x, r.center().y(), r.right(), r.center().y())
+            p.restore()
+            return
         if option.state & QStyle.StateFlag.State_MouseOver:
             p.fillRect(r, QColor(pal.bg_card_hover))
         p.setFont(theme.qfont(12, mono=True))
         fm = p.fontMetrics()
         pinned = "var" in d
         if pinned:
-            p.setPen(QColor(pal.primary_text))
+            p.setPen(QColor(d.get("colour") or pal.primary_text))
             p.drawText(QRect(r.left(), r.top(), 16, r.height()), Qt.AlignmentFlag.AlignVCenter, "⌖")
         result = d["result"]
         rw = fm.horizontalAdvance(result) + 2
@@ -189,10 +246,17 @@ def _row_list() -> QListWidget:
 
 
 class CalcPanel(widgets.FloatingPanel):
-    def __init__(self, m: "CalculatorModule"):
+    def __init__(self, m: "CalculatorModule", embedded: bool = False):
         self.m = m
+        self.embedded = embedded            # its contents live in the overlay's Calculator page instead
         super().__init__("Calculator", min_size=(240, 260), opacity=float(m.s("bg_opacity", 0.92)),
                          drag_needs_edit_mode=False, close_hides=True)
+        self.base_btn = widgets.button("DEC", "ghost", "Show whole-number results in decimal, hex, binary or octal")
+        self.base_btn.setFixedHeight(24)
+        self.base_btn.setStyleSheet("QPushButton { padding: 0 6px; font-size: 10px; }")
+        self.base_btn.setFont(theme.qfont(10, 600, mono=True))
+        self.base_btn.clicked.connect(self._next_base)
+        self.header_right.addWidget(self.base_btn)
         self.keypad_btn = widgets.icon_button("⌗", "Show / hide the keypad", 26, 12, ghost=True)
         self.keypad_btn.clicked.connect(self.toggle_keypad)
         self.header_right.addWidget(self.keypad_btn)
@@ -207,13 +271,15 @@ class CalcPanel(widgets.FloatingPanel):
         tl.setContentsMargins(14, 10, 14, 3)
         tl.setSpacing(0)
         self.pins = _row_list()
-        self.pins.itemClicked.connect(lambda it: self._insert(it.data(Qt.ItemDataRole.UserRole)["var"]))
+        self.pins.itemClicked.connect(lambda it: self._insert(it.data(Qt.ItemDataRole.UserRole)["var"])
+                                      if "var" in it.data(Qt.ItemDataRole.UserRole) else None)
         self.pins.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.pins.customContextMenuRequested.connect(self._pin_menu)
         tl.addWidget(self.pins)
         self.history = _row_list()
-        self.history.itemClicked.connect(lambda it: self._insert(self._plain(it.data(Qt.ItemDataRole.UserRole)["result"])))
-        self.history.itemDoubleClicked.connect(lambda it: self._load(it.data(Qt.ItemDataRole.UserRole)["expr"]))
+        self.history.itemClicked.connect(self._history_clicked)
+        self.history.itemDoubleClicked.connect(lambda it: self._load(it.data(Qt.ItemDataRole.UserRole)["expr"])
+                                               if "expr" in it.data(Qt.ItemDataRole.UserRole) else None)
         self.history.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history.customContextMenuRequested.connect(self._history_menu)
         tl.addWidget(self.history, 1)
@@ -223,9 +289,15 @@ class CalcPanel(widgets.FloatingPanel):
         disp = QVBoxLayout()
         disp.setContentsMargins(14, 14, 14, 12)
         disp.setSpacing(8)
+        prow = QHBoxLayout()
+        prow.setSpacing(6)
+        copy = widgets.icon_button("⧉", "Copy the result (Ctrl+Enter: calculate, copy and close)", 22, 11, ghost=True)
+        copy.clicked.connect(self.copy_result)
+        prow.addWidget(copy)
         self.preview = widgets.label("", 12, mono=True, tone="muted")
-        self.preview.setAlignment(Qt.AlignmentFlag.AlignRight)
-        disp.addWidget(self.preview)
+        self.preview.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        prow.addWidget(self.preview, 1)
+        disp.addLayout(prow)
         self.input = QLineEdit()
         self.input.setProperty("mono", True)
         self.input.setPlaceholderText("12*4.5 + 10%")
@@ -246,8 +318,14 @@ class CalcPanel(widgets.FloatingPanel):
             self.clamp_to_screens()
         else:
             self.center_on(widgets.cursor_screen_geometry())
-        self.keypad.setVisible(bool(st.get("keypad", False)))
-        self.geometry_changed.connect(m.schedule_save)
+        self.keypad.setVisible(bool(st.get("keypad", False)) or embedded)
+        self.base_btn.setText(dict(BASES).get(m.base(), "DEC"))
+        if embedded:
+            self.close_btn.hide()
+            self.input.setFont(theme.qfont(32, 500, mono=True))
+            self.input.setStyleSheet("QLineEdit { background: transparent; border: none; padding: 0; font-size: 32px; }")
+        else:
+            self.geometry_changed.connect(m.schedule_save)
         self.escape_pressed.connect(self._escape)
         self.refresh()
 
@@ -295,6 +373,8 @@ class CalcPanel(widgets.FloatingPanel):
 
     def toggle_keypad(self):
         self.keypad.setVisible(not self.keypad.isVisible())
+        if self.embedded:
+            return
         self.m.data.setdefault("panel", {})["keypad"] = self.keypad.isVisible()
         self.m.schedule_save()
 
@@ -305,21 +385,69 @@ class CalcPanel(widgets.FloatingPanel):
 
     def refresh(self):
         self.pins.clear()
-        for pin in self.m.data["pins"]:
-            it = QListWidgetItem()
-            it.setToolTip(f"{pin['name']}\n{pin['expr']}\nClick to use it in a sum")
-            it.setData(Qt.ItemDataRole.UserRole, pin)
-            self.pins.addItem(it)
-        has = bool(self.m.data["pins"])
+        pins = self.m.data["pins"]
+        folders = sorted({p.get("folder", "") for p in pins}, key=lambda f: (f != "", f.lower()))
+        rows = 0
+        for folder in folders:
+            if folder:
+                head = QListWidgetItem()
+                head.setData(Qt.ItemDataRole.UserRole, {"header": folder})
+                head.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.pins.addItem(head)
+                rows += 1
+            for pin in [p for p in pins if p.get("folder", "") == folder]:
+                it = QListWidgetItem()
+                it.setToolTip(f"{pin['name']}\n{pin['expr']}\nClick to use it in a sum")
+                it.setData(Qt.ItemDataRole.UserRole, pin)
+                self.pins.addItem(it)
+                rows += 1
+        has = bool(pins)
         self.pins.setVisible(has)
-        self.pins.setFixedHeight(min(4, len(self.m.data["pins"])) * (_RowDelegate.ROW_H + 7) if has else 0)
+        self.pins.setFixedHeight(min(6, rows) * (_RowDelegate.ROW_H + 7) if has else 0)
         self.history.clear()
+        last_day = None
         for h in self.m.data["history"]:
+            day = (h.get("t") or "")[:10]
+            if day != last_day:
+                last_day = day
+                head = QListWidgetItem()
+                head.setData(Qt.ItemDataRole.UserRole, {"header": _day_name(day)})
+                head.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.history.addItem(head)
             it = QListWidgetItem()
             it.setData(Qt.ItemDataRole.UserRole, h)
             it.setToolTip("Click: insert the result · double-click: edit the sum · right-click: pin, copy…")
             self.history.addItem(it)
         self.history.scrollToBottom()
+
+    def _history_clicked(self, it):
+        h = it.data(Qt.ItemDataRole.UserRole)
+        if "expr" in h:
+            self._insert(self.m.plain(h) if h.get("value") is not None else h["result"])
+
+    def _next_base(self):
+        keys = [k for k, _ in BASES]
+        self.m.set_base(keys[(keys.index(self.m.base()) + 1) % len(keys)])
+        self.base_btn.setText(dict(BASES)[self.m.base()])
+        self._live(self.input.text())
+
+    def copy_result(self, close: bool = False):
+        """Copy what the box works out to (or the last result when it is empty)."""
+        t = self.input.text().strip()
+        if t:
+            try:
+                value, result, _expr = self.m.compute(t)
+            except Exception:
+                self.preview.setText("⚠ nothing to copy")
+                return False
+            text = self.m.plain({"value": value, "result": result})
+        elif self.m.data["history"]:
+            text = self.m.plain(self.m.data["history"][-1])
+        else:
+            return False
+        clip.set_text(text)
+        self.preview.setText("copied ✓")
+        return True
 
     def _insert(self, text: str):
         self.input.insert(text)
@@ -335,7 +463,7 @@ class CalcPanel(widgets.FloatingPanel):
             self.preview.setText("")
             return
         try:
-            self.preview.setText("= " + self.m.fmt(evaluate(self.m.continued(t), self.m.variables())))
+            self.preview.setText("= " + self.m.compute(t)[1])
         except Exception:
             self.preview.setText("")
 
@@ -343,19 +471,19 @@ class CalcPanel(widgets.FloatingPanel):
         t = self.input.text().strip()
         if not t:
             return
-        expr = self.m.continued(t)
         try:
-            value = evaluate(expr, self.m.variables())
+            value, result, expr = self.m.compute(t)
         except ZeroDivisionError:
             self.preview.setText("can't divide by 0")
-            return
+            return False
         except Exception as e:
-            self.preview.setText(f"⚠ {e}" if isinstance(e, CalcError) else "⚠ not a sum")
-            return
-        self.m.add_history(expr, value)
+            self.preview.setText(f"⚠ {e}" if isinstance(e, (CalcError, convert.ConvertError)) else "⚠ not a sum")
+            return False
+        self.m.add_history(expr, value, result)
         self.input.clear()
         self.preview.setText("")
         self._recall = None
+        return True
 
     # ── keys ───────────────────────────────────────────────────────────────
     _recall = None
@@ -364,6 +492,11 @@ class CalcPanel(widgets.FloatingPanel):
         if obj is self.input and e.type() == QEvent.Type.KeyPress:
             k = e.key()
             if k in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                if e.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                    # calculate, copy and close (or just copy and close the last result)
+                    if (not self.input.text().strip() or self.calculate()) and self.copy_result():
+                        QTimer.singleShot(250, self._close_after_copy)
+                    return True
                 self.calculate()
                 return True
             if k in (Qt.Key.Key_Up, Qt.Key.Key_Down):
@@ -377,10 +510,17 @@ class CalcPanel(widgets.FloatingPanel):
             if (k == Qt.Key.Key_C and e.modifiers() & Qt.KeyboardModifier.ControlModifier
                     and not self.input.hasSelectedText() and not self.input.text()):
                 if self.m.data["history"]:
-                    clip.set_text(self._plain(self.m.data["history"][-1]["result"]))
+                    clip.set_text(self.m.plain(self.m.data["history"][-1]))
                     self.preview.setText("copied ✓")
                 return True
         return super().eventFilter(obj, e)
+
+    def _close_after_copy(self):
+        launcher = self.m.ctx.launcher
+        if self.embedded and launcher is not None:
+            launcher.overlay.hide()
+        else:
+            self.hide()
 
     def _escape(self):
         if self.input.text():
@@ -398,11 +538,14 @@ class CalcPanel(widgets.FloatingPanel):
         if it is None:
             return
         h = it.data(Qt.ItemDataRole.UserRole)
+        if "expr" not in h:
+            return
         menu = widgets.menu(self)
-        menu.addAction("Copy result", lambda: clip.set_text(self._plain(h["result"])))
+        menu.addAction("Copy result", lambda: clip.set_text(self.m.plain(h)))
         menu.addAction("Copy sum = result", lambda: clip.set_text(f"{h['expr']} = {h['result']}"))
         menu.addAction("Edit the sum", lambda: self._load(h["expr"]))
-        menu.addAction("📌  Pin with a name…", lambda: self.m.pin(h, self))
+        if h.get("value") is not None:
+            menu.addAction("📌  Pin with a name…", lambda: self.m.pin(h, self))
         menu.addSeparator()
         menu.addAction("Delete", lambda: self.m.delete_history(h))
         menu.exec(self.history.mapToGlobal(pos))
@@ -412,12 +555,32 @@ class CalcPanel(widgets.FloatingPanel):
         if it is None:
             return
         pin = it.data(Qt.ItemDataRole.UserRole)
+        if "var" not in pin:
+            return
         menu = widgets.menu(self)
-        menu.addAction("Copy result", lambda: clip.set_text(self._plain(pin["result"])))
+        menu.addAction("Copy result", lambda: clip.set_text(self.m.plain(pin)))
         menu.addAction(f"Insert '{pin['var']}'", lambda: self._insert(pin["var"]))
         menu.addAction("Edit the sum", lambda: self._load(pin["expr"]))
         menu.addAction("Recalculate", lambda: self.m.recalc_pin(pin))
         menu.addAction("Rename…", lambda: self.m.rename_pin(pin, self))
+        folders = menu.addMenu("Folder")
+        for f in sorted({p.get("folder", "") for p in self.m.data["pins"]} - {""}, key=str.lower):
+            a = folders.addAction(f, lambda f=f: self.m.set_pin(pin, folder=f))
+            a.setCheckable(True)
+            a.setChecked(pin.get("folder") == f)
+        folders.addSeparator()
+        folders.addAction("New folder…", lambda: self.m.new_pin_folder(pin, self))
+        if pin.get("folder"):
+            folders.addAction("Out of the folder", lambda: self.m.set_pin(pin, folder=""))
+        colours = menu.addMenu("Colour")
+        for name, hexc in PIN_COLOURS:
+            px = QPixmap(12, 12)
+            px.fill(QColor(hexc))
+            a = colours.addAction(QIcon(px), name, lambda c=hexc: self.m.set_pin(pin, colour=c))
+            a.setCheckable(True)
+            a.setChecked(pin.get("colour") == hexc)
+        colours.addSeparator()
+        colours.addAction("Accent colour", lambda: self.m.set_pin(pin, colour=""))
         menu.addSeparator()
         menu.addAction("Unpin", lambda: self.m.unpin(pin))
         menu.exec(self.pins.mapToGlobal(pos))
@@ -426,6 +589,15 @@ class CalcPanel(widgets.FloatingPanel):
         menu = widgets.menu(self)
         menu.addAction("Clear history…", lambda: self.m.clear_history(self))
         menu.addAction("Keypad", self.toggle_keypad)
+        base = menu.addMenu("Show results in")
+        for k, label in BASES:
+            a = base.addAction(label, lambda k=k: (self.m.set_base(k), self.base_btn.setText(dict(BASES)[k])))
+            a.setCheckable(True)
+            a.setChecked(self.m.base() == k)
+        if self.m.s("currency", True):
+            day = convert.rates_date()
+            menu.addAction(f"Update currency rates{f' (from {day})' if day else ''}",
+                           lambda: convert.refresh_rates(force=True))
         menu.addAction("Calculator settings…", lambda: self.m.ctx.open_settings("calculator"))
         menu.exec(pos)
 
@@ -438,6 +610,7 @@ class CalculatorModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self.panel: CalcPanel | None = None
+        self._page_calc: CalcPanel | None = None     # the one inside the overlay's Calculator page
         self.data = {"history": [], "pins": [], "panel": {}}
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -453,6 +626,8 @@ class CalculatorModule(Module):
                      "panel": d.get("panel", {}) if isinstance(d.get("panel"), dict) else {}}
         _angle["deg"] = self.s("angle", "deg") == "deg"
         self.hotkey("hotkey", self.toggle, "calculator")
+        if self.s("currency", True):
+            QTimer.singleShot(8000, convert.refresh_rates)
         if self.data["panel"].get("visible"):
             self.toggle()
 
@@ -498,7 +673,8 @@ class CalculatorModule(Module):
     # ── panel ──────────────────────────────────────────────────────────────
     def toggle(self):
         if self.panel is None:
-            self.panel = CalcPanel(self)
+            with self.themed():
+                self.panel = CalcPanel(self)
             self.panel.hidden.connect(self._panel_hidden)
         if self.panel.isVisible():
             self.panel.hide()
@@ -518,15 +694,76 @@ class CalculatorModule(Module):
             self.data["panel"].update({"x": g.x(), "y": g.y(), "w": g.width(), "h": g.height(),
                                        "keypad": self.panel.keypad.isVisible()})
 
+    def refresh_views(self):
+        """The pop-out and the overlay's Calculator page show the same history and pins."""
+        for v in (self.panel, self._page_calc):
+            if v is not None:
+                try:
+                    v.refresh()
+                except RuntimeError:
+                    pass
+
+    def make_page(self) -> QWidget:
+        """The overlay's Calculator page: the calculator itself, larger, with the keypad out."""
+        page = QWidget()
+        outer = QHBoxLayout(page)
+        outer.setContentsMargins(24, 16, 24, 24)
+        outer.addStretch()
+        with self.themed():
+            calc = CalcPanel(self, embedded=True)
+        self._page_calc = calc
+        holder = calc.container
+        holder.setParent(page)
+        holder.setMinimumWidth(460)
+        holder.setMaximumWidth(620)
+        outer.addWidget(holder, 3)
+        outer.addStretch()
+        page.on_show = lambda: QTimer.singleShot(0, calc.input.setFocus)
+        page.teardown = lambda: (calc.close(), calc.deleteLater(), setattr(self, "_page_calc", None))
+        return page
+
     # ── maths ──────────────────────────────────────────────────────────────
+    def base(self) -> str:
+        b = self.data["panel"].get("base", "dec")
+        return b if b in dict(BASES) else "dec"
+
+    def set_base(self, base: str):
+        self.data["panel"]["base"] = base
+        self._reformat()
+        self.schedule_save()
+
     def fmt(self, value) -> str:
-        return fmt(value, int(self.s("decimals", 10)), bool(self.s("thousands", True)))
+        return fmt(value, int(self.s("decimals", 10)), bool(self.s("thousands", True)), self.base())
+
+    def plain(self, h: dict) -> str:
+        """A result as text to paste: no thousands separators, no unit."""
+        v = h.get("value")
+        if v is None or not isinstance(v, (int, float)):
+            return h.get("result", "")
+        return fmt(v, int(self.s("decimals", 10)), False, self.base()).replace(" ", "")
+
+    def compute(self, text: str):
+        """(value, result text, the sum as stored) for what was typed; raises on a bad sum.
+        Dates give no value (None); conversions keep their unit in the text."""
+        expr = self.continued(text)
+        got = convert.date_math(expr)
+        if got is not None:
+            value, result = got
+            return value, (self.fmt(value) + " days" if value is not None and self.base() != "dec" else result), expr
+        variables = self.variables()
+        got = convert.convert(expr, lambda e: evaluate(e, variables),
+                              convert.rates() if self.s("currency", True) else {})
+        if got is not None:
+            value, unit = got
+            return value, f"{fmt(value, int(self.s('decimals', 10)), bool(self.s('thousands', True)))} {unit}", expr
+        value = evaluate(expr, variables)
+        return value, self.fmt(value), expr
 
     def variables(self) -> dict:
         v = {}
-        hist = self.data["history"]
-        if hist:
-            v["ans"] = hist[-1].get("value", 0)
+        nums = [h["value"] for h in self.data["history"] if isinstance(h.get("value"), (int, float))]
+        if nums:
+            v["ans"] = nums[-1]
         for p in self.data["pins"]:
             v[p["var"]] = p.get("value", 0)
         return v
@@ -538,35 +775,34 @@ class CalculatorModule(Module):
             return "ans" + t
         return t
 
-    def add_history(self, expr: str, value):
-        self.data["history"].append({"expr": expr, "result": self.fmt(value), "value": value,
+    def add_history(self, expr: str, value, result: str = ""):
+        self.data["history"].append({"expr": expr, "result": result or self.fmt(value), "value": value,
                                      "t": time.strftime("%Y-%m-%d %H:%M")})
         limit = int(self.s("history_limit", 200))
         del self.data["history"][:-limit]
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def _reformat(self):
         for h in self.data["history"] + self.data["pins"]:
-            if isinstance(h.get("value"), (int, float)):
+            if not isinstance(h.get("value"), (int, float)):
+                continue
+            # plain numbers only: "3.1 mi", "60 days" keep their text
+            if "var" in h or _PLAIN.fullmatch(h.get("result", "")):
                 h["result"] = self.fmt(h["value"])
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def delete_history(self, h: dict):
         self.data["history"] = [x for x in self.data["history"] if x is not h]
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def clear_history(self, parent):
         if widgets.confirm(parent, "Clear history", "Delete the whole calculator history? Pins are kept.",
                            yes="Clear", danger=True):
             self.data["history"] = []
             self.schedule_save()
-            if self.panel:
-                self.panel.refresh()
+            self.refresh_views()
 
     # ── pins ───────────────────────────────────────────────────────────────
     def pin(self, h: dict, parent):
@@ -581,8 +817,7 @@ class CalculatorModule(Module):
         self.data["pins"].append({"name": name.strip(), "var": var, "expr": h["expr"], "result": h["result"],
                                   "value": h.get("value", 0)})
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     def rename_pin(self, pin: dict, parent):
         name, ok = widgets.ask_text(parent, "Rename pin", "New name:", pin["name"])
@@ -593,8 +828,7 @@ class CalculatorModule(Module):
                 return
             pin.update({"name": name.strip(), "var": var})
             self.schedule_save()
-            if self.panel:
-                self.panel.refresh()
+            self.refresh_views()
 
     def recalc_pin(self, pin: dict):
         try:
@@ -604,14 +838,22 @@ class CalculatorModule(Module):
             return
         pin.update({"value": value, "result": self.fmt(value)})
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
+
+    def set_pin(self, pin: dict, **changes):
+        pin.update(changes)
+        self.schedule_save()
+        self.refresh_views()
+
+    def new_pin_folder(self, pin: dict, parent):
+        name, ok = widgets.ask_text(parent, "Pin folder", "Folder name (e.g. Bills, Work):")
+        if ok and name.strip():
+            self.set_pin(pin, folder=name.strip())
 
     def unpin(self, pin: dict):
         self.data["pins"] = [p for p in self.data["pins"] if p is not pin]
         self.schedule_save()
-        if self.panel:
-            self.panel.refresh()
+        self.refresh_views()
 
     # ── saving ─────────────────────────────────────────────────────────────
     def schedule_save(self):

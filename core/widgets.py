@@ -6,12 +6,14 @@ import subprocess
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QMessageBox, QInputDialog, QMenu, QSizePolicy, QDialog, QLineEdit, QGraphicsOpacityEffect
+    QMessageBox, QInputDialog, QMenu, QSizePolicy, QDialog, QLineEdit, QGraphicsOpacityEffect,
+    QDateTimeEdit, QDialogButtonBox
 )
-from PyQt6.QtCore import Qt, QRect, QPoint, QSize, pyqtSignal, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, pyqtSignal, QTimer,
+                          QPropertyAnimation, QEasingCurve)
 from PyQt6.QtGui import QPainter, QColor, QPixmap
 
-from core import theme, hypr
+from core import IS_WIN, theme, hypr
 
 log = logging.getLogger("widgets")
 _uid = 0
@@ -48,9 +50,36 @@ def bring_to_front(w: QWidget):
     soon as it has mapped the window).
     """
     w.activateWindow()
+    if IS_WIN:
+        _win_foreground(w)
+        return
     sync = hypr.sync()
     if sync is not None and sync.enabled:
         sync.focus(w)
+
+
+def _win_foreground(w: QWidget):
+    """Windows refuses SetForegroundWindow from a background process, so a window opened by a global hotkey
+    used to appear without keyboard focus. Attaching to the foreground thread's input lifts that."""
+    import ctypes
+    u32 = ctypes.windll.user32
+    try:
+        hwnd = int(w.winId())
+        fg = u32.GetForegroundWindow()
+        if not fg or fg == hwnd:
+            return
+        me = ctypes.windll.kernel32.GetCurrentThreadId()
+        other = u32.GetWindowThreadProcessId(fg, None)
+        attached = bool(other and other != me and u32.AttachThreadInput(other, me, True))
+        try:
+            u32.BringWindowToTop(hwnd)
+            u32.SetForegroundWindow(hwnd)
+        finally:
+            if attached:
+                u32.AttachThreadInput(other, me, False)
+        w.activateWindow()
+    except Exception:
+        pass
 
 
 def raise_window(w: QWidget):
@@ -652,6 +681,26 @@ def ask_choice(parent, title: str, label: str, items: list[str], current: int = 
     return dlg.textValue(), ok
 
 
+def ask_datetime(parent, title: str, label: str, default=None):
+    """A date + time picker. Returns a datetime, or None when cancelled."""
+    dlg = QDialog(parent)
+    dlg.setWindowTitle(title)
+    lay = QVBoxLayout(dlg)
+    lay.addWidget(QLabel(label))
+    edit = QDateTimeEdit(QDateTime(default) if default is not None else QDateTime.currentDateTime().addSecs(3600))
+    edit.setCalendarPopup(True)
+    edit.setDisplayFormat("ddd d MMM yyyy  HH:mm")
+    lay.addWidget(edit)
+    box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+    box.accepted.connect(dlg.accept)
+    box.rejected.connect(dlg.reject)
+    lay.addWidget(box)
+    _on_top(dlg)
+    if dlg.exec() != QDialog.DialogCode.Accepted:
+        return None
+    return edit.dateTime().toPyDateTime().replace(second=0, microsecond=0)
+
+
 def menu(parent=None) -> QMenu:
     m = QMenu(parent)
     m.setWindowFlags(m.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
@@ -667,3 +716,91 @@ def clear_layout(layout):
             w.deleteLater()
         elif item.layout() is not None:
             clear_layout(item.layout())
+
+
+# ── drag to reorder ───────────────────────────────────────────────────────────
+class DragReorder(QObject):
+    """Drag the rows of a box layout up and down to put them in a new order.
+
+    add(row, handle) makes `handle` (the row itself by default) the thing you grab. The row moves live
+    while you drag; `moved(old, new)` fires on release with positions counted among the added rows only.
+    A press that does not move is left alone, so clicks still work.
+    """
+    moved = pyqtSignal(int, int)
+    THRESHOLD = 6
+
+    def __init__(self, layout, parent=None):
+        super().__init__(parent)
+        self.layout = layout
+        self.enabled = True
+        self._rows: list[QWidget] = []
+        self._handles: dict = {}
+        self._press = None              # (row, start y)
+        self._dragging = None
+        self._start = 0
+
+    def add(self, row: QWidget, handle: QWidget | None = None):
+        handle = handle or row
+        self._rows.append(row)
+        self._handles[handle] = row
+        handle.installEventFilter(self)
+        if handle is not row:
+            handle.setCursor(Qt.CursorShape.OpenHandCursor)
+
+    def clear(self):
+        self._rows, self._handles, self._press, self._dragging = [], {}, None, None
+
+    @property
+    def dragging(self) -> bool:
+        return self._dragging is not None
+
+    def _order(self) -> list[QWidget]:
+        rows = [r for r in self._rows if self.layout.indexOf(r) >= 0]
+        return sorted(rows, key=self.layout.indexOf)
+
+    def eventFilter(self, obj, e):
+        row = self._handles.get(obj)
+        if row is None or not self.enabled:
+            return False
+        t = e.type()
+        if t == QEvent.Type.MouseButtonPress and e.button() == Qt.MouseButton.LeftButton:
+            self._press = (row, e.globalPosition().y())
+        elif t == QEvent.Type.MouseMove and self._press is not None:
+            if self._dragging is None and abs(e.globalPosition().y() - self._press[1]) >= self.THRESHOLD:
+                self._dragging = self._press[0]
+                self._start = self._order().index(self._dragging)
+                self._dragging.raise_()
+                QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
+            if self._dragging is not None:
+                self._follow(e.globalPosition().toPoint())
+                return True
+        elif t == QEvent.Type.MouseButtonRelease and self._press is not None:
+            self._press = None
+            if self._dragging is not None:
+                QApplication.restoreOverrideCursor()
+                end = self._order().index(self._dragging)
+                self._dragging = None
+                if end != self._start:
+                    self.moved.emit(self._start, end)
+                return True
+        return False
+
+    def _follow(self, pos: QPoint):
+        host = self.layout.parentWidget()
+        if host is None:
+            return
+        y = host.mapFromGlobal(pos).y()
+        others = [r for r in self._order() if r is not self._dragging]
+        target = None
+        for r in others:
+            if y < r.geometry().center().y():
+                target = self.layout.indexOf(r)
+                break
+        if target is None:
+            target = self.layout.indexOf(others[-1]) + 1 if others else self.layout.indexOf(self._dragging)
+        cur = self.layout.indexOf(self._dragging)
+        if target > cur:
+            target -= 1
+        if target != cur:
+            self.layout.removeWidget(self._dragging)
+            self.layout.insertWidget(target, self._dragging)

@@ -6,11 +6,16 @@ Sound playback for timers and reminders.
   chime  - the freedesktop "complete" sound
   alarm  - the freedesktop "alarm-clock-elapsed" sound
   custom - `file`, played by pw-play / paplay (wav, ogg, flac...), else QtMultimedia (mp3, m4a...)
+
+On Windows chime and alarm are the "Asterisk" and "Exclamation" system sounds, and a custom .wav plays
+through winsound (anything else through QtMultimedia).
 """
 import os
 import shutil
 import logging
 import subprocess
+
+from core import IS_WIN
 
 log = logging.getLogger("sounds")
 
@@ -79,8 +84,29 @@ def _beep():
     QApplication.beep()
 
 
+def _play_win(kind: str, file: str, volume: float):
+    import winsound
+    alias = {"chime": "SystemAsterisk", "alarm": "SystemExclamation"}
+    if kind in alias:
+        winsound.PlaySound(alias[kind], winsound.SND_ALIAS | winsound.SND_ASYNC)
+    elif kind == "custom":
+        if not file or not os.path.exists(file):
+            log.warning("custom sound file missing: %r, using chime", file)
+            winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS | winsound.SND_ASYNC)
+        elif file.lower().endswith(".wav"):
+            winsound.PlaySound(file, winsound.SND_FILENAME | winsound.SND_ASYNC)
+        elif not _qt_play(file, volume):
+            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+
+
 def play(kind: str, file: str = "", volume: float = 1.0):
     kind = (kind or "none").lower()
+    if IS_WIN and kind != "none":
+        try:
+            _play_win(kind, file, volume)
+        except Exception:
+            log.exception("could not play sound")
+        return
     try:
         if kind == "none":
             return

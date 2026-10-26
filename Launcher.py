@@ -8,6 +8,7 @@ this ONE process; its hotkeys are Hyprland binds (core.hotkeys), and settings.js
 drives it all.
 
     python Launcher.py --smoke     build every page and pop-up once, then quit (used to test a build)
+    python Launcher.py --strip-metadata <files or folders>   clean copies into the Metadata save folder
 """
 import os
 import sys
@@ -25,8 +26,8 @@ from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
 from PyQt6.QtCore import QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
-from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, theme, widgets, autostart, terminal, wallpaper, hypr,
-                  runner, desktop, usage, backup)
+from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, IS_WIN, VERSION, theme, widgets, autostart, terminal,
+                  wallpaper, hypr, runner, desktop, usage, backup)
 from core.settings import Settings, SCHEMA, ALL_PAGES
 from core.hotkeys import HotkeyManager, pretty
 from core.module import ModuleContext
@@ -69,7 +70,8 @@ class Launcher:
         self.app = app
         self.settings = Settings()
         setup_logging(bool(self.settings.get("general.log_to_file", True)))
-        log.info("=== starting (pid %s, %s, data in %s) ===", os.getpid(), "exe" if FROZEN else "source", HOME_DIR)
+        log.info("=== starting %s (pid %s, %s, data in %s) ===", VERSION, os.getpid(), "exe" if FROZEN else "source",
+                 HOME_DIR)
         if self.settings.migrated_from_old_config:
             log.info("migrated values from the old config.py into settings.json")
 
@@ -80,7 +82,10 @@ class Launcher:
         app.setQuitOnLastWindowClosed(False)
 
         from ui.toast import ToastManager
+        from core.updates import UpdateChecker
         self.toasts = ToastManager(self.settings)
+        self.updates = UpdateChecker()
+        self.updates.found.connect(self._update_found)
         self.hotkeys = HotkeyManager()
         self.hotkeys.pass_keys = bool(self.settings.get("general.pass_keys", True))
         terminal.set_preferred(self.settings.get("dashboard.terminal", ""))
@@ -124,6 +129,7 @@ class Launcher:
         self._sync_desktop_entry()
         self._write_terminal_scheme()
         QTimer.singleShot(20_000, self._auto_backup)
+        QTimer.singleShot(30_000, self._check_updates)
         self._backup_timer = QTimer()
         self._backup_timer.setInterval(6 * 3600 * 1000)
         self._backup_timer.timeout.connect(self._auto_backup)
@@ -180,7 +186,44 @@ class Launcher:
             self.settings.switch_profile(t.get("profile") or "default")
             self.notify(APP_NAME, f"Settings profile: {self.settings.profile_name(self.settings.active_profile())}", 2500)
 
+    def _sync_own_terminal(self, asked: bool = False):
+        """Settings → Overlay → "Your own terminal follows the theme": kitty.conf on Linux, a Windows Terminal
+        fragment on Windows. Linked (after asking) or unlinked here."""
+        if os.environ.get("LUMINESCENT_HOME"):
+            return
+        want = bool(self.settings.get("ui.own_terminal", False))
+        linked = terminal.own_linked()
+        if want and not linked and asked:
+            what = (f"Luminescent will give your PowerShell and Command Prompt profiles in Windows Terminal its "
+                    f"colours (through its own fragment file; your Terminal settings file is not edited)."
+                    if IS_WIN else
+                    "Luminescent will add one line to ~/.config/kitty/kitty.conf:\n\n"
+                    "    include luminescent-theme.conf\n\n"
+                    "and keep luminescent-theme.conf in the theme's colours. A copy of your kitty.conf "
+                    "goes to data/terminal-backups first.")
+            if not terminal.own_installed():
+                self.notify(APP_NAME, f"{terminal.OWN_NAME} is not installed, so there is nothing to colour.")
+                want = False
+            elif widgets.confirm(None, f"Colour your {terminal.OWN_NAME} windows", what + " Go ahead?", yes="Do it"):
+                err = terminal.link_own(os.path.join(DATA_DIR, "terminal-backups"))
+                if err:
+                    self.notify(APP_NAME, f"Could not change {terminal.OWN_NAME}: {err}")
+                    want = False
+            else:
+                want = False
+            if not want:
+                self.settings.set("ui.own_terminal", False)
+                self.settings.save_quiet()
+        elif want and linked:
+            terminal.write_own()
+        elif not want and linked and asked:
+            err = terminal.unlink_own()
+            if err:
+                self.notify(APP_NAME, f"Could not change {terminal.OWN_NAME}: {err}")
+
     def _write_terminal_scheme(self):
+        if self.settings.get("ui.own_terminal", False):
+            self._sync_own_terminal()
         if not self.settings.get("ui.terminal_scheme", True):
             return
         try:
@@ -228,6 +271,7 @@ class Launcher:
         for a_id, label, fn in m.actions():
             if a_id == aid:
                 usage.record("tools", action, f"{m.title}: {label}")
+                usage.activity("tool", label)
                 fn()
                 return
         self.notify(m.title, f"{m.title} has no action '{aid}' any more.")
@@ -255,6 +299,7 @@ class Launcher:
         self._sync_autostart()
         self._sync_desktop_entry()
         terminal.set_preferred(self.settings.get("dashboard.terminal", ""))
+        self._sync_own_terminal(asked=True)
         if self.settings.get("ui.terminal_scheme", True):
             self._write_terminal_scheme()
         else:
@@ -276,6 +321,12 @@ class Launcher:
             desktop.install_entry()
         else:
             desktop.remove_entry()
+        if self.settings.get("metadata.dolphin_menu", False) and self._enabled("metadata"):
+            err = desktop.install_service_menu()
+            if err:
+                self.notify(APP_NAME, f"Could not add the Dolphin menu: {err}")
+        else:
+            desktop.remove_service_menu()
 
     def _auto_backup(self):
         """Once a week: zip the setup into data/backups/weekly-<date>.zip and keep the newest five."""
@@ -299,6 +350,27 @@ class Launcher:
                 os.remove(old)
             except OSError:
                 pass
+
+    def _check_updates(self, force: bool = False):
+        if force or (self.settings.get("general.check_updates", True) and not os.environ.get("LUMINESCENT_HOME")):
+            self.updates.check(force)
+
+    def _update_found(self, tag: str, url: str):
+        if not tag:
+            self.notify(APP_NAME, f"You have the latest version ({VERSION}).", 3000)
+            return
+        log.info("update available: %s", tag)
+        self._update_url = url
+        how = ("download it from the release page" if FROZEN or not os.path.isdir(os.path.join(APP_DIR, ".git"))
+               else "run git pull in the Luminescent folder")
+        self.toast(f"{APP_NAME} {tag} is out", f"You have {VERSION}. Tray → Update available, or {how}. "
+                                               "Your notes and settings are kept.")
+        self._build_menu()
+
+    def open_update_page(self):
+        import webbrowser
+        from core.updates import PAGE
+        webbrowser.open(getattr(self, "_update_url", "") or PAGE)
 
     def next_theme(self):
         t = self.themes.next_theme()
@@ -367,6 +439,7 @@ class Launcher:
             out.append(Entry(f"settings:{s.key}", f"Settings › {s.title}", lambda k=s.key: self.open_settings(k),
                              "settings", "settings"))
         for label, fn in (("Next theme", self.next_theme), ("Reset stuck keys", self.reset_keys),
+                          ("Check for updates", lambda: self._check_updates(force=True)),
                           ("Show the hotkey cheat sheet", self._cheat_toggle),
                           ("Open the log file", self.open_log), ("Restart Luminescent", self.restart),
                           ("Quit Luminescent…", self.confirm_quit)):
@@ -385,8 +458,10 @@ class Launcher:
     def _build_menu(self):
         shown = set(self.settings.get("general.tray_items") or [])
         menu = QMenu()
-        head = menu.addAction(APP_NAME)
+        head = menu.addAction(f"{APP_NAME} {VERSION}")
         head.setEnabled(False)
+        if self.updates.latest:
+            menu.addAction(f"⬆  Update available: {self.updates.latest}", self.open_update_page)
         if "open" in shown:
             menu.addAction(f"✦  Open {APP_NAME}   ({pretty(self.settings.get('ui.overlay_hotkey', ''))})",
                            lambda: self.overlay.open("dashboard"))
@@ -584,6 +659,7 @@ def _smoke(launcher: "Launcher", app: QApplication):
             QTimer.singleShot(250, lambda: run(i + 1))
             return
         from PyQt6.QtWidgets import QLabel
+        errors.extend(f"module {k} failed: {v}" for k, v in launcher.module_errors.items())
         for k, _ in ALL_PAGES:
             page = launcher.overlay.page(k)
             if page is not None and any("could not be built" in lbl.text() for lbl in page.findChildren(QLabel)):
@@ -595,6 +671,10 @@ def _smoke(launcher: "Launcher", app: QApplication):
 
 
 def main():
+    if "--strip-metadata" in sys.argv:          # Dolphin's right-click menu: no window, no lock needed
+        from modules.metadata import cli
+        i = sys.argv.index("--strip-metadata")
+        return cli(sys.argv[i + 1:])
     # Native Wayland: Qt then knows the real screen layout, and core.hypr places the windows.
     # (Under XWayland Hyprland maps multi-monitor coordinates inconsistently.)
     if os.environ.get("WAYLAND_DISPLAY"):

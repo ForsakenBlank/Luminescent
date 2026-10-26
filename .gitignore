@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+data/launcher.log*
+data/reminders_state.json
+data/timers.json
+settings.json.tmp
+*.tmp
+data/*.bad
+build/
+dist/
+.venv/

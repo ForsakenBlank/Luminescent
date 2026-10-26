@@ -1,0 +1,136 @@
+# Luminescent (formerly UsefulScripts / AllinOne)
+
+One background app for Linux (Hyprland, tested on CachyOS) that keeps every little tool a hotkey away: a GeForce-overlay style
+**hub** (Dashboard, Themes, Clipboard, Settings), plus **Notes**, **Screen Doodle**, **Timers / Stopwatches**,
+**Calculator**, **Colour Picker**, **Screen Text Grab**, **Prompt Log**, **Reminders**, **Hearing Guard**,
+**Ghost Vault** and the **Metadata Stripper**. Everything runs in one process with one keyboard hook.
+
+## Run it
+
+```
+./start.sh           (first run makes .venv and installs requirements.txt)
+```
+
+Inside a Hyprland session. Hotkeys are Hyprland binds that Luminescent adds while it runs (nothing is written
+to your config), and Hyprland places its windows, so it needs Hyprland; under another compositor the windows
+work but there are no global hotkeys. Optional system packages are listed at the end of requirements.txt
+(Tesseract for Text Grab, ffmpeg for video metadata).
+
+A **sparkle** appears in the tray in your theme's accent colour. **Click it** (or press **Ctrl+Shift+Space**) to open
+the overlay. Right-click it for the dashboard items, quick actions, modules, Settings, Restart and Quit.
+Settings → General → **Run at login** adds an autostart entry (~/.config/autostart).
+
+## The overlay
+
+`Ctrl+Shift+Space` dims every screen and shows the hub. `Esc`, the ✕ or a click on the dimmed area hides it; the
+app keeps running, so it reopens instantly. **Quit everything** lives in Settings → General.
+
+* **Dashboard**: movable "tab boxes". `＋ New tab`, name it (Scripts, Games, Work…), right-click its header →
+  **Add item** and point the item at a script, program, file, folder, URL or command. Double-click an item to run it;
+  right-click for Run / Edit / Rename / Change file / Set hotkey / Move / Delete. Drag a header to move a box (it snaps
+  to a grid), click the header to fold it, drag its right edge to resize. **Tidy up** lines them all up.
+  `.py` / `.sh` scripts open in your terminal (kitty here; kitty, alacritty and foot get the Luminescent colours)
+  and stay open so you can read the output (Settings → Dashboard & Scripts). The **Tools** tab runs Luminescent's own actions. Item hotkeys work
+  anywhere, overlay open or not. The tray menu lists every item too.
+  Tip: add your auto clicker (or any program) as an item, give it a hotkey, and it is one key, one click in the tray
+  or one search in the palette away.
+* **Themes**: click a theme to apply it everywhere. Right-click → **Settings…** for every colour (full colour wheel),
+  font, corner radius, glow, a background image behind the overlay (with an opacity slider), the card icon, a
+  **desktop wallpaper** (a picture, or a **Wallpaper Engine** project) and the **settings profile** it uses.
+  Group themes in colour-coded folders. Dark and Light are built in and can not be deleted.
+* **Clipboard**: your Snippets folder as cards; click to paste. `＋ Save clipboard here` stores whatever is on the
+  clipboard (text, an image, copied files) into the folder you are in. Folders can be coloured (right-click).
+* **Settings**: every option, grouped by module, with a search box. **Settings profiles** at the top: each profile
+  has its own hotkeys, sizes, sounds… and a theme can switch to one. General, Overlay and Dashboard settings are shared.
+
+## Hotkeys (defaults, all changeable)
+
+| What | Hotkey | |
+|---|---|---|
+| Overlay | `Ctrl+Shift+Space` | Dashboard · Themes · Clipboard · Settings (each can get its own jump hotkey) |
+| Command palette | `Ctrl+Alt+Space` | Search every action, script, note, theme and settings page. Type a sum to calculate |
+| Hotkey cheat sheet | `Ctrl+Alt+/` | Every hotkey, while held |
+| Settings | `Ctrl+Alt+S` | Overlay straight on Settings |
+| Snippets | `Ctrl+B` | Paste grid. Ctrl+click = paste + Enter |
+| Notes | `Alt+N` / `Alt+E` | Show/hide / edit mode. Search box, right-click → Pin |
+| Doodle | hold `Alt` | Draw (left) / erase (right). Wheel = brush size, Shift-drag = straight line, tool strip at the top for line, rectangle, circle, arrow |
+| Doodle | `Alt+X` / `Alt+F` / `Alt+G` / `Alt+C` | Clear / undo / blackboard / copy screen + drawing |
+| Doodle | `Alt+Shift+Q`, `Esc` | Panic / stop drawing |
+| Timer | `Alt+T` / `Alt+R` | New timer or stopwatch / edit mode. Stopwatches have a Lap button (lap hotkey optional) |
+| Calculator | `Ctrl+Alt+=` | Pop-out calculator with history and named pins |
+| Colour picker | `Ctrl+Alt+C` | Loupe; click copies HEX/RGB/HSL, arrows nudge 1 px |
+| Text grab | `Ctrl+Alt+O` | Drag a box around text; it is copied (Tesseract OCR) |
+| Keybinds | `Ctrl+Alt+K` | Every keybind on the system: your Hyprland binds and Luminescent's, clashes in red |
+| Vault | `Ctrl+Alt+Q` | Encrypted vault |
+| Metadata | `Ctrl+Shift+M` | Metadata viewer / stripper |
+| Hearing Guard | `Ctrl+Alt+H` | dB meter, volume limiter, daily dose |
+| Quit | `Ctrl+U` | Quit everything (asks first) |
+
+Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never flash the drawing on.
+
+## The tools
+
+* **Calculator**: `Enter` calculates; `↑/↓` history; `54 + 10%` = 59.4; `×` `÷` `^` `1,000` `mod` and functions
+  (sqrt, sin, log, fact…) work; a sum starting with an operator continues from the last answer (`ans`).
+  Right-click a result → **Pin with a name**; the name works in later sums (`rent/4`). Keypad toggle, copy, recalc.
+* **Colour picker**: freezes the screen, shows an 11×11 zoom. The last 10 colours are in the tray menu and palette.
+* **Screen text grab**: uses Tesseract: `sudo pacman -S tesseract tesseract-data-eng` (plus `tesseract-data-<lang>`
+  for other languages).
+* **Prompt Log**: your fish (or bash / zsh) history plus everything the dashboard launched; search, copy, run again in
+  a terminal, delete lines or clear it.
+* **Keybinds**: every Hyprland bind from your config with what it really does (`SUPER + G → Open BROWSER:
+  zen-browser`, loop binds with their real keys and workspaces) next to Luminescent's hotkeys. Double-click opens the
+  line in an editor; Add / Change keys / Remove edit your config (backup in `data/hypr-backups`, undone
+  automatically if Hyprland reports an error) and reload Hyprland.
+* **Reminders** (Settings → Reminders): pop-ups, sounds, notifications, and **Switch theme**, so a 08:00 reminder can
+  switch to Light and a 20:00 one to Dark.
+* **Hearing Guard**: estimated dB(A) at the ear, a dip limiter and the NIOSH daily dose. Calibrate once per device
+  with a phone sound-meter app (Calibrate… in its panel). Headphone volume wheels are invisible to the PC: calibrate
+  with the wheel at max.
+
+## Performance
+
+Nothing polls while hidden: the overlay, palette and cheat sheet only exist while shown, the tray tooltip only ticks
+while a timer runs, and work that can block (OCR, wallpaper changes) runs on worker threads so the keyboard hook stays
+responsive. **Performance mode** (Settings → Overlay & Interface) drops the glow, fade and background images.
+
+## Backups
+
+Settings → General → **Export backup…** zips settings, notes, timers, reminders, hearing history, dashboard, themes,
+profiles and calculator. **Import backup…** zips your current files to `data/backups/` first, then restarts.
+The vault is never included.
+
+## A standalone build
+
+```
+.venv/bin/pip install pyinstaller
+.venv/bin/python build.py      → dist/Luminescent/Luminescent   (add --test to self-test it)
+```
+
+Running from source (`./start.sh`) is simpler and is what is tested. A build keeps its data in
+`~/.local/share/Luminescent` and copies this folder's `settings.json` and `data/` there the first time it runs.
+After that the two are separate, so use one or the other; they can not run at the same time.
+
+## Layout
+
+```
+Launcher.py        entry point: tray, modules, overlay, palette
+settings_ui.py     the Settings page (built from core/settings.py)
+build.py           builds a standalone binary (optional)
+start.sh           runs it from source (makes .venv on the first run)
+core/              settings + profiles, hotkeys, theme + theme profiles, widgets, runner, terminal, wallpaper, backup,
+                   hypr (Hyprland socket: binds, window placement), hyprbinds (reads/edits your Hyprland binds), clip
+ui/                overlay, dashboard, themes page, command palette, cheat sheet
+modules/           one file per tool (+ vault_store.py: vault crypto, no UI)
+data/              notes, timers, dashboard, themes, calculator, colours, profiles, hearing, launcher.log
+_old/              snapshots of earlier versions
+```
+
+Something not working? Tray → **Open log file**. If a hotkey fires when it should not (e.g. R acts like Alt+R) or
+combos stop working, tray → **Reset stuck keys** (it also clears lost key releases by itself).
+
+## Notes on the vault
+
+* It does **not** run as Administrator (an elevated window hides keyboard events from the other tools). If the vault
+  folder needs admin rights to write to, the vault says so; pick another folder in Settings → Ghost Vault.
+* Real and decoy vaults are completely separate. "Forgot password?" on the unlock dialog uses the recovery key.

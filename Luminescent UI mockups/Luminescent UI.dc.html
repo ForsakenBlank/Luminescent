@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e7e6e2;font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+--base:#131317;--card:#1b1b21;--cardh:#23232a;--frame:#0e0e11;--header:#17171c;--border:rgba(255,255,255,.075);--t1:#ececf1;--t2:#a3a3af;--t3:#6c6c78;--p:#7b6cf6;--ph:#9184f8;--pm:rgba(123,108,246,.16);--pt:#a99ffa;--onp:#ffffff;--scrim:rgba(6,6,10,.64);--glow:rgba(123,108,246,.26);--wall1:#2c2e35;--wall2:#26282e;--r:10px;
+--font:Geist,'Segoe UI Variable',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,Consolas,monospace}
+a{color:#2a78d6}a:hover{color:#1d5fae}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}
+</style>
+</helmet>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Dashboard as a full-screen overlay</span></div>
+<div style="max-width:760px;margin:0 0 32px;font:13px/1.6 system-ui,sans-serif;color:rgba(0,0,0,.62);display:flex;flex-direction:column;gap:6px">
+<p style="margin:0">The panel is gone. The overlay covers the whole screen, the way game bars do: the dots run edge to edge, the tab boxes float on the desktop, and the page switcher hangs from the top-centre edge. The logo is larger and sits top-left. You can still drag the boxes anywhere on the screen.</p>
+<p style="margin:0">Logo PNGs: <a href="logo/luminescent-mark.png">mark</a> · <a href="logo/luminescent-logo-on-dark.png">lockup, dark backgrounds</a> · <a href="logo/luminescent-logo-on-light.png">lockup, light backgrounds</a></p>
+</div>
+<div class="dv-opts">
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Dashboard: free overlay, nav docked to the top edge</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:900px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;inset:0;background-image:radial-gradient(circle,var(--border) 1.1px,transparent 1.4px);background-size:20px 20px"></div>
+<div style="position:absolute;left:50%;top:-180px;width:900px;height:360px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(closest-side,var(--glow),transparent)"></div>
+
+<div style="position:absolute;left:36px;top:30px;display:flex;align-items:center;gap:14px">
+<svg width="30" height="30" viewBox="0 0 100 100" style="display:block;flex:none"><path d="M50 0C54 34 66 46 100 50C66 54 54 66 50 100C46 66 34 54 0 50C34 46 46 34 50 0Z" fill="var(--p)"></path></svg>
+<span style="font:600 15px/1 var(--mono);letter-spacing:.3em;color:var(--t1)">LUMINESCENT</span>
+</div>
+
+<div style="position:absolute;left:50%;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center">
+<div style="height:2px;width:100%;background:var(--p)"></div>
+<div style="display:flex;gap:2px;padding:6px 6px 7px;background:var(--base);border:1px solid var(--border);border-top:none;border-radius:0 0 16px 16px;box-shadow:0 16px 40px -16px rgba(0,0,0,.6)">
+<span style="white-space:nowrap;padding:9px 20px;border-radius:999px;background:var(--p);color:var(--onp);font:500 13.5px/1 var(--font)">Dashboard</span>
+<span style="white-space:nowrap;padding:9px 20px;border-radius:999px;color:var(--t2);font:500 13.5px/1 var(--font)" style-hover="color:var(--t1);background:var(--cardh)">Themes</span>
+<span style="white-space:nowrap;padding:9px 20px;border-radius:999px;color:var(--t2);font:500 13.5px/1 var(--font)" style-hover="color:var(--t1);background:var(--cardh)">Clipboard</span>
+<span style="white-space:nowrap;padding:9px 20px;border-radius:999px;color:var(--t2);font:500 13.5px/1 var(--font)" style-hover="color:var(--t1);background:var(--cardh)">Settings</span>
+</div>
+</div>
+
+<div style="position:absolute;right:28px;top:26px;display:flex;align-items:center;gap:14px">
+<span style="white-space:nowrap;font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--t3)">CTRL+SHIFT+SPACE</span>
+<span style="width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--base);border:1px solid var(--border);color:var(--t2);font-size:13px" style-hover="color:var(--t1)">✕</span>
+</div>
+
+<sc-for list="{{ boxes2 }}" as="b" hint-placeholder-count="7">
+<div style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.w }}px;background:var(--card);border:1px solid var(--border);border-radius:calc(var(--r) - 2px);overflow:hidden;box-shadow:0 18px 40px -18px rgba(0,0,0,.65)">
+<div onMouseDown="{{ b.down }}" style="display:flex;align-items:center;gap:9px;height:34px;padding:0 10px 0 12px;background:var(--header);cursor:grab;user-select:none">
+<span style="width:3px;height:12px;border-radius:2px;background:var(--p)"></span>
+<span style="flex:1;font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--t1)">{{ b.title }}</span>
+<span style="font:500 10px/1 var(--mono);color:var(--t3)">{{ b.count }}</span>
+<span style="width:14px;text-align:center;font-size:10px;color:var(--t3)">{{ b.chev }}</span>
+</div>
+<sc-if value="{{ b.open }}" hint-placeholder-val="{{ true }}">
+<div style="padding:4px 0;border-top:1px solid var(--border)">
+<sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;cursor:default" style-hover="background:var(--cardh)">
+<span style="flex:none;width:30px;padding:4px 0;text-align:center;font:500 8.5px/1 var(--mono);letter-spacing:.06em;color:var(--t3);border:1px solid var(--border);border-radius:4px">{{ r.t }}</span>
+<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:13px/1 var(--font);color:var(--t1)">{{ r.n }}</span>
+<span style="font:11px/1 var(--mono);color:var(--t3)">{{ r.k }}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+
+<div style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:5px;background:var(--base);border:1px solid var(--border);border-radius:999px;box-shadow:0 16px 40px -16px rgba(0,0,0,.6)">
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:999px;background:var(--card);color:var(--t1);font:500 12.5px/1 var(--font)"><span style="color:var(--pt)">＋</span>New tab</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:32px;padding:0 14px;border-radius:999px;color:var(--t2);font:500 12.5px/1 var(--font)" style-hover="background:var(--cardh)">Tidy up</span>
+<span style="width:1px;height:18px;background:var(--border)"></span>
+<span style="white-space:nowrap;padding:0 12px;font:12px/1 var(--font);color:var(--t3)">Drag a header to move · click to fold</span>
+</div>
+</div>
+</div></div>
+</div>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Luminescent — first UI pass</span></div>
+<div style="max-width:760px;margin:0 0 32px;font:13px/1.6 system-ui,sans-serif;color:rgba(0,0,0,.62);display:flex;flex-direction:column;gap:6px">
+<p style="margin:0">Built from UI_OVERVIEW.md. Every colour is a theme token (bg_base, bg_card, border, primary…), so the Dark/Light switch in Tweaks restyles every screen at once, along with radius and glow. Type is Geist for UI and Geist Mono for hotkeys, counts and labels; the "hacker" edge is limited to mono caps, 1px borders and a short accent tick under each header. No blur or shadow effects on content; the glow is a single painted halo around the panel.</p>
+<p style="margin:0">Dashboard boxes are live: drag a header to move (8px grid), click a header to fold. Theme folder headers also collapse.</p>
+</div>
+
+<div style="font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.12em;color:rgba(0,0,0,.45);margin:0 0 14px">MAIN OVERLAY</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Dashboard: free canvas of TabBoxes</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:900px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;left:24px;bottom:18px;font:11px var(--mono);color:var(--t3)">desktop wallpaper (dimmed)</div>
+<div style="position:absolute;left:130px;top:60px;width:1180px;height:780px;display:flex;flex-direction:column;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--pm),0 0 160px 0 var(--glow),0 40px 90px -20px rgba(0,0,0,.5)">
+<div style="position:relative;display:flex;align-items:center;height:56px;padding:0 14px 0 20px;border-bottom:1px solid var(--border);flex:none">
+<div style="position:absolute;left:0;bottom:-1px;width:72px;height:1px;background:var(--p)"></div>
+<div style="display:flex;align-items:center;gap:10px;width:280px"><span style="color:var(--p);font-size:14px;line-height:1">✦</span><span style="font:600 11px/1 var(--mono);letter-spacing:.28em;color:var(--t1)">LUMINESCENT</span></div>
+<div style="flex:1;display:flex;justify-content:center"><div style="display:flex;gap:2px;padding:3px;background:var(--frame);border:1px solid var(--border);border-radius:999px">
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;background:var(--p);color:var(--onp);font:500 13px/1 var(--font)">Dashboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Themes</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Clipboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Settings</span>
+</div></div>
+<div style="width:280px;display:flex;justify-content:flex-end;align-items:center;gap:14px"><span style="font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--t3)">CTRL+SHIFT+SPACE</span><span style="width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--t2);font-size:13px" style-hover="background:var(--cardh)">✕</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:14px;height:52px;padding:0 20px;flex:none">
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;height:30px;padding:0 12px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--card);color:var(--t1);font:500 12.5px/1 var(--font)"><span style="color:var(--pt)">＋</span>New tab</span>
+<span style="font:12px/1 var(--font);color:var(--t3)">Drag a header to move · click to fold · drag the right edge to resize</span>
+<span style="flex:1"></span>
+<span style="font:500 10px/1 var(--mono);color:var(--t3);letter-spacing:.06em">7 TABS · 28 ITEMS</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:30px;padding:0 12px;border-radius:calc(var(--r) - 4px);color:var(--t2);font:500 12.5px/1 var(--font)" style-hover="background:var(--cardh)">Tidy up</span>
+</div>
+<div style="position:relative;flex:1;margin:0 20px 20px;border:1px solid var(--border);border-radius:calc(var(--r) - 2px);background-color:var(--frame);background-image:radial-gradient(circle,var(--border) 1px,transparent 1.2px);background-size:16px 16px;overflow:hidden">
+<div style="position:absolute;inset:16px">
+<sc-for list="{{ boxes }}" as="b" hint-placeholder-count="7">
+<div style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.w }}px;background:var(--card);border:1px solid var(--border);border-radius:calc(var(--r) - 2px);overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.2)">
+<div onMouseDown="{{ b.down }}" style="display:flex;align-items:center;gap:9px;height:34px;padding:0 10px 0 12px;background:var(--header);cursor:grab;user-select:none">
+<span style="width:3px;height:12px;border-radius:2px;background:var(--p)"></span>
+<span style="flex:1;font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--t1)">{{ b.title }}</span>
+<span style="font:500 10px/1 var(--mono);color:var(--t3)">{{ b.count }}</span>
+<span style="width:14px;text-align:center;font-size:10px;color:var(--t3)">{{ b.chev }}</span>
+</div>
+<sc-if value="{{ b.open }}" hint-placeholder-val="{{ true }}">
+<div style="padding:4px 0;border-top:1px solid var(--border)">
+<sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;cursor:default" style-hover="background:var(--cardh)">
+<span style="flex:none;width:30px;padding:4px 0;text-align:center;font:500 8.5px/1 var(--mono);letter-spacing:.06em;color:var(--t3);border:1px solid var(--border);border-radius:4px">{{ r.t }}</span>
+<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:13px/1 var(--font);color:var(--t1)">{{ r.n }}</span>
+<span style="font:11px/1 var(--mono);color:var(--t3)">{{ r.k }}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Themes: folder-grouped cards, active card has accent border + ✓</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:900px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;left:130px;top:60px;width:1180px;height:780px;display:flex;flex-direction:column;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--pm),0 0 160px 0 var(--glow),0 40px 90px -20px rgba(0,0,0,.5)">
+<div style="position:relative;display:flex;align-items:center;height:56px;padding:0 14px 0 20px;border-bottom:1px solid var(--border);flex:none">
+<div style="position:absolute;left:0;bottom:-1px;width:72px;height:1px;background:var(--p)"></div>
+<div style="display:flex;align-items:center;gap:10px;width:280px"><span style="color:var(--p);font-size:14px;line-height:1">✦</span><span style="font:600 11px/1 var(--mono);letter-spacing:.28em;color:var(--t1)">LUMINESCENT</span></div>
+<div style="flex:1;display:flex;justify-content:center"><div style="display:flex;gap:2px;padding:3px;background:var(--frame);border:1px solid var(--border);border-radius:999px">
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Dashboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;background:var(--p);color:var(--onp);font:500 13px/1 var(--font)">Themes</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Clipboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Settings</span>
+</div></div>
+<div style="width:280px;display:flex;justify-content:flex-end;align-items:center;gap:14px"><span style="font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--t3)">CTRL+SHIFT+SPACE</span><span style="width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--t2);font-size:13px">✕</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;height:52px;padding:0 24px;flex:none">
+<span style="font:600 15px/1 var(--font);color:var(--t1)">Themes</span>
+<span style="font:500 10px/1 var(--mono);color:var(--t3);letter-spacing:.06em">ACTIVE: DARK</span>
+<span style="flex:1"></span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:30px;padding:0 12px;border-radius:calc(var(--r) - 4px);color:var(--t2);font:500 12.5px/1 var(--font)">New folder</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;height:30px;padding:0 14px;border-radius:calc(var(--r) - 4px);background:var(--p);color:var(--onp);font:500 12.5px/1 var(--font)">＋ New theme</span>
+</div>
+<div style="flex:1;overflow:hidden;padding:4px 24px 24px;display:flex;flex-direction:column;gap:22px">
+<sc-for list="{{ folders }}" as="f" hint-placeholder-count="3">
+<div style="display:flex;flex-direction:column;gap:14px">
+<div onClick="{{ f.toggle }}" style="display:flex;align-items:center;gap:10px;height:28px;cursor:pointer;user-select:none;border-bottom:1px solid var(--border);padding-bottom:8px">
+<span style="width:10px;font-size:9px;color:var(--t3)">{{ f.chev }}</span>
+<span style="width:8px;height:8px;border-radius:2px;background:{{ f.color }}"></span>
+<span style="font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--t1)">{{ f.name }}</span>
+<span style="font:500 10px/1 var(--mono);color:var(--t3)">{{ f.count }}</span>
+</div>
+<sc-if value="{{ f.open }}" hint-placeholder-val="{{ true }}">
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px">
+<sc-for list="{{ f.themes }}" as="t" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:10px;padding:8px;border-radius:var(--r);border:1px solid {{ t.bd }};background:var(--card);box-shadow:{{ t.ring }}">
+<div style="height:112px;border-radius:calc(var(--r) - 4px);background:{{ t.bg }};padding:10px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:{{ t.p }}"></span><span style="height:4px;width:34px;border-radius:2px;background:{{ t.tx }};opacity:.5"></span><span style="flex:1"></span><span style="height:8px;width:22px;border-radius:4px;background:{{ t.p }}"></span><span style="height:8px;width:16px;border-radius:4px;background:{{ t.c }}"></span></div>
+<div style="height:1px;background:{{ t.p }};width:24px"></div>
+<div style="flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+<div style="border-radius:4px;background:{{ t.c }}"></div><div style="border-radius:4px;background:{{ t.c }}"></div><div style="border-radius:4px;background:{{ t.c }};height:60%"></div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:0 4px 2px">
+<span style="flex:1;font:500 13px/1 var(--font);color:var(--t1)">{{ t.name }}</span>
+<sc-if value="{{ t.active }}" hint-placeholder-val="{{ false }}"><span style="width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--p);color:var(--onp);font-size:10px">✓</span></sc-if>
+</div>
+</div>
+</sc-for>
+<div style="display:grid;place-items:center;min-height:150px;border:1px dashed var(--border);border-radius:var(--r);color:var(--t3);font:500 12.5px/1 var(--font)">＋ New theme</div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Clipboard: breadcrumb + card grid (same view as the Ctrl+B pop-up)</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:900px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;left:130px;top:60px;width:1180px;height:780px;display:flex;flex-direction:column;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--pm),0 0 160px 0 var(--glow),0 40px 90px -20px rgba(0,0,0,.5)">
+<div style="position:relative;display:flex;align-items:center;height:56px;padding:0 14px 0 20px;border-bottom:1px solid var(--border);flex:none">
+<div style="position:absolute;left:0;bottom:-1px;width:72px;height:1px;background:var(--p)"></div>
+<div style="display:flex;align-items:center;gap:10px;width:280px"><span style="color:var(--p);font-size:14px;line-height:1">✦</span><span style="font:600 11px/1 var(--mono);letter-spacing:.28em;color:var(--t1)">LUMINESCENT</span></div>
+<div style="flex:1;display:flex;justify-content:center"><div style="display:flex;gap:2px;padding:3px;background:var(--frame);border:1px solid var(--border);border-radius:999px">
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Dashboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Themes</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;background:var(--p);color:var(--onp);font:500 13px/1 var(--font)">Clipboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Settings</span>
+</div></div>
+<div style="width:280px;display:flex;justify-content:flex-end;align-items:center;gap:14px"><span style="font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--t3)">CTRL+SHIFT+SPACE</span><span style="width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--t2);font-size:13px">✕</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 24px;flex:none">
+<span style="font:500 13px/1 var(--font);color:var(--t3)">Clipboard</span><span style="color:var(--t3);font-size:11px">/</span>
+<span style="font:500 13px/1 var(--font);color:var(--t3)">Work</span><span style="color:var(--t3);font-size:11px">/</span>
+<span style="font:600 13px/1 var(--font);color:var(--t1)">October</span>
+<span style="flex:1"></span>
+<span style="display:flex;align-items:center;gap:8px;width:220px;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame);color:var(--t3);font:12.5px/1 var(--font)">Search clips<span style="flex:1"></span><span style="font:10px var(--mono)">CTRL+F</span></span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:30px;padding:0 12px;border-radius:calc(var(--r) - 4px);color:var(--t2);font:500 12.5px/1 var(--font)">New folder</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:30px;padding:0 12px;border-radius:calc(var(--r) - 4px);color:var(--t2);font:500 12.5px/1 var(--font)">Clear unpinned</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:30px;padding:0 14px;border-radius:calc(var(--r) - 4px);background:var(--p);color:var(--onp);font:500 12.5px/1 var(--font)">Paste here</span>
+</div>
+<div style="flex:1;overflow:hidden;padding:4px 24px 24px;display:flex;flex-direction:column;gap:20px">
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px">
+<sc-for list="{{ clipFolders }}" as="cf" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px;height:52px;padding:0 14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)" style-hover="background:var(--cardh)">
+<span style="width:22px;height:16px;border-radius:3px;border:1.5px solid {{ cf.color }}"></span>
+<span style="flex:1;font:500 13px/1 var(--font);color:var(--t1)">{{ cf.name }}</span>
+<span style="font:10px/1 var(--mono);color:var(--t3)">{{ cf.n }}</span>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px">
+<sc-for list="{{ clips }}" as="c" hint-placeholder-count="10">
+<div style="display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden" style-hover="background:var(--cardh)">
+<div style="height:128px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)">
+<sc-if value="{{ c.img }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,var(--frame) 0 8px,var(--header) 8px 16px);display:grid;place-items:center;font:10px var(--mono);color:var(--t3)">{{ c.ph }}</div></sc-if>
+<sc-if value="{{ c.text }}" hint-placeholder-val="{{ true }}"><div style="padding:12px 14px;font:13px/1.5 var(--font);color:var(--t2);text-wrap:pretty">{{ c.body }}</div></sc-if>
+<sc-if value="{{ c.code }}" hint-placeholder-val="{{ false }}"><div style="padding:12px 14px;font:11.5px/1.6 var(--mono);color:var(--t2);white-space:pre-wrap">{{ c.body }}</div></sc-if>
+<sc-if value="{{ c.link }}" hint-placeholder-val="{{ false }}"><div style="padding:14px;display:flex;flex-direction:column;gap:8px"><span style="font:600 13px/1.3 var(--font);color:var(--t1)">{{ c.title }}</span><span style="font:11px/1.4 var(--mono);color:var(--pt);word-break:break-all">{{ c.body }}</span></div></sc-if>
+<sc-if value="{{ c.file }}" hint-placeholder-val="{{ false }}"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px"><span style="width:34px;height:42px;border:1.5px solid var(--t3);border-radius:4px;display:grid;place-items:end center;padding-bottom:5px;box-sizing:border-box;font:600 8px var(--mono);color:var(--t3)">{{ c.ext }}</span><span style="font:12px/1 var(--font);color:var(--t1)">{{ c.body }}</span></div></sc-if>
+<sc-if value="{{ c.swatch }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:{{ c.body }};display:flex;align-items:flex-end;padding:10px 12px"><span style="font:500 11px var(--mono);color:#fff">{{ c.body }}</span></div></sc-if>
+</div>
+<div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 12px">
+<span style="font:500 9px/1 var(--mono);letter-spacing:.08em;color:var(--t3)">{{ c.kind }}</span>
+<span style="flex:1"></span>
+<sc-if value="{{ c.pin }}" hint-placeholder-val="{{ false }}"><span style="font:500 9px/1 var(--mono);color:var(--pt);letter-spacing:.08em">PINNED</span></sc-if>
+<span style="font:10px/1 var(--mono);color:var(--t3)">{{ c.age }}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Settings: profile bar, sidebar, schema rows, bottom bar</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:900px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;left:130px;top:60px;width:1180px;height:780px;display:flex;flex-direction:column;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--pm),0 0 160px 0 var(--glow),0 40px 90px -20px rgba(0,0,0,.5)">
+<div style="position:relative;display:flex;align-items:center;height:56px;padding:0 14px 0 20px;border-bottom:1px solid var(--border);flex:none">
+<div style="position:absolute;left:0;bottom:-1px;width:72px;height:1px;background:var(--p)"></div>
+<div style="display:flex;align-items:center;gap:10px;width:280px"><span style="color:var(--p);font-size:14px;line-height:1">✦</span><span style="font:600 11px/1 var(--mono);letter-spacing:.28em;color:var(--t1)">LUMINESCENT</span></div>
+<div style="flex:1;display:flex;justify-content:center"><div style="display:flex;gap:2px;padding:3px;background:var(--frame);border:1px solid var(--border);border-radius:999px">
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Dashboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Themes</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;color:var(--t2);font:500 13px/1 var(--font)">Clipboard</span>
+<span style="white-space:nowrap;padding:7px 16px;border-radius:999px;background:var(--p);color:var(--onp);font:500 13px/1 var(--font)">Settings</span>
+</div></div>
+<div style="width:280px;display:flex;justify-content:flex-end;align-items:center;gap:14px"><span style="font:500 10px/1 var(--mono);letter-spacing:.08em;color:var(--t3)">CTRL+SHIFT+SPACE</span><span style="width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--t2);font-size:13px">✕</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;height:46px;padding:0 20px;border-bottom:1px solid var(--border);flex:none;background:var(--header)">
+<span style="font:500 10px/1 var(--mono);letter-spacing:.12em;color:var(--t3)">PROFILE</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:30px;height:28px;padding:0 10px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame);font:500 12.5px/1 var(--font);color:var(--t1)">Default<span style="font-size:9px;color:var(--t3)">▾</span></span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:28px;padding:0 10px;border-radius:calc(var(--r) - 4px);color:var(--t2);font:500 12.5px/1 var(--font)">New profile</span>
+<span style="flex:1"></span>
+<span style="font:10.5px/1 var(--mono);color:var(--t3)">%APPDATA%\Luminescent\settings.json</span>
+</div>
+<div style="flex:1;display:flex;min-height:0">
+<div style="width:232px;flex:none;border-right:1px solid var(--border);background:var(--frame);padding:14px 10px;display:flex;flex-direction:column;gap:2px">
+<div style="display:flex;align-items:center;height:32px;padding:0 10px;margin:0 0 10px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--base);font:12.5px/1 var(--font);color:var(--t3)">Search settings<span style="flex:1"></span><span style="font:10px var(--mono);padding:2px 5px;border:1px solid var(--border);border-radius:3px">/</span></div>
+<sc-for list="{{ sections }}" as="s" hint-placeholder-count="10">
+<div style="position:relative;display:flex;align-items:center;height:32px;padding:0 12px;border-radius:calc(var(--r) - 4px);background:{{ s.bg }};font:500 13px/1 var(--font);color:{{ s.col }}" style-hover="background:var(--cardh)">{{ s.name }}<span style="flex:1"></span><span style="font:10px var(--mono);color:var(--t3)">{{ s.n }}</span></div>
+</sc-for>
+</div>
+<div style="flex:1;min-width:0;padding:26px 36px;display:flex;flex-direction:column;gap:4px;overflow:hidden">
+<div style="display:flex;align-items:baseline;gap:12px;margin:0 0 14px"><span style="font:600 20px/1 var(--font);color:var(--t1)">Overlay</span><span style="font:13px/1 var(--font);color:var(--t3)">How the main panel opens and looks.</span></div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;min-height:52px;border-bottom:1px solid var(--border)">
+<span style="font:13px/1.3 var(--font);color:var(--t2)">Open hotkey</span>
+<div style="display:flex;align-items:center;gap:8px"><div style="display:flex;align-items:center;gap:4px;height:32px;padding:0 8px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame)"><span style="font:500 11px var(--mono);padding:3px 6px;border-radius:4px;background:var(--card);color:var(--t1);border:1px solid var(--border)">Ctrl</span><span style="color:var(--t3);font-size:11px">+</span><span style="font:500 11px var(--mono);padding:3px 6px;border-radius:4px;background:var(--card);color:var(--t1);border:1px solid var(--border)">Shift</span><span style="color:var(--t3);font-size:11px">+</span><span style="font:500 11px var(--mono);padding:3px 6px;border-radius:4px;background:var(--card);color:var(--t1);border:1px solid var(--border)">Space</span></div><span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:calc(var(--r) - 4px);color:var(--t2);font:500 12.5px/1 var(--font)"><span style="width:7px;height:7px;border-radius:50%;background:oklch(0.66 0.17 25)"></span>Record</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;min-height:52px;border-bottom:1px solid var(--border)">
+<span style="font:13px/1.3 var(--font);color:var(--t2)">Dim strength</span>
+<div style="display:flex;align-items:center;gap:14px;max-width:420px"><div style="position:relative;flex:1;height:4px;border-radius:2px;background:var(--frame);border:1px solid var(--border)"><div style="position:absolute;left:0;top:-1px;bottom:-1px;width:64%;border-radius:2px;background:var(--p)"></div><div style="position:absolute;left:64%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--t1);border:2px solid var(--p);box-sizing:border-box"></div></div><span style="width:40px;font:12px var(--mono);color:var(--t1);text-align:right">64%</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;min-height:52px;border-bottom:1px solid var(--border)">
+<span style="font:13px/1.3 var(--font);color:var(--t2)">Glow colour</span>
+<div style="display:flex;align-items:center;gap:14px"><span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 6px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame)"><span style="width:20px;height:20px;border-radius:4px;background:var(--p)"></span><span style="font:12px var(--mono);color:var(--t1)">theme accent</span></span>
+<span style="display:flex;align-items:center;gap:9px;font:13px var(--font);color:var(--t1)"><span style="width:16px;height:16px;border-radius:4px;background:var(--p);color:var(--onp);display:grid;place-items:center;font-size:10px">✓</span>Paint glow ring</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;min-height:52px;border-bottom:1px solid var(--border)">
+<span style="font:13px/1.3 var(--font);color:var(--t2)">Background image</span>
+<div style="display:flex;align-items:center;gap:8px;max-width:520px"><span style="flex:1;display:flex;align-items:center;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame);font:12px var(--mono);color:var(--t1);overflow:hidden;white-space:nowrap">C:\Users\me\Pictures\walls\dusk.jpg</span><span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:32px;padding:0 12px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--card);color:var(--t1);font:500 12.5px/1 var(--font)">Browse…</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;min-height:52px;border-bottom:1px solid var(--border)">
+<span style="font:13px/1.3 var(--font);color:var(--t2)">Animation length</span>
+<div style="display:flex;align-items:center;gap:12px"><span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:32px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame);overflow:hidden"><span style="width:64px;padding:0 10px;font:12px var(--mono);color:var(--t1)">120</span><span style="font:11px var(--mono);color:var(--t3);padding-right:8px">ms</span><span style="display:flex;flex-direction:column;border-left:1px solid var(--border);height:100%"><span style="flex:1;display:grid;place-items:center;width:22px;font-size:7px;color:var(--t3)">▲</span><span style="flex:1;display:grid;place-items:center;width:22px;font-size:7px;color:var(--t3);border-top:1px solid var(--border)">▼</span></span></span><span style="font:12px var(--font);color:var(--t3)">Ignored in Performance mode</span></div>
+</div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:center;min-height:60px;border-bottom:1px solid var(--border)">
+<span style="font:13px/1.3 var(--font);color:var(--t2)">Performance mode</span>
+<div style="display:flex;align-items:flex-start;gap:9px"><span style="flex:none;margin-top:1px;width:16px;height:16px;border-radius:4px;border:1.5px solid var(--t3);box-sizing:border-box"></span><div style="display:flex;flex-direction:column;gap:4px"><span style="font:13px/1.2 var(--font);color:var(--t1)">Turn off animations and glow</span><span style="font:12px/1.3 var(--font);color:var(--t3)">Pages open instantly. Recommended on older GPUs.</span></div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:220px minmax(0,1fr);align-items:start;padding:14px 0">
+<span style="font:13px/1.3 var(--font);color:var(--t2);padding-top:8px">Navigation order</span>
+<div style="display:flex;flex-direction:column;gap:4px;max-width:320px">
+<sc-for list="{{ navOrder }}" as="no" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--card)"><span style="font:11px var(--mono);color:var(--t3);letter-spacing:-.1em">⋮⋮</span><span style="font:10px var(--mono);color:var(--t3)">{{ no.i }}</span><span style="flex:1;font:13px var(--font);color:var(--t1)">{{ no.name }}</span><span style="font-size:10px;color:var(--t3)">↑ ↓</span></div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;height:56px;padding:0 20px;border-top:1px solid var(--border);background:var(--header);flex:none">
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:32px;padding:0 12px;border-radius:calc(var(--r) - 4px);color:oklch(0.68 0.16 25);font:500 12.5px/1 var(--font)">Reset page</span>
+<span style="flex:1;display:flex;justify-content:center;align-items:center;gap:8px;font:11px var(--mono);color:var(--t3)"><span style="width:6px;height:6px;border-radius:50%;background:var(--p)"></span>2 UNSAVED CHANGES</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:32px;padding:0 14px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);color:var(--t1);font:500 12.5px/1 var(--font)">Undo changes</span>
+<span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:32px;padding:0 16px;border-radius:calc(var(--r) - 4px);background:var(--p);color:var(--onp);font:500 12.5px/1 var(--font)">Save &amp; Apply</span>
+</div>
+</div>
+</div>
+</div></div>
+</div>
+
+<div style="font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.12em;color:rgba(0,0,0,.45);margin:44px 0 14px">POP-UPS</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Command palette (Ctrl+Alt+Space)</div>
+<div class="dv-card" style="width:1000px">
+<div style="position:relative;width:1000px;height:640px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;left:200px;top:110px;width:600px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--pm),0 0 120px 0 var(--glow),0 30px 70px -20px rgba(0,0,0,.5)">
+<div style="position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:0 18px;border-bottom:1px solid var(--border)">
+<div style="position:absolute;left:0;bottom:-1px;width:56px;height:1px;background:var(--p)"></div>
+<span style="color:var(--p);font-size:13px">✦</span>
+<span style="font:16px/1 var(--font);color:var(--t1)">time<span style="display:inline-block;width:1.5px;height:18px;background:var(--p);vertical-align:-3px;margin-left:1px"></span></span>
+<span style="flex:1"></span>
+<span style="font:10px var(--mono);color:var(--t3);letter-spacing:.06em">6 RESULTS</span>
+</div>
+<div style="padding:6px">
+<sc-for list="{{ paletteRows }}" as="pr" hint-placeholder-count="6">
+<div style="position:relative;display:flex;align-items:center;gap:12px;height:40px;padding:0 14px;border-radius:calc(var(--r) - 4px);background:{{ pr.bg }}">
+<span style="position:absolute;left:0;top:10px;bottom:10px;width:2px;border-radius:2px;background:{{ pr.bar }}"></span>
+<span style="font:500 9px/1 var(--mono);letter-spacing:.08em;color:var(--t3);width:62px">{{ pr.mod }}</span>
+<span style="flex:1;font:13.5px/1 var(--font);color:var(--t1)">{{ pr.label }}</span>
+<span style="font:11px/1 var(--mono);color:var(--t3)">{{ pr.k }}</span>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:18px;height:34px;align-items:center;padding:0 18px;border-top:1px solid var(--border);background:var(--header);font:10px var(--mono);color:var(--t3);letter-spacing:.04em"><span>↑↓ MOVE</span><span>ENTER RUN</span><span>TAB FILL</span><span style="flex:1"></span><span>ESC CLOSE</span></div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Colour picker: frozen screenshot + loupe</div>
+<div class="dv-card" style="width:1000px">
+<div style="position:relative;width:1000px;height:640px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;left:24px;bottom:18px;font:11px var(--mono);color:var(--t3)">frozen screenshot</div>
+<div style="position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;gap:16px;align-items:center;height:32px;padding:0 14px;background:var(--base);border:1px solid var(--border);border-radius:999px;font:11px var(--mono);color:var(--t2)"><span style="color:var(--p)">✦</span>CLICK COPY HEX<span style="color:var(--t3)">·</span>SHIFT+CLICK RGB<span style="color:var(--t3)">·</span>ARROWS NUDGE<span style="color:var(--t3)">·</span>ESC</div>
+<div style="position:absolute;left:470px;top:300px;width:20px;height:20px;border:1px solid #fff;box-sizing:border-box;mix-blend-mode:difference"></div>
+<div style="position:absolute;left:500px;top:330px;width:156px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 20px 50px -10px rgba(0,0,0,.6)">
+<div style="padding:6px"><div style="display:grid;grid-template-columns:repeat(11,13px);grid-auto-rows:13px;gap:0;border-radius:calc(var(--r) - 5px);overflow:hidden">
+<sc-for list="{{ loupe }}" as="lc" hint-placeholder-count="121"><div style="background:{{ lc.c }};box-shadow:{{ lc.s }};position:relative;z-index:{{ lc.z }}"></div></sc-for>
+</div></div>
+<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--border)"><span style="width:24px;height:24px;border-radius:5px;background:{{ loupeHex }}"></span><div style="display:flex;flex-direction:column;gap:3px"><span style="font:600 12px/1 var(--mono);color:var(--t1)">{{ loupeHex }}</span><span style="font:10px/1 var(--mono);color:var(--t3)">{{ loupeRgb }}</span></div></div>
+</div>
+</div>
+</div></div>
+
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Hotkey cheat sheet (hold Ctrl+Alt+/)</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:900px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;inset:0;background:var(--scrim)"></div>
+<div style="position:absolute;inset:0;background:var(--base);opacity:.55"></div>
+<div style="position:absolute;inset:0;padding:80px 140px;display:flex;flex-direction:column;gap:36px">
+<div style="display:flex;align-items:baseline;gap:16px"><span style="color:var(--p);font-size:16px">✦</span><span style="font:600 13px/1 var(--mono);letter-spacing:.28em;color:var(--t1)">HOTKEYS</span><span style="flex:1;height:1px;background:var(--border);align-self:center"></span><span style="font:11px var(--mono);color:var(--t3);letter-spacing:.06em">RELEASE TO CLOSE</span></div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+<sc-for list="{{ cheat }}" as="ch" hint-placeholder-count="12">
+<div style="display:flex;flex-direction:column;gap:12px;padding:16px 18px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)">
+<div style="display:flex;align-items:center;gap:8px"><span style="width:3px;height:11px;border-radius:2px;background:var(--p)"></span><span style="font:600 10.5px/1 var(--mono);letter-spacing:.14em;color:var(--t1)">{{ ch.mod }}</span></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ ch.keys }}" as="kk" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:10px"><span style="flex:1;font:13px/1.2 var(--font);color:var(--t2)">{{ kk.a }}</span><span style="font:11px/1 var(--mono);color:var(--t1)">{{ kk.k }}</span></div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div></div>
+</div>
+
+<div style="font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.12em;color:rgba(0,0,0,.45);margin:44px 0 14px">FLOATING TOOL PANELS</div>
+<div class="dv-opts">
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Notes · Timer · Calculator · Hearing Guard · Doodle strip · Reminder, on the desktop</div>
+<div class="dv-card" style="width:1440px">
+<div style="position:relative;width:1440px;height:820px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--wall1) 0 14px,var(--wall2) 14px 28px);font-family:var(--font)">
+<div style="position:absolute;left:24px;bottom:18px;font:11px var(--mono);color:var(--t3)">desktop</div>
+
+<div style="position:absolute;left:50%;top:18px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px;background:var(--base);border:1px solid var(--border);border-radius:calc(var(--r) + 2px);box-shadow:0 16px 40px -12px rgba(0,0,0,.5)">
+<span style="width:34px;height:34px;display:grid;place-items:center;border-radius:calc(var(--r) - 3px);background:var(--pm);color:var(--pt);font-size:15px">✎</span>
+<span style="width:34px;height:34px;display:grid;place-items:center;border-radius:calc(var(--r) - 3px);color:var(--t2);font-size:15px">╱</span>
+<span style="width:34px;height:34px;display:grid;place-items:center;border-radius:calc(var(--r) - 3px);color:var(--t2);font-size:15px">▭</span>
+<span style="width:34px;height:34px;display:grid;place-items:center;border-radius:calc(var(--r) - 3px);color:var(--t2);font-size:15px">○</span>
+<span style="width:34px;height:34px;display:grid;place-items:center;border-radius:calc(var(--r) - 3px);color:var(--t2);font-size:15px">→</span>
+<span style="width:1px;height:20px;background:var(--border);margin:0 6px"></span>
+<span style="width:16px;height:16px;border-radius:50%;background:oklch(0.7 0.17 25);margin:0 6px"></span>
+<span style="font:11px var(--mono);color:var(--t2);padding:0 8px">6 PX</span>
+<span style="width:34px;height:34px;display:grid;place-items:center;border-radius:calc(var(--r) - 3px);color:var(--t3);font-size:12px">✕</span>
+</div>
+
+<div style="position:absolute;left:40px;top:96px;display:flex;gap:24px;align-items:flex-start">
+
+<div style="width:320px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)">
+<div style="position:relative;display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;background:var(--header);border-bottom:1px solid var(--border)"><div style="position:absolute;left:0;bottom:-1px;width:40px;height:1px;background:var(--p)"></div><span style="font:600 10.5px/1 var(--mono);letter-spacing:.16em;color:var(--t1)">NOTES</span><span style="font:10px var(--mono);color:var(--t3)">/ LAUNCH CHECKLIST</span><span style="flex:1"></span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:12px">⋯</span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:11px">✕</span></div>
+<div style="padding:14px 14px 6px;display:flex;align-items:center;gap:10px"><span style="flex:1;font:600 15px/1.2 var(--font);color:var(--t1)">Launch checklist</span><span style="font:500 10px var(--mono);padding:4px 7px;border-radius:4px;background:var(--pm);color:var(--pt)">3/6</span></div>
+<div style="margin:0 14px 10px;height:2px;border-radius:2px;background:var(--frame)"><div style="width:50%;height:100%;border-radius:2px;background:var(--p)"></div></div>
+<div style="display:flex;flex-direction:column;padding:0 6px">
+<sc-for list="{{ todos }}" as="td" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;border-radius:6px" style-hover="background:var(--cardh)"><span style="flex:none;width:16px;height:16px;box-sizing:border-box;border-radius:4px;display:grid;place-items:center;font-size:10px;border:1.5px solid {{ td.bd }};background:{{ td.bg }};color:var(--onp)">{{ td.mark }}</span><span style="font:13px var(--font);color:{{ td.col }};text-decoration:{{ td.dec }}">{{ td.t }}</span></div>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:10px 14px 14px"><span style="flex:1;display:flex;align-items:center;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:calc(var(--r) - 4px);background:var(--frame);font:12.5px var(--font);color:var(--t3)">Add a task…</span><span style="font:500 12px var(--font);color:var(--t3);padding:0 6px">Clear done</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="width:280px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)">
+<div style="position:relative;display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;background:var(--header);border-bottom:1px solid var(--border)"><div style="position:absolute;left:0;bottom:-1px;width:40px;height:1px;background:var(--p)"></div><span style="font:600 10.5px/1 var(--mono);letter-spacing:.16em;color:var(--t1)">STOPWATCH</span><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.72 0.15 150)"></span><span style="flex:1"></span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:11px">✕</span></div>
+<div style="padding:20px 18px 16px;display:flex;flex-direction:column;align-items:center;gap:16px">
+<div style="font:500 44px/1 var(--mono);letter-spacing:-.02em;color:var(--t1)">12:48<span style="color:var(--t3);font-size:26px">.36</span></div>
+<div style="display:flex;gap:8px"><span style="flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;height:34px;padding:0 18px;border-radius:999px;background:var(--p);color:var(--onp);font:500 13px var(--font)">❚❚ Pause</span><span style="flex:none;white-space:nowrap;display:flex;align-items:center;height:34px;padding:0 18px;border-radius:999px;border:1px solid var(--border);color:var(--t1);font:500 13px var(--font)">Lap</span></div>
+</div>
+<div style="border-top:1px solid var(--border);padding:8px 18px 12px;display:flex;flex-direction:column;gap:6px;font:12px/1 var(--mono)">
+<div style="display:flex;color:var(--t3)"><span style="width:44px">03</span><span style="flex:1;color:var(--t1)">04:12.08</span><span>12:48.36</span></div>
+<div style="display:flex;color:var(--t3)"><span style="width:44px">02</span><span style="flex:1;color:var(--t1)">04:40.91</span><span>08:36.28</span></div>
+<div style="display:flex;color:var(--t3)"><span style="width:44px">01</span><span style="flex:1;color:var(--t1)">03:55.37</span><span>03:55.37</span></div>
+</div>
+</div>
+<div style="width:280px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)">
+<div style="position:relative;display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;background:var(--header);border-bottom:1px solid var(--border)"><div style="position:absolute;left:0;bottom:-1px;width:40px;height:1px;background:var(--p)"></div><span style="font:600 10.5px/1 var(--mono);letter-spacing:.16em;color:var(--t1)">TIMER</span><span style="flex:1"></span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:11px">✕</span></div>
+<div style="display:flex;align-items:center;gap:14px;padding:14px 18px"><span style="font:500 28px/1 var(--mono);color:var(--t1)">18:20</span><span style="flex:1;font:12px var(--font);color:var(--t3)">of 25:00 · Focus</span><span style="width:32px;height:32px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--border);color:var(--t1);font-size:11px">▶</span></div>
+<div style="height:2px;background:var(--frame)"><div style="width:73%;height:100%;background:var(--p)"></div></div>
+</div>
+</div>
+
+<div style="width:296px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)">
+<div style="position:relative;display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;background:var(--header);border-bottom:1px solid var(--border)"><div style="position:absolute;left:0;bottom:-1px;width:40px;height:1px;background:var(--p)"></div><span style="font:600 10.5px/1 var(--mono);letter-spacing:.16em;color:var(--t1)">CALCULATOR</span><span style="flex:1"></span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:12px">⌗</span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:11px">✕</span></div>
+<div style="padding:10px 14px;display:flex;flex-direction:column;gap:7px;font:12px/1 var(--mono);border-bottom:1px solid var(--border)">
+<div style="display:flex;color:var(--t3)"><span style="color:var(--pt);width:16px">⌖</span><span style="flex:1">rent / 3</span><span style="color:var(--t1)">416.67</span></div>
+<div style="display:flex;color:var(--t3)"><span style="width:16px"></span><span style="flex:1">1280 * 0.75</span><span style="color:var(--t1)">960</span></div>
+<div style="display:flex;color:var(--t3)"><span style="width:16px"></span><span style="flex:1">2^16 - 1</span><span style="color:var(--t1)">65 535</span></div>
+</div>
+<div style="padding:14px 14px 12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px"><span style="font:12px var(--mono);color:var(--t3)">= 1 642.5</span><span style="font:500 26px/1 var(--mono);color:var(--t1)">1095 * 1.5<span style="display:inline-block;width:1.5px;height:24px;background:var(--p);vertical-align:-3px;margin-left:2px"></span></span></div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:0 10px 10px">
+<sc-for list="{{ keypad }}" as="kp" hint-placeholder-count="25">
+<span style="height:36px;display:grid;place-items:center;border-radius:6px;background:{{ kp.bg }};color:{{ kp.col }};font:500 13px/1 var(--mono)" style-hover="filter:brightness(1.15)">{{ kp.k }}</span>
+</sc-for>
+</div>
+</div>
+
+<div style="width:360px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)">
+<div style="position:relative;display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 14px;background:var(--header);border-bottom:1px solid var(--border)"><div style="position:absolute;left:0;bottom:-1px;width:40px;height:1px;background:var(--p)"></div><span style="font:600 10.5px/1 var(--mono);letter-spacing:.16em;color:var(--t1)">HEARING GUARD</span><span style="flex:1"></span><span style="width:26px;height:26px;display:grid;place-items:center;color:var(--t3);font-size:11px">✕</span></div>
+<div style="padding:18px 18px 14px;display:flex;align-items:flex-end;gap:14px"><span style="font:500 56px/0.85 var(--mono);color:var(--t1);letter-spacing:-.03em">78</span><div style="display:flex;flex-direction:column;gap:6px;padding-bottom:2px"><span style="font:500 11px var(--mono);color:var(--t3)">dB(A)</span><span style="font:13px var(--font);color:var(--t2)">Safe for <span style="color:var(--t1)">4h 10m</span> more today</span></div></div>
+<div style="padding:0 18px 16px"><div style="display:grid;grid-template-columns:repeat(30,1fr);gap:2px;height:8px">
+<sc-for list="{{ levelSegs }}" as="ls" hint-placeholder-count="30"><span style="border-radius:1px;background:{{ ls.c }};opacity:{{ ls.o }}"></span></sc-for>
+</div><div style="display:flex;justify-content:space-between;margin-top:6px;font:9.5px var(--mono);color:var(--t3)"><span>40</span><span>70</span><span>85</span><span>100</span></div></div>
+<div style="border-top:1px solid var(--border);padding:12px 18px 14px">
+<div style="display:flex;align-items:center;margin-bottom:10px"><span style="font:600 9.5px/1 var(--mono);letter-spacing:.12em;color:var(--t3)">TODAY</span><span style="flex:1"></span><span style="font:9.5px var(--mono);color:var(--t3)">AVG 71 · PEAK 92</span></div>
+<div style="display:flex;align-items:flex-end;gap:3px;height:70px;border-bottom:1px solid var(--border)">
+<sc-for list="{{ hearBars }}" as="hb" hint-placeholder-count="28"><span style="flex:1;height:{{ hb.h }}%;border-radius:2px 2px 0 0;background:{{ hb.c }}"></span></sc-for>
+</div>
+<div style="display:flex;justify-content:space-between;margin-top:5px;font:9.5px var(--mono);color:var(--t3)"><span>08:00</span><span>12:00</span><span>16:00</span><span>NOW</span></div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:0 18px 16px"><div style="display:flex;padding:2px;border:1px solid var(--border);border-radius:999px;background:var(--frame)"><span style="padding:5px 12px;border-radius:999px;background:var(--card);color:var(--t1);font:500 12px var(--font)">Auto</span><span style="padding:5px 12px;color:var(--t3);font:500 12px var(--font)">Headphones</span><span style="padding:5px 12px;color:var(--t3);font:500 12px var(--font)">Speakers</span></div><span style="flex:1"></span><span style="font:500 12px var(--font);color:var(--t3)">Calibrate…</span></div>
+</div>
+</div>
+
+<div style="position:absolute;right:24px;bottom:24px;width:320px;background:var(--base);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 0 0 1px var(--pm),0 24px 60px -20px rgba(0,0,0,.6)">
+<div style="height:2px;background:var(--p)"></div>
+<div style="padding:14px 16px 12px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center;gap:8px"><span style="font:600 9.5px/1 var(--mono);letter-spacing:.14em;color:var(--pt)">REMINDER</span><span style="flex:1"></span><span style="font:10px var(--mono);color:var(--t3)">15:30</span></div><span style="font:500 14px/1.35 var(--font);color:var(--t1)">Stand up and stretch</span><span style="font:12.5px/1.4 var(--font);color:var(--t3)">You have been at the desk for 1h 50m.</span></div>
+<div style="display:flex;gap:8px;padding:0 16px 14px"><span style="white-space:nowrap;flex:1;display:grid;place-items:center;height:30px;border-radius:calc(var(--r) - 4px);border:1px solid var(--border);color:var(--t1);font:500 12.5px var(--font)">Snooze 10 min</span><span style="white-space:nowrap;flex:1;display:grid;place-items:center;height:30px;border-radius:calc(var(--r) - 4px);background:var(--p);color:var(--onp);font:500 12.5px var(--font)">Dismiss</span></div>
+</div>
+</div>
+</div></div>
+</div>
+
+<p class="dv-next">Try next: "show <a class="dv-oid" href="#1b">1b</a> with the ThemeDialog open" · "add Ghost Vault, Metadata Stripper and Prompt Log panels" · "try a bolder nav than the pills in <a class="dv-oid" href="#1a">1a</a>"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Dark&quot;,&quot;Light&quot;],&quot;default&quot;:&quot;Dark&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;glow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;radius&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:18,&quot;step&quot;:1,&quot;unit&quot;:&quot;px&quot;,&quot;default&quot;:10,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  POS2 = { DEV:{x:96,y:136}, GAMES:{x:392,y:136}, WORK:{x:96,y:368}, MEDIA:{x:392,y:336}, DOWNLOADS:{x:688,y:136}, SYSTEM:{x:1080,y:136}, SCRIPTS:{x:1080,y:368} };
+  state = { pos: {}, folded: { DOWNLOADS: true, 'b:DOWNLOADS': true }, openF: { 'BUILT-IN': true, 'MY THEMES': true, SEASONAL: false } };
+  DARK = { base:'#131317', card:'#1b1b21', cardh:'#23232a', frame:'#0e0e11', header:'#17171c', border:'rgba(255,255,255,.075)', t1:'#ececf1', t2:'#a3a3af', t3:'#6c6c78', p:'#7b6cf6', ph:'#9184f8', pm:'rgba(123,108,246,.16)', pt:'#a99ffa', onp:'#ffffff', scrim:'rgba(6,6,10,.64)', glow:'rgba(123,108,246,.26)', wall1:'#2c2e35', wall2:'#26282e' };
+  LIGHT = { base:'#ffffff', card:'#f6f6f3', cardh:'#eeeeea', frame:'#f1f1ed', header:'#fafaf8', border:'rgba(25,25,10,.1)', t1:'#18180f', t2:'#4f4f46', t3:'#86867c', p:'#f2b705', ph:'#dca704', pm:'rgba(242,183,5,.2)', pt:'#8a6a00', onp:'#1a1600', scrim:'rgba(236,236,230,.5)', glow:'rgba(242,183,5,.32)', wall1:'#c9cbd0', wall2:'#c1c3c8' };
+  BOXES = [
+    { id:'DEV', x:0, y:0, rows:[['APP','VS Code','Alt+1'],['APP','Windows Terminal','Alt+2'],['DIR','luminescent/','Alt+3'],['URL','Python 3.13 docs',''],['CMD','build.bat','Ctrl+Alt+B']] },
+    { id:'GAMES', x:280, y:0, rows:[['APP','Steam','Alt+G'],['APP','Minecraft',''],['APP','Rocket League',''],['DIR','Screenshots','']] },
+    { id:'SYSTEM', x:560, y:0, rows:[['APP','Task Manager','Ctrl+Shift+Esc'],['APP','Device Manager',''],['CMD','Restart Explorer','Ctrl+Alt+E'],['CMD','Flush DNS',''],['DIR','Startup','']] },
+    { id:'WORK', x:840, y:0, rows:[['APP','Outlook','Alt+O'],['URL','Team board',''],['FILE','timesheet.xlsx',''],['DIR','Projects','Alt+P']] },
+    { id:'MEDIA', x:0, y:232, rows:[['APP','Spotify','Alt+M'],['APP','OBS Studio',''],['DIR','Recordings','']] },
+    { id:'DOWNLOADS', x:280, y:200, rows:[['DIR','Downloads',''],['DIR','Installers','']] },
+    { id:'SCRIPTS', x:840, y:200, rows:[['CMD','backup-notes.ps1','Ctrl+Alt+1'],['CMD','sync-dotfiles',''],['CMD','clear-temp','']] }
+  ];
+  applyVars() {
+    const t = this.props.theme === 'Light' ? this.LIGHT : this.DARK;
+    const s = document.body.style;
+    Object.keys(t).forEach(k => s.setProperty('--' + k, t[k]));
+    s.setProperty('--r', (this.props.radius ?? 10) + 'px');
+    if (this.props.glow === false) s.setProperty('--glow', 'transparent');
+  }
+  componentDidMount() { this.applyVars(); }
+  componentDidUpdate() { this.applyVars(); }
+  componentWillUnmount() { window.removeEventListener('mousemove', this.onMove); window.removeEventListener('mouseup', this.onUp); }
+  startDrag(id, e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const free = id.startsWith('b:');
+    const b = free ? this.POS2[id.slice(2)] : this.BOXES.find(x => x.id === id);
+    const p = this.state.pos[id] || b;
+    this.drag = { id, sx: e.clientX, sy: e.clientY, ox: p.x, oy: p.y, moved: false, mx: free ? 1176 : 872, my: free ? 840 : 560 };
+    window.addEventListener('mousemove', this.onMove);
+    window.addEventListener('mouseup', this.onUp);
+  }
+  onMove = e => {
+    const d = this.drag; if (!d) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (!d.moved) return;
+    const x = Math.min(d.mx, Math.max(0, Math.round((d.ox + dx) / 8) * 8));
+    const y = Math.min(d.my, Math.max(0, Math.round((d.oy + dy) / 8) * 8));
+    this.setState(s => ({ pos: { ...s.pos, [d.id]: { x, y } } }));
+  };
+  onUp = () => {
+    const d = this.drag; this.drag = null;
+    window.removeEventListener('mousemove', this.onMove);
+    window.removeEventListener('mouseup', this.onUp);
+    if (d && !d.moved) this.setState(s => ({ folded: { ...s.folded, [d.id]: !s.folded[d.id] } }));
+  };
+  loupeData() {
+    if (this._loupe) return this._loupe;
+    const cells = [];
+    for (let r = 0; r < 11; r++) for (let c = 0; c < 11; c++) {
+      const edge = c + r * 0.4 > 7;
+      const L = edge ? 0.62 - r * 0.008 : 0.3 + c * 0.012;
+      const color = edge ? `oklch(${L.toFixed(3)} 0.16 ${285 - c * 2})` : `oklch(${L.toFixed(3)} 0.02 260)`;
+      const mid = r === 5 && c === 5;
+      cells.push({ c: color, s: mid ? '0 0 0 1.5px #fff, 0 0 0 2.5px #000' : 'none', z: mid ? 2 : 0 });
+    }
+    this._loupe = cells;
+    return cells;
+  }
+  renderVals() {
+    const boxes = this.BOXES.map(b => {
+      const p = this.state.pos[b.id] || b;
+      const open = !this.state.folded[b.id];
+      return { title: b.id, x: p.x, y: p.y, w: 264, open, chev: open ? '▾' : '▸', count: String(b.rows.length).padStart(2, '0'),
+        rows: b.rows.map(r => ({ t: r[0], n: r[1], k: r[2] })), down: e => this.startDrag(b.id, e) };
+    });
+    const th = (name, bg, c, p, tx, active) => ({ name, bg, c, p, tx, active, bd: active ? 'var(--p)' : 'var(--border)', ring: active ? '0 0 0 1px var(--p)' : 'none' });
+    const F = [
+      { name:'BUILT-IN', color:'#7b6cf6', themes:[th('Dark','#131317','#1f1f26','#7b6cf6','#ececf1',this.props.theme !== 'Light'), th('Light','#ffffff','#efefeb','#f2b705','#18180f',this.props.theme === 'Light')] },
+      { name:'MY THEMES', color:'oklch(0.72 0.13 165)', themes:[th('Midnight Teal','#0d1517','#15232a','#3fc1b0','#dfecec',false), th('Terminal','#0a0c0a','#121712','#5fd35f','#cfe8cf',false), th('Ember','#17110f','#241a16','#f07a4a','#f0e4df',false), th('Paper','#f4f1ea','#e8e3d8','#2f5bd3','#1c1a16',false)] },
+      { name:'SEASONAL', color:'oklch(0.72 0.13 40)', themes:[th('Frost','#eef3f7','#dde7ee','#3d8fd1','#14202a',false), th('Bloom','#1a1218','#291c26','#e48ab8','#f2e3ec',false)] }
+    ];
+    const folders = F.map(f => { const open = !!this.state.openF[f.name]; return { ...f, open, chev: open ? '▾' : '▸', count: String(f.themes.length).padStart(2,'0'),
+      toggle: () => this.setState(s => ({ openF: { ...s.openF, [f.name]: !s.openF[f.name] } })) }; });
+    const clip = (kind, o) => ({ kind, img:false, text:false, code:false, link:false, file:false, swatch:false, ...o });
+    const clips = [
+      clip('TEXT', { text:true, body:'Thanks for the quick turnaround. I will review the draft tonight and send notes in the morning.', age:'2m', pin:true }),
+      clip('IMAGE', { img:true, ph:'screenshot 1920×1080', age:'6m' }),
+      clip('LINK', { link:true, title:'asyncio — Asynchronous I/O', body:'docs.python.org/3.13/library/asyncio', age:'14m' }),
+      clip('CODE', { code:true, body:'SELECT id, name\nFROM users\nWHERE active = 1\nORDER BY name;', age:'21m' }),
+      clip('FILE', { file:true, ext:'PDF', body:'invoice_oct.pdf · 214 KB', age:'1h' }),
+      clip('COLOUR', { swatch:true, body:'#7B6CF6', age:'1h' }),
+      clip('VIDEO', { img:true, ph:'clip_0412.mp4 · 00:14', age:'2h' }),
+      clip('TEXT', { text:true, body:'Order #48213 — tracking LX 2209 4471 GB', age:'3h' }),
+      clip('IMAGE', { img:true, ph:'moodboard.jpg', age:'yesterday', pin:true }),
+      clip('CODE', { code:true, body:'git rebase -i HEAD~3', age:'yesterday' })
+    ];
+    const secs = [['General',8],['Hotkeys',14],['Overlay',9],['Dashboard',6],['Clipboard',7],['Notes',5],['Timer',4],['Hearing Guard',6],['Reminders',3],['Backup',4]];
+    const sections = secs.map(([name, n]) => ({ name, n, bg: name === 'Overlay' ? 'var(--pm)' : 'transparent', col: name === 'Overlay' ? 'var(--t1)' : 'var(--t2)' }));
+    const pr = [['TIMER','New stopwatch','Ctrl+Alt+T'],['TIMER','New countdown · 25:00',''],['REMINDERS','Remind me at a time…','Ctrl+Alt+R'],['HEARING','Safe listening time today',''],['SETTINGS','Timer settings',''],['NOTES','Open “Timesheet”','']];
+    const paletteRows = pr.map((r, i) => ({ mod: r[0], label: r[1], k: r[2], bg: i === 0 ? 'var(--pm)' : 'transparent', bar: i === 0 ? 'var(--p)' : 'transparent' }));
+    const ck = (mod, keys) => ({ mod, keys: keys.map(([a, k]) => ({ a, k })) });
+    const cheat = [
+      ck('OVERLAY',[['Open / close','Ctrl+Shift+Space'],['Next page','Ctrl+Tab']]),
+      ck('PALETTE',[['Command palette','Ctrl+Alt+Space']]),
+      ck('CLIPBOARD',[['Clipboard pop-up','Ctrl+B'],['Paste last as text','Ctrl+Shift+V']]),
+      ck('COLOUR PICKER',[['Pick a colour','Ctrl+Alt+C']]),
+      ck('TEXT GRAB',[['Grab text from screen','Ctrl+Alt+G']]),
+      ck('NOTES',[['Toggle notes','Ctrl+Alt+N'],['Edit mode','Ctrl+Alt+E']]),
+      ck('TIMER',[['New stopwatch','Ctrl+Alt+T'],['Start / pause all','Ctrl+Alt+P']]),
+      ck('CALCULATOR',[['Toggle calculator','Ctrl+Alt+K']]),
+      ck('SCREEN DOODLE',[['Start drawing','Ctrl+Alt+D'],['Clear canvas','Ctrl+Alt+X']]),
+      ck('HEARING GUARD',[['Show panel','Ctrl+Alt+H']]),
+      ck('GHOST VAULT',[['Open vault','Ctrl+Alt+V']]),
+      ck('PROMPT LOG',[['Show prompt log','Ctrl+Alt+L']])
+    ];
+    const td = [['Write release notes',1],['Record demo video',1],['Update installer',1],['Test light theme',0],['Post to forum',0],['Tag v2.0',0]];
+    const todos = td.map(([t, d]) => ({ t, mark: d ? '✓' : '', bd: d ? 'var(--p)' : 'var(--t3)', bg: d ? 'var(--p)' : 'transparent', col: d ? 'var(--t3)' : 'var(--t1)', dec: d ? 'line-through' : 'none' }));
+    const keys = ['C','(',')','%','÷','7','8','9','√','×','4','5','6','^','−','1','2','3','π','+','0','.','ans','⌫','='];
+    const ops = ['÷','×','−','+','%','^','√','π','(',')'];
+    const keypad = keys.map(k => ({ k, bg: k === '=' ? 'var(--p)' : (ops.includes(k) || k === 'C' || k === 'ans' || k === '⌫') ? 'var(--frame)' : 'var(--card)', col: k === '=' ? 'var(--onp)' : ops.includes(k) ? 'var(--pt)' : 'var(--t1)' }));
+    const green = 'oklch(0.72 0.15 150)', amber = 'oklch(0.78 0.14 80)', red = 'oklch(0.68 0.17 25)';
+    const levelSegs = Array.from({ length: 30 }, (_, i) => ({ c: i < 18 ? green : i < 24 ? amber : red, o: i < 19 ? 1 : 0.18 }));
+    const hv = [38,42,40,55,62,58,64,70,66,72,60,48,52,58,74,82,92,78,70,66,62,68,72,76,70,74,78,72];
+    const hearBars = hv.map(v => ({ h: v, c: v >= 85 ? red : v >= 75 ? amber : 'var(--p)' }));
+    const navOrder = ['Dashboard','Themes','Clipboard','Settings'].map((name, i) => ({ name, i: String(i + 1).padStart(2,'0') }));
+    const boxes2 = this.BOXES.map(b => {
+      const k = 'b:' + b.id, p = this.state.pos[k] || this.POS2[b.id];
+      const open = !this.state.folded[k];
+      return { title: b.id, x: p.x, y: p.y, w: 264, open, chev: open ? '▾' : '▸', count: String(b.rows.length).padStart(2, '0'),
+        rows: b.rows.map(r => ({ t: r[0], n: r[1], k: r[2] })), down: e => this.startDrag(k, e) };
+    });
+    return {
+      boxes, boxes2, folders, clips, sections, paletteRows, cheat, todos, keypad, levelSegs, hearBars, navOrder,
+      clipFolders: [{ name:'Snippets', n:'12', color:'var(--p)' },{ name:'Screenshots', n:'48', color:'oklch(0.72 0.13 165)' },{ name:'Links', n:'09', color:'oklch(0.72 0.13 40)' },{ name:'Code', n:'21', color:'oklch(0.72 0.13 250)' },{ name:'Archive', n:'130', color:'var(--t3)' }],
+      loupe: this.loupeData(), loupeHex: '#7A6BF0', loupeRgb: 'RGB 122 107 240'
+    };
+  }
+}
+</script>
+</body>
+</html>

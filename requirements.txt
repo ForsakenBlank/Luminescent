@@ -1,0 +1,17 @@
+PyQt6>=6.5
+Pillow>=10
+cryptography>=41
+# Hearing Guard (PipeWire / PulseAudio volume and A-weighting)
+pulsectl
+numpy
+# optional: video thumbnails in Snippets
+opencv-python
+# optional: image previews for .txt files that contain a URL
+requests
+# only for building a standalone binary (python build.py)
+pyinstaller
+#
+# System packages (sudo pacman -S ...):
+#   grim wl-clipboard libnotify      screenshots, clipboard, notifications (CachyOS Hyprland has them)
+#   tesseract tesseract-data-eng     Screen Text Grab (OCR)
+#   ffmpeg                           video metadata in the Metadata Stripper

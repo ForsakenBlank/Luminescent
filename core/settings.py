@@ -173,6 +173,7 @@ SCHEMA = [
               "Off: the overlay always opens on the Dashboard."),
         Field("last_page", "", "hidden", "dashboard"),
         Field("settings_search_only", "", "hidden", False),
+        Field("chrome_items", "", "hidden", []),
         Field("overlay_screen", "Open the overlay on", "choice", "cursor",
               choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")],
               help="The page switcher, panels and the dashboard's toolbar go to that screen. Dashboard boxes you "

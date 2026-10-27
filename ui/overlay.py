@@ -22,7 +22,6 @@ throws everything away and builds it again, so the hub keeps working.
 import os
 import logging
 
-from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QStackedWidget, QButtonGroup,
@@ -35,6 +34,7 @@ from PyQt6.QtGui import QPainter, QColor, QPixmap, QPen, QRadialGradient, QBrush
 from core import hypr, theme, widgets, events, anim, APP_NAME
 from core.guard import alive
 from core.settings import NAV_SECTIONS, ALL_PAGES, REQUIRED_PAGES
+from ui.chrome import ChromeLayer
 
 log = logging.getLogger("overlay")
 
@@ -218,93 +218,6 @@ class _Backdrop(QWidget):
         super().keyPressEvent(e)
 
 
-class _Logo(QWidget):
-    """The sparkle + LUMINESCENT lockup (top-left of the overlay)."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        lay = QHBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(14)
-        mark = QLabel()
-        mark.setPixmap(theme.sparkle_pixmap(30))
-        mark.setFixedSize(30, 30)
-        lay.addWidget(mark)
-        lay.addWidget(widgets.label(APP_NAME.upper(), 15, 600, mono=True, spacing=0.3))
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.adjustSize()
-
-
-class _Clock(QWidget):
-    """Time and date under the logo."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(2)
-        self.time = widgets.label("", 26, 500, mono=True, spacing=-0.02)
-        self.date = widgets.label("", 10.5, 500, mono=True, spacing=0.12, tone="muted")
-        lay.addWidget(self.time)
-        lay.addWidget(self.date)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.tick()
-
-    def tick(self):
-        now = datetime.now()
-        self.time.setText(now.strftime("%H:%M"))
-        self.date.setText(now.strftime("%A %d %B").upper().replace(" 0", " "))
-        self.adjustSize()
-
-
-class _Status(QWidget):
-    """Little chips: running timers, the Hearing Guard level, the next reminder. Hidden when there is nothing."""
-
-    def __init__(self, launcher, parent=None):
-        super().__init__(parent)
-        self.launcher = launcher
-        self.lay = QVBoxLayout(self)
-        self.lay.setContentsMargins(0, 0, 0, 0)
-        self.lay.setSpacing(6)
-        self._last = None
-
-    def _lines(self) -> list[tuple[str, str]]:
-        out = []
-        mods = self.launcher.modules
-        t = mods.get("timer")
-        if t is not None and t.running:
-            out += [("⏱", line) for line in t.tooltip_lines()[:4]]
-        h = mods.get("hearing")
-        if h is not None and h.running and h.display_level is not None and h.display_level >= 40:
-            out.append(("🎧", f"{h.display_level:.0f} dB · {h.dose * 100:.0f} % of today's dose"))
-        r = mods.get("reminders")
-        nxt = r.next_reminder() if r is not None and r.running and hasattr(r, "next_reminder") else None
-        if nxt:
-            when, title = nxt
-            day = "" if when.date() == datetime.now().date() else when.strftime("%a ")
-            out.append(("⏰", f"{day}{when:%H:%M}  {title}"))
-        return out
-
-    def tick(self):
-        lines = self._lines()
-        if lines == self._last:
-            return
-        self._last = lines
-        widgets.clear_layout(self.lay)
-        for icon, text in lines:
-            chip = QFrame()
-            chip.setObjectName("lumChip")
-            cl = QHBoxLayout(chip)
-            cl.setContentsMargins(10, 5, 12, 5)
-            cl.setSpacing(8)
-            ic = widgets.label(icon, 11)
-            cl.addWidget(ic)
-            cl.addWidget(widgets.label(text, 11.5, 500, mono=True, tone="secondary"))
-            self.lay.addWidget(chip, 0, Qt.AlignmentFlag.AlignLeft)
-        self.adjustSize()
-        self.setVisible(bool(lines))
-
-
 class _Keys(QObject):
     """While the overlay is up: Ctrl+1…9 switch pages, and typing on the Dashboard or Themes page opens the
     command palette with what you typed."""
@@ -327,6 +240,10 @@ class _Keys(QObject):
         mods = e.modifiers()
         ctrl = bool(mods & Qt.KeyboardModifier.ControlModifier)
         k = e.key()
+        chrome = self.o.chrome
+        if k == Qt.Key.Key_Escape and chrome is not None and chrome.editing:
+            chrome.set_editing(False)                 # Esc leaves edit mode before it closes anything
+            return True
         fw = QApplication.focusWidget()
         typing = isinstance(fw, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox, QComboBox))
         hook = getattr(self.o._pages.get(self.o._current), "overlay_key", None)
@@ -397,8 +314,7 @@ class MainOverlay:
         self._current = "dashboard"
         self._host_name = ""
         self._screen_sig = None
-        self._clock: _Clock | None = None
-        self._status: _Status | None = None
+        self.chrome: ChromeLayer | None = None      # the logo, clock, chips... (ui/chrome.py)
         self._last_repair = 0.0
         self._opening = False
         self._tick = QTimer()
@@ -479,6 +395,8 @@ class MainOverlay:
             surf.setGeometry(0, top, b.width(), b.height() - top - bottom)
             surf.hide()
             self._extra_surfaces[scr.name()] = surf
+        self.chrome = ChromeLayer(self)
+        self.chrome.build({b.screen_name: b for b in self._backdrops}, self._host_name, self._insets[0])
         self._screen_sig = self._screens_signature(self._host_name)
 
     def _build_chrome(self, host: _Backdrop):
@@ -504,18 +422,6 @@ class MainOverlay:
         host.panel = panel
         self.panel = panel
         self._pages = {}
-
-        logo = _Logo(host)
-        logo.move(36, top + 30)
-        self._clock = _Clock(host)
-        self._clock.move(38, top + 30 + logo.height() + 22)
-        show_clock = bool(self.settings.get("ui.show_clock", True))
-        self._clock.setVisible(show_clock)
-        self._status = _Status(self.launcher, host)
-        # isVisible() is still False here (the overlay is not on screen yet), so go by the setting
-        self._status.move(36, top + 30 + logo.height() + 22 + (self._clock.sizeHint().height() + 18
-                                                               if show_clock else 0))
-        self._status.hide()
 
         # page switcher hanging from the top-centre edge: a 2 px accent line over the pills
         dock = QWidget(host)
@@ -573,6 +479,13 @@ class MainOverlay:
             rl.addWidget(widgets.label(pretty(combo).upper(), 10, 500, mono=True, spacing=0.08, tone="muted"))
         if getattr(self.launcher, "safe_mode", False):
             rl.addWidget(widgets.label("SAFE MODE", 10, 600, mono=True, spacing=0.08, tone="danger"))
+        edit = QPushButton("✎")
+        edit.setObjectName("lumClose")
+        edit.setFixedSize(36, 36)
+        edit.setCursor(Qt.CursorShape.PointingHandCursor)
+        edit.setToolTip("Edit the layout: move, add, copy, resize or freeze the logo, clock, date and status chips")
+        edit.clicked.connect(lambda: self.chrome.toggle_editing() if self.chrome is not None else None)
+        rl.addWidget(edit)
         close = QPushButton("✕")
         close.setObjectName("lumClose")
         close.setFixedSize(36, 36)
@@ -582,7 +495,7 @@ class MainOverlay:
         rl.addWidget(close)
         right.adjustSize()
         right.move(W - 28 - right.width(), top + 26)
-        self._chrome = [logo, dock, right, self._clock, self._status]
+        self._chrome = [dock, right]
         for c in (dock, right):
             c.mousePressEvent = lambda e: e.accept()      # a click between the pills is not "outside"
         for c in self._chrome:
@@ -665,7 +578,7 @@ class MainOverlay:
         self._nav_buttons = {}
         self._nav_group = None
         self._pill = None
-        self._clock = self._status = None
+        self.chrome = None
         self._screen_sig = None
         self._tick.stop()
         return kept
@@ -792,6 +705,8 @@ class MainOverlay:
             if start < 1.0:
                 self._fade(1.0)
         widgets.bring_to_front(self._primary)
+        # the buttons only have their real size once they are on screen and styled
+        QTimer.singleShot(0, lambda: self._place_pill(self._current, False))
         self._tick_chrome()
         self._tick.start()
         self.focus_page()
@@ -849,13 +764,8 @@ class MainOverlay:
         if not self.is_visible():
             self._tick.stop()
             return
-        if alive(self._clock) and self._clock.isVisible():
-            self._clock.tick()
-        if alive(self._status):
-            if self.settings.get("ui.show_status", True) and self._current != "automation":
-                self._status.tick()
-            else:
-                self._status.hide()
+        if self.chrome is not None:
+            self.chrome.tick()
 
     def _apply_look(self):
         perf = self._perf()
@@ -908,14 +818,11 @@ class MainOverlay:
             page.show()
         else:
             self.stack.setCurrentWidget(page)
-        # the node editor uses the whole screen: the clock and chips would sit on top of the nodes
-        if alive(self._clock):
-            self._clock.setVisible(key != "automation" and bool(self.settings.get("ui.show_clock", True)))
-        if alive(self._status) and key == "automation":
-            self._status.hide()
         for c in self._chrome:
             if alive(c):
                 c.raise_()
+        if self.chrome is not None:
+            self.chrome.page_changed(key)            # hides the clock and chips over the node editor
         if key in self._nav_buttons:
             self._nav_buttons[key].setChecked(True)
         elif self._nav_group is not None:
@@ -940,7 +847,8 @@ class MainOverlay:
             on_show()
 
     def _fade_targets(self) -> list[QWidget]:
-        out = [self.panel, self.surface, *self._extra_surfaces.values(), *self._chrome]
+        out = [self.panel, self.surface, *self._extra_surfaces.values(), *self._chrome,
+               *(self.chrome.widgets() if self.chrome is not None else [])]
         return [w for w in out if alive(w) and w.isVisible() and (w.graphicsEffect() is None or
                                                                    isinstance(w.graphicsEffect(),
                                                                               QGraphicsOpacityEffect))]
@@ -988,6 +896,8 @@ class MainOverlay:
         if callable(on_hide):
             on_hide()
         self._idle.stop()
+        if self.chrome is not None:
+            self.chrome.set_editing(False)
         if anim.on("overlay"):
             self._fade(0.0, self._hide_now)
         else:
@@ -1028,16 +938,11 @@ class MainOverlay:
         self._outside_click()
 
     def left_chrome_bottom(self) -> int:
-        """The bottom of the logo, clock and status chips in the full-screen layer's coordinates, with room for
-        two more chips (a timer started later must not end up under a dashboard box)."""
+        """The bottom of the logo, clock and status chips (wherever you put them in the top-left part of the
+        main screen) in the full-screen layer's coordinates, with room for two more chips (a timer started later
+        must not end up under a dashboard box)."""
         top = getattr(self, "_insets", (0, 0))[0]
-        y = 0
-        for w in (self._clock, self._status):
-            if alive(w) and (w.isVisible() or w is self._status):
-                y = max(y, w.y() + (w.height() if w.isVisible() else 0))
-        if alive(self._status) and self.settings.get("ui.show_status", True):
-            y += 2 * 34
-        return max(0, y - top)
+        return max(0, (self.chrome.bottom_on_host() if self.chrome is not None else 0) - top)
 
     # ── changes ────────────────────────────────────────────────────────────
     def _snapshots(self) -> dict[str, QPixmap]:
@@ -1142,8 +1047,8 @@ class MainOverlay:
             QTimer.singleShot(0, self.rebuild)
             return
         self._apply_look()
-        if alive(self._clock):
-            self._clock.setVisible(bool(self.settings.get("ui.show_clock", True)))
+        if self.chrome is not None:
+            self.chrome.apply_settings()
         page = self._pages.get("dashboard")
         if alive(page) and hasattr(page, "refresh"):
             page.refresh(force=True)

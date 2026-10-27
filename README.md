@@ -81,6 +81,12 @@ CachyOS + Hyprland is tested, so other setups may have rough edges.
 hides it; the app keeps running, so it reopens instantly. The Dashboard works like a desktop: clicking it never
 closes the overlay. **Quit everything** lives in Settings → General.
 
+**Edit the layout**: the ✎ next to the ✕ lets you drag the logo, the title, the clock, the date and the status chips
+anywhere on any screen, so they never sit under your dashboard boxes. **＋ Add** puts more on (a second clock on your
+other screen, the sparkle on its own...), and right-click one to **Freeze** it in place, **Duplicate** it, make it
+bigger or smaller, move it to another screen or remove it. **Reset** brings back the usual corner; Esc or **Done**
+leaves edit mode.
+
 `Ctrl+1…9` switch pages. Start typing on the Dashboard or Themes page and the command palette opens with what you
 typed. The top-left corner shows the time, running timers, the Hearing Guard level and the next reminder. Settings →
 Overlay & Interface picks the pages in the navigation bar (Notes, Timers, Calculator, Today and Usage can be added),

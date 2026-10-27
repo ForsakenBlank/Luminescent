@@ -2,6 +2,10 @@
 
 ## 1.3.0
 
+* **Edit the overlay's layout**: ✎ next to the ✕ lets you move the logo, title, clock, date and status chips anywhere
+  on any screen, add more, duplicate them, resize them and freeze them in place (right-click).
+* **Fix**: automation notifications no longer come with an error, and a hard crash now leaves its details in
+  data/crash.log.
 * **Atlas Sync**: swaps notes and timer time with the Atlas app over Wi-Fi. Press Let Atlas connect (tray, command
   palette or Settings → Atlas Sync), then type the address and code into Atlas → Sync. Atlas shows every change
   before anything is written.

@@ -547,6 +547,12 @@ SCHEMA += [
         Field("hotkey", "Show / hide hotkey", "hotkey", ""),
         Field("bg_opacity", "Panel opacity", "opacity", 0.88),
     ]),
+    Section("atlas_sync", "Atlas Sync", "⇄",
+            "Swaps notes and timer time with the Atlas app on your phone over Wi-Fi. Press Let Atlas connect, then "
+            "type the address and code into Atlas → Sync. Atlas shows every change before anything is written.", [
+        Field("enabled", "Enable Atlas Sync", "bool", True),
+        Field("hotkey", "Open Atlas Sync", "hotkey", ""),
+    ]),
 ]
 
 SECTIONS = {s.key: s for s in SCHEMA}

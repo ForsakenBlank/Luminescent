@@ -13,7 +13,7 @@ GeForce-overlay style **hub** (Dashboard, Automation, Themes, Clipboard, Setting
 Calculator, Today and Usage pages), plus
 **Notes**, **Screen Doodle**, **Timers / Stopwatches**, **Calculator**, **Colour Picker**, **Screen Text Grab**,
 **Prompt Log**, **Reminders**, **Hearing Guard**, **Ghost Vault**, the **Metadata Stripper**, a **Window Snapper**, a
-**Screen Ruler**, **Media Controls**, a **QR Code** maker and a **System Monitor**. Everything runs in one process with
+**Screen Ruler**, **Media Controls**, a **QR Code** maker, a **System Monitor** and **Atlas Sync**. Everything runs in one process with
 one keyboard hook.
 
 ## Download
@@ -242,6 +242,11 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   snapped). The undo hotkey puts it back into the tiling layout (Linux) or where it was (Windows).
 * **Screen Ruler**, **Media Controls** (any MPRIS player, needs `playerctl`), **QR Code** (the clipboard as a QR code;
   copy it as a picture or save PNG / SVG) and **System Monitor** (CPU, RAM, GPU, network with a minute of history).
+* **Atlas Sync**: swaps notes and timer time with the [Atlas](https://github.com/ForsakenBlank/Atlas) app on your
+  phone over Wi-Fi. Press **Let Atlas connect** (tray, command palette or Settings), then type the address and code
+  into Atlas → Sync. Atlas lists every change in both directions before anything is written. Notes go both ways and
+  to-do lists travel as checklists. Timer time adds up: what your timers ran here and what Atlas timer trackers
+  logged end up on both. Nothing goes through the internet and everything sent is locked with the code.
 * **Wallpapers**: themes and the Set wallpaper node use Noctalia, swww (which plays GIFs), hyprpaper or swaybg on
   Linux, mpvpaper for videos, and Windows' own setting on Windows. Settings → Overlay & Interface → **Wallpaper
   command** hands the file to your own tool instead (`mytool set {file}`).

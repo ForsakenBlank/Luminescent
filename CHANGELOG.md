@@ -2,6 +2,9 @@
 
 ## 1.3.0
 
+* **Atlas Sync**: swaps notes and timer time with the Atlas app over Wi-Fi. Press Let Atlas connect (tray, command
+  palette or Settings → Atlas Sync), then type the address and code into Atlas → Sync. Atlas shows every change
+  before anything is written.
 * **Fix**: the "wrapped C/C++ object of type QWidget has been deleted" error that could leave the overlay empty and
   stop Restart from working. Windows that vanished before Hyprland placed them no longer break every later window,
   and the overlay rebuilds itself if a page gets into a bad state.

@@ -1574,16 +1574,22 @@ class WorkspaceNode(Node):
 class Notify(Node):
     def receive(self, port, inp):
         title, msg = str(self.f("title", inp)), str(self.f("message", inp))
-        if self.raw("style") == "center":
-            from ui import alert
-            alert.show(title, msg, "info")
-        elif self.raw("style") == "desktop":
-            self.eng.launcher.toast(title, msg)
-        else:
-            try:
-                self.eng.launcher.toasts.show(title, msg, 6000)
-            except Exception:
+        style = self.raw("style")
+        try:
+            if style == "center":
+                from ui import alert
+                alert.show(title, msg, "info")
+            elif style == "desktop":
                 self.eng.launcher.toast(title, msg)
+            else:
+                self.eng.launcher.toasts.show(title, msg, 6000)
+        except Exception:
+            log.exception("could not show the notification as %s", style)
+            try:
+                self.eng.launcher.toast(title, msg)          # the desktop's own notifications as a fallback
+            except Exception:
+                log.exception("the fallback notification failed too")
+            self.set_status("⚠ notification failed (see the log)")
         self.fire("done", inp)
 
 

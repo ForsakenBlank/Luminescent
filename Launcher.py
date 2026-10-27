@@ -869,6 +869,14 @@ def main():
 
     sys.excepthook = excepthook
     try:
+        import faulthandler
+        crash_log = open(os.path.join(DATA_DIR, "crash.log"), "a", encoding="utf-8")
+        crash_log.write(f"\n=== {VERSION} started {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+        crash_log.flush()
+        faulthandler.enable(crash_log)
+    except (OSError, RuntimeError):
+        pass
+    try:
         launcher = Launcher(app, guard)
     except Exception:
         # the start itself broke: log it and say so instead of vanishing (the next start may be in safe mode)

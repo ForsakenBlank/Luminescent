@@ -445,22 +445,27 @@ class WindowSync(QObject):
         self._ebuf += bytes(self._events.readAll())
         *lines, self._ebuf = self._ebuf.split(b"\n")
         for raw in lines:
-            line = raw.decode("utf-8", "replace")
-            name, _, data = line.partition(">>")
-            if name == "openwindow":
-                parts = data.split(",", 3)
-                if len(parts) == 4 and parts[2] == APP_ID:
-                    self._opened("0x" + parts[0], parts[3])
-                elif len(parts) == 4:
-                    self.foreign_opened.emit("0x" + parts[0], parts[2])
-            elif name == "closewindow":
-                w = self._by_addr.pop("0x" + data.strip(), None)
-                if w is not None:
-                    self._addr.pop(w, None)
-            elif name == "configreloaded":
-                log.info("Hyprland config reloaded: reinstalling binds and window rules")
-                bootstrap()
-                self.reloaded.emit()
+            try:
+                self._event(raw.decode("utf-8", "replace"))
+            except Exception:
+                log.exception("handling the Hyprland event %r failed", raw[:120])
+
+    def _event(self, line: str):
+        name, _, data = line.partition(">>")
+        if name == "openwindow":
+            parts = data.split(",", 3)
+            if len(parts) == 4 and parts[2] == APP_ID:
+                self._opened("0x" + parts[0], parts[3])
+            elif len(parts) == 4:
+                self.foreign_opened.emit("0x" + parts[0], parts[2])
+        elif name == "closewindow":
+            w = self._by_addr.pop("0x" + data.strip(), None)
+            if w is not None:
+                self._addr.pop(w, None)
+        elif name == "configreloaded":
+            log.info("Hyprland config reloaded: reinstalling binds and window rules")
+            bootstrap()
+            self.reloaded.emit()
 
     def _opened(self, addr: str, title: str):
         self._prune()

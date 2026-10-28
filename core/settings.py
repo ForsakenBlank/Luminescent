@@ -333,6 +333,10 @@ SCHEMA = [
         Field("show_tools", "Show the tool strip while drawing", "bool", True,
               "Pen, highlighter, line, rectangle, circle, arrow, text and the fill toggle. Hold Shift while "
               "dragging the pen for a straight line."),
+        Field("start_tool", "Start drawing with", "choice", "last",
+              choices=[("last", "The tool I used last"), ("pen", "Pen"), ("hl", "Highlighter"), ("line", "Line"),
+                       ("rect", "Rectangle"), ("ellipse", "Circle / ellipse"), ("arrow", "Arrow"), ("text", "Text")],
+              help="The tool picked every time you hold (or toggle) the draw key."),
         Field("highlighter_opacity", "Highlighter opacity", "opacity", 0.35),
         Field("text_size", "Text tool font size", "int", 28, min=8, max=200),
         Field("wheel_size", "Mouse wheel changes the brush size while drawing", "bool", True),

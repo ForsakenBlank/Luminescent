@@ -563,6 +563,8 @@ class FloatingPanel(QWidget):
             anim.stop(self.container)
             self.setProperty("fading_out", False)
             self.container.setGraphicsEffect(None)
+        elif not self.isVisible():
+            self.follow_cursor_screen()
         self.show()
         raise_window(self)
         if activate and not self.testAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating):
@@ -578,6 +580,31 @@ class FloatingPanel(QWidget):
         super().showEvent(e)
         if not e.spontaneous():
             anim.fade(self.container, 0.0, 1.0, "panels", 160)
+
+    # sticky notes and the like stay exactly where they were put
+    stays_put = False
+
+    def follow_cursor_screen(self):
+        """Panels used to reopen wherever they were saved, often another screen than the overlay (which
+        opens on the screen with the mouse). Now a panel goes to the same spot on the mouse's screen."""
+        s = anim._settings
+        if self.stays_put or s is None or s.get("ui.overlay_screen", "cursor") != "cursor":
+            return
+        target = cursor_screen_geometry()
+        if target.isEmpty() or target.contains(self.geometry().center()):
+            return
+        src = next((hypr.available_geometry(scr) for scr in QApplication.screens()
+                    if hypr.available_geometry(scr).contains(self.geometry().center())), None)
+        if src is None or src.isEmpty():
+            self.center_on(target)
+        else:
+            # keep the spot relative to the screen, so "top right" stays top right on a bigger or smaller one
+            fx = (self.x() - src.x()) / max(1, src.width() - self.width())
+            fy = (self.y() - src.y()) / max(1, src.height() - self.height())
+            fx, fy = min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))
+            self.move(target.x() + int(fx * max(0, target.width() - self.width())),
+                      target.y() + int(fy * max(0, target.height() - self.height())))
+        self.geometry_changed.emit()
 
     def center_on(self, screen: QRect | None = None):
         s = screen or primary_geometry()

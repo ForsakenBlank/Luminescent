@@ -342,6 +342,7 @@ class TodoList(QWidget):
 
 class StickyNote(widgets.FloatingPanel):
     """One note stuck on the screen as its own small panel (Notes → right-click → Stick on screen)."""
+    stays_put = True
 
     def __init__(self, module: "NotesModule", note: dict, geo=None):
         self.m = module

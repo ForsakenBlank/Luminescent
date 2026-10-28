@@ -2,6 +2,12 @@
 
 ## 1.3.0
 
+* **Fix**: Notes (Alt+N) and the other panels open on the screen with the mouse, at the same spot they had on
+  their old screen, instead of wherever they were last saved (often another monitor). Sticky notes stay put.
+  Settings → Overlay & Interface → Open the overlay on: The primary screen keeps the old behaviour.
+* **Fix**: holding the draw key with nothing drawn yet could leave the Doodle tool strip unclickable.
+* **Doodle: start with a tool**: Settings → Screen Doodle → Start drawing with picks the tool every time you hold
+  the draw key (pen, highlighter, shapes, text), or keeps the one you used last.
 * **Edit the overlay's layout**: ✎ next to the ✕ lets you move the logo, title, clock, date and status chips anywhere
   on any screen, add more, duplicate them, resize them and freeze them in place (right-click).
 * **Fix**: automation notifications no longer come with an error, and a hard crash now leaves its details in

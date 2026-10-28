@@ -672,6 +672,7 @@ class DoodleModule(Module):
         for o in self._overlays:
             want = self._active or self._show_bg or o.has_content
             if want and not o.isVisible():
+                _set_click_through(o, not self._active)     # before it maps, so the first frame takes clicks
                 o.show()
                 if self._active:
                     o.set_active(True)          # raise it now that it is mapped
@@ -811,9 +812,23 @@ class DoodleModule(Module):
         # drawing clicks give the overlay keyboard focus; remember who had it to hand it back afterwards
         aw = hypr.query("activewindow") if hypr.available() else None
         self._prev_focus = aw.get("address", "") if isinstance(aw, dict) and aw.get("class") != hypr.APP_ID else ""
+        start = self.s("start_tool", "last")
+        if start in {t[0] for t in TOOLS}:
+            self.tool = start
         self._sync_visibility()
         for o in self._overlays:
             o.set_active(True)
+        # an overlay that was not on screen yet (nothing drawn) is mapped by Hyprland a moment later, and the
+        # input region set before that could be lost, which left the tool strip unclickable: set it again
+        for ms in (60, 250):
+            QTimer.singleShot(ms, self._reapply_active)
+
+    def _reapply_active(self):
+        if not self._active:
+            return
+        for o in self._overlays:
+            if o.isVisible():
+                o.set_active(True)
 
     def deactivate(self):
         self._masked = False

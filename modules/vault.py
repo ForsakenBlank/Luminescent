@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QLineEdit,
-    QFileDialog, QProgressBar, QScrollArea, QGridLayout, QDialog
+    QFileDialog, QProgressBar, QScrollArea, QGridLayout, QDialog, QCheckBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer, QPoint, QMimeData, QBuffer, QByteArray, QSize
 from PyQt6.QtGui import QFont, QDrag, QImage, QImageReader, QPixmap
@@ -66,20 +66,18 @@ class ThumbLoader(QThread):
 
 
 # ── dialogs ───────────────────────────────────────────────────────────────────
-class PasswordDialog(QDialog):
+class PasswordDialog(widgets.RoundedDialog):
     def __init__(self, title: str, prompt: str = "Password:", confirm: bool = False,
                  allow_empty: bool = False, forgot: bool = False, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+        super().__init__(parent, title)
         self.setMinimumWidth(380)
         self.forgot_clicked = False
         self._confirm = confirm
         self._allow_empty = allow_empty
 
-        lay = QVBoxLayout(self)
+        lay = self.body
         lay.setSpacing(10)
-        lay.setContentsMargins(20, 20, 20, 20)
+        lay.setContentsMargins(20, 16, 20, 18)
         lay.addWidget(QLabel(prompt))
         self.pw = QLineEdit()
         self.pw.setEchoMode(QLineEdit.EchoMode.Password)
@@ -91,9 +89,7 @@ class PasswordDialog(QDialog):
             self.pw2.setEchoMode(QLineEdit.EchoMode.Password)
             self.pw2.returnPressed.connect(self._ok)
             lay.addWidget(self.pw2)
-        show = QPushButton("Show password")
-        show.setProperty("variant", "ghost")
-        show.setCheckable(True)
+        show = QCheckBox("Show password")
         show.toggled.connect(lambda on: [w.setEchoMode(QLineEdit.EchoMode.Normal if on else QLineEdit.EchoMode.Password)
                                          for w in ([self.pw] + ([self.pw2] if confirm else []))])
         lay.addWidget(show, 0, Qt.AlignmentFlag.AlignLeft)
@@ -107,14 +103,15 @@ class PasswordDialog(QDialog):
             fb.clicked.connect(self._forgot)
             row.addWidget(fb)
         row.addStretch()
-        cancel = widgets.button("Cancel")
+        cancel = widgets.button("Cancel", "ghost")
         cancel.clicked.connect(self.reject)
         ok = widgets.button("OK", "primary")
+        ok.setDefault(True)
         ok.clicked.connect(self._ok)
         row.addWidget(cancel)
         row.addWidget(ok)
         lay.addLayout(row)
-        self.pw.setFocus()
+        QTimer.singleShot(0, self.pw.setFocus)
 
     def _forgot(self):
         self.forgot_clicked = True
@@ -134,15 +131,13 @@ class PasswordDialog(QDialog):
         return self.pw.text()
 
 
-class RecoveryKeyDialog(QDialog):
+class RecoveryKeyDialog(widgets.RoundedDialog):
     def __init__(self, key_text: str, saved_to: str = "", parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Vault recovery key")
-        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+        super().__init__(parent, "Vault recovery key")
         self.setMinimumWidth(460)
-        lay = QVBoxLayout(self)
+        lay = self.body
         lay.setSpacing(10)
-        lay.setContentsMargins(20, 20, 20, 20)
+        lay.setContentsMargins(20, 16, 20, 18)
         info = QLabel("This key unlocks the vault if you forget the password. Store it somewhere safe "
                       "(password manager, printed, another drive). Anyone with it can open the vault.")
         info.setWordWrap(True)

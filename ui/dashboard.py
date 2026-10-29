@@ -35,7 +35,7 @@ import logging
 
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QDialog, QFormLayout, QLineEdit,
-    QFileDialog, QSizePolicy, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView
+    QFileDialog, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView
 )
 from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QRect, QMimeData, QSize, QEasingCurve, pyqtSignal
 from PyQt6.QtGui import QDrag, QIcon
@@ -559,18 +559,17 @@ class DashboardStore(QObject):
 
 
 # ── item dialog ───────────────────────────────────────────────────────────────
-class ItemDialog(QDialog):
+class ItemDialog(widgets.RoundedDialog):
     def __init__(self, launcher, item: dict | None = None, parent=None, focus: str = "name", kind: str = "item"):
-        super().__init__(parent)
+        group = ((item or {}).get("kind") or kind) == "group"
+        super().__init__(parent, ("Edit " if item else "New ") + ("group" if group else "item"))
         from settings_ui import HotkeyEdit
         self.launcher = launcher
         self.item = dict(item or {"kind": kind})
         self.kind = self.item.get("kind") or "item"
-        self.setWindowTitle(("Edit " if item else "New ") + ("group" if self.kind == "group" else "item"))
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.setMinimumWidth(560)
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(18, 18, 18, 18)
+        lay = self.body
+        lay.setContentsMargins(18, 16, 18, 18)
         lay.setSpacing(12)
         form = QFormLayout()
         form.setSpacing(8)
@@ -652,7 +651,7 @@ class ItemDialog(QDialog):
 
         btns = QHBoxLayout()
         btns.addStretch()
-        cancel = widgets.button("Cancel")
+        cancel = widgets.button("Cancel", "ghost")
         cancel.clicked.connect(self.reject)
         ok = widgets.button("Save", "primary")
         ok.setDefault(True)
@@ -797,9 +796,8 @@ class ItemRow(QFrame):
             tag.setAlignment(Qt.AlignmentFlag.AlignCenter)
             tag.setFixedSize(30, 17)
             lay.addWidget(tag)
-        name = widgets.label(item.get("name") or "(unnamed)", 13)
+        name = widgets.elided(item.get("name") or "(unnamed)", 13)
         name.setObjectName("tabRowText")
-        name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         lay.addWidget(name, 1)
         if item.get("admin"):
             lay.addWidget(widgets.label("ROOT", 8.5, 600, mono=True, tone="danger"))
@@ -1088,9 +1086,8 @@ class _Box(QFrame):
         accent.setObjectName("tabAccent")
         accent.setFixedSize(3, 12)
         hl.addWidget(accent)
-        self.title_lbl = widgets.label(title.upper(), 11, 600, mono=True, spacing=0.14)
+        self.title_lbl = widgets.elided(title.upper(), 11, 600, mono=True, spacing=0.14)
         self.title_lbl.setObjectName("tabTitle")
-        self.title_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         hl.addWidget(self.title_lbl, 1)
         for w in (accent, self.title_lbl):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)

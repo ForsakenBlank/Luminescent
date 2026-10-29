@@ -5,9 +5,11 @@ App-wide behaviour fixes for Qt's standard controls, installed once at start-up.
 * The mouse wheel scrolls the page you are on. A spin box, combo box or slider under the pointer only takes
   the wheel once you have clicked it (until it loses the focus); before that the wheel goes to the scroll area
   around it, so scrolling down a page no longer changes a value on the way past.
+* The text in a spin box (numbers, times) gets a little room from the left border. Style sheets can not pad it:
+  Qt puts the spin box's text field flush against the border whatever the padding says.
 """
 from PyQt6.QtWidgets import (QApplication, QProxyStyle, QStyle, QAbstractSpinBox, QComboBox, QAbstractSlider,
-                             QScrollBar, QAbstractScrollArea, QWidget)
+                             QScrollBar, QAbstractScrollArea, QWidget, QDateTimeEdit)
 from PyQt6.QtCore import QObject, QEvent, Qt
 
 _installed = []
@@ -55,6 +57,9 @@ class WheelGuard(QObject):
             # a wheel turn must not give these the focus by itself (that would let the next turn change them)
             if obj.focusPolicy() == Qt.FocusPolicy.WheelFocus:
                 obj.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            popup = isinstance(obj, QDateTimeEdit) and obj.calendarPopup()       # that one is padded already
+            if isinstance(obj, QAbstractSpinBox) and not popup and obj.lineEdit() is not None:
+                obj.lineEdit().setTextMargins(7, 0, 0, 0)
         elif t == QEvent.Type.MouseButtonPress:
             c = _control(obj)
             if c is not None:

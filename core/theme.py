@@ -667,6 +667,13 @@ def _stylesheet() -> str:
     QPushButton[variant="pill"] {{ border-radius: 16px; padding: 7px 18px; font-size: 13px; }}
     QPushButton[variant="pill"][accent="true"] {{ background: {f('primary')}; color: {p.on_primary}; border-color: {p.primary}; }}
     QPushButton[variant="pill"][accent="true"]:hover {{ background: {f('primary_hover')}; }}
+    QPushButton[variant="primary"]:disabled, QPushButton[variant="pill"][accent="true"]:disabled {{
+        background: {rgba(p.primary, 0.28)}; color: {rgba(p.on_primary, 0.55)}; border-color: transparent;
+    }}
+    QPushButton[variant="ghost"]:disabled, QPushButton[variant="outline"]:disabled {{
+        background: transparent; color: {rgba(p.text_muted, 0.7)};
+    }}
+    QPushButton[variant="danger"]:disabled {{ background: transparent; color: {rgba(DANGER, 0.4)}; }}
 
     QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {{
         background: {f('bg_frame')}; color: {p.text_primary};
@@ -676,8 +683,12 @@ def _stylesheet() -> str:
     QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus,
     QComboBox:focus, QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {{ border-color: {p.primary}; }}
     QLineEdit[invalid="true"] {{ border-color: {DANGER}; }}
-    QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {{ color: {p.text_muted}; }}
-    QSpinBox, QDoubleSpinBox, QTimeEdit, QDateEdit, QDateTimeEdit {{ font-family: {mono}; font-size: 12px; padding-right: 26px; }}
+    QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled,
+    QComboBox:disabled, QDateEdit:disabled, QTimeEdit:disabled, QDateTimeEdit:disabled {{ color: {p.text_muted}; }}
+    QCheckBox:disabled, QRadioButton:disabled {{ color: {p.text_muted}; }}
+    QSpinBox, QDoubleSpinBox, QTimeEdit, QDateEdit, QDateTimeEdit {{
+        font-family: {mono}; font-size: 12px; padding-right: 26px;
+    }}
     QSpinBox::up-button, QDoubleSpinBox::up-button, QTimeEdit::up-button, QDateEdit::up-button, QDateTimeEdit::up-button {{
         subcontrol-origin: border; subcontrol-position: top right; width: 22px;
         border-left: 1px solid {p.border}; border-top-right-radius: {rs}px; background: transparent;
@@ -697,6 +708,10 @@ def _stylesheet() -> str:
     }}
     QComboBox {{ font-weight: 500; }}
     QComboBox::drop-down {{ border: none; width: 26px; }}
+    QDateEdit[calendarPopup="true"], QDateTimeEdit[calendarPopup="true"] {{ padding-right: 28px; }}
+    QDateEdit::drop-down, QDateTimeEdit::drop-down {{
+        subcontrol-origin: border; subcontrol-position: center right; width: 26px; border: none;
+    }}
     QComboBox::down-arrow {{ image: url({_arrow("down", p.text_muted)}); width: 8px; height: 5px; margin-right: 8px; }}
     QComboBox QAbstractItemView {{
         background: {f('bg_base')}; color: {p.text_primary}; border: 1px solid {p.border}; padding: 4px;

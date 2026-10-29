@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QDialog, QDoubleSpinBox, QSizePolicy, QFrame, QPushButton,
+    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QDoubleSpinBox, QSizePolicy, QFrame, QPushButton,
     QStackedWidget, QSlider, QScrollArea, QToolTip, QSpinBox
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QThread, pyqtSignal
@@ -994,15 +994,13 @@ class AppsView(QWidget):
 
 
 # ── calibration dialog ────────────────────────────────────────────────────────
-class CalibrateDialog(QDialog):
+class CalibrateDialog(widgets.RoundedDialog):
     def __init__(self, module: "HearingModule", parent=None):
-        super().__init__(parent)
+        super().__init__(parent, "Calibrate Hearing Guard")
         self.m = module
-        self.setWindowTitle("Calibrate Hearing Guard")
-        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
         self.setMinimumWidth(480)
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(20, 20, 20, 20)
+        lay = self.body
+        lay.setContentsMargins(20, 16, 20, 18)
         lay.setSpacing(10)
         info = QLabel(
             "1. Play music at the volume you normally use.\n"
@@ -1035,7 +1033,7 @@ class CalibrateDialog(QDialog):
         reset.clicked.connect(self._reset)
         restart = widgets.button("Restart")
         restart.clicked.connect(module.start_calibration_measure)
-        cancel = widgets.button("Cancel")
+        cancel = widgets.button("Cancel", "ghost")
         cancel.clicked.connect(self.reject)
         apply = widgets.button("Apply", "primary")
         apply.clicked.connect(self._apply)

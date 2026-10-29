@@ -67,18 +67,16 @@ class MousePad(QFrame):
         e.accept()
 
 
-class _KeysDialog(QDialog):
+class _KeysDialog(widgets.RoundedDialog):
     """Ask for a key combination or mouse button (and, for a new bind, what it does)."""
 
     def __init__(self, parent, launcher, title: str, combo: str = "", with_command: bool = False,
                  mine: dict | None = None, tools: list | None = None):
-        super().__init__(parent)
+        super().__init__(parent, title)
         from settings_ui import HotkeyEdit
-        self.setWindowTitle(title)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.launcher = launcher
         self.mine = mine is not None
-        lay = QVBoxLayout(self)
+        lay = self.body
         lay.setSpacing(10)
         form = QFormLayout()
         form.setSpacing(8)
@@ -131,7 +129,7 @@ class _KeysDialog(QDialog):
         lay.addWidget(hint)
         btns = QHBoxLayout()
         btns.addStretch()
-        cancel = widgets.button("Cancel")
+        cancel = widgets.button("Cancel", "ghost")
         cancel.clicked.connect(self.reject)
         ok = widgets.button("Save", "primary")
         ok.clicked.connect(self.accept)

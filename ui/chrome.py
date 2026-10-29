@@ -153,8 +153,11 @@ class _Content(QWidget):
 
 
 def status_lines(launcher) -> list[tuple[str, str]]:
-    """Running timers, the Hearing Guard level, the next reminder."""
+    """A new version, running timers, the Hearing Guard level, the next reminder."""
     out = []
+    latest = getattr(getattr(launcher, "updates", None), "latest", "")
+    if latest:
+        out.append(("⬆", f"{latest} is out · Settings → General → Updates"))
     mods = launcher.modules
     t = mods.get("timer")
     if t is not None and t.running:

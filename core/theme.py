@@ -580,6 +580,8 @@ def stylesheet() -> str:
     #lumH1 {{ font-size: 20px; font-weight: 600; }}
     #lumPageTitle {{ font-size: 15px; font-weight: 600; }}
     #lumRule {{ background: {p.border}; }}
+    #lumCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
+    #lumCard:hover {{ border-color: {mix(p.border, p.primary, 0.45)}; }}
 
     #tabBox {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
     #tabBox[active="true"] {{ border-color: {p.primary}; }}

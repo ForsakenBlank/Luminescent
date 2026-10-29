@@ -130,6 +130,7 @@ SCHEMA = [
         Field("check_updates", "Tell me when a new version is out", "bool", True,
               "Asks GitHub once a day. Tray → Update now downloads it, installs it and restarts; your notes and "
               "settings are kept."),
+        Field("updates", "Updates", "widget", None),
         Field("whats_new", "Show what is new after an update", "bool", True),
         Field("seen_version", "", "hidden", ""),
         Field("keep_awake_hotkey", "Keep awake on / off hotkey", "hotkey", "",

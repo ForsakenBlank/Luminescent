@@ -30,6 +30,7 @@ from core import VERSION, REPO, APP_DIR, FROZEN, IS_WIN
 
 log = logging.getLogger("updates")
 API = f"https://api.github.com/repos/{REPO}/releases/latest"
+ALL = f"https://api.github.com/repos/{REPO}/releases?per_page=30"
 PAGE = f"https://github.com/{REPO}/releases/latest"
 
 
@@ -90,6 +91,24 @@ def asset_url(release: dict) -> str:
     return ""
 
 
+def list_releases() -> list[dict]:
+    """Every published release, newest first: [{"tag", "name", "date", "notes", "asset", "url"}].
+    Blocks for up to 15 s, so call it from a worker thread."""
+    req = urllib.request.Request(ALL, headers={"User-Agent": "Luminescent", "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        data = json.loads(r.read().decode("utf-8"))
+    out = []
+    for d in data if isinstance(data, list) else []:
+        if d.get("draft") or not d.get("tag_name"):
+            continue
+        out.append({"tag": str(d["tag_name"]), "name": str(d.get("name") or d["tag_name"]),
+                    "date": str(d.get("published_at") or "")[:10], "notes": str(d.get("body") or ""),
+                    "asset": asset_url(d), "url": str(d.get("html_url") or PAGE),
+                    "pre": bool(d.get("prerelease"))})
+    out.sort(key=lambda r: _parts(r["tag"]), reverse=True)
+    return out
+
+
 def program_dir() -> str:
     """The folder a downloaded build runs from (the one with Luminescent / Luminescent.exe in it)."""
     return os.path.dirname(os.path.abspath(sys.executable))
@@ -118,16 +137,17 @@ class Updater(QObject):
         super().__init__()
         self.busy = False
 
-    def install(self, asset: str = ""):
+    def install(self, asset: str = "", tag: str = ""):
+        """`tag` picks a version (also an older one); empty = the newest."""
         if self.busy:
             return
         self.busy = True
         target = self._git if is_git() else self._build
-        threading.Thread(target=self._run, args=(target, asset), daemon=True, name="updater").start()
+        threading.Thread(target=self._run, args=(target, asset, tag), daemon=True, name="updater").start()
 
-    def _run(self, target, asset):
+    def _run(self, target, asset, tag):
         try:
-            ok, msg = target(asset)
+            ok, msg = target(asset, tag)
         except Exception as e:
             log.exception("update failed")
             ok, msg = False, f"{type(e).__name__}: {e}"
@@ -135,11 +155,25 @@ class Updater(QObject):
         self.finished.emit(ok, msg)
 
     # ── a git checkout ─────────────────────────────────────────────────────
-    def _git(self, _asset):
-        self.progress.emit("Getting the new code (git pull)…")
-        r = subprocess.run(["git", "pull", "--ff-only"], cwd=APP_DIR, capture_output=True, text=True, timeout=300)
+    def _git(self, _asset, tag=""):
+        def git(*args, timeout=300):
+            return subprocess.run(["git", *args], cwd=APP_DIR, capture_output=True, text=True, timeout=timeout)
+        if tag:
+            # a chosen version (newer or older): check that tag out; "Back to the newest" undoes it
+            self.progress.emit(f"Getting {tag} (git)…")
+            r = git("fetch", "--tags", "origin")
+            if r.returncode == 0:
+                r = git("checkout", "--detach", tag)
+        else:
+            self.progress.emit("Getting the new code (git pull)…")
+            head = git("symbolic-ref", "-q", "HEAD")
+            if head.returncode != 0:                 # still on an older version from the list: back to main
+                r = git("checkout", "main")
+                if r.returncode != 0:
+                    return False, (r.stderr or r.stdout).strip()[-400:] or "git checkout main failed"
+            r = git("pull", "--ff-only")
         if r.returncode != 0:
-            return False, (r.stderr or r.stdout).strip()[-400:] or "git pull failed"
+            return False, (r.stderr or r.stdout).strip()[-400:] or "git failed"
         self.progress.emit("Installing the Python packages…")
         r = subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt"], cwd=APP_DIR,
                            capture_output=True, text=True, timeout=900)
@@ -149,7 +183,7 @@ class Updater(QObject):
         return True, ""
 
     # ── a downloaded build ─────────────────────────────────────────────────
-    def _build(self, asset):
+    def _build(self, asset, _tag=""):
         if not asset:
             return False, f"This release has no {ASSET} to download."
         here = program_dir()

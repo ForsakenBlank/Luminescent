@@ -403,8 +403,8 @@ class Launcher:
             return
         log.info("update available: %s", tag)
         self._update_url = url
-        self.toast(f"{APP_NAME} {tag} is out", f"You have {VERSION}. Tray → Update now installs it and restarts. "
-                                               "Your notes and settings are kept.")
+        self.toast(f"{APP_NAME} {tag} is out", f"You have {VERSION}. Settings → General → Updates (or tray → Update "
+                                               "now) installs it and restarts. Your notes and settings are kept.")
         self._build_menu()
 
     def open_update_page(self):
@@ -429,6 +429,22 @@ class Launcher:
             return
         self.notify(f"Updating {APP_NAME}", f"Getting {self.updates.latest or 'the latest version'}…", 3000)
         self.updater.install(self.updates.asset)
+
+    def install_version(self, rel: dict | None):
+        """Settings → Updates: install one release from the list (newer or older). None = the newest on git."""
+        from core.updates import can_install, is_git
+        if self.updater.busy:
+            self.notify(APP_NAME, "An update is already on its way.", 2500)
+            return
+        if not can_install() or (rel is not None and not rel.get("asset") and not is_git()):
+            self.notify(APP_NAME, "This copy can not update itself (the folder is read-only or not a download); "
+                                  "opening the release page instead.", 5000)
+            import webbrowser
+            webbrowser.open((rel or {}).get("url") or "https://github.com/ForsakenBlank/Luminescent/releases")
+            return
+        tag = (rel or {}).get("tag", "")
+        self.notify(f"Updating {APP_NAME}", f"Getting {tag or 'the newest version'}…", 3000)
+        self.updater.install((rel or {}).get("asset", ""), tag if is_git() else "")
 
     def _update_installed(self, ok: bool, msg: str):
         if not ok:

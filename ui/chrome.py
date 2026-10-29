@@ -21,10 +21,13 @@ log = logging.getLogger("chrome")
 
 KINDS = [("logo", "Logo and title"), ("mark", "Sparkle"), ("title", "LUMINESCENT title"),
          ("clock", "Clock and date"), ("time", "Time"), ("date", "Date"),
-         ("status", "Status chips (timers, Hearing Guard, next reminder)")]
+         ("status", "Status chips (timers, Hearing Guard, next reminder)"), ("timers", "Running timers"),
+         ("reminder", "Next reminder"), ("media", "Now playing"), ("system", "CPU and memory"),
+         ("greeting", "Greeting (Good morning…)"), ("text", "Your own text")]
 NAMES = dict(KINDS)
 SIZES = [(0.75, "Small"), (1.0, "Normal"), (1.5, "Large"), (2.0, "Huge")]
 CLOCKISH = ("clock", "time", "date")
+LINES = ("timers", "reminder", "media", "system")       # one or more lines that can be empty
 PAD = 6                                     # the room around an element for its edit outline
 
 
@@ -44,12 +47,14 @@ def default_items(top: int) -> list[dict]:
 
 # ── what an element shows ─────────────────────────────────────────────────────
 class _Content(QWidget):
-    def __init__(self, kind: str, scale: float, launcher):
+    def __init__(self, kind: str, scale: float, launcher, data: dict | None = None):
         super().__init__()
         self.kind = kind
         self.launcher = launcher
+        self.data = data or {}
         self._last = None
-        lay = QVBoxLayout(self) if kind in ("clock", "status") else QHBoxLayout(self)
+        self._cpu = None
+        lay = QVBoxLayout(self) if kind in ("clock", "status") + LINES else QHBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(int((6 if kind == "status" else 2 if kind == "clock" else 14) * scale))
         self.lay = lay
@@ -68,11 +73,54 @@ class _Content(QWidget):
         if kind in ("clock", "date"):
             self.date = widgets.label("", 10.5 * scale, 500, mono=True, spacing=0.12, tone="muted")
             lay.addWidget(self.date)
+        self.big = None
+        if kind in ("greeting", "text"):
+            self.big = widgets.label("", 18 * scale, 500)
+            lay.addWidget(self.big)
         self.scale = scale
         self.tick()
 
     def has_content(self) -> bool:
-        return self.kind != "status" or bool(self._last)
+        if self.kind in ("status",) + LINES:
+            return bool(self._last)
+        if self.kind == "text":
+            return bool(str(self.data.get("text", "")).strip())
+        return True
+
+    def _lines(self) -> list[tuple[str, str]]:
+        mods = self.launcher.modules
+        if self.kind == "status":
+            return status_lines(self.launcher)
+        if self.kind == "timers":
+            t = mods.get("timer")
+            return [("⏱", line) for line in t.tooltip_lines()[:6]] if t is not None and t.running else []
+        if self.kind == "reminder":
+            return [line for line in status_lines(self.launcher) if line[0] == "⏰"]
+        if self.kind == "media":
+            m = mods.get("media")
+            if m is None or not m.running:
+                return []
+            m.refresh()                       # asks in the background: the answer shows on the next tick
+            cur = m.current()
+            if not cur or not cur.get("title"):
+                return []
+            icon = "▶" if cur.get("status") == "Playing" else "⏸"
+            return [(icon, " · ".join(x for x in (cur.get("title"), cur.get("artist")) if x))]
+        if self.kind == "system":
+            from modules import sysmon
+            busy, total = sysmon.cpu_times()
+            line = ""
+            if self._cpu is not None and total > self._cpu[1]:
+                line = f"CPU {100 * (busy - self._cpu[0]) / (total - self._cpu[1]):.0f} %   "
+            self._cpu = (busy, total)
+            used, all_ = sysmon.memory()
+            return [("▣", f"{line}RAM {used:.1f} / {all_:.0f} GiB")] if all_ else []
+        return []
+
+    @staticmethod
+    def greeting() -> str:
+        h = datetime.now().hour
+        return "Good night" if h < 5 else "Good morning" if h < 12 else "Good afternoon" if h < 18 else "Good evening"
 
     def tick(self):
         if self.time is not None or self.date is not None:
@@ -81,8 +129,14 @@ class _Content(QWidget):
                 self.time.setText(now.strftime("%H:%M"))
             if self.date is not None:
                 self.date.setText(now.strftime("%A %d %B").upper().replace(" 0", " "))
-        if self.kind == "status":
-            lines = status_lines(self.launcher)
+        if self.big is not None:
+            name = str(self.data.get("text", "")).strip()
+            if self.kind == "greeting":
+                self.big.setText(self.greeting() + (f", {name}" if name else ""))
+            else:
+                self.big.setText(name)
+        if self.kind in ("status",) + LINES:
+            lines = self._lines()
             if lines != self._last:
                 self._last = lines
                 widgets.clear_layout(self.lay)
@@ -126,7 +180,7 @@ class ChromeItem(QFrame):
         self.setObjectName("chromeItem")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(PAD, PAD, PAD, PAD)
-        self.content = _Content(data["kind"], float(data.get("scale", 1.0) or 1.0), layer.launcher)
+        self.content = _Content(data["kind"], float(data.get("scale", 1.0) or 1.0), layer.launcher, data)
         lay.addWidget(self.content)
         self.hint = widgets.label(NAMES.get(data["kind"], data["kind"]), 11, tone="muted")
         self.hint.hide()
@@ -249,7 +303,7 @@ class ChromeLayer:
             return False
         # the node editor uses the whole main screen: the clock and chips would sit on top of the nodes
         on_host = (item.data.get("screen") or self.host_name) == self.host_name
-        return not (on_host and self.page == "automation" and (kind in CLOCKISH or kind == "status"))
+        return not (on_host and self.page == "automation")
 
     def tick(self):
         for i in self.items:
@@ -348,6 +402,8 @@ class ChromeLayer:
         m.addAction("Unfreeze (can be moved again)" if frozen else "Freeze (stays where it is)",
                     lambda: self._set(item, frozen=not frozen))
         m.addAction("Duplicate", lambda: self.duplicate(item))
+        if d["kind"] in ("text", "greeting"):
+            m.addAction("Edit text…" if d["kind"] == "text" else "Your name…", lambda: self.edit_text(item))
         sizes = m.addMenu("Size")
         for v, label in SIZES:
             a = sizes.addAction(label, lambda v=v: self._set(item, scale=v, rebuild=True))
@@ -380,10 +436,22 @@ class ChromeLayer:
         host = self.hosts.get(screen or self.host_name)
         x, y = (host.width() // 2 - 80, self.top + 140) if host is not None else (200, 200)
         d = {"id": _id(), "kind": kind, "screen": screen, "x": x, "y": y, "scale": 1.0, "frozen": False}
+        if kind == "text":
+            d["text"] = "Your text"
         item = self._make(d)
         item.show()
+        if kind == "text":
+            self.edit_text(item)
         anim.fade(item, 0.0, 1.0, "overlay", 160)
         self.save()
+
+    def edit_text(self, item: ChromeItem):
+        kind = item.data["kind"]
+        text, ok = widgets.ask_text(self._menu_parent(item), "Your own text" if kind == "text" else "Greeting",
+                                    "Text:" if kind == "text" else "Your name (empty for none):",
+                                    str(item.data.get("text", "")))
+        if ok:
+            self._set(item, text=text, rebuild=True)
 
     def duplicate(self, item: ChromeItem):
         d = dict(item.data, id=_id(), frozen=False, x=item.x() + 24, y=item.y() + 24)

@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QPlainTextEdit, QCheckBox,
     QComboBox, QGraphicsView, QGraphicsScene, QGraphicsObject, QGraphicsPathItem, QGraphicsProxyWidget,
     QGraphicsItem, QListWidget, QListWidgetItem, QFileDialog, QDialog, QTableWidget, QTableWidgetItem,
-    QHeaderView, QDateEdit, QApplication
+    QHeaderView, QDateEdit, QApplication, QProxyStyle, QStyle
 )
 from PyQt6.QtCore import Qt, QSize, QRectF, QPointF, QPoint, QTimer, QDate, QEvent, QEasingCurve
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QPainterPathStroker, QPolygonF, QFontMetrics, QCursor
@@ -253,9 +253,10 @@ class NodeItem(QGraphicsObject):
             p.setPen(QPen(c, 6))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRoundedRect(r.adjusted(-3, -3, 3, 3), 13, 13)
-        p.setBrush(QColor(P.bg_card))
         sel = self.isSelected()
-        p.setPen(QPen(QColor(P.primary if sel else P.border), 1.6 if sel else 1))
+        # selected looks like a selected dashboard box: accent edge and a faint accent tint
+        p.setBrush(QColor(theme.mix(P.bg_card, P.primary, 0.07) if sel else P.bg_card))
+        p.setPen(QPen(QColor(P.primary if sel else P.border), 1))
         p.drawRoundedRect(r, 10, 10)
         # header
         head = QPainterPath()
@@ -530,12 +531,29 @@ class GraphScene(QGraphicsScene):
 
 
 # ── the view ──────────────────────────────────────────────────────────────────
+class _NoBandStyle(QProxyStyle):
+    """Qt's own selection rectangle is a grey system one: skip it, the view draws the dashboard's instead."""
+
+    def drawControl(self, el, opt, p, w=None):
+        if el == QStyle.ControlElement.CE_RubberBand:
+            return
+        super().drawControl(el, opt, p, w)
+
+
 class GraphView(QGraphicsView):
     def __init__(self, page: "AutomationPage"):
         super().__init__(page)
         self.page = page
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        # the same selection box as the dashboard (#lumBand in the theme's stylesheet)
+        self._band_style = _NoBandStyle()
+        self.setStyle(self._band_style)
+        self._band = QFrame(self.viewport())
+        self._band.setObjectName("lumBand")
+        self._band.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._band.hide()
+        self.rubberBandChanged.connect(self._band_moved)
         # zooming keeps the point under the mouse in place by itself (_apply_zoom): Qt's own anchor goes by where
         # it last saw the cursor, which can be stale and made the view jump
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
@@ -555,6 +573,14 @@ class GraphView(QGraphicsView):
 
     def zoom(self) -> float:
         return self.transform().m11()
+
+    def _band_moved(self, rect, *_):
+        if rect.isNull():
+            self._band.hide()
+            return
+        self._band.setGeometry(rect)
+        self._band.show()
+        self._band.raise_()
 
     def set_zoom(self, z: float, at: QPoint | None = None):
         anim.stop(self, "zoom")

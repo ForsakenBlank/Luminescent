@@ -3,8 +3,10 @@ Theme profiles (data/themes.json).
 
     {"active": id,
      "folders": [{"id", "name", "colour", "collapsed"}],
-     "themes":  [{"id", "name", "folder", "builtin", "colours": {role: "#hex"}, "font_family", "radius",
-                  "glow", "icon", "background_image", "image_opacity", "wallpaper", "profile"}]}
+     "themes":  [{"id", "name", "folder", "builtin", "colours": {role: "#hex"}, "gradients": {role: spec},
+                  "font_family", "radius", "glow", "icon", "background_image", "image_opacity", "wallpaper",
+                  "profile", "modules": {key: accent or {accent, colours, gradients, radius}},
+                  "toasts": {...}, "caelestia": {"colours": {name: "#hex"}}}]}
 
 The built-in Dark and Light themes cannot be deleted, so there is always at
 least one.  `apply()` makes a theme the active palette and emits `applied`;
@@ -200,14 +202,15 @@ class ThemeStore(QObject):
 
     @staticmethod
     def palette_values(t: dict) -> dict:
-        return {**t.get("colours", {}), **{k: t.get(k) for k in LOOK_KEYS if k in t}}
+        return {**t.get("colours", {}), **{k: t.get(k) for k in LOOK_KEYS if k in t},
+                "gradients": t.get("gradients") or {}}
 
     # ── changes ────────────────────────────────────────────────────────────
     def use_active(self):
         """Make the saved active theme the palette (start-up)."""
         t = self.active()
         theme.use(self.palette_values(t))
-        theme.set_module_accents(t.get("modules"))
+        theme.set_module_styles(t.get("modules"))
 
     def apply(self, tid: str):
         t = self.get(tid)
@@ -216,7 +219,7 @@ class ThemeStore(QObject):
         self.data["active"] = tid
         self.save()
         theme.use(self.palette_values(t))
-        theme.set_module_accents(t.get("modules"))
+        theme.set_module_styles(t.get("modules"))
         log.info("theme applied: %s", t["name"])
         self.applied.emit(t)
 
@@ -371,7 +374,8 @@ class ThemeStore(QObject):
             raise ValueError("This file is not a Luminescent theme (.lumtheme).")
         src = d["theme"]
         t = new_theme(str(src.get("name") or "Imported theme"))
-        for k in ("colours", "font_family", "radius", "glow", "image_opacity", "modules"):
+        for k in ("colours", "gradients", "font_family", "radius", "glow", "image_opacity", "modules", "toasts",
+                  "caelestia"):
             if k in src:
                 t[k] = copy.deepcopy(src[k])
         t["colours"] = {**theme.PRESETS["dark"], **{k: v for k, v in (t.get("colours") or {}).items()

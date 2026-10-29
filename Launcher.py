@@ -70,6 +70,7 @@ def make_icon(light: bool, accent: str = "") -> QIcon:
 class Launcher:
     def __init__(self, app: QApplication, start_guard: StartGuard | None = None):
         self.app = app
+        app.luminescent = self              # for shared widgets that need the launcher (the colour picker)
         self.start_guard = start_guard
         self.safe_mode = bool(start_guard and start_guard.safe_mode)
         self.faults = Faults()
@@ -83,6 +84,8 @@ class Launcher:
         if self.settings.migrated_from_old_config:
             log.info("migrated values from the old config.py into settings.json")
 
+        from core import ux
+        ux.install(app)
         theme.load_fonts()
         theme.set_text_scale(self.settings.get("ui.text_scale", 1.0))
         wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
@@ -213,6 +216,9 @@ class Launcher:
         self.app.setWindowIcon(self.icon)
         self.tray.setIcon(self.icon)
         safely(self._write_terminal_scheme, "terminal colours")
+        cael = self.modules.get("caelestia")
+        if cael is not None and cael.running and hasattr(cael, "theme_applied"):
+            safely(lambda: cael.theme_applied(t), "caelestia colours")
         if self._palette is not None:
             if alive(self._palette):
                 self._palette.close()

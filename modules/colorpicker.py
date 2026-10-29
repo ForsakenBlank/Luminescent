@@ -33,8 +33,8 @@ def colour_text(c: QColor, fmt: str, upper: bool = True) -> str:
 
 
 class _PickScreen(QWidget):
-    def __init__(self, m: "ColorPickerModule", screen, shot: QPixmap):
-        super().__init__()
+    def __init__(self, m: "ColorPickerModule", screen, shot: QPixmap, parent=None):
+        super().__init__(parent)
         self.m = m
         self.shot = shot
         self.img = shot.toImage()
@@ -167,6 +167,7 @@ class ColorPickerModule(Module):
         super().__init__(ctx)
         self._screens: list[_PickScreen] = []
         self.recent: list[str] = []
+        self._on_pick = None            # set while Luminescent's colour picker borrows the eyedropper
 
     def start(self):
         d = load_json(SAVE_PATH, {})
@@ -226,11 +227,18 @@ class ColorPickerModule(Module):
         return colour_text(c, self.s("format", "hex"), bool(self.s("uppercase", True)))
 
     # ── picking ────────────────────────────────────────────────────────────
-    def pick(self):
+    def pick(self, on_pick=None, parent=None):
+        """Freeze the screens and let you click a colour. With `on_pick` the colour goes to on_pick("#RRGGBB")
+        (None when cancelled) instead of the clipboard; `parent` keeps the screens usable over a modal window."""
         if self._screens:
             return
+        self._on_pick = on_pick
         for scr in QApplication.screens():
-            w = _PickScreen(self, scr, widgets.grab_screen(scr))
+            w = _PickScreen(self, scr, widgets.grab_screen(scr), parent)
+            if parent is not None:
+                w.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint |
+                                 Qt.WindowType.Tool)
+                w.setGeometry(scr.geometry())
             self._screens.append(w)
         for w in self._screens:
             w.show()
@@ -249,11 +257,18 @@ class ColorPickerModule(Module):
             w.close()
             w.deleteLater()
         self._screens = []
+        cb, self._on_pick = self._on_pick, None
+        if cb is not None:
+            cb(None)
 
     def picked(self, c: QColor):
+        cb, self._on_pick = self._on_pick, None
         self.cancel()
-        self.copy(c)
         name = c.name().upper()
+        if cb is not None:
+            cb(name)
+        else:
+            self.copy(c)
         self.recent = [name] + [r for r in self.recent if r != name][:9]
         try:
             save_json(SAVE_PATH, {"recent": self.recent})

@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+* **A new colour picker everywhere** (themes, folders, settings, Caelestia, Snippets): a saturation / brightness
+  square, a hue strip, the colour you started with next to the new one (click it to go back), a hex box that also
+  takes rgb(…), hsl(…) and colour names, copy, an eyedropper (Luminescent's screen colour picker), how readable
+  text is on it, and rows of recent picks, this theme's colours and basics. Arrow keys nudge it.
+* **Gradients**: any colour of a theme can be a gradient. Open a colour, switch to Gradient, click the bar to add
+  as many colours as you like, drag them to move them (down off the bar to remove one), pick Linear, Radial or
+  Sweep and the angle, or start from a preset. Backgrounds, cards, headers, buttons, sliders, borders and the
+  page switcher draw them.
+* **The theme editor, rebuilt**: bigger, rounded, and in three columns you can resize by dragging the lines
+  between them: the parts of the theme, that part's settings, and a live preview. Every module, the notifications
+  and the on-screen warnings can now have a whole look of their own (an accent, or any of the colours, each one
+  plain or a gradient, and their own corner radius) instead of only an accent. "Copy the look of…" and "Match
+  all its colours to it" make that quick.
+* **Notifications, redone**: the accent sits inside the card (a soft glow, a stripe, a line along the top, an
+  outline or none) instead of a bar that poked out of the corners, and long messages are never cut off: the card
+  grows to fit (very long ones show "Click to read it all"). Hover for ✕, right-click to copy the text, errors get
+  a red accent. Settings → General has where they appear, width, accent style, how long they stay, how many at
+  once, background opacity, text size, the icon, and Show a notification to try it. Their colours are in the theme
+  editor. On-screen warnings grow and scroll the same way.
+* **Message boxes and questions** (delete?, rename…, errors) in Luminescent's own rounded look; long text scrolls.
+* **Settings**: a ☆ on every section (on hover) pins it to the top of the list. Module pages have buttons that do
+  what their hotkeys do (open the panel, pick a colour, new timer…), or Turn it on when the module is off.
+* **Sliders jump to where you click**, and **the mouse wheel scrolls the page**: a number box, list or slider only
+  takes the wheel after you have clicked it, so scrolling down a page no longer changes values on the way past.
+* **Dashboard → Add here → Page** (and the navigation bar) now has Hearing Guard, System Monitor and Media.
+* **Hearing Guard**: a Record mode that only keeps the readings (no warnings, nothing turned down); Headset's own
+  volume, for headphones with a volume of their own, so the estimate follows it (and calibrating takes it into
+  account); volumes past 100 % are handled and the cap goes up to 150 %. The Today graph has a dB scale, the limit
+  line, finer bars on a short day and the time, level and listening time on hover; the Week graph always shows the
+  100 % line and the numbers on hover.
+* **Caelestia & Glass → Colours**: every colour of Caelestia's scheme can be changed and applied (a backup
+  first). Keep them for that Caelestia scheme (they come back whenever Caelestia uses or remakes it) or for a
+  Luminescent theme (written into Caelestia whenever that theme is applied). Caelestia draws its colours flat, so
+  gradients can not go into its scheme.
+* **Fixes**: a module panel's own accent no longer turns back into the theme's when it goes into edit mode or
+  changes opacity; typing invalid JSON in a Caelestia list field no longer throws an error.
+
 ## 1.4.0
 
 * **Updates you can see**: Settings → General → Updates shows your version, a Check for updates button and every

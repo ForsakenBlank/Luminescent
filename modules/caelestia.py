@@ -4,8 +4,15 @@ Caelestia & Glass: the Caelestia shell's own config files, editable from Lumines
 
 Shell files: everything in ~/.config/caelestia. A .json file opens as a form (switches, numbers, text,
 colours with a swatch), anything else as plain text. Save keeps a copy of the old file in
-data/caelestia-backups first; Caelestia reloads its config by itself when the file changes. Colours shows
-the scheme Caelestia is using now (~/.local/state/caelestia/scheme.json) and its wallpaper.
+data/caelestia-backups first; Caelestia reloads its config by itself when the file changes.
+
+Colours: every colour of the scheme Caelestia is using now (~/.local/state/caelestia/scheme.json), each one
+editable. "Apply to Caelestia" writes them into scheme.json (a backup first); the shell watches that file and
+recolours itself. Changed colours can also be kept:
+  * for this Caelestia scheme (name / flavour / mode): they are put back whenever Caelestia switches to it again
+    or rewrites it (a new wallpaper with a dynamic scheme), while "Put my colours back…" is on;
+  * for a Luminescent theme: written into Caelestia's scheme whenever that theme is applied.
+Caelestia draws every colour flat (one value per colour role), so gradients can not go into its scheme.
 
 Glass: per app (its window class, e.g. firefox or kitty) how see-through it is when focused and when not,
 and whether what is behind it gets blurred. These are Hyprland window rules Luminescent adds while it runs
@@ -21,13 +28,13 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QStackedWidget, QPlainTextEdit,
-    QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox, QPushButton, QScrollArea, QFrame, QLabel, QColorDialog,
+    QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox, QPushButton, QScrollArea, QFrame, QLabel,
     QComboBox, QSlider, QGridLayout
 )
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher
+from PyQt6.QtGui import QPixmap
 
-from core import widgets, theme, hypr, IS_WIN, DATA_DIR
+from core import widgets, theme, hypr, colourpick, IS_WIN, DATA_DIR
 from core.module import Module
 
 CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "caelestia")
@@ -90,6 +97,50 @@ def scheme() -> dict:
         if is_colour(v):
             out[k] = v
     return out
+
+
+SCHEME_PATH = os.path.join(STATE_DIR, "scheme.json")
+
+
+def scheme_file() -> dict | None:
+    """scheme.json as it is (None when there is none or it can not be read)."""
+    try:
+        with open(SCHEME_PATH, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def scheme_id(d: dict | None) -> str:
+    """"name / flavour / mode" of a scheme.json, the key colours are saved under for that scheme."""
+    if not d:
+        return ""
+    parts = [str(d.get(k) or "") for k in ("name", "flavour", "mode")]
+    return " / ".join(p for p in parts if p) or "scheme"
+
+
+def write_colours(changes: dict) -> str:
+    """Put `changes` ({name: "#rrggbb"}) into scheme.json the way it already writes colours (with or without
+    the #). A copy of the old file goes to data/caelestia-backups first. Returns '' or what went wrong."""
+    d = scheme_file()
+    if d is None:
+        return "Caelestia's scheme.json was not found (is Caelestia installed and running?)."
+    cols = d.get("colours") if isinstance(d.get("colours"), dict) else (
+        d.get("colors") if isinstance(d.get("colors"), dict) else d)
+    hashed = any(str(v).startswith("#") for v in cols.values())
+    for k, v in changes.items():
+        if k in cols and is_colour(v):
+            cols[k] = v if hashed else v.lstrip("#").lower()
+    try:
+        backup(SCHEME_PATH)
+        tmp = SCHEME_PATH + ".lum-tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        os.replace(tmp, SCHEME_PATH)            # in one step, so the shell never reads half a file
+    except OSError as e:
+        return f"Could not write scheme.json: {e}"
+    return ""
 
 
 def wallpaper() -> str:
@@ -214,9 +265,9 @@ class JsonForm(QWidget):
                     store(t)
 
             def pick():
-                c = QColorDialog.getColor(QColor(e.text()), box, "Colour")
-                if c.isValid():
-                    e.setText(c.name())
+                c = colourpick.pick_colour(box, e.text() if is_colour(e.text()) else "#000000", k)
+                if c:
+                    e.setText(c.lower() if e.text()[1:].islower() else c)
             paint(val)
             e.textChanged.connect(typed)
             sw.clicked.connect(pick)
@@ -238,7 +289,7 @@ class JsonForm(QWidget):
                 store(json.loads(t))
                 w.setStyleSheet("")
             except ValueError:
-                w.setStyleSheet(f"border-color: {theme.P.danger};")
+                w.setStyleSheet(f"border-color: {theme.DANGER};")
         w.textChanged.connect(typed_json)
         return w
 
@@ -611,27 +662,60 @@ class CaelestiaPanel(widgets.FloatingPanel):
         v = QVBoxLayout(page)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(10)
+        self._edits: dict[str, str] = {}
         top = QHBoxLayout()
+        top.setSpacing(14)
         self.wall = QLabel()
-        self.wall.setFixedSize(320, 180)
+        self.wall.setFixedSize(240, 135)
         self.wall.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.wall.setStyleSheet(f"background: {theme.P.bg_card}; border-radius: 10px;")
         top.addWidget(self.wall)
         side = QVBoxLayout()
-        self.scheme_info = widgets.label("", 12, tone="muted")
+        side.setSpacing(6)
+        self.scheme_name = widgets.label("", 15, 600)
+        side.addWidget(self.scheme_name)
+        self.scheme_info = widgets.label("", 11.5, tone="muted")
         self.scheme_info.setWordWrap(True)
         side.addWidget(self.scheme_info)
-        make = widgets.button("Make a Luminescent theme from it", "primary")
-        make.clicked.connect(lambda: self.m.theme_from_scheme())
-        side.addWidget(make, 0, Qt.AlignmentFlag.AlignLeft)
+        hint = widgets.label("Click a colour to change it. Caelestia draws its colours flat, so they are plain colours "
+                             "(no gradients).", 11, tone="muted")
+        hint.setWordWrap(True)
+        side.addWidget(hint)
         side.addStretch()
         top.addLayout(side, 1)
         v.addLayout(top)
+
+        bar = QHBoxLayout()
+        bar.setSpacing(6)
+        self.colour_search = QLineEdit()
+        self.colour_search.setPlaceholderText("🔍  Find a colour…")
+        self.colour_search.setClearButtonEnabled(True)
+        self.colour_search.textChanged.connect(lambda _t: self._fill_colours(reload=False))
+        bar.addWidget(self.colour_search, 1)
+        self.apply_btn = widgets.button("Apply to Caelestia", "primary", "Write the changed colours into its scheme now")
+        self.apply_btn.clicked.connect(self._apply_colours)
+        bar.addWidget(self.apply_btn)
+        self.undo_btn = widgets.button("Undo changes", "ghost")
+        self.undo_btn.clicked.connect(lambda: (self._edits.clear(), self._fill_colours(reload=False)))
+        bar.addWidget(self.undo_btn)
+        keep = widgets.button("Save for…", "", "Keep these colours for this Caelestia scheme or a Luminescent theme")
+        keep.clicked.connect(lambda: self._save_menu(keep))
+        bar.addWidget(keep)
+        make = widgets.button("Luminescent theme from it", "ghost")
+        make.setToolTip("Make a Luminescent theme in these colours and switch to it")
+        make.clicked.connect(lambda: self.m.theme_from_scheme())
+        bar.addWidget(make)
+        v.addLayout(bar)
+        self.colour_status = widgets.label("", 11, tone="muted")
+        self.colour_status.setWordWrap(True)
+        v.addWidget(self.colour_status)
+
         self.swatches = QGridLayout()
-        self.swatches.setSpacing(6)
+        self.swatches.setHorizontalSpacing(10)
+        self.swatches.setVerticalSpacing(6)
         box = QWidget()
         outer = QVBoxLayout(box)
-        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setContentsMargins(0, 0, 8, 0)
         outer.addLayout(self.swatches)
         outer.addStretch()
         sc = QScrollArea()
@@ -641,27 +725,104 @@ class CaelestiaPanel(widgets.FloatingPanel):
         v.addWidget(sc, 1)
         return page
 
-    def _fill_colours(self):
+    def _fill_colours(self, reload: bool = True):
         widgets.clear_layout(self.swatches)
-        cols = scheme()
-        wp = wallpaper()
-        if wp:
-            px = QPixmap(wp)
-            if not px.isNull():
-                self.wall.setPixmap(px.scaled(self.wall.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                                              Qt.TransformationMode.SmoothTransformation))
+        if reload:
+            self._scheme = scheme()
+            d = scheme_file()
+            self._scheme_id = scheme_id(d)
+            wp = wallpaper()
+            if wp:
+                px = QPixmap(wp)
+                if not px.isNull():
+                    self.wall.setPixmap(px.scaled(self.wall.size(), Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                                  Qt.TransformationMode.SmoothTransformation))
+            else:
+                self.wall.setText("No wallpaper found")
+        cols = self._scheme
+        saved = self.m.saved_for_scheme(self._scheme_id)
+        self.scheme_name.setText(self._scheme_id.title() if cols else "No Caelestia scheme")
+        self.scheme_info.setText(
+            f"{len(cols)} colours · {SCHEME_PATH}" + (f" · {len(saved)} kept for this scheme" if saved else "")
+            if cols else "Caelestia's colour scheme was not found (is Caelestia installed and running?).")
+        q = self.colour_search.text().strip().lower()
+        shown = [(k, c) for k, c in sorted(cols.items()) if not q or q in k.lower() or q in nice(k).lower()]
+        for i, (k, c) in enumerate(shown):
+            now = self._edits.get(k, c)
+            sw = colourpick.ColourSwatch(now, nice(k), width=118)
+            sw.changed.connect(lambda val, key=k: self._edit_colour(key, val))
+            name = widgets.label(nice(k), 11.5, tone="primary" if k in self._edits else "secondary")
+            if k in self._edits:
+                name.setText(f"{nice(k)}  ●")
+                name.setToolTip(f"Changed from {c}")
+            self.swatches.addWidget(sw, i // 2, (i % 2) * 2)
+            self.swatches.addWidget(name, i // 2, (i % 2) * 2 + 1)
+        self.swatches.setColumnStretch(1, 1)
+        self.swatches.setColumnStretch(3, 1)
+        n = len(self._edits)
+        self.apply_btn.setEnabled(bool(n))
+        self.undo_btn.setEnabled(bool(n))
+        self.colour_status.setText(f"{n} colour{'s' if n != 1 else ''} changed, not applied yet." if n else "")
+
+    def _edit_colour(self, key: str, val):
+        if not isinstance(val, str):
+            return
+        if val.upper() == self._scheme.get(key, "").upper():
+            self._edits.pop(key, None)
         else:
-            self.wall.setText("No wallpaper found")
-        self.scheme_info.setText(f"{len(cols)} colours in Caelestia's scheme ({os.path.join(STATE_DIR, 'scheme.json')})."
-                                 if cols else "Caelestia's colour scheme was not found (is Caelestia installed and "
-                                              "running?).")
-        for i, (k, c) in enumerate(sorted(cols.items())):
-            sw = QFrame()
-            sw.setFixedSize(26, 26)
-            sw.setStyleSheet(f"background: {c}; border: 1px solid {theme.P.border}; border-radius: 6px;")
-            lbl = widgets.label(f"{nice(k)}  {c}", 11.5, mono=True, tone="secondary")
-            self.swatches.addWidget(sw, i // 3, (i % 3) * 2)
-            self.swatches.addWidget(lbl, i // 3, (i % 3) * 2 + 1)
+            self._edits[key] = val.upper()
+        self._fill_colours(reload=False)
+
+    def _apply_colours(self):
+        err = write_colours(self._edits)
+        if err:
+            widgets.error(self, "Caelestia", err)
+            return
+        n = len(self._edits)
+        self._edits.clear()
+        self._fill_colours()
+        self.colour_status.setText(f"Applied {n} colour{'s' if n != 1 else ''}. The old scheme is in "
+                                   "data/caelestia-backups.")
+
+    def _save_menu(self, anchor: QWidget):
+        m = widgets.menu(self)
+        changed = {**self.m.saved_for_scheme(self._scheme_id), **self._edits}
+        a = m.addAction(f"This Caelestia scheme ({self._scheme_id or 'none'})",
+                        lambda: self._keep_for_scheme(changed))
+        a.setEnabled(bool(self._scheme_id and changed))
+        launcher = self.m.ctx.launcher
+        if launcher is not None:
+            sub = m.addMenu("A Luminescent theme")
+            for t in launcher.themes.themes():
+                sub.addAction(t["name"], lambda tid=t["id"]: self._keep_for_theme(tid))
+        m.addSeparator()
+        f = m.addAction("Forget the colours kept for this scheme", self._forget_scheme)
+        f.setEnabled(bool(self.m.saved_for_scheme(self._scheme_id)))
+        m.exec(anchor.mapToGlobal(anchor.rect().bottomLeft()))
+
+    def _keep_for_scheme(self, changed: dict):
+        self.m.save_for_scheme(self._scheme_id, changed)
+        if self._edits:
+            self._apply_colours()
+        self.colour_status.setText(f"Kept {len(changed)} colours for {self._scheme_id}. They come back whenever "
+                                   "Caelestia uses this scheme again.")
+        self._fill_colours()
+
+    def _forget_scheme(self):
+        self.m.save_for_scheme(self._scheme_id, {})
+        self._fill_colours()
+
+    def _keep_for_theme(self, tid: str):
+        launcher = self.m.ctx.launcher
+        t = launcher.themes.get(tid) if launcher is not None else None
+        if t is None:
+            return
+        import copy
+        t = copy.deepcopy(t)
+        t["caelestia"] = {"colours": {**self._scheme, **self._edits}}
+        launcher.themes.update_theme(t)
+        self.colour_status.setText(f"Kept for the theme {t['name']}: Caelestia gets these colours whenever it is "
+                                   "applied.")
 
 
 class CaelestiaModule(Module):
@@ -673,6 +834,11 @@ class CaelestiaModule(Module):
         super().__init__(ctx)
         self.panel: CaelestiaPanel | None = None
         self._hooked = False
+        self._watch: QFileSystemWatcher | None = None
+        self._recheck = QTimer(self)
+        self._recheck.setSingleShot(True)
+        self._recheck.setInterval(600)
+        self._recheck.timeout.connect(self._scheme_changed)
 
     def start(self):
         self.hotkey("hotkey", self.toggle, "Caelestia & Glass")
@@ -681,8 +847,18 @@ class CaelestiaModule(Module):
             sync.reloaded.connect(lambda: QTimer.singleShot(500, self.apply_glass))   # a reload drops the rules
             self._hooked = True
         QTimer.singleShot(1500, self.apply_glass)
+        if not IS_WIN and os.path.isdir(STATE_DIR) and self._watch is None:
+            self._watch = QFileSystemWatcher(self)
+            self._watch.addPath(STATE_DIR)
+            if os.path.isfile(SCHEME_PATH):
+                self._watch.addPath(SCHEME_PATH)
+            self._watch.fileChanged.connect(lambda _p: self._recheck.start())
+            self._watch.directoryChanged.connect(lambda _p: self._recheck.start())
 
     def stop(self):
+        if self._watch is not None:
+            self._watch.deleteLater()
+            self._watch = None
         self.apply_glass(off=True)
         if self.panel:
             self.panel.close()
@@ -756,6 +932,50 @@ class CaelestiaModule(Module):
         return ""
 
     # ── colours ────────────────────────────────────────────────────────────
+    def saved_for_scheme(self, sid: str) -> dict:
+        d = self.s("scheme_colours", {}) or {}
+        return dict(d.get(sid) or {}) if sid and isinstance(d, dict) else {}
+
+    def save_for_scheme(self, sid: str, colours: dict):
+        d = dict(self.s("scheme_colours", {}) or {})
+        if colours:
+            d[sid] = {k: v for k, v in colours.items() if is_colour(v)}
+        else:
+            d.pop(sid, None)
+        self.settings.set("caelestia.scheme_colours", d)
+        self.settings.save(emit=False)
+
+    def _scheme_changed(self):
+        """scheme.json changed (Caelestia switched schemes or made one from a wallpaper): put kept colours back."""
+        if self._watch is not None and os.path.isfile(SCHEME_PATH) and SCHEME_PATH not in self._watch.files():
+            self._watch.addPath(SCHEME_PATH)          # a file replaced in one step drops out of the watch
+        if not self.s("keep_scheme_colours", True):
+            return
+        d = scheme_file()
+        kept = self.saved_for_scheme(scheme_id(d))
+        now = scheme()
+        todo = {k: v for k, v in kept.items() if k in now and now[k].upper() != v.upper()}
+        if todo:
+            err = write_colours(todo)
+            if err:
+                self.log.warning("could not put the kept Caelestia colours back: %s", err)
+            else:
+                self.log.info("put %d kept colours back into Caelestia's %s scheme", len(todo), scheme_id(d))
+        if self.panel is not None and self.panel.isVisible() and self.panel.pages.currentIndex() == 2 \
+                and not self.panel._edits:
+            self.panel._fill_colours()
+
+    def theme_applied(self, t: dict):
+        """A Luminescent theme with Caelestia colours of its own was applied: give them to Caelestia."""
+        cols = ((t.get("caelestia") or {}).get("colours")) or {}
+        if cols and not IS_WIN:
+            now = scheme()
+            todo = {k: v for k, v in cols.items() if k in now and is_colour(v) and now[k].upper() != v.upper()}
+            if todo:
+                err = write_colours(todo)
+                if err:
+                    self.ctx.notify(self.title, err)
+
     def theme_from_scheme(self):
         cols = scheme()
         launcher = self.ctx.launcher

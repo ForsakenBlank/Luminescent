@@ -13,11 +13,10 @@ import logging
 
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QStackedWidget, QButtonGroup,
-    QScrollArea, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QPushButton, QSlider,
-    QColorDialog, QFileDialog
+    QScrollArea, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QPushButton, QSlider, QFileDialog
 )
 from PyQt6.QtCore import Qt, QTimer, QEvent, pyqtSignal
-from PyQt6.QtGui import QColor, QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut
 
 from core import theme, widgets, backup, anim, APP_NAME
 from core.guard import alive
@@ -277,9 +276,10 @@ class ColorButton(QPushButton):
         self._hex.setText(self._value.upper())
 
     def _pick(self):
-        c = QColorDialog.getColor(QColor(self._value), self, "Pick a colour")
-        if c.isValid():
-            self.set_value(c.name())
+        from core import colourpick
+        c = colourpick.pick_colour(self, self._value, "Pick a colour")
+        if c:
+            self.set_value(c)
 
 
 class PathEdit(QWidget):
@@ -604,6 +604,40 @@ class UpdatesWidget(QWidget):
         self.status.setText(f"Getting {rel['tag']}… Luminescent restarts by itself when it is ready.")
 
 
+class ToastTestWidget(QWidget):
+    """Shows a notification with the settings on this page (saved or not), so you can see them before saving."""
+
+    def __init__(self, page: "SettingsPage"):
+        super().__init__()
+        self.page = page
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        for text, title, msg in (
+                ("Show a notification", "Luminescent", "This is what notifications look like."),
+                ("Show a long one", "Something went wrong (error)",
+                 "A longer message, the kind an error has, so you can see how the card grows to fit it instead of "
+                 "cutting it off. " * 3)):
+            b = widgets.button(text)
+            b.clicked.connect(lambda _c=False, t=title, m=msg: self._show(t, m))
+            lay.addWidget(b)
+        lay.addStretch()
+
+    def _show(self, title: str, msg: str):
+        data = self.page.collect()
+
+        class _Peek:                                  # the values on the page, not the saved ones
+            def get(self, key, default=None):
+                sec, _, k = key.partition(".")
+                return data.get(sec, {}).get(k, default)
+        mgr = self.page.launcher.toasts
+        old, mgr.settings = mgr.settings, _Peek()
+        try:
+            mgr.show(title, msg.strip(), 6000)
+        finally:
+            mgr.settings = old
+
+
 class QuitWidget(QWidget):
     def __init__(self, launcher):
         super().__init__()
@@ -721,7 +755,9 @@ class ProfileBar(QFrame):
 
 
 class _SideButton(QPushButton):
-    """A sidebar section: name on the left, its field count in mono on the right."""
+    """A sidebar section: name on the left, its field count in mono on the right, and a star (shown on hover, or
+    always once it is pinned) that pins the section to the top of the list."""
+    pin_toggled = pyqtSignal(bool)
 
     def __init__(self, title: str, count: int):
         super().__init__()
@@ -739,8 +775,38 @@ class _SideButton(QPushButton):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         lay.addWidget(self.name, 1)
         lay.addWidget(self.count)
+        self.star = QPushButton("☆")
+        self.star.setFixedSize(22, 22)
+        self.star.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.star.setToolTip("Pin to the top")
+        self.star.clicked.connect(lambda: self.pin_toggled.emit(not self.pinned))
+        lay.addWidget(self.star)
+        lay.setContentsMargins(12, 0, 4, 0)
+        self.pinned = False
+        self._hover = False
+        self.set_pinned(False)
         self.toggled.connect(self._tone)
         self._tone(False)
+
+    def set_pinned(self, on: bool):
+        self.pinned = on
+        p = theme.P
+        self.star.setText("★" if on else "☆")
+        self.star.setToolTip("Unpin" if on else "Pin to the top")
+        self.star.setStyleSheet(f"QPushButton {{ background: transparent; border: none; padding: 0;"
+                                f" font-size: {theme.fs(14)}px; color: {p.primary if on else p.text_muted}; }}"
+                                f"QPushButton:hover {{ color: {p.primary}; }}")
+        self.star.setVisible(on or self._hover)
+
+    def enterEvent(self, e):
+        self._hover = True
+        self.star.setVisible(True)
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self._hover = False
+        self.star.setVisible(self.pinned)
+        super().leaveEvent(e)
 
     def set_matches(self, n: int | None, q: str = ""):
         # n: how many settings match the search (None: no search, show the total)
@@ -856,15 +922,20 @@ class SettingsPage(QWidget):
         main.addWidget(self.stack, 1)
         root.addLayout(main, 1)
 
+        self._side_lay = shl
+        self._pin_head = widgets.label("★  PINNED", 9.5, 600, mono=True, spacing=0.14, tone="muted")
+        self._all_head = widgets.label("ALL SETTINGS", 9.5, 600, mono=True, spacing=0.14, tone="muted")
+        for h in (self._pin_head, self._all_head):
+            h.setContentsMargins(12, 8, 0, 4)
         for i, section in enumerate(SCHEMA):
             b = _SideButton(section.title, sum(1 for f in section.fields if f.type not in ("widget", "hidden")))
             b.clicked.connect(lambda _, k=i: self._select(k))
+            b.pin_toggled.connect(lambda on, k=section.key: self._pin(k, on))
             self.side_group.addButton(b)
-            shl.addWidget(b)
             self.side_buttons.append(b)
             self._pages[section.key] = self.stack.count()
             self.stack.addWidget(QWidget())         # a stand-in until the section is first shown
-        shl.addStretch()
+        self._order_sidebar()
 
         bar = QFrame()
         bar.setObjectName("setFooter")
@@ -908,6 +979,41 @@ class SettingsPage(QWidget):
 
         self.load_values()
         self._select(0)
+
+    # ── pinned sections ────────────────────────────────────────────────────
+    def _pinned(self) -> list[str]:
+        keys = {sec.key for sec in SCHEMA}
+        return [k for k in (self.settings.get("ui.settings_pinned", []) or []) if k in keys]
+
+    def _pin(self, key: str, on: bool):
+        pins = [k for k in self._pinned() if k != key] + ([key] if on else [])
+        self.settings.set("ui.settings_pinned", pins)
+        self.settings.save_quiet()
+        self._order_sidebar()
+
+    def _order_sidebar(self):
+        """Pinned sections first (in the order they were pinned), then all of them in the usual order."""
+        lay = self._side_lay
+        while lay.count():
+            lay.takeAt(0)                          # the widgets stay; only their places are rebuilt
+        pins = self._pinned()
+        index = {sec.key: i for i, sec in enumerate(SCHEMA)}
+        for b, sec in zip(self.side_buttons, SCHEMA):
+            b.set_pinned(sec.key in pins)
+        if pins:
+            lay.addWidget(self._pin_head)
+            for k in pins:
+                lay.addWidget(self.side_buttons[index[k]])
+            lay.addSpacing(6)
+            lay.addWidget(self._all_head)
+        self._pin_head.setVisible(bool(pins))
+        self._all_head.setVisible(bool(pins))
+        for i, sec in enumerate(SCHEMA):
+            if sec.key not in pins:
+                lay.addWidget(self.side_buttons[i])
+        lay.addStretch()
+        for b in self.side_buttons:
+            b.setHidden(getattr(b, "_search_hidden", False))
 
     def _ensure(self, i: int):
         if i in self._built or not 0 <= i < len(SCHEMA):
@@ -1008,6 +1114,11 @@ class SettingsPage(QWidget):
             head.addStretch()
         lay.addLayout(head)
         lay.addSpacing(14)
+        if section.key in self.launcher.modules:
+            bar = QWidget()
+            self._fill_open_bar(bar, section.key)
+            lay.addWidget(bar)
+            lay.addSpacing(10)
         if self.launcher.module_errors.get(section.key):
             e = widgets.label(f"⚠ This module could not be loaded: {self.launcher.module_errors[section.key]}",
                               13, tone="danger")
@@ -1037,6 +1148,46 @@ class SettingsPage(QWidget):
         lay.addStretch()
         scroll.setWidget(page)
         return scroll
+
+    def _fill_open_bar(self, bar: QWidget, key: str):
+        """Buttons for what the module does (open its panel, pick a colour, new timer…), so you need no hotkey."""
+        m = self.launcher.modules[key]
+        lay = bar.layout()
+        if lay is None:
+            lay = QHBoxLayout(bar)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(8)
+        widgets.clear_layout(lay)
+        if not m.running:
+            lay.addWidget(widgets.label(f"{m.title} is turned off.", 12.5, tone="muted"))
+            on = widgets.button("Turn it on", "primary")
+            on.clicked.connect(lambda: self._turn_on(bar, key))
+            lay.addWidget(on)
+            lay.addStretch()
+            return
+        try:
+            acts = m.actions()
+        except Exception:
+            log.exception("could not list the actions of %s", key)
+            acts = []
+        if key == "reminders":
+            acts = []                                # its editor is this page
+        for i, (aid, text, _fn) in enumerate(acts[:5]):
+            b = widgets.button(text, "primary" if i == 0 else "", "Does the same as its hotkey")
+            b.setFixedHeight(30)
+            b.clicked.connect(lambda _c=False, a=aid: self.launcher.run_action(f"{key}:{a}"))
+            lay.addWidget(b)
+        lay.addStretch()
+        bar.setVisible(bool(acts))
+
+    def _turn_on(self, bar: QWidget, key: str):
+        self.launcher.toggle_module(key, True)
+        w = self._widgets.get(f"{key}.enabled")
+        if w is not None:
+            w[1].setChecked(True)
+        self._loaded.setdefault(key, {})["enabled"] = True
+        QTimer.singleShot(150, lambda: alive(bar) and self._fill_open_bar(bar, key))
+        self._update_status()
 
     def _row(self, f: Field, w) -> QFrame:
         row = QFrame()
@@ -1140,6 +1291,8 @@ class SettingsPage(QWidget):
                 return QuitWidget(self.launcher)
             if full == "general.updates":
                 return UpdatesWidget(self.launcher)
+            if full == "general.toast_test":
+                return ToastTestWidget(self)
         if t == "custom":
             if full == "ui.nav_order":
                 return NavOrderEditor()
@@ -1177,6 +1330,7 @@ class SettingsPage(QWidget):
                 hay = f"{section.title} {section.description}".lower()
                 hide = bool(q) and not hits and q not in hay
             self.side_buttons[i].setHidden(hide)
+            self.side_buttons[i]._search_hidden = hide
             self.side_buttons[i].set_matches(hits if q else None, q)
             if not hide and first < 0:
                 first = i

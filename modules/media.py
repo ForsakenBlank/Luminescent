@@ -104,6 +104,11 @@ class MediaPanel(widgets.FloatingPanel):
         self.geometry_changed.connect(lambda: m.remember(self.geometry()))
         self.escape_pressed.connect(self.hide)
 
+    def showEvent(self, e):
+        super().showEvent(e)
+        if getattr(self, "_embedded", False):
+            QTimer.singleShot(0, self.m._wake)        # a page coming back on screen
+
     def show_state(self, d: dict | None, count: int):
         if d is None:
             ok = self.m.has_playerctl()
@@ -154,6 +159,7 @@ class MediaModule(Module):
         self._win_ready.connect(self._show_players)
         self._asking = False
         self.panel: MediaPanel | None = None
+        self.views: list = []                     # Media pages (overlay / dashboard boxes)
         self.players: list[dict] = []
         self._chosen = ""
         self._proc: QProcess | None = None
@@ -197,11 +203,35 @@ class MediaModule(Module):
         return [("Media controls", self.toggle)]
 
     # ── panel ──────────────────────────────────────────────────────────────
+    def make_page(self):
+        view = MediaPanel(self)
+        view.hidden.connect(self._maybe_stop)
+        self.views.append(view)
+        QTimer.singleShot(0, self._wake)
+        return widgets.embed(view)
+
+    def _shown(self) -> list:
+        from core.guard import alive
+        self.views = [v for v in self.views if alive(v)]
+        return [v for v in ([self.panel] if self.panel else []) + self.views if alive(v) and v.isVisible()]
+
+    def _wake(self):
+        if not self._poll.isActive():
+            self.refresh()
+            self._poll.start()
+
+    def _maybe_stop(self):
+        QTimer.singleShot(0, lambda: None if self._shown() else self._poll.stop())
+
+    def _show_all(self):
+        for v in self._shown():
+            v.show_state(self.current(), len(self.players))
+
     def toggle(self):
         if self.panel is None:
             with self.themed():
                 self.panel = MediaPanel(self)
-            self.panel.hidden.connect(self._poll.stop)
+            self.panel.hidden.connect(self._maybe_stop)
         if self.panel.isVisible() and not self.panel.property("fading_out"):
             self.panel.fade_hide()
         else:
@@ -233,8 +263,7 @@ class MediaModule(Module):
     def _show_players(self, players: list):
         self._asking = False
         self.players = players
-        if self.panel:
-            self.panel.show_state(self.current(), len(self.players))
+        self._show_all()
 
     def refresh(self):
         if IS_WIN:
@@ -245,8 +274,8 @@ class MediaModule(Module):
                                  name="media").start()
             return
         if not self.has_playerctl():
-            if self.panel:
-                self.panel.show_state(None, 0)
+            for v in self._shown():
+                v.show_state(None, 0)
             return
         if self._proc is not None:
             return                              # the last question is still out
@@ -262,8 +291,7 @@ class MediaModule(Module):
         out = bytes(proc.readAllStandardOutput()).decode("utf-8", "replace")
         proc.deleteLater()
         self.players = parse(out)
-        if self.panel:
-            self.panel.show_state(self.current(), len(self.players))
+        self._show_all()
 
     def current(self) -> dict | None:
         """The chosen player, else the one playing, else the first."""
@@ -277,8 +305,7 @@ class MediaModule(Module):
             names = [p["player"] for p in self.players]
             cur = self.current()["player"]
             self._chosen = names[(names.index(cur) + 1) % len(names)]
-            if self.panel:
-                self.panel.show_state(self.current(), len(self.players))
+            self._show_all()
 
     def _send(self, command: str):
         if IS_WIN:

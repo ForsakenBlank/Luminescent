@@ -24,7 +24,7 @@ from dataclasses import dataclass, field as dc_field
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from core import APP_DIR, HOME_DIR, DATA_DIR, IS_WIN, save_json, load_json
-from core.anim import KINDS as ANIM_KINDS, SPEEDS as ANIM_SPEEDS
+from core.anim import KINDS as ANIM_KINDS, SPEEDS as ANIM_SPEEDS, STYLES as ANIM_STYLES
 
 SETTINGS_FILE = os.path.join(HOME_DIR, "settings.json")
 PROFILES_FILE = os.path.join(DATA_DIR, "profiles.json")
@@ -230,6 +230,10 @@ SCHEMA = [
             "Every animation in Luminescent. Performance mode (Overlay & Interface) turns all of them off.", [
         Field("enabled", "Animations", "bool", True, "Off: everything appears and moves instantly."),
         Field("speed", "Speed", "choice", "normal", choices=ANIM_SPEEDS),
+        Field("style", "Style", "choice", "smooth", choices=ANIM_STYLES,
+              help="How things move: Caelestia glides with a little overshoot and panels rise into place."),
+        Field("hover", "Hover effects", "bool", True,
+              "Dashboard boxes and cards light up their edge in the accent colour under the mouse."),
     ] + [Field(key, label, "bool", True, help) for key, label, help in ANIM_KINDS]),
 
     Section("dashboard", "Dashboard & Scripts", "▦", "How dashboard items start.", [

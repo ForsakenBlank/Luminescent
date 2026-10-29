@@ -38,6 +38,72 @@ def new_theme(name: str, base: dict | None = None) -> dict:
     return t
 
 
+def colours_from_roles(roles: dict) -> dict:
+    """Every colour role of a theme from a handful ({"primary", "bg", "card", "text", "muted", "border"})."""
+    accent = roles.get("primary") or ""
+    if not accent.startswith("#"):
+        return {}
+    bg = roles.get("bg") or ""
+    light = bool(bg) and theme.luminance(bg) > 140
+    cols = {**theme.PRESETS["light" if light else "dark"], **theme.generate(accent, light)}
+    for role, keys in (("bg", ("bg_base",)), ("card", ("bg_card", "folder_color")), ("text", ("text_primary",)),
+                       ("muted", ("text_secondary",)), ("border", ("border",))):
+        if roles.get(role, "").startswith("#"):
+            for k in keys:
+                cols[k] = roles[role]
+    if bg.startswith("#"):
+        cols["bg_frame"] = theme.mix(bg, "#000000" if not light else "#FFFFFF", 0.25)
+        cols["bg_header"] = theme.mix(bg, cols["bg_card"], 0.5)
+        cols["bg_card_hover"] = theme.mix(cols["bg_card"], cols["text_primary"], 0.06)
+        cols["text_muted"] = theme.mix(cols["text_secondary"], bg, 0.4)
+    return cols
+
+
+# The "More themes" folder every copy gets once (bump PACK_VERSION to add new ones later).
+PACK_VERSION = 1
+PACK = [
+    ("Caelestia", dict(primary="#CBA6F7", bg="#141218", card="#211F26", text="#E6E0E9", muted="#CAC4D0",
+                       border="#36343B"), 14),
+    ("Catppuccin Mocha", dict(primary="#CBA6F7", bg="#1E1E2E", card="#313244", text="#CDD6F4", muted="#A6ADC8",
+                              border="#45475A"), 12),
+    ("Catppuccin Latte", dict(primary="#8839EF", bg="#EFF1F5", card="#E6E9EF", text="#4C4F69", muted="#6C6F85",
+                              border="#CCD0DA"), 12),
+    ("Tokyo Night", dict(primary="#7AA2F7", bg="#1A1B26", card="#24283B", text="#C0CAF5", muted="#A9B1D6",
+                         border="#3B4261"), 10),
+    ("Gruvbox", dict(primary="#FE8019", bg="#282828", card="#3C3836", text="#EBDBB2", muted="#BDAE93",
+                     border="#504945"), 6),
+    ("Nord", dict(primary="#88C0D0", bg="#2E3440", card="#3B4252", text="#ECEFF4", muted="#D8DEE9",
+                  border="#4C566A"), 8),
+    ("Rosé Pine", dict(primary="#EBBCBA", bg="#191724", card="#26233A", text="#E0DEF4", muted="#908CAA",
+                       border="#403D52"), 14),
+    ("Dracula", dict(primary="#BD93F9", bg="#282A36", card="#343746", text="#F8F8F2", muted="#BFBFBF",
+                     border="#44475A"), 10),
+    ("Everforest", dict(primary="#A7C080", bg="#2D353B", card="#343F44", text="#D3C6AA", muted="#9DA9A0",
+                        border="#475258"), 10),
+    ("Material You", dict(primary="#D0BCFF", bg="#1C1B1F", card="#2B2930", text="#E6E1E5", muted="#CAC4D0",
+                          border="#49454F"), 18),
+]
+
+
+def _add_pack(d: dict):
+    """Add the theme pack to themes.json data `d` (once per PACK_VERSION; deleted ones stay deleted)."""
+    if int(d.get("pack", 0) or 0) >= PACK_VERSION:
+        return False
+    folder = next((f for f in d["folders"] if f.get("name") == "More themes"), None)
+    if folder is None:
+        folder = {"id": uuid.uuid4().hex[:10], "name": "More themes", "colour": "#CBA6F7", "collapsed": False}
+        d["folders"].append(folder)
+    names = {t.get("name") for t in d["themes"]}
+    for name, roles, radius in PACK:
+        if name in names:
+            continue
+        t = new_theme(name)
+        t.update({"colours": colours_from_roles(roles), "folder": folder["id"], "radius": radius})
+        d["themes"].append(t)
+    d["pack"] = PACK_VERSION
+    return True
+
+
 class ThemeStore(QObject):
     applied = pyqtSignal(dict)       # the theme that is now active
     changed = pyqtSignal()           # list / folders / names changed
@@ -77,6 +143,11 @@ class ThemeStore(QObject):
                 cols["primary_text"] = theme.derive_primary_text(cols)
             t["colours"] = {**theme.PRESETS["dark"], **cols}
         if migrated:
+            try:
+                save_json(PATH, d, indent=2)
+            except OSError:
+                log.exception("could not save themes.json")
+        if _add_pack(d):
             try:
                 save_json(PATH, d, indent=2)
             except OSError:
@@ -249,21 +320,9 @@ class ThemeStore(QObject):
     def from_colours(self, name: str, roles: dict) -> str:
         """A theme from another app's colours ({"primary", "bg", "card", "text", "muted", "border"}). A theme
         with the same name is updated instead of adding another. Returns its id ('' without an accent)."""
-        accent = roles.get("primary") or ""
-        if not accent.startswith("#"):
+        cols = colours_from_roles(roles)
+        if not cols:
             return ""
-        bg = roles.get("bg") or ""
-        light = bool(bg) and theme.luminance(bg) > 140
-        cols = {**theme.PRESETS["light" if light else "dark"], **theme.generate(accent, light)}
-        for role, keys in (("bg", ("bg_base",)), ("card", ("bg_card", "folder_color")), ("text", ("text_primary",)),
-                           ("muted", ("text_secondary",)), ("border", ("border",))):
-            if roles.get(role, "").startswith("#"):
-                for k in keys:
-                    cols[k] = roles[role]
-        if roles.get("bg", "").startswith("#"):
-            cols["bg_frame"] = theme.mix(roles["bg"], "#000000" if not light else "#FFFFFF", 0.25)
-            cols["bg_header"] = theme.mix(roles["bg"], cols["bg_card"], 0.5)
-            cols["bg_card_hover"] = theme.mix(cols["bg_card"], cols["text_primary"], 0.06)
         old = next((t for t in self.themes() if t.get("name") == name and not t.get("builtin")), None)
         if old is not None:
             t = copy.deepcopy(old)

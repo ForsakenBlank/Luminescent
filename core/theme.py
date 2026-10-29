@@ -382,6 +382,9 @@ def _check(colour: str) -> str:
     return _ui_png("check", colour, 32, 32, draw)
 
 
+HOVER = True                    # Settings → Animations → Hover effects
+
+
 def stylesheet() -> str:
     p = P
     r = p.radius
@@ -581,10 +584,11 @@ def stylesheet() -> str:
     #lumPageTitle {{ font-size: 15px; font-weight: 600; }}
     #lumRule {{ background: {p.border}; }}
     #lumCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
-    #lumCard:hover {{ border-color: {mix(p.border, p.primary, 0.45)}; }}
+{HOVER and f"    #lumCard:hover {{ border-color: {mix(p.border, p.primary, 0.45)}; }}" or ""}
 
     #tabBox {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
     #tabBox[active="true"] {{ border-color: {p.primary}; }}
+{HOVER and f"    #tabBox:hover {{ border-color: {mix(p.border, p.primary, 0.5)}; }}" or ""}
     #tabBox[selected="true"] {{ border: 1px solid {p.primary}; background: {mix(p.bg_card, p.primary, 0.07)}; }}
     #pageBody {{ background: {p.bg_base}; border: none; border-bottom-left-radius: {rb}px;
                  border-bottom-right-radius: {rb}px; }}

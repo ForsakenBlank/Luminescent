@@ -188,6 +188,8 @@ class Launcher:
 
     # ── look ───────────────────────────────────────────────────────────────
     def _restyle(self):
+        theme.HOVER = bool(self.settings.get("animations.hover", True)) and not \
+            self.settings.get("ui.performance_mode", False)
         self.app.setStyleSheet(theme.stylesheet())
         f = QFont(theme.P.font_family)
         f.setPixelSize(theme.fs(13))    # the global QSS must not set font-size, or setFont() breaks
@@ -315,6 +317,9 @@ class Launcher:
         self.notify(m.title, f"{m.title} has no action '{aid}' any more.")
 
     def apply_settings(self):
+        hover = bool(self.settings.get("animations.hover", True)) and not self.settings.get("ui.performance_mode")
+        if hover != theme.HOVER:
+            QTimer.singleShot(0, self._restyle)
         if theme.set_text_scale(self.settings.get("ui.text_scale", 1.0)):
             QTimer.singleShot(0, lambda: self.overlay.rebuild(between=self._restyle_all))
         wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""

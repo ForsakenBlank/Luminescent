@@ -240,8 +240,8 @@ class Launcher:
         want = bool(self.settings.get("ui.own_terminal", False))
         linked = terminal.own_linked()
         if want and not linked and asked:
-            what = (f"Luminescent will give your PowerShell and Command Prompt profiles in Windows Terminal its "
-                    f"colours (through its own fragment file; your Terminal settings file is not edited)."
+            what = ("Luminescent will give your PowerShell and Command Prompt profiles in Windows Terminal its "
+                    "colours (through its own fragment file; your Terminal settings file is not edited)."
                     if IS_WIN else
                     "Luminescent will add one line to ~/.config/kitty/kitty.conf:\n\n"
                     "    include luminescent-theme.conf\n\n"
@@ -716,6 +716,13 @@ class Launcher:
         self._desktop_notify(title, message, ms)
 
     def toast(self, title: str, message: str, ms: int = 8000):
+        """Always shows (reminders, dose warnings): a desktop notification, so it stays in your notification
+        history, and a Luminescent card as well when that is the notification style."""
+        if self.settings.get("general.notify_style", "luminescent") == "luminescent":
+            try:
+                self.toasts.show(title, message, ms)
+            except Exception:
+                log.exception("toast failed")
         self._desktop_notify(title, message, ms)
 
     def _desktop_notify(self, title: str, message: str, ms: int):

@@ -6,11 +6,11 @@ import subprocess
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QMessageBox, QMenu, QSizePolicy, QDialog, QLineEdit, QGraphicsOpacityEffect,
+    QMessageBox, QMenu, QDialog, QLineEdit,
     QDateTimeEdit, QDialogButtonBox
 )
 from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, pyqtSignal, QTimer,
-                          QPropertyAnimation, QEasingCurve)
+                          QEasingCurve)
 from PyQt6.QtGui import QPainter, QColor, QPixmap
 
 from core import IS_WIN, theme, hypr, anim

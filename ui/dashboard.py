@@ -35,10 +35,10 @@ import logging
 
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QDialog, QFormLayout, QLineEdit,
-    QFileDialog, QSizePolicy, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView, QApplication
+    QFileDialog, QSizePolicy, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView
 )
 from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QRect, QMimeData, QSize, QEasingCurve, pyqtSignal
-from PyQt6.QtGui import QDrag, QPixmap, QPainter, QColor, QIcon
+from PyQt6.QtGui import QDrag, QIcon
 
 from core import DATA_DIR, save_json, load_json, widgets, runner, desktop, usage, theme, events, anim
 from core.guard import alive

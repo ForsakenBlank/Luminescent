@@ -14,7 +14,7 @@ import time
 import logging
 import threading
 import urllib.request
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from core import DATA_DIR, save_json, load_json
 

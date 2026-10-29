@@ -27,8 +27,8 @@ from datetime import datetime, date, time as dtime, timedelta
 
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QListWidget, QListWidgetItem, QLineEdit,
-    QTextEdit, QCheckBox, QComboBox, QSpinBox, QDateEdit, QTimeEdit, QPushButton, QFileDialog,
-    QStackedWidget, QFormLayout, QScrollArea, QSizePolicy
+    QTextEdit, QCheckBox, QComboBox, QSpinBox, QDateEdit, QTimeEdit, QFileDialog,
+    QFormLayout, QScrollArea
 )
 from PyQt6.QtCore import Qt, QTimer, QDate, QTime, pyqtSignal
 

@@ -16,7 +16,7 @@ import shutil
 from collections import deque
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
-from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QProcess
+from PyQt6.QtCore import QTimer, QRectF, QPointF, QProcess
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
 
 from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json

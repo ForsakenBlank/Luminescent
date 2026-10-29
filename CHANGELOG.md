@@ -37,7 +37,8 @@
   Luminescent theme (written into Caelestia whenever that theme is applied). Caelestia draws its colours flat, so
   gradients can not go into its scheme.
 * **Fixes**: a module panel's own accent no longer turns back into the theme's when it goes into edit mode or
-  changes opacity; typing invalid JSON in a Caelestia list field no longer throws an error.
+  changes opacity; typing invalid JSON in a Caelestia list field no longer throws an error; reminders and dose
+  warnings show a Luminescent card as well as the desktop notification when that is the notification style.
 
 ## 1.4.0
 

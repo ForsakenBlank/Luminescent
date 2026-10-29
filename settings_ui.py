@@ -21,7 +21,7 @@ from PyQt6.QtGui import QKeySequence, QShortcut
 from core import theme, widgets, backup, anim, APP_NAME
 from core.guard import alive
 from core import hotkeys as hk
-from core.settings import (SCHEMA, Field, defaults, NAV_SECTIONS, ALL_PAGES, REQUIRED_PAGES, START_PANELS, TRAY_ITEMS,
+from core.settings import (SCHEMA, Field, defaults, ALL_PAGES, REQUIRED_PAGES, START_PANELS, TRAY_ITEMS,
                            SETTINGS_FILE)
 
 log = logging.getLogger("settings_ui")

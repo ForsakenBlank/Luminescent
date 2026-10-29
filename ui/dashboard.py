@@ -768,13 +768,13 @@ class ItemRow(QFrame):
         lay = QHBoxLayout(self)
         if self.kind == "separator":
             self.setFixedHeight(SEP_ROW_H)
-            lay.setContentsMargins(12, 0, 12, 0)
+            lay.setContentsMargins(8, 0, 8, 0)
             lay.addWidget(widgets.rule())
             self.setToolTip("Separator · drag to move · right-click to delete")
             return
         if self.kind == "heading":
             self.setFixedHeight(HEAD_ROW_H)
-            lay.setContentsMargins(12, 6, 12, 0)
+            lay.setContentsMargins(8, 6, 8, 0)
             h = widgets.label((item.get("name") or "").upper(), 9.5, 600, mono=True, spacing=0.14, tone="")
             h.setObjectName("tabHeading")
             lay.addWidget(h, 1)
@@ -782,7 +782,7 @@ class ItemRow(QFrame):
             return
         self.setFixedHeight(ROW_H)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        lay.setContentsMargins(12, 0, 12, 0)
+        lay.setContentsMargins(8, 0, 8, 0)
         lay.setSpacing(10)
         icon = icon_of(item) if box.page.launcher.settings.get("dashboard.show_icons", True) else None
         if icon is not None:
@@ -1123,7 +1123,7 @@ class TabBox(_Box):
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.body = QWidget()
         bl = QVBoxLayout(self.body)
-        bl.setContentsMargins(0, 4, 0, 4)
+        bl.setContentsMargins(4, 4, 4, 4)       # rows sit inside the box's rounded corners
         bl.setSpacing(0)
         self.rows: list[ItemRow] = []
         for it in tab["items"]:

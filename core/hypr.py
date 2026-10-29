@@ -142,6 +142,21 @@ def screen_at_cursor():
     return QApplication.screenAt(cursor_pos()) or QApplication.primaryScreen()
 
 
+def dialog_area(parent) -> tuple[QRect, QRect]:
+    """Where a pop-up (ask a name, confirm, pick a colour...) goes: (the area to centre it on, the screen to keep
+    it inside). The middle of the window that opened it when the mouse is on that window, else the middle of
+    the screen with the mouse, never the window's spot on some other monitor."""
+    cur = cursor_pos()
+    scr = available_geometry(QApplication.screenAt(cur) or QApplication.primaryScreen())
+    win = parent.window() if isinstance(parent, QWidget) else None
+    if win is not None and win.isVisible():
+        g = win.frameGeometry()
+        if g.contains(cur):
+            inside = g.intersected(scr)
+            return (inside if not inside.isEmpty() else scr), scr
+    return scr, scr
+
+
 def available_geometry(screen) -> QRect:
     """The screen minus what bars and docks reserve (Qt on Wayland does not know about those)."""
     g = screen.geometry()
@@ -494,20 +509,17 @@ class WindowSync(QObject):
             self.focus(w)
 
     def _centre_dialog(self, w: QWidget, addr: str):
-        """Dialogs (ask a name, confirm, pick a file or colour...) go in the middle of the window that opened
-        them, else of the screen with the mouse. Qt works their spot out from window positions it can not
-        know on Wayland, which put them in the top-left corner."""
+        """Dialogs (ask a name, confirm, pick a file or colour...) go where dialog_area() says. Qt works their
+        spot out from window positions it can not know on Wayland, which put them in the top-left corner."""
         parent = w.parentWidget().window() if w.parentWidget() is not None else None
-        if parent is not None and parent.isVisible() and parent is not w:
-            area = parent.frameGeometry()
-        else:
-            area = available_geometry(screen_at_cursor())
+        area, scr = dialog_area(parent if parent is not w else None)
         c = self._client(addr)
         if c and isinstance(c.get("size"), list):
             dw, dh = int(c["size"][0]), int(c["size"][1])
         else:
             dw, dh = w.width(), w.height()
-        x, y = area.center().x() - dw // 2, area.center().y() - dh // 2
+        x = max(scr.left(), min(area.center().x() - dw // 2, scr.right() - dw))
+        y = max(scr.top(), min(area.center().y() - dh // 2, scr.bottom() - dh))
         self._set_qt_pos(w, x, y)
         dispatch(f"hl.dsp.window.move({{ x = {x}, y = {y}, window = {lstr('address:' + addr)} }})")
 

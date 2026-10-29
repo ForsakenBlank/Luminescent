@@ -288,6 +288,15 @@ class ThemeStore(QObject):
         self.save()
         self.changed.emit()
 
+    def set_group_order(self, keys: list[str]):
+        """The order of the groups on the Themes page ("builtin", "mine" and folder ids, top to bottom)."""
+        self.data["group_order"] = [k for k in keys if isinstance(k, str)]
+        by_id = {f["id"]: f for f in self.data["folders"]}
+        ordered = [by_id.pop(k) for k in keys if k in by_id]
+        self.data["folders"] = ordered + list(by_id.values())     # the tray and palette follow it too
+        self.save()
+        self.changed.emit()
+
     def delete_folder(self, fid: str):
         self.data["folders"] = [f for f in self.data["folders"] if f["id"] != fid]
         for t in self.data["themes"]:

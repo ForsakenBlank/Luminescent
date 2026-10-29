@@ -253,8 +253,9 @@ class ColorButton(QPushButton):
         self._value = "#000000"
         self.setFixedHeight(32)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet(f"QPushButton {{ background: {theme.P.bg_frame}; padding: 0; }}"
-                           f"QPushButton:hover {{ border-color: {theme.P.text_muted}; }}")
+        self.setObjectName("colourButton")
+        self.setStyleSheet(f"#colourButton {{ background: {theme.P.bg_frame}; padding: 0; }}"
+                           f"#colourButton:hover {{ border-color: {theme.P.text_muted}; }}")
         lay = QHBoxLayout(self)
         lay.setContentsMargins(6, 0, 10, 0)
         lay.setSpacing(8)

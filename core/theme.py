@@ -606,7 +606,7 @@ def stylesheet() -> str:
 def _stylesheet() -> str:
     p = P
     r = p.radius
-    rs = max(0, r - 4)          # small controls: buttons, inputs
+    rs = min(r, max(6, r - 4))  # small controls: buttons, inputs, hovered rows (never sharp unless the theme is)
     rb = max(0, r - 2)          # boxes inside a panel
     mono = MONO_CSS
 
@@ -821,7 +821,7 @@ def _stylesheet() -> str:
     #tabHeader[collapsed="true"] {{ border-bottom: none; border-radius: {rb}px; }}
     #tabAccent {{ background: {f('primary')}; border-radius: 1px; }}
     #tabTitle {{ color: {p.text_primary}; font-family: {mono}; }}
-    #tabRow {{ background: transparent; border-radius: 0; }}
+    #tabRow {{ background: transparent; border-radius: {rs}px; }}
     #tabRow:hover {{ background: {p.bg_card_hover}; }}
     #tabRowText {{ color: {p.text_primary}; }}
     #typeBadge {{

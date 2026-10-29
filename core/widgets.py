@@ -157,9 +157,19 @@ def cursor_screen_geometry() -> QRect:
     return hypr.available_geometry(cursor_screen())
 
 
+def home_geometry() -> QRect:
+    """The screen new panels and pop-ups go to: the one with the mouse, or the primary screen when
+    Settings → Overlay & Interface → Open the overlay on says so."""
+    s = anim._settings
+    if s is not None and s.get("ui.overlay_screen", "cursor") == "primary":
+        return primary_geometry()
+    g = cursor_screen_geometry()
+    return g if not g.isEmpty() else primary_geometry()
+
+
 def anchor_position(w: int, h: int, key: str, padding: int, screen: QRect | None = None) -> QPoint:
     """Top-left point that places a w×h box at anchor `key` ('tl'..'br') on `screen`."""
-    s = screen or primary_geometry()
+    s = screen or home_geometry()
     v, hz = key[0], key[1]
     if v == "t":
         y = s.top() + padding
@@ -261,7 +271,7 @@ class AnchorBar(QWidget):
             layout.addWidget(btn)
 
         self.adjustSize()
-        s = primary_geometry()
+        s = home_geometry()
         self.move(s.center().x() - self.sizeHint().width() // 2, s.top() + 8)
 
     def paintEvent(self, event):
@@ -281,7 +291,8 @@ def icon_button(text: str, tooltip: str = "", size: int = 26, font_px: int = 13,
     b.setCursor(Qt.CursorShape.PointingHandCursor)
     if ghost:
         b.setProperty("variant", "ghost")
-    b.setStyleSheet(f"QPushButton {{ padding: 0; font-size: {font_px}px; }}")
+    # round, so the hover highlight is a circle and not a box poking into a rounded corner
+    b.setStyleSheet(f"QPushButton {{ padding: 0; font-size: {font_px}px; border-radius: {size // 2}px; }}")
     return b
 
 
@@ -604,11 +615,10 @@ class FloatingPanel(QWidget):
         s = anim._settings
         if self.stays_put or s is None:
             return
-        on_cursor = s.get("ui.overlay_screen", "cursor") == "cursor"
-        target = cursor_screen_geometry() if on_cursor else primary_geometry()
+        target = home_geometry()
         if target.isEmpty():
             return
-        how = s.get("ui.panel_place", "kept")
+        how = s.get("ui.panel_place", "centre")
         if how == "centre":
             self.center_on(target)
         elif how == "cursor":
@@ -633,7 +643,7 @@ class FloatingPanel(QWidget):
         self.geometry_changed.emit()
 
     def center_on(self, screen: QRect | None = None):
-        s = screen or primary_geometry()
+        s = screen or home_geometry()
         self.move(s.center().x() - self.width() // 2, s.center().y() - self.height() // 2)
 
     def snap_to(self, key: str, padding: int, screen: QRect | None = None):
@@ -770,15 +780,16 @@ class RoundedDialog(QDialog):
         return self._resizable
 
     def fit_to_screen(self, w: int, h: int, near: QWidget | None = None):
-        """Size it to w×h (smaller on a small screen) and centre it on the screen it belongs on."""
-        scr = hypr.available_geometry(near.screen()) if near is not None and near.screen() else \
-            cursor_screen_geometry()
+        """Size it to w×h (smaller on a small screen) and centre it on the screen with the mouse (on the
+        window that opened it when the mouse is over that window)."""
+        area, scr = hypr.dialog_area(near)
         if scr.isEmpty():
-            scr = primary_geometry()
+            area = scr = primary_geometry()
         w = min(w, max(self.minimumWidth(), scr.width() - 60))
         h = min(h, max(self.minimumHeight(), scr.height() - 60))
         self.resize(w, h)
-        self.move(scr.center().x() - w // 2, scr.center().y() - h // 2)
+        self.move(max(scr.left(), min(area.center().x() - w // 2, scr.right() - w)),
+                  max(scr.top(), min(area.center().y() - h // 2, scr.bottom() - h)))
 
     def showEvent(self, e):
         super().showEvent(e)

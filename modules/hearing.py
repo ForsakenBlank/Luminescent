@@ -43,10 +43,10 @@ from datetime import date, datetime, timedelta
 
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QDialog, QDoubleSpinBox, QSizePolicy, QFrame, QPushButton,
-    QStackedWidget, QSlider, QScrollArea
+    QStackedWidget, QSlider, QScrollArea, QToolTip, QSpinBox
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QThread, pyqtSignal
-from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
+from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QLinearGradient, QBrush
 
 from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json, events
 from core.module import Module
@@ -299,7 +299,8 @@ class Endpoint:
 
         dip=True: by dipping the app streams (never above master + 0). dip=False: by moving the master volume.
         """
-        db = max(self.min_db, min(self.max_db, db))
+        # never above 0 dB, or above where the master already is when it is turned past 100 %
+        db = max(self.min_db, min(max(self.max_db, self.master_db()), db))
         if dip:
             new = max(-60.0, min(0.0, db - self.master_db()))
             if abs(new - self.dip_db) > 0.01:
@@ -329,7 +330,7 @@ class Endpoint:
 
     def set_volume_percent(self, pct: float):
         """The hard cap: this one moves the master volume (only ever down)."""
-        self.pulse.volume_set_all_chans(self.sink, round(max(0.0, min(1.0, pct / 100.0)) * 65536) / 65536)
+        self.pulse.volume_set_all_chans(self.sink, round(max(0.0, min(1.5, pct / 100.0)) * 65536) / 65536)
         self.sink = self.pulse.get_sink_by_name(self.id)
 
     def close(self):
@@ -644,110 +645,206 @@ class SafeTimeChart(QWidget):
 
 
 class TodayChart(QWidget):
-    """Today's level in half-hour bars, from the first sound of the day to now: accent, amber near the limit,
-    red over it."""
-    BUCKET = 30
+    """Today's level from the first sound of the day to now, as bars of 5 to 30 minutes (shorter when the day so
+    far is short): accent, amber near the limit, red over it, on a dB scale with the limit marked. Hover a bar for
+    its time, level and how long you listened in it."""
+    LO, HI = 30.0, 100.0
+    AXIS = 30
 
     def __init__(self):
         super().__init__()
-        self.setMinimumHeight(70)
+        self.setMinimumHeight(120)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.minutes: dict[int, float] = {}
+        self.setMouseTracking(True)
+        self.raw: dict[int, list] = {}
         self.limit = 85.0
         self.span = (8 * 60, 8 * 60 + 30)
+        self.bucket = 30
+        self._hover = -1
+        self._bars: list[tuple[int, float | None, float]] = []
 
-    def set_data(self, minutes: dict, limit: float):
-        self.minutes, self.limit = minutes, limit
+    def set_data(self, raw: dict, limit: float):
+        """raw: minute of the day -> [energy * seconds, seconds] (the module's own record)."""
+        self.raw, self.limit = raw, limit
         now = datetime.now()
         end = now.hour * 60 + now.minute + 1
-        first = min((m for m, db in minutes.items() if db >= AUDIBLE_DB), default=8 * 60)
-        start = min(first, end - self.BUCKET) // self.BUCKET * self.BUCKET
-        self.span = (max(0, start), max(end, start + self.BUCKET))
+        heard = [m for m, (e, s) in raw.items() if s > 0 and e > 0 and _db(e, s) >= AUDIBLE_DB]
+        first = min(heard, default=end - 30)
+        length = end - first
+        self.bucket = 5 if length <= 120 else 10 if length <= 360 else 15 if length <= 720 else 30
+        start = max(0, min(first, end - self.bucket) // self.bucket * self.bucket)
+        self.span = (start, max(end, start + self.bucket))
+        self._bars = []
+        for b0 in range(self.span[0], self.span[1], self.bucket):
+            e = s = 0.0
+            for m in range(b0, b0 + self.bucket):
+                v = raw.get(m)
+                if v and v[1] > 0 and _db(v[0], v[1]) >= AUDIBLE_DB:
+                    e += v[0]
+                    s += v[1]
+            self._bars.append((b0, _db(e, s), s))     # energy average, like a sound level meter's Leq
         self.update()
 
     def buckets(self) -> list[float | None]:
-        start, end = self.span
-        out = []
-        for b0 in range(start, end, self.BUCKET):
-            vals = [db for m, db in self.minutes.items() if b0 <= m < b0 + self.BUCKET and db >= AUDIBLE_DB]
-            # energy average, like a sound level meter's Leq
-            out.append(10 * math.log10(sum(10 ** (v / 10) for v in vals) / len(vals)) if vals else None)
-        return out
+        return [db for _b, db, _s in self._bars]
+
+    def _plot(self) -> QRectF:
+        return QRectF(self.rect()).adjusted(self.AXIS, 6, -4, -18)
+
+    def _y(self, db: float, r: QRectF) -> float:
+        return r.bottom() - (max(self.LO, min(self.HI, db)) - self.LO) / (self.HI - self.LO) * r.height()
 
     def paintEvent(self, e):
         p = theme.P
         qp = QPainter(self)
         qp.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0, 2, 0, -1)
-        qp.setPen(QPen(QColor(p.border), 1))
-        qp.drawLine(QPointF(r.left(), r.bottom() + 0.5), QPointF(r.right(), r.bottom() + 0.5))
-        bars = self.buckets()
-        n = max(1, len(bars))
+        r = self._plot()
+        qp.setFont(theme.qfont(9, mono=True))
+        for db in (40, 60, 80, 100):
+            y = self._y(db, r)
+            qp.setPen(QPen(QColor(p.border), 1, Qt.PenStyle.DotLine))
+            qp.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+            qp.setPen(QColor(p.text_muted))
+            qp.drawText(QRectF(0, y - 7, self.AXIS - 6, 14), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                        str(db))
+        n = max(1, len(self._bars))
         gap = 3.0 if n < 40 else 1.0
         w = max(1.0, (r.width() - gap * (n - 1)) / n)
-        lo, hi = 30.0, 100.0
-        qp.setPen(Qt.PenStyle.NoPen)
-        for i, db in enumerate(bars):
+        for i, (_b0, db, _s) in enumerate(self._bars):
             if db is None:
                 continue
-            h = max(2.0, (min(hi, db) - lo) / (hi - lo) * r.height())
-            col = RED if db >= self.limit else (AMBER if db >= self.limit - 10 else p.primary)
-            qp.setBrush(QColor(col))
             x = r.left() + i * (w + gap)
+            top = self._y(db, r)
+            col = QColor(RED if db >= self.limit else (AMBER if db >= self.limit - 10 else p.primary))
+            bar = QRectF(x, top, w, r.bottom() - top)
+            g = QLinearGradient(0, bar.top(), 0, bar.bottom())
+            fade = QColor(col)
+            fade.setAlphaF(0.35 if i != self._hover else 0.6)
+            g.setColorAt(0, col if i == self._hover or self._hover < 0 else QColor(col.red(), col.green(),
+                                                                                    col.blue(), 200))
+            g.setColorAt(1, fade)
             path = QPainterPath()
-            path.addRoundedRect(QRectF(x, r.bottom() - h, w, h + 2), 2, 2)
-            qp.setClipRect(QRectF(x, r.top(), w, r.height()))
-            qp.drawPath(path)
-            qp.setClipping(False)
+            path.addRoundedRect(bar.adjusted(0, 0, 0, 3), min(3.0, w / 2), min(3.0, w / 2))
+            qp.save()
+            qp.setClipRect(QRectF(x, r.top() - 2, w, r.height() + 2))
+            qp.fillPath(path, QBrush(g))
+            qp.restore()
+        ly = self._y(self.limit, r)
+        qp.setPen(QPen(QColor(AMBER), 1, Qt.PenStyle.DashLine))
+        qp.drawLine(QPointF(r.left(), ly), QPointF(r.right(), ly))
+        qp.setPen(QColor(AMBER))
+        qp.drawText(QRectF(r.right() - 60, ly - 14, 58, 12), Qt.AlignmentFlag.AlignRight, f"LIMIT {self.limit:.0f}")
+        # times along the bottom
+        start, end = self.span
+        qp.setPen(QColor(p.text_muted))
+        for frac, align in ((0.0, Qt.AlignmentFlag.AlignLeft), (0.5, Qt.AlignmentFlag.AlignHCenter),
+                            (1.0, Qt.AlignmentFlag.AlignRight)):
+            m = int(start + frac * (end - start))
+            text = "NOW" if frac == 1.0 else f"{m // 60:02d}:{m % 60:02d}"
+            x = r.left() + frac * r.width()
+            box = QRectF(x - (0 if frac == 0 else 60 if frac == 1 else 30), r.bottom() + 3, 60, 13)
+            qp.drawText(box, align | Qt.AlignmentFlag.AlignVCenter, text)
         qp.end()
+
+    def mouseMoveEvent(self, e):
+        r = self._plot()
+        n = max(1, len(self._bars))
+        i = int((e.position().x() - r.left()) / max(1.0, r.width()) * n) if r.left() <= e.position().x() <= r.right() else -1
+        i = i if 0 <= i < len(self._bars) and self._bars[i][1] is not None else -1
+        if i != self._hover:
+            self._hover = i
+            self.update()
+        if i >= 0:
+            b0, db, secs = self._bars[i]
+            b1 = b0 + self.bucket
+            QToolTip.showText(e.globalPosition().toPoint(),
+                              f"{b0 // 60:02d}:{b0 % 60:02d}–{b1 // 60:02d}:{b1 % 60:02d}\n"
+                              f"{db:.0f} dB(A) on average\nlistened {fmt_duration(secs)}", self)
+        else:
+            QToolTip.hideText()
+
+    def leaveEvent(self, e):
+        self._hover = -1
+        self.update()
+        super().leaveEvent(e)
 
 
 class WeekChart(QWidget):
-    """The last seven days: a bar per day for the dose (100 % = the day's allowance), the average level above it."""
+    """The last seven days: a bar per day for the dose (the dashed line is 100 % of a day's allowance) with the
+    average level over it. Hover a day for the numbers."""
 
     def __init__(self):
         super().__init__()
-        self.setMinimumHeight(70)
+        self.setMinimumHeight(110)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setMouseTracking(True)
         self.days: list[tuple[date, float | None, float]] = []
+        self._hover = -1
 
     def set_data(self, days: list):
         self.days = days
         self.update()
 
+    def _plot(self) -> QRectF:
+        return QRectF(self.rect()).adjusted(0, 16, 0, -16)
+
     def paintEvent(self, e):
         p = theme.P
         qp = QPainter(self)
         qp.setRenderHint(QPainter.RenderHint.Antialiasing)
-        r = QRectF(self.rect()).adjusted(0, 14, 0, -16)
+        r = self._plot()
         qp.setPen(QPen(QColor(p.border), 1))
         qp.drawLine(QPointF(r.left(), r.bottom() + 0.5), QPointF(r.right(), r.bottom() + 0.5))
-        top = max(1.0, max((d for _day, _avg, d in self.days), default=1.0))
-        # a dashed line at 100 % when some day went over it
-        if top > 1.0:
-            y = r.bottom() - r.height() / top
-            pen = QPen(QColor(RED), 1, Qt.PenStyle.DashLine)
-            qp.setPen(pen)
-            qp.drawLine(QPointF(r.left(), y), QPointF(r.right(), y))
+        top = max(1.25, max((d for _day, _avg, d in self.days), default=1.0) * 1.1)
+        y100 = r.bottom() - r.height() / top
+        qp.setPen(QPen(QColor(RED), 1, Qt.PenStyle.DashLine))
+        qp.drawLine(QPointF(r.left(), y100), QPointF(r.right(), y100))
+        qp.setFont(theme.qfont(8.5, mono=True))
+        qp.setPen(QColor(RED))
+        qp.drawText(QRectF(r.right() - 50, y100 - 13, 50, 12), Qt.AlignmentFlag.AlignRight, "100 %")
         n = max(1, len(self.days))
         gap = 8.0
         w = (r.width() - gap * (n - 1)) / n
         qp.setFont(theme.qfont(9, mono=True))
         for i, (day, avg, dose) in enumerate(self.days):
             x = r.left() + i * (w + gap)
+            h = 0.0
             if dose > 0:
                 h = max(2.0, min(1.0, dose / top) * r.height())
+                col = QColor(GREEN if dose < 0.5 else (AMBER if dose < 1.0 else RED))
+                if self._hover >= 0 and i != self._hover:
+                    col.setAlphaF(0.55)
                 qp.setPen(Qt.PenStyle.NoPen)
-                qp.setBrush(QColor(GREEN if dose < 0.5 else (AMBER if dose < 1.0 else RED)))
-                qp.drawRoundedRect(QRectF(x, r.bottom() - h, w, h), 2, 2)
-            qp.setPen(QColor(p.text_muted))
+                qp.setBrush(col)
+                qp.drawRoundedRect(QRectF(x, r.bottom() - h, w, h), 3, 3)
+            qp.setPen(QColor(p.text_primary if i == self._hover else p.text_muted))
             label = "TODAY" if day == date.today() else day.strftime("%a").upper()
             qp.drawText(QRectF(x - 6, r.bottom() + 3, w + 12, 13), Qt.AlignmentFlag.AlignCenter, label)
             if avg is not None:
                 qp.setPen(QColor(p.text_secondary))
-                y = r.bottom() - max(2.0, min(1.0, dose / top) * r.height()) - 13
-                qp.drawText(QRectF(x - 6, y, w + 12, 12), Qt.AlignmentFlag.AlignCenter, f"{avg:.0f}")
+                qp.drawText(QRectF(x - 6, r.bottom() - h - 14, w + 12, 12), Qt.AlignmentFlag.AlignCenter,
+                            f"{avg:.0f}")
         qp.end()
+
+    def mouseMoveEvent(self, e):
+        r = self._plot()
+        n = max(1, len(self.days))
+        i = int((e.position().x() - r.left()) / max(1.0, r.width()) * n)
+        i = i if 0 <= i < len(self.days) else -1
+        if i != self._hover:
+            self._hover = i
+            self.update()
+        if i >= 0:
+            day, avg, dose = self.days[i]
+            QToolTip.showText(e.globalPosition().toPoint(),
+                              f"{day.strftime('%A %d %B')}\n{dose * 100:.0f} % of the day's allowance" +
+                              (f"\n{avg:.0f} dB(A) on average while playing" if avg is not None else
+                               "\nnothing heard"), self)
+
+    def leaveEvent(self, e):
+        self._hover = -1
+        self.update()
+        super().leaveEvent(e)
 
 
 class AppsWatcher(QThread):
@@ -841,7 +938,7 @@ class AppsView(QWidget):
     def _show(self, apps: list):
         rd = self.m.reading
         ep = self.m.monitor.endpoint
-        cal = self.m.calibration_for(ep)[0] if ep is not None else 105.0
+        cal = self.m.calibration_for(ep)[0] + self.m.headset_db(ep) if ep is not None else 105.0
         master = rd.volume_db - rd.dip_db if rd is not None else 0.0
         apps.sort(key=lambda a: -a["peak"])
         self.empty.setVisible(not apps)
@@ -967,6 +1064,7 @@ class CalibrateDialog(QDialog):
             return
         cal, custom = self.m.calibration_for(ep)
         self.device.setText(f"Device: {ep.name} (currently {cal:.1f} dB, {'calibrated' if custom else 'default'})")
+        cal += self.m.headset_db(ep)
         raw, secs = self.m.calibration_measure()
         now = self.m.display_level
         if raw is None:
@@ -1049,6 +1147,26 @@ class HearingPanel(widgets.FloatingPanel):
         now.addSpacing(4)
         now.addWidget(self.vol_label)
         now.addWidget(self.device_label)
+        hs = QHBoxLayout()
+        hs.setSpacing(8)
+        hs_lbl = widgets.label("Headset's own volume", 11.5, tone="muted")
+        hs_lbl.setToolTip("Headphones with their own volume (a wheel, buttons or an app that shows a %) make "
+                          "everything louder or quieter after the PC. Type what they show and the estimate "
+                          "follows it. Off: they are taken to be at 100 %.")
+        hs.addWidget(hs_lbl)
+        self.headset = QSpinBox()
+        self.headset.setRange(0, 400)
+        self.headset.setSingleStep(5)
+        self.headset.setSuffix(" %")
+        self.headset.setSpecialValueText("off")
+        self.headset.setFixedSize(96, 26)
+        self.headset.setToolTip(hs_lbl.toolTip())
+        self.headset.valueChanged.connect(lambda v: m.set_headset(v or None))
+        hs.addWidget(self.headset)
+        self.headset_db = widgets.label("", 10.5, mono=True, tone="muted")
+        hs.addWidget(self.headset_db)
+        hs.addStretch()
+        now.addLayout(hs)
 
         # today's dose
         dose = section()
@@ -1092,8 +1210,6 @@ class HearingPanel(widgets.FloatingPanel):
         dl.setSpacing(6)
         self.today = TodayChart()
         dl.addWidget(self.today, 1)
-        self.today_scale = QHBoxLayout()
-        dl.addLayout(self.today_scale)
         self.stack.addWidget(day_page)
         self.week = WeekChart()
         self.stack.addWidget(self.week)
@@ -1132,8 +1248,9 @@ class HearingPanel(widgets.FloatingPanel):
         sl.setContentsMargins(2, 2, 2, 2)
         sl.setSpacing(0)
         self._mode_btns = {}
-        for key, label, tip in (("limit", "Limit", "Dip the master volume while it is over the limit"),
-                                ("monitor", "Monitor", "Only warn")):
+        for key, label, tip in (("limit", "Limit", "Dip the volume while it is over the limit"),
+                                ("monitor", "Monitor", "Only warn"),
+                                ("log", "Record", "Only record the levels: no warnings, nothing turned down")):
             b_ = QPushButton(label)
             b_.setCheckable(True)
             b_.setAutoExclusive(True)
@@ -1203,16 +1320,6 @@ class HearingPanel(widgets.FloatingPanel):
         menu.addAction("Hearing Guard settings…", lambda: self.m.ctx.open_settings("hearing"))
         menu.exec(pos)
 
-    def _today_scale(self):
-        widgets.clear_layout(self.today_scale)
-        start, end = self.today.span
-        mid1, mid2 = start + (end - start) // 3, start + 2 * (end - start) // 3
-        for i, t in enumerate((f"{start // 60:02d}:{start % 60:02d}", f"{mid1 // 60:02d}:00",
-                               f"{mid2 // 60:02d}:00", "NOW")):
-            if i:
-                self.today_scale.addStretch()
-            self.today_scale.addWidget(widgets.label(t, 9.5, mono=True, tone="muted"))
-
     def refresh(self, full: bool = False):
         m, p = self.m, theme.P
         limit = float(m.s("limit_db", 85))
@@ -1236,7 +1343,14 @@ class HearingPanel(widgets.FloatingPanel):
             cal, custom = m.calibration_for(ep)
             text = f"{ep.name} · {'calibrated' if custom else 'not calibrated'} ({cal:.0f} dB)"
             self.device_label.setText(text)
-        self.limit_label.setText(f"LIMIT {limit:.0f} dB")
+            pct = m.headset_pct(ep)
+            if not self.headset.hasFocus() and self.headset.value() != int(pct or 0):
+                self.headset.blockSignals(True)
+                self.headset.setValue(int(pct or 0))
+                self.headset.blockSignals(False)
+            g = m.headset_db(ep)
+            self.headset_db.setText(f"{g:+.1f} dB" if pct else "")
+        self.limit_label.setText("RECORDING ONLY" if m.s("mode", "limit") == "log" else f"LIMIT {limit:.0f} dB")
         self.limit_label.setToolTip(f"Limit {limit:.0f} dB · volume cap {int(m.s('max_volume', 100))} %")
 
         dose = m.dose
@@ -1256,8 +1370,7 @@ class HearingPanel(widgets.FloatingPanel):
             view = self.stack.currentIndex()
             if view == 0:
                 minutes = m.today_minutes()
-                self.today.set_data(minutes, limit)
-                self._today_scale()
+                self.today.set_data(m.raw_minutes(), limit)
                 avg = m.today_average()
                 peak = max(minutes.values(), default=None)
                 self.stats_label.setText(" · ".join(x for x in (f"AVG {avg:.0f}" if avg is not None else "",
@@ -1292,6 +1405,7 @@ class HearingModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self.panel: HearingPanel | None = None
+        self.views: list = []                         # Hearing Guard pages (overlay / dashboard boxes)
         self.monitor = _audio_monitor()
         self.reading: Reading | None = None
         self.display_level: float | None = None     # dB(A) over the last second at the current volume
@@ -1359,11 +1473,11 @@ class HearingModule(Module):
             except Exception as e:
                 self.log.warning("could not restore the app volumes: %s", _describe(e))
             self.restore_to = None
-        if self.panel:
-            btn = self.panel._mode_btns.get(self.s("mode", "limit"))
+        for v in self.live_views(visible=False):
+            btn = v._mode_btns.get(self.s("mode", "limit"))
             if btn is not None:
                 btn.setChecked(True)
-            self.panel.refresh(full=True)
+            v.refresh(full=True)
 
     def tray_actions(self):
         return [("Hearing Guard panel", self.toggle)]
@@ -1383,10 +1497,51 @@ class HearingModule(Module):
                 self.panel = HearingPanel(self)
         self.panel.toggle()
 
+    def make_page(self):
+        """Hearing Guard as a page: the overlay's Hearing Guard page and dashboard boxes (Add here → Page)."""
+        view = HearingPanel(self)
+        self.views.append(view)
+        return widgets.embed(view)
+
+    def live_views(self, visible: bool = True) -> list:
+        """The panel and every Hearing Guard page that still exists (only the ones on screen with visible)."""
+        from core.guard import alive
+        self.views = [v for v in self.views if alive(v)]
+        out = ([self.panel] if self.panel is not None else []) + self.views
+        return [v for v in out if alive(v) and (v.isVisible() or not visible)]
     # ── settings helpers ───────────────────────────────────────────────────
     def set_mode(self, mode: str):
         self.settings.set("hearing.mode", mode)
         self.settings.save(emit=False)
+
+    def headset_pct(self, ep) -> float | None:
+        """What the headphones' own volume shows (None: not set, taken as 100 %)."""
+        c = self._calibrations.get(ep.id) if ep is not None else None
+        v = c.get("headset") if isinstance(c, dict) else None
+        return float(v) if isinstance(v, (int, float)) and v > 0 else None
+
+    def headset_db(self, ep) -> float:
+        """How much louder (+) or quieter (-) than at 100 % the headphones' own volume makes things."""
+        pct = self.headset_pct(ep)
+        if not pct:
+            return 0.0
+        scale = 20.0 if self.s("headset_scale", "cubic") == "linear" else 60.0
+        return scale * math.log10(max(1.0, pct) / 100.0)
+
+    def set_headset(self, pct: float | None):
+        ep = self.monitor.endpoint
+        if ep is None:
+            return
+        c = self._calibrations.setdefault(ep.id, {"name": ep.name})
+        if not isinstance(c, dict):
+            c = self._calibrations[ep.id] = {"name": ep.name}
+        if pct:
+            c["headset"] = float(pct)
+        else:
+            c.pop("headset", None)
+        self._window.clear()                    # the last second was heard at the old headset volume
+        self._dirty = True
+        self._save()
 
     def calibration_for(self, ep: Endpoint) -> tuple[float, bool]:
         """(calibration dB, True if it was measured for this device rather than the default)."""
@@ -1400,10 +1555,17 @@ class HearingModule(Module):
         if ep is None:
             return
         if value is None:
-            self._calibrations.pop(ep.id, None)
+            c = self._calibrations.get(ep.id)
+            if isinstance(c, dict) and "headset" in c:
+                self._calibrations[ep.id] = {"name": ep.name, "headset": c["headset"]}
+            else:
+                self._calibrations.pop(ep.id, None)
             msg = f"{ep.name} uses the default calibration again."
         else:
-            self._calibrations[ep.id] = {"db": value, "name": ep.name, "date": date.today().isoformat()}
+            # measured with the headset at its current volume: stored as if it were at 100 %
+            old = self._calibrations.get(ep.id) if isinstance(self._calibrations.get(ep.id), dict) else {}
+            value = round(value - self.headset_db(ep), 1)
+            self._calibrations[ep.id] = {**old, "db": value, "name": ep.name, "date": date.today().isoformat()}
             msg = f"{ep.name}: {value:.1f} dB at 100 % volume with a full-scale tone."
         self._save()
         self.ctx.notify(self.title, msg)
@@ -1451,6 +1613,7 @@ class HearingModule(Module):
                 self._window_key = (ep.id, includes_volume)
                 self._window.clear()
             cal, _ = self.calibration_for(ep)
+            cal += self.headset_db(ep)                     # headphones with a volume of their own
             # the signal before the master volume; the volume is added on top when a level is needed
             pre = None if rd.level is None else rd.level - (rd.volume_db if includes_volume else 0.0)
             est = None if pre is None else pre + rd.volume_db + cal
@@ -1486,8 +1649,8 @@ class HearingModule(Module):
 
         if self._dirty and now - self._last_save > self.SAVE_S:
             self._save()
-        if self.panel and self.panel.isVisible():
-            self.panel.refresh()
+        for v in self.live_views():
+            v.refresh()
 
     def _enforce(self, now: float, ep: Endpoint, rd: Reading, heard: float | None):
         limit = float(self.s("limit_db", 85))
@@ -1503,6 +1666,9 @@ class HearingModule(Module):
                 ep.reset_dip()                  # you set a volume yourself: the apps go back to theirs
                 rd.volume_db = ep.volume_db()
             self._expected_vol = rd.volume_db
+            if self.s("mode", "limit") == "log":
+                self._over_since = None                 # recording only: never warn, cap or turn anything down
+                return
             if rd.volume_pct > cap + 0.5:
                 ep.set_volume_percent(cap)
                 self.restore_to = self._expected_vol = None
@@ -1558,7 +1724,7 @@ class HearingModule(Module):
             self.restore_to = None
 
     def _dose_warnings(self):
-        if not self.s("warn_dose", True):
+        if not self.s("warn_dose", True) or self.s("mode", "limit") == "log":
             return
         for level in (50, 80, 100):
             if self.dose * 100 >= level and level not in self._warned_levels:
@@ -1576,6 +1742,9 @@ class HearingModule(Module):
             self.dose = self.listen_seconds = 0.0
             self._minutes = {}
             self._warned_levels = set()
+
+    def raw_minutes(self) -> dict[int, list]:
+        return self._minutes
 
     def today_minutes(self) -> dict[int, float]:
         return {m: _db(e, s) for m, (e, s) in self._minutes.items() if e > 0 and s > 0}
@@ -1621,8 +1790,8 @@ class HearingModule(Module):
         self._minutes = {}
         self._warned_levels = set()
         self._save()
-        if self.panel:
-            self.panel.refresh(full=True)
+        for v in self.live_views(visible=False):
+            v.refresh(full=True)
 
     def _load(self):
         data = load_json(DATA_PATH, {})

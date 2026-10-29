@@ -15,7 +15,8 @@ Button variants:  btn.setProperty("variant", "primary" | "ghost" | "danger")
 import os
 import re
 import glob
-from dataclasses import dataclass, fields
+import math
+from dataclasses import dataclass, field, fields
 
 MONO_FAMILY = "Geist Mono"
 MONO_CSS = '"Geist Mono", "Cascadia Mono", Consolas, monospace'
@@ -64,6 +65,7 @@ COLOUR_ROLES = [
     ("text_secondary", "Text (secondary)"), ("text_muted", "Text (muted)"), ("folder_color", "Folder cards"),
     ("folder_border", "Folder card outline"),
 ]
+_ROLE_KEYS = {k for k, _ in COLOUR_ROLES}
 
 
 @dataclass
@@ -89,6 +91,7 @@ class Palette:
     glow: bool = True                   # accent glow around the overlay (off in performance mode)
     background_image: str = ""          # drawn behind the overlay content
     image_opacity: float = 0.35
+    gradients: dict = field(default_factory=dict)   # role -> {"type", "angle", "stops": [[pos, "#hex"], ...]}
 
     @property
     def font(self) -> str:
@@ -149,20 +152,29 @@ def derive_primary_text(colours: dict) -> str:
         return prim
 
 
-def use(values: dict) -> Palette:
-    """Make `values` (a theme's colours + look) the active palette. Unknown keys are ignored."""
-    global P
+def palette_from(values: dict) -> Palette:
+    """A palette from a theme's colours + look (unknown keys are ignored), without making it the active one."""
     base = {k: v for k, v in Palette().__dict__.items()}
     vals = dict(values or {})
     if not vals.get("primary_text"):
         vals["primary_text"] = derive_primary_text(vals)
     base.update({k: v for k, v in vals.items() if k in _FIELDS and v not in (None, "")})
+    base["gradients"] = clean_gradients(vals.get("gradients"))
+    for role, g in base["gradients"].items():
+        if role in _ROLE_KEYS:
+            base[role] = gradient_mid(g)
     try:
         base["radius"] = int(base["radius"])
         base["image_opacity"] = float(base["image_opacity"])
     except (TypeError, ValueError):
         base["radius"], base["image_opacity"] = 10, 0.35
-    P = Palette(**base)
+    return Palette(**base)
+
+
+def use(values: dict) -> Palette:
+    """Make `values` (a theme's colours + look) the active palette. Unknown keys are ignored."""
+    global P
+    P = palette_from(values)
     return P
 
 
@@ -171,18 +183,180 @@ def is_light() -> bool:
     return luminance(P.bg_base) > 140
 
 
-# ── per-module accents ────────────────────────────────────────────────────────
-# A theme can give a module its own accent ("modules": {"notes": "#3DBE96"}). Windows built inside
-# `with module_colours("notes"):` bake that accent in and carry a stylesheet made from it.
-_module_accents: dict[str, str] = {}
+# ── gradients ─────────────────────────────────────────────────────────────────
+# a colour role can be a gradient as well ("gradients": {"bg_base": {"type": "linear", "angle": 135,
+# "stops": [[0, "#1E1B3A"], [1, "#0E0E11"]]}}). The role keeps a plain colour too (the middle of the
+# gradient), for everything that needs one colour: text contrast, mixing, lines painted by hand.
+GRADIENT_TYPES = (("linear", "Linear"), ("radial", "Radial"), ("conical", "Sweep"))
+
+
+def _hex_ok(c) -> bool:
+    if not isinstance(c, str) or not c.startswith("#") or len(c) != 7:
+        return False
+    try:
+        int(c[1:], 16)
+        return True
+    except ValueError:
+        return False
+
+
+def clean_gradient(g) -> dict | None:
+    """A gradient spec with its stops sorted and checked, or None when it is not one (fewer than two stops)."""
+    if not isinstance(g, dict):
+        return None
+    stops = []
+    for st in g.get("stops") or []:
+        try:
+            pos, col = float(st[0]), str(st[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if _hex_ok(col):
+            stops.append([max(0.0, min(1.0, pos)), col.upper()])
+    if len(stops) < 2:
+        return None
+    stops.sort(key=lambda x: x[0])
+    kind = g.get("type") if g.get("type") in dict(GRADIENT_TYPES) else "linear"
+    try:
+        angle = float(g.get("angle", 90)) % 360
+    except (TypeError, ValueError):
+        angle = 90.0
+    return {"type": kind, "angle": angle, "stops": stops}
+
+
+def clean_gradients(gs) -> dict:
+    out = {}
+    for role, g in (gs or {}).items() if isinstance(gs, dict) else ():
+        g = clean_gradient(g)
+        if g is not None:
+            out[role] = g
+    return out
+
+
+def gradient_at(g: dict, t: float) -> str:
+    """The gradient's colour at position t (0..1)."""
+    stops = g["stops"]
+    if t <= stops[0][0]:
+        return stops[0][1]
+    for (p0, c0), (p1, c1) in zip(stops, stops[1:]):
+        if t <= p1:
+            return mix(c0, c1, 0.0 if p1 <= p0 else (t - p0) / (p1 - p0))
+    return stops[-1][1]
+
+
+def gradient_mid(g: dict) -> str:
+    """One colour that stands for the gradient (its average along the way)."""
+    cols = [gradient_at(g, i / 8) for i in range(9)]
+    r = sum(int(c[1:3], 16) for c in cols) / len(cols)
+    gg = sum(int(c[3:5], 16) for c in cols) / len(cols)
+    b = sum(int(c[5:7], 16) for c in cols) / len(cols)
+    return "#" + "".join(f"{round(v):02X}" for v in (r, gg, b))
+
+
+def _line(angle: float) -> tuple[float, float, float, float]:
+    """Start and end of a linear gradient across a unit box, long enough that the first and last colours reach the
+    corners. `angle` works like CSS: the direction it runs in, 0 = upwards, 90 = to the right, 180 = down."""
+    a = math.radians(angle)
+    dx, dy = math.sin(a), -math.cos(a)
+    span = (abs(dx) + abs(dy)) / 2
+    return 0.5 - dx * span, 0.5 - dy * span, 0.5 + dx * span, 0.5 + dy * span
+
+
+def _stop_css(col: str, alpha: float) -> str:
+    return col if alpha >= 0.999 else rgba(col, alpha)
+
+
+def gradient_css(g: dict, alpha: float = 1.0) -> str:
+    """The gradient as a Qt style sheet brush (qlineargradient / qradialgradient / qconicalgradient)."""
+    stops = ", ".join(f"stop:{pos:.4f} {_stop_css(col, alpha)}" for pos, col in g["stops"])
+    if g["type"] == "radial":
+        return f"qradialgradient(cx:0.5, cy:0.5, radius:0.75, fx:0.5, fy:0.5, {stops})"
+    if g["type"] == "conical":
+        return f"qconicalgradient(cx:0.5, cy:0.5, angle:{(90 - g['angle']) % 360:.1f}, {stops})"
+    x1, y1, x2, y2 = _line(g["angle"])
+    return f"qlineargradient(x1:{x1:.4f}, y1:{y1:.4f}, x2:{x2:.4f}, y2:{y2:.4f}, {stops})"
+
+
+def fill(role: str, alpha: float = 1.0, p: "Palette | None" = None) -> str:
+    """A role as a style sheet brush: its gradient if it has one, else its colour (with `alpha`)."""
+    p = p or P
+    g = p.gradients.get(role)
+    if g:
+        return gradient_css(g, alpha)
+    col = getattr(p, role)
+    return col if alpha >= 0.999 else rgba(col, alpha)
+
+
+def qbrush(role_or_gradient, rect, alpha: float = 1.0, p: "Palette | None" = None):
+    """A QBrush for painting `rect` with a role (or a gradient spec / colour) by hand."""
+    from PyQt6.QtGui import QBrush, QColor, QLinearGradient, QRadialGradient, QConicalGradient
+    from PyQt6.QtCore import QPointF
+    p = p or P
+    if isinstance(role_or_gradient, dict):
+        g = clean_gradient(role_or_gradient)
+        solid = g["stops"][0][1] if g else "#000000"
+    elif str(role_or_gradient).startswith("#"):
+        g, solid = None, role_or_gradient
+    else:
+        g, solid = p.gradients.get(role_or_gradient), getattr(p, role_or_gradient)
+    if not g:
+        c = QColor(solid)
+        c.setAlphaF(max(0.0, min(1.0, alpha)))
+        return QBrush(c)
+    x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
+    if g["type"] == "radial":
+        grad = QRadialGradient(QPointF(x + w / 2, y + h / 2), 0.75 * max(w, h))
+    elif g["type"] == "conical":
+        grad = QConicalGradient(QPointF(x + w / 2, y + h / 2), (90 - g["angle"]) % 360)
+    else:
+        x1, y1, x2, y2 = _line(g["angle"])
+        grad = QLinearGradient(QPointF(x + x1 * w, y + y1 * h), QPointF(x + x2 * w, y + y2 * h))
+    for pos, col in g["stops"]:
+        c = QColor(col)
+        c.setAlphaF(max(0.0, min(1.0, alpha)))
+        grad.setColorAt(pos, c)
+    return QBrush(grad)
+
+
+# ── per-section palettes ──────────────────────────────────────────────────────
+# a theme can give a module (or the notifications, "toasts") its own look:
+#   "modules": {"notes": "#3DBE96"}                                    an accent only (older themes)
+#   "modules": {"notes": {"accent": "#3DBE96", "colours": {role: "#hex"}, "gradients": {role: spec},
+#                         "radius": 14}}                               any role, gradients, corner radius
+# Windows built inside `with module_colours("notes"):` bake that palette in and carry a stylesheet made from it.
+_module_styles: dict[str, dict] = {}
 _overridden = False
 
 
-def set_module_accents(accents: dict | None):
-    _module_accents.clear()
-    for k, v in (accents or {}).items():
-        if isinstance(v, str) and len(v) == 7 and v.startswith("#"):
-            _module_accents[k] = v
+def clean_section(v) -> dict | None:
+    """One "modules" entry as {"accent"?, "colours", "gradients", "radius"?}, None when it changes nothing."""
+    if isinstance(v, str):
+        return {"accent": v.upper(), "colours": {}, "gradients": {}} if _hex_ok(v) else None
+    if not isinstance(v, dict):
+        return None
+    out = {"colours": {k: c.upper() for k, c in (v.get("colours") or {}).items()
+                       if k in _ROLE_KEYS and _hex_ok(c)},
+           "gradients": {k: g for k, g in clean_gradients(v.get("gradients")).items() if k in _ROLE_KEYS}}
+    if _hex_ok(v.get("accent")):
+        out["accent"] = v["accent"].upper()
+    try:
+        if v.get("radius") not in (None, ""):
+            out["radius"] = max(0, min(30, int(v["radius"])))
+    except (TypeError, ValueError):
+        pass
+    if not out.get("accent") and not out["colours"] and not out["gradients"] and "radius" not in out:
+        return None
+    return out
+
+
+def set_module_styles(styles: dict | None):
+    _module_styles.clear()
+    for k, v in (styles or {}).items():
+        v = clean_section(v)
+        if v is not None:
+            _module_styles[k] = v
+
+
+set_module_accents = set_module_styles          # the old name
 
 
 def accent_roles(accent: str, bg: str) -> dict:
@@ -197,8 +371,38 @@ def accent_roles(accent: str, bg: str) -> dict:
     }
 
 
+def section_palette(base: "Palette", entry: dict | None) -> "Palette":
+    """`base` with one section's own colours, gradients and corner radius on top."""
+    if not entry:
+        return base
+    vals = {**base.__dict__}
+    grads = dict(base.gradients)
+    cols = entry.get("colours") or {}
+    if entry.get("accent"):
+        acc = accent_roles(entry["accent"], cols.get("bg_base", vals["bg_base"]))
+        vals.update(acc)
+        for role in acc:
+            grads.pop(role, None)
+    vals.update(cols)
+    for role in cols:
+        grads.pop(role, None)                    # a plain colour of its own replaces the theme's gradient
+    grads.update(entry.get("gradients") or {})
+    for role, g in (entry.get("gradients") or {}).items():
+        if role not in cols:
+            vals[role] = gradient_mid(g)
+    vals["gradients"] = grads
+    if "radius" in entry:
+        vals["radius"] = entry["radius"]
+    return Palette(**vals)
+
+
+def section_style(key: str) -> dict | None:
+    return _module_styles.get(key)
+
+
 class module_colours:
-    """Context manager: the palette with this module's accent (if the theme sets one) while building its windows."""
+    """Context manager: the palette with this module's own look (if the theme gives it one) while building its
+    windows."""
 
     def __init__(self, key: str):
         self.key = key
@@ -206,10 +410,10 @@ class module_colours:
 
     def __enter__(self):
         global P, _overridden
-        accent = _module_accents.get(self.key)
-        if accent:
+        entry = _module_styles.get(self.key)
+        if entry:
             self._old = (P, _overridden)
-            P = Palette(**{**P.__dict__, **accent_roles(accent, P.bg_base)})
+            P = section_palette(P, entry)
             _overridden = True
         return self
 
@@ -385,12 +589,29 @@ def _check(colour: str) -> str:
 HOVER = True                    # Settings → Animations → Hover effects
 
 
+_sheet_cache: dict = {}
+
+
 def stylesheet() -> str:
+    """The app-wide style sheet for the current palette (cached: themed module windows ask for it a lot)."""
+    key = (repr(sorted(P.__dict__.items())), TEXT_SCALE, HOVER)
+    css = _sheet_cache.get(key)
+    if css is None:
+        if len(_sheet_cache) > 24:
+            _sheet_cache.clear()
+        css = _sheet_cache[key] = _stylesheet()
+    return css
+
+
+def _stylesheet() -> str:
     p = P
     r = p.radius
     rs = max(0, r - 4)          # small controls: buttons, inputs
     rb = max(0, r - 2)          # boxes inside a panel
     mono = MONO_CSS
+
+    def f(role: str, alpha: float = 1.0) -> str:
+        return fill(role, alpha, p)
     return _scale_css(f"""
     QWidget {{
         color: {p.text_primary};
@@ -404,15 +625,15 @@ def stylesheet() -> str:
     QLabel[tone="accent2"] {{ color: {p.primary}; }}
     QLabel[tone="danger"] {{ color: {DANGER}; }}
     QToolTip {{
-        background: {p.bg_base}; color: {p.text_primary};
+        background: {f('bg_base')}; color: {p.text_primary};
         border: 1px solid {p.border}; border-radius: 4px; padding: 5px 8px;
     }}
     QDialog, QMessageBox, QInputDialog, QColorDialog, QFileDialog {{
-        background: {p.bg_base};
+        background: {f('bg_base')};
     }}
 
     QMenu {{
-        background-color: {p.bg_base}; color: {p.text_primary};
+        background: {f('bg_base')}; color: {p.text_primary};
         border: 1px solid {p.border}; border-radius: {rb}px; padding: 5px; font-size: 13px;
     }}
     QMenu::item {{ padding: 7px 24px 7px 12px; border-radius: {rs}px; }}
@@ -420,35 +641,35 @@ def stylesheet() -> str:
     QMenu::item:disabled {{ color: {p.text_muted}; }}
     QMenu::separator {{ height: 1px; background: {p.border}; margin: 4px 8px; }}
     QMenu::indicator {{ width: 14px; height: 14px; margin-left: 4px; }}
-    QMenu::indicator:checked {{ background: {p.primary}; border-radius: 4px; image: url({_check(p.on_primary)}); }}
+    QMenu::indicator:checked {{ background: {f('primary')}; border-radius: 4px; image: url({_check(p.on_primary)}); }}
     QMenu::indicator:unchecked {{ background: transparent; border: 1px solid {p.text_muted}; border-radius: 4px; }}
 
     QPushButton {{
-        background: {p.bg_card}; color: {p.text_primary};
+        background: {f('bg_card')}; color: {p.text_primary};
         border: 1px solid {p.border}; border-radius: {rs}px;
         padding: 6px 12px; font-size: 13px; font-weight: 500;
     }}
-    QPushButton:hover {{ background: {p.bg_card_hover}; }}
-    QPushButton:pressed {{ background: {p.bg_card_hover}; border-color: {p.text_muted}; }}
-    QPushButton:checked {{ background: {p.primary_muted}; color: {p.text_primary}; border-color: {p.primary}; }}
-    QPushButton:disabled {{ color: {p.text_muted}; background: {p.bg_frame}; }}
+    QPushButton:hover {{ background: {f('bg_card_hover')}; }}
+    QPushButton:pressed {{ background: {f('bg_card_hover')}; border-color: {p.text_muted}; }}
+    QPushButton:checked {{ background: {f('primary_muted')}; color: {p.text_primary}; border-color: {p.primary}; }}
+    QPushButton:disabled {{ color: {p.text_muted}; background: {f('bg_frame')}; }}
     QPushButton[variant="primary"] {{
-        background: {p.primary}; color: {p.on_primary}; border: 1px solid {p.primary}; padding: 6px 14px;
+        background: {f('primary')}; color: {p.on_primary}; border: 1px solid {p.primary}; padding: 6px 14px;
     }}
-    QPushButton[variant="primary"]:hover {{ background: {p.primary_hover}; border-color: {p.primary_hover}; }}
+    QPushButton[variant="primary"]:hover {{ background: {f('primary_hover')}; border-color: {p.primary_hover}; }}
     QPushButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; color: {p.text_secondary}; }}
-    QPushButton[variant="ghost"]:hover {{ background: {p.bg_card_hover}; color: {p.text_primary}; }}
-    QPushButton[variant="ghost"]:checked {{ background: {p.primary_muted}; color: {p.primary_text}; }}
+    QPushButton[variant="ghost"]:hover {{ background: {f('bg_card_hover')}; color: {p.text_primary}; }}
+    QPushButton[variant="ghost"]:checked {{ background: {f('primary_muted')}; color: {p.primary_text}; }}
     QPushButton[variant="outline"] {{ background: transparent; color: {p.text_primary}; }}
-    QPushButton[variant="outline"]:hover {{ background: {p.bg_card_hover}; }}
+    QPushButton[variant="outline"]:hover {{ background: {f('bg_card_hover')}; }}
     QPushButton[variant="danger"] {{ background: transparent; border: 1px solid transparent; color: {DANGER}; }}
     QPushButton[variant="danger"]:hover {{ background: {rgba(DANGER, 0.12)}; }}
     QPushButton[variant="pill"] {{ border-radius: 16px; padding: 7px 18px; font-size: 13px; }}
-    QPushButton[variant="pill"][accent="true"] {{ background: {p.primary}; color: {p.on_primary}; border-color: {p.primary}; }}
-    QPushButton[variant="pill"][accent="true"]:hover {{ background: {p.primary_hover}; }}
+    QPushButton[variant="pill"][accent="true"] {{ background: {f('primary')}; color: {p.on_primary}; border-color: {p.primary}; }}
+    QPushButton[variant="pill"][accent="true"]:hover {{ background: {f('primary_hover')}; }}
 
     QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {{
-        background: {p.bg_frame}; color: {p.text_primary};
+        background: {f('bg_frame')}; color: {p.text_primary};
         border: 1px solid {p.border}; border-radius: {rs}px; padding: 5px 10px; font-size: 13px;
         selection-background-color: {p.primary_muted}; selection-color: {p.text_primary};
     }}
@@ -478,7 +699,7 @@ def stylesheet() -> str:
     QComboBox::drop-down {{ border: none; width: 26px; }}
     QComboBox::down-arrow {{ image: url({_arrow("down", p.text_muted)}); width: 8px; height: 5px; margin-right: 8px; }}
     QComboBox QAbstractItemView {{
-        background: {p.bg_base}; color: {p.text_primary}; border: 1px solid {p.border}; padding: 4px;
+        background: {f('bg_base')}; color: {p.text_primary}; border: 1px solid {p.border}; padding: 4px;
         selection-background-color: {p.bg_card_hover}; selection-color: {p.text_primary}; outline: none;
     }}
 
@@ -488,13 +709,13 @@ def stylesheet() -> str:
     }}
     QCheckBox::indicator:hover {{ border-color: {p.primary}; }}
     QCheckBox::indicator:checked {{
-        background: {p.primary}; border-color: {p.primary}; image: url({_check(p.on_primary)});
+        background: {f('primary')}; border-color: {p.primary}; image: url({_check(p.on_primary)});
     }}
     QRadioButton {{ spacing: 9px; background: transparent; }}
     QRadioButton::indicator {{
         width: 12px; height: 12px; border: 2px solid {p.text_muted}; border-radius: 8px; background: transparent;
     }}
-    QRadioButton::indicator:checked {{ background: {p.primary}; border-color: {p.primary}; }}
+    QRadioButton::indicator:checked {{ background: {f('primary')}; border-color: {p.primary}; }}
 
     QScrollBar:vertical {{ background: transparent; width: 8px; margin: 2px; }}
     QScrollBar::handle:vertical {{ background: {p.border}; border-radius: 3px; min-height: 24px; }}
@@ -511,13 +732,13 @@ def stylesheet() -> str:
     QScrollArea > #qt_scrollarea_viewport, QScrollArea > #qt_scrollarea_viewport > QWidget {{ background: transparent; }}
 
     QListWidget, QTreeWidget, QTableWidget {{
-        background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; outline: none;
+        background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {rb}px; outline: none;
     }}
     QListWidget::item {{ padding: 6px 8px; border-radius: {rs}px; }}
     QListWidget::item:selected, QTableWidget::item:selected {{ background: {p.primary_muted}; color: {p.text_primary}; }}
     QListWidget::item:hover {{ background: {p.bg_card_hover}; }}
     QHeaderView::section {{
-        background: {p.bg_header}; color: {p.text_muted}; border: none; font-family: {mono}; font-size: 10px;
+        background: {f('bg_header')}; color: {p.text_muted}; border: none; font-family: {mono}; font-size: 10px;
         border-bottom: 1px solid {p.border}; padding: 6px 8px;
     }}
     QTableWidget {{ gridline-color: {p.border}; }}
@@ -526,13 +747,13 @@ def stylesheet() -> str:
     QSlider::groove:horizontal {{
         height: 4px; background: {p.bg_frame}; border: 1px solid {p.border}; border-radius: 3px;
     }}
-    QSlider::sub-page:horizontal {{ background: {p.primary}; border: 1px solid {p.primary}; border-radius: 3px; }}
+    QSlider::sub-page:horizontal {{ background: {f('primary')}; border: 1px solid {p.primary}; border-radius: 3px; }}
     QSlider::handle:horizontal {{
         width: 10px; height: 10px; margin: -6px 0; background: {p.text_primary};
         border: 2px solid {p.primary}; border-radius: 7px;
     }}
     QProgressBar {{ background: {p.bg_frame}; border: none; border-radius: 2px; text-align: center; color: transparent; }}
-    QProgressBar::chunk {{ background: {p.primary}; border-radius: 2px; }}
+    QProgressBar::chunk {{ background: {f('primary')}; border-radius: 2px; }}
     QGroupBox {{
         border: 1px solid {p.border}; border-radius: {r}px; margin-top: 10px; padding: 10px 6px 6px 6px;
     }}
@@ -544,36 +765,36 @@ def stylesheet() -> str:
 
     /* ── Luminescent overlay (ui/) ── */
     #lumPanel {{
-        background: {rgba(p.bg_base, 0.9 if p.background_image else 1.0)};
-        border: 1px solid {p.border}; border-radius: {r}px;
+        background: {f('bg_base', 0.9 if p.background_image else 1.0)};
+        border: 1px solid {f('border')}; border-radius: {r}px;
     }}
     #lumNav {{
-        background: {p.bg_base}; border: 1px solid {p.border}; border-top: none;
+        background: {f('bg_base')}; border: 1px solid {p.border}; border-top: none;
         border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
     }}
-    #lumNavLine {{ background: {p.primary}; }}
+    #lumNavLine {{ background: {f('primary')}; }}
     QPushButton[nav="true"] {{
         background: transparent; border: none; border-radius: 16px; padding: 9px 20px;
         color: {p.text_secondary}; font-size: 14px; font-weight: 500;
     }}
-    QPushButton[nav="true"]:hover {{ background: {p.bg_card_hover}; color: {p.text_primary}; }}
-    QPushButton[nav="true"]:checked {{ background: {p.primary}; color: {p.on_primary}; }}
+    QPushButton[nav="true"]:hover {{ background: {f('bg_card_hover')}; color: {p.text_primary}; }}
+    QPushButton[nav="true"]:checked {{ background: {f('primary')}; color: {p.on_primary}; }}
     QPushButton[nav="true"][pill="true"]:checked {{ background: transparent; }}
-    #lumNavPill {{ background: {p.primary}; border: none; border-radius: 16px; }}
+    #lumNavPill {{ background: {f('primary')}; border: none; border-radius: 16px; }}
     #chromeItem {{ background: transparent; border: 1px solid transparent; border-radius: 8px; }}
     #chromeItem[editing="true"] {{ background: {rgba(p.bg_base, 0.55)}; border: 1px dashed {p.primary}; }}
     #chromeItem[editing="true"][frozen="true"] {{ border: 1px solid {p.border}; }}
     #lumClose {{
-        background: {p.bg_base}; border: 1px solid {p.border}; border-radius: 18px;
+        background: {f('bg_base')}; border: 1px solid {p.border}; border-radius: 18px;
         color: {p.text_secondary}; font-size: 13px; padding: 0;
     }}
     #lumClose:hover {{ color: {p.text_primary}; background: {p.bg_card_hover}; }}
-    #lumDock {{ background: {p.bg_base}; border: 1px solid {p.border}; border-radius: 22px; }}
+    #lumDock {{ background: {f('bg_base')}; border: 1px solid {p.border}; border-radius: 22px; }}
     #lumDock QPushButton {{ border-radius: 16px; padding: 7px 14px; font-size: 13px; }}
     #lumDock QPushButton[variant="ghost"] {{ color: {p.text_secondary}; }}
     #lumDockSep {{ background: {p.border}; }}
-    #lumChip {{ background: {rgba(p.bg_base, 0.88)}; border: 1px solid {p.border}; border-radius: 13px; }}
-    #lumSearch {{ background: {p.bg_frame}; border-radius: 16px; padding: 4px 12px; }}
+    #lumChip {{ background: {f('bg_base', 0.88)}; border: 1px solid {p.border}; border-radius: 13px; }}
+    #lumSearch {{ background: {f('bg_frame')}; border-radius: 16px; padding: 4px 12px; }}
     #tabRow[match="true"] {{ background: {p.primary_muted}; }}
     #tabRow[dim="true"] #tabRowText {{ color: {p.text_muted}; }}
     #tabHeading {{ color: {p.text_muted}; font-family: {mono}; }}
@@ -583,22 +804,22 @@ def stylesheet() -> str:
     #lumH1 {{ font-size: 20px; font-weight: 600; }}
     #lumPageTitle {{ font-size: 15px; font-weight: 600; }}
     #lumRule {{ background: {p.border}; }}
-    #lumCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
+    #lumCard {{ background: {f('bg_card')}; border: 1px solid {f('border')}; border-radius: {rb}px; }}
 {HOVER and f"    #lumCard:hover {{ border-color: {mix(p.border, p.primary, 0.45)}; }}" or ""}
 
-    #tabBox {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rb}px; }}
+    #tabBox {{ background: {f('bg_card')}; border: 1px solid {f('border')}; border-radius: {rb}px; }}
     #tabBox[active="true"] {{ border-color: {p.primary}; }}
 {HOVER and f"    #tabBox:hover {{ border-color: {mix(p.border, p.primary, 0.5)}; }}" or ""}
     #tabBox[selected="true"] {{ border: 1px solid {p.primary}; background: {mix(p.bg_card, p.primary, 0.07)}; }}
-    #pageBody {{ background: {p.bg_base}; border: none; border-bottom-left-radius: {rb}px;
+    #pageBody {{ background: {f('bg_base')}; border: none; border-bottom-left-radius: {rb}px;
                  border-bottom-right-radius: {rb}px; }}
     #lumBand {{ background: {rgba(p.primary, 0.12)}; border: 1px solid {rgba(p.primary, 0.75)}; border-radius: 3px; }}
     #tabHeader {{
-        background: {p.bg_header}; border: none; border-bottom: 1px solid {p.border};
+        background: {f('bg_header')}; border: none; border-bottom: 1px solid {p.border};
         border-top-left-radius: {rb}px; border-top-right-radius: {rb}px;
     }}
     #tabHeader[collapsed="true"] {{ border-bottom: none; border-radius: {rb}px; }}
-    #tabAccent {{ background: {p.primary}; border-radius: 1px; }}
+    #tabAccent {{ background: {f('primary')}; border-radius: 1px; }}
     #tabTitle {{ color: {p.text_primary}; font-family: {mono}; }}
     #tabRow {{ background: transparent; border-radius: 0; }}
     #tabRow:hover {{ background: {p.bg_card_hover}; }}
@@ -607,45 +828,45 @@ def stylesheet() -> str:
         color: {p.text_muted}; border: 1px solid {p.border}; border-radius: 4px; font-family: {mono};
     }}
 
-    #themeCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {r}px; }}
-    #themeCard:hover {{ background: {p.bg_card_hover}; }}
+    #themeCard {{ background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {r}px; }}
+    #themeCard:hover {{ background: {f('bg_card_hover')}; }}
     #themeCard[active="true"] {{ border: 2px solid {p.primary}; }}
     #addCard {{ background: transparent; border: 1px dashed {p.border}; border-radius: {r}px; }}
     #addCard:hover {{ border-color: {p.text_muted}; }}
     #folderHeader {{ background: transparent; border: none; border-bottom: 1px solid {p.border}; }}
 
-    #clipCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {r}px; }}
-    #clipCard:hover {{ background: {p.bg_card_hover}; }}
+    #clipCard {{ background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {r}px; }}
+    #clipCard:hover {{ background: {f('bg_card_hover')}; }}
     #clipPreview {{ background: transparent; border: none; border-bottom: 1px solid {p.border};
                     border-top-left-radius: {r}px; border-top-right-radius: {r}px; }}
 
-    #setProfileBar, #setFooter {{ background: {p.bg_header}; border: none; }}
+    #setProfileBar, #setFooter {{ background: {f('bg_header')}; border: none; }}
     #setProfileBar {{ border-bottom: 1px solid {p.border}; }}
     #setFooter {{ border-top: 1px solid {p.border}; }}
-    #setSidebar {{ background: {p.bg_frame}; border: none; border-right: 1px solid {p.border}; }}
+    #setSidebar {{ background: {f('bg_frame')}; border: none; border-right: 1px solid {p.border}; }}
     QPushButton[side="true"] {{
         background: transparent; border: none; border-radius: {rs}px; padding: 0 12px; text-align: left;
         color: {p.text_secondary}; font-size: 13px; font-weight: 500;
     }}
-    QPushButton[side="true"]:hover {{ background: {p.bg_card_hover}; }}
-    QPushButton[side="true"]:checked {{ background: {p.primary_muted}; color: {p.text_primary}; }}
+    QPushButton[side="true"]:hover {{ background: {f('bg_card_hover')}; }}
+    QPushButton[side="true"]:checked {{ background: {f('primary_muted')}; color: {p.text_primary}; }}
     #setRow {{ border: none; border-bottom: 1px solid {p.border}; }}
     #keyCap {{
-        background: {p.bg_card}; border: 1px solid {p.border}; border-radius: 4px; color: {p.text_primary};
+        background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: 4px; color: {p.text_primary};
         font-family: {mono}; padding: 2px 6px;
     }}
-    #keyBox {{ background: {p.bg_frame}; border: 1px solid {p.border}; border-radius: {rs}px; }}
+    #keyBox {{ background: {f('bg_frame')}; border: 1px solid {p.border}; border-radius: {rs}px; }}
     #keyBox:hover {{ border-color: {p.text_muted}; }}
-    #navRow {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {rs}px; }}
+    #navRow {{ background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {rs}px; }}
 
-    #paletteBox {{ background: {p.bg_base}; border: 1px solid {p.border}; border-radius: {r}px; }}
+    #paletteBox {{ background: {f('bg_base')}; border: 1px solid {p.border}; border-radius: {r}px; }}
     #paletteHead {{ border: none; border-bottom: 1px solid {p.border}; }}
-    #paletteFoot {{ background: {p.bg_header}; border: none; border-top: 1px solid {p.border};
+    #paletteFoot {{ background: {f('bg_header')}; border: none; border-top: 1px solid {p.border};
                     border-bottom-left-radius: {r}px; border-bottom-right-radius: {r}px; }}
     #paletteInput {{ font-size: 16px; padding: 0; border: none; border-radius: 0; background: transparent; }}
     #paletteList {{ background: transparent; border: none; }}
     #paletteList::item {{ padding: 0; border-radius: {rs}px; }}
     #paletteList::item:selected {{ background: transparent; }}
 
-    #cheatCard {{ background: {p.bg_card}; border: 1px solid {p.border}; border-radius: {r}px; }}
+    #cheatCard {{ background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {r}px; }}
     """)

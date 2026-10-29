@@ -16,7 +16,7 @@ import shutil
 from collections import deque
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
-from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, QProcess
+from PyQt6.QtCore import QTimer, QRectF, QPointF, QProcess
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath
 
 from core import DATA_DIR, IS_WIN, theme, widgets, save_json, load_json
@@ -230,6 +230,11 @@ class SysPanel(widgets.FloatingPanel):
         self.geometry_changed.connect(self._remember)
         self.escape_pressed.connect(self.hide)
 
+    def showEvent(self, e):
+        super().showEvent(e)
+        if getattr(self, "_embedded", False):
+            QTimer.singleShot(0, self.m._wake)        # a page coming back on screen
+
     def _remember(self):
         g = self.geometry()
         try:
@@ -253,6 +258,7 @@ class SysmonModule(Module):
     def __init__(self, ctx):
         super().__init__(ctx)
         self.panel: SysPanel | None = None
+        self.views: list = []                     # System Monitor pages (overlay / dashboard boxes)
         self._last_cpu = (0, 0)
         self._last_net = (0, 0)
         self._nvidia: dict | None = None
@@ -292,11 +298,33 @@ class SysmonModule(Module):
     def tray_actions(self):
         return [("System monitor", self.toggle)]
 
+    def make_page(self):
+        view = SysPanel(self)
+        view.hidden.connect(self._maybe_stop)
+        self.views.append(view)
+        page = widgets.embed(view)
+        QTimer.singleShot(0, self._wake)
+        return page
+
+    def _wake(self):
+        if not self._timer.isActive():
+            self._last_cpu, self._last_net = cpu_times(), net_bytes()
+            self._timer.start()
+            QTimer.singleShot(300, self.sample)
+
+    def _shown(self) -> list:
+        from core.guard import alive
+        self.views = [v for v in self.views if alive(v)]
+        return [v for v in ([self.panel] if self.panel else []) + self.views if alive(v) and v.isVisible()]
+
+    def _maybe_stop(self):
+        QTimer.singleShot(0, lambda: None if self._shown() else self._timer.stop())
+
     def toggle(self):
         if self.panel is None:
             with self.themed():
                 self.panel = SysPanel(self)
-            self.panel.hidden.connect(self._timer.stop)
+            self.panel.hidden.connect(self._maybe_stop)
         if self.panel.isVisible():
             self.panel.hide()
             return
@@ -307,31 +335,38 @@ class SysmonModule(Module):
 
     # ── sampling ───────────────────────────────────────────────────────────
     def sample(self):
-        if self.panel is None:
+        shown = self._shown()
+        if not shown:
             return
+
+        class _All:                                # every panel and page on screen gets the same numbers
+            @staticmethod
+            def set_row(*a):
+                for v in shown:
+                    v.set_row(*a)
         busy, total = cpu_times()
         db, dt = busy - self._last_cpu[0], total - self._last_cpu[1]
         self._last_cpu = (busy, total)
         cpu = 100.0 * db / dt if dt > 0 else 0.0
         temp = cpu_temp()
-        self.panel.set_row("cpu", f"{cpu:.0f} %" + (f"  ·  {temp:.0f}°C" if temp is not None else ""), cpu)
+        _All.set_row("cpu", f"{cpu:.0f} %" + (f"  ·  {temp:.0f}°C" if temp is not None else ""), cpu)
         used, tot = memory()
-        self.panel.set_row("mem", f"{used:.1f} / {tot:.1f} GiB", 100.0 * used / tot if tot else 0.0)
+        _All.set_row("mem", f"{used:.1f} / {tot:.1f} GiB", 100.0 * used / tot if tot else 0.0)
         gpu = sysfs_gpu() or self._nvidia_reading()
         if gpu is None:
-            self.panel.set_row("gpu", "", None)
+            _All.set_row("gpu", "", None)
         else:
             parts = [f"{gpu['load']:.0f} %"]
             if gpu.get("vram"):
                 parts.append(f"{gpu['vram'][0]:.1f} / {gpu['vram'][1]:.0f} GiB")
             if gpu.get("temp") is not None:
                 parts.append(f"{gpu['temp']:.0f}°C")
-            self.panel.set_row("gpu", "  ·  ".join(parts), gpu["load"])
+            _All.set_row("gpu", "  ·  ".join(parts), gpu["load"])
         rx, tx = net_bytes()
         down, up = max(0, rx - self._last_net[0]), max(0, tx - self._last_net[1])
         self._last_net = (rx, tx)
-        self.panel.set_row("down", _rate(down), down)
-        self.panel.set_row("up", _rate(up), up)
+        _All.set_row("down", _rate(down), down)
+        _All.set_row("up", _rate(up), up)
 
     def _nvidia_reading(self) -> dict | None:
         """The last nvidia-smi answer; a new question goes out (it takes a moment, so it is never waited for)."""

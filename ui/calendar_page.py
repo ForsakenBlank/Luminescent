@@ -160,7 +160,6 @@ class CalendarPage(QWidget):
         items = self._items_on(d, events, tasks)
         if not items:
             self.agenda.addWidget(widgets.label("Nothing on this day.", 13, tone="muted"))
-        p = theme.P
         for _k, when, title, kind, colour in items:
             row = QFrame()
             row.setObjectName("lumCard")

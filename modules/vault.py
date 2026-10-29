@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QLineEdit,
-    QFileDialog, QProgressBar, QScrollArea, QGridLayout, QDialog, QMessageBox
+    QFileDialog, QProgressBar, QScrollArea, QGridLayout, QDialog
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer, QPoint, QMimeData, QBuffer, QByteArray, QSize
 from PyQt6.QtGui import QFont, QDrag, QImage, QImageReader, QPixmap

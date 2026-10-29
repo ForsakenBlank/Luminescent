@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QPlainTextEdit, QF
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QImage, QPixmap, QGuiApplication
 
-from core import theme, widgets, clip
+from core import widgets, clip
 from core.module import Module
 
 MAX_TEXT = 2900                 # about what a QR code holds as bytes at the lowest error correction

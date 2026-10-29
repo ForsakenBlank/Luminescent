@@ -84,7 +84,8 @@ NAV_SECTIONS = [("dashboard", "Dashboard"), ("automation", "Automation"), ("them
                 ("clipboard", "Clipboard"), ("settings", "Settings")]
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
 EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
-               ("stats", "Usage"), ("calendar", "Calendar")]
+               ("stats", "Usage"), ("calendar", "Calendar"), ("hearing", "Hearing Guard"),
+               ("sysmon", "System Monitor"), ("media", "Media")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
@@ -118,6 +119,27 @@ SCHEMA = [
                        ("system", _os("Desktop notifications (Noctalia, mako, dunst…)", "Windows notifications"))],
               help="Reminders and dose warnings always use desktop notifications as well, so they also show up "
                    "in your notification history."),
+        Field("toast_position", "Notifications appear", "choice", "tr",
+              choices=[("tr", "Top right"), ("tc", "Top centre"), ("tl", "Top left"), ("br", "Bottom right"),
+                       ("bc", "Bottom centre"), ("bl", "Bottom left")],
+              help="Luminescent cards only. Their colours (and gradients) are in Themes → right-click a theme → "
+                   "Settings… → Notifications."),
+        Field("toast_style", "Notification accent", "choice", "glow",
+              choices=[("glow", "A soft glow of the accent"), ("stripe", "A stripe down the left side"),
+                       ("top", "A line along the top"), ("outline", "An accent-coloured outline"),
+                       ("none", "No accent")]),
+        Field("toast_width", "Notification width (px)", "int", 360, min=260, max=640, step=20),
+        Field("toast_time", "Notifications stay up", "choice", 1.0,
+              choices=[(0.5, "Half as long"), (1.0, "Normal"), (1.5, "A bit longer"), (2.0, "Twice as long"),
+                       (3.0, "Three times as long")],
+              help="Long messages always stay up a little longer, and hovering a card keeps it up."),
+        Field("toast_max", "Most notifications on screen at once", "int", 5, min=1, max=10),
+        Field("toast_opacity", "Notification background", "opacity", 1.0,
+              help="Lower lets what is behind show through."),
+        Field("toast_text", "Notification text size", "choice", 1.0,
+              choices=[(0.9, "Small"), (1.0, "Normal"), (1.15, "Large"), (1.3, "Larger")]),
+        Field("toast_icon", "Show an icon on notifications", "bool", True),
+        Field("toast_test", "Try it", "widget", None),
         Field("start_panels", "Show on start", "custom", ["notes"],
               "Panels that open by themselves when Luminescent starts."),
         Field("tray_items", "Tray menu", "custom", [k for k, _ in TRAY_ITEMS],
@@ -174,6 +196,7 @@ SCHEMA = [
               "Off: the overlay always opens on the Dashboard."),
         Field("last_page", "", "hidden", "dashboard"),
         Field("settings_search_only", "", "hidden", False),
+        Field("settings_pinned", "", "hidden", []),
         Field("chrome_items", "", "hidden", []),
         Field("overlay_screen", "Open the overlay on", "choice", "cursor",
               choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")],
@@ -479,7 +502,8 @@ SCHEMA = [
         Field("hotkey", "Show / hide panel hotkey", "hotkey", "ctrl+alt+h"),
         Field("mode", "Mode", "choice", "limit",
               choices=[("limit", "Limit: dip the volume while over the limit"),
-                       ("monitor", "Monitor: only warn")]),
+                       ("monitor", "Monitor: only warn"),
+                       ("log", "Record only: keep the readings, never warn or change the volume")]),
         Field("limit_db", "Limit (estimated dB)", "int", 85, "85 dB(A) is the NIOSH recommended maximum for 8 hours a day.",
               min=60, max=110),
         Field("restore_volume", "Dip the apps, then bring them back when the loud part is over", "bool", True,
@@ -488,11 +512,17 @@ SCHEMA = [
               "Off: Hearing Guard never turns anything up: it lowers the master volume and leaves it there until "
               "you turn it up yourself."),
         Field("max_volume", "Never let master volume go above (%)", "int", 100,
-              "A hard cap that needs no calibration.", min=5, max=100),
+              "A hard cap that needs no calibration. Over 100 % only matters if your system lets the volume go "
+              "past 100 % (PipeWire can).", min=5, max=150),
         Field("calibration", "Default calibration: dB at 100 % volume with a full-scale tone", "int", 105,
               "Used for output devices you have not calibrated. Calibrate… in the panel measures against a phone "
               "sound-meter app and stores a value for each device; 100-115 is typical for headphones.", min=60, max=140),
         Field("warn_dose", "Notify at 50 %, 80 % and 100 % of the daily allowance", "bool", True),
+        Field("headset_scale", "How your headset's own volume works", "choice", "cubic",
+              choices=[("cubic", "Like the PC's volume (most headsets and their apps)"),
+                       ("linear", "Straight percentage of loudness")],
+              help="Only used when you type the volume your headphones show into the panel (Headset's own volume). "
+                   "If halving it there makes the estimate drop far more than you hear, pick the other one."),
         Field("meter_includes_volume", "Captured audio already includes the master volume", "bool", False,
               "Leave off. PipeWire records the output's monitor before the master volume, so the volume is added on "
               "top. Turn on only if lowering the volume by 6 dB makes the estimate drop by about 12 dB (PipeWire "
@@ -587,6 +617,10 @@ SCHEMA += [
         Field("glass", "", "hidden", []),
         Field("blur_size", "", "hidden", 0),
         Field("blur_passes", "", "hidden", 0),
+        Field("scheme_colours", "", "hidden", {}),
+        Field("keep_scheme_colours", "Put my colours back when Caelestia rewrites its scheme", "bool", True,
+              "Colours you saved for a Caelestia scheme (Caelestia & Glass → Colours) come back whenever Caelestia "
+              "switches to that scheme again or makes it anew (for example from a new wallpaper)."),
     ]),
 ]
 

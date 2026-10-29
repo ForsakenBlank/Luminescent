@@ -70,6 +70,7 @@ def make_icon(light: bool, accent: str = "") -> QIcon:
 class Launcher:
     def __init__(self, app: QApplication, start_guard: StartGuard | None = None):
         self.app = app
+        app.luminescent = self              # for shared widgets that need the launcher (the colour picker)
         self.start_guard = start_guard
         self.safe_mode = bool(start_guard and start_guard.safe_mode)
         self.faults = Faults()
@@ -83,6 +84,8 @@ class Launcher:
         if self.settings.migrated_from_old_config:
             log.info("migrated values from the old config.py into settings.json")
 
+        from core import ux
+        ux.install(app)
         theme.load_fonts()
         theme.set_text_scale(self.settings.get("ui.text_scale", 1.0))
         wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
@@ -213,6 +216,9 @@ class Launcher:
         self.app.setWindowIcon(self.icon)
         self.tray.setIcon(self.icon)
         safely(self._write_terminal_scheme, "terminal colours")
+        cael = self.modules.get("caelestia")
+        if cael is not None and cael.running and hasattr(cael, "theme_applied"):
+            safely(lambda: cael.theme_applied(t), "caelestia colours")
         if self._palette is not None:
             if alive(self._palette):
                 self._palette.close()
@@ -234,8 +240,8 @@ class Launcher:
         want = bool(self.settings.get("ui.own_terminal", False))
         linked = terminal.own_linked()
         if want and not linked and asked:
-            what = (f"Luminescent will give your PowerShell and Command Prompt profiles in Windows Terminal its "
-                    f"colours (through its own fragment file; your Terminal settings file is not edited)."
+            what = ("Luminescent will give your PowerShell and Command Prompt profiles in Windows Terminal its "
+                    "colours (through its own fragment file; your Terminal settings file is not edited)."
                     if IS_WIN else
                     "Luminescent will add one line to ~/.config/kitty/kitty.conf:\n\n"
                     "    include luminescent-theme.conf\n\n"
@@ -710,6 +716,13 @@ class Launcher:
         self._desktop_notify(title, message, ms)
 
     def toast(self, title: str, message: str, ms: int = 8000):
+        """Always shows (reminders, dose warnings): a desktop notification, so it stays in your notification
+        history, and a Luminescent card as well when that is the notification style."""
+        if self.settings.get("general.notify_style", "luminescent") == "luminescent":
+            try:
+                self.toasts.show(title, message, ms)
+            except Exception:
+                log.exception("toast failed")
         self._desktop_notify(title, message, ms)
 
     def _desktop_notify(self, title: str, message: str, ms: int):

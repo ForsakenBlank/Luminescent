@@ -599,12 +599,17 @@ class MainOverlay:
             if key == "settings":
                 from settings_ui import SettingsPage
                 return SettingsPage(self.settings, self.launcher)
-            if key in ("notes", "timers", "calculator"):
-                m = self.launcher.modules.get({"timers": "timer"}.get(key, key))
+            if key in ("notes", "timers", "calculator", "hearing", "sysmon", "media"):
+                mkey = {"timers": "timer"}.get(key, key)
+                m = self.launcher.modules.get(mkey)
                 if m is None or not m.running:
-                    return self._message_page(f"The {key.capitalize()} module is turned off "
+                    return self._message_page(f"{m.title if m else key.capitalize()} is turned off "
                                               f"(Settings → {m.title if m else key}).")
-                return m.make_page()
+                with theme.module_colours(mkey):        # the module's own look, if the theme gives it one
+                    page = m.make_page()
+                    if theme.overridden():
+                        page.setStyleSheet(theme.stylesheet())
+                return page
             if key == "today":
                 from ui.today import TodayPage
                 return TodayPage(self.launcher)

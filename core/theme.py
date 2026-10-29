@@ -717,6 +717,10 @@ def _stylesheet() -> str:
         background: {f('bg_base')}; color: {p.text_primary}; border: 1px solid {p.border}; padding: 4px;
         selection-background-color: {p.bg_card_hover}; selection-color: {p.text_primary}; outline: none;
     }}
+    QComboBox QAbstractItemView::item {{ min-height: 26px; padding: 0 8px; border-radius: {rs}px; }}
+    QComboBox QAbstractItemView::item:selected, QComboBox QAbstractItemView::item:hover {{
+        background: {p.bg_card_hover}; color: {p.text_primary};
+    }}
 
     QCheckBox {{ spacing: 9px; background: transparent; font-size: 13px; }}
     QCheckBox::indicator {{
@@ -749,6 +753,7 @@ def _stylesheet() -> str:
     QListWidget, QTreeWidget, QTableWidget {{
         background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {rb}px; outline: none;
     }}
+    QListWidget {{ padding: 3px; }}
     QListWidget::item {{ padding: 6px 8px; border-radius: {rs}px; }}
     QListWidget::item:selected, QTableWidget::item:selected {{ background: {p.primary_muted}; color: {p.text_primary}; }}
     QListWidget::item:hover {{ background: {p.bg_card_hover}; }}

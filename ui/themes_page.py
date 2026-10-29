@@ -508,6 +508,13 @@ class ThemesPage(QWidget):
         m.addAction("Rename…", lambda: self._rename(t))
         m.addAction("Duplicate", lambda: self.store.duplicate(t["id"]))
         m.addAction("Export to a file…", lambda: self.export_theme(t))
+        group = next((g[4] for g in self._groups() if any(x["id"] == t["id"] for x in g[4])), [])
+        ids = [x["id"] for x in group]
+        i = ids.index(t["id"]) if t["id"] in ids else -1
+        earlier = m.addAction("Move earlier", lambda: self.store.swap_themes(t["id"], ids[i - 1]))
+        earlier.setEnabled(i > 0)
+        later = m.addAction("Move later", lambda: self.store.swap_themes(t["id"], ids[i + 1]))
+        later.setEnabled(0 <= i < len(ids) - 1)
         sub = m.addMenu("Move to folder")
         sub.addAction("(no folder)", lambda: self.store.move_to_folder(t["id"], ""))
         for f in self.store.folders():

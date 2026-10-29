@@ -288,6 +288,16 @@ class ThemeStore(QObject):
         self.save()
         self.changed.emit()
 
+    def swap_themes(self, a: str, b: str):
+        """Swap two themes' places (the order they show in on the Themes page and in Next theme)."""
+        ids = [t["id"] for t in self.data["themes"]]
+        if a in ids and b in ids:
+            i, j = ids.index(a), ids.index(b)
+            th = self.data["themes"]
+            th[i], th[j] = th[j], th[i]
+            self.save()
+            self.changed.emit()
+
     def set_group_order(self, keys: list[str]):
         """The order of the groups on the Themes page ("builtin", "mine" and folder ids, top to bottom)."""
         self.data["group_order"] = [k for k in keys if isinstance(k, str)]

@@ -434,6 +434,7 @@ SCHEMA = [
                 "Every Luminescent hotkey in one list, clashes in red."), [
         Field("enabled", "Enable Keybinds", "bool", True),
         Field("hotkey", "Open hotkey", "hotkey", "ctrl+alt+k"),
+        Field("custom", "", "hidden", []),
     ]),
 
     Section("vault", "Ghost Vault", "🔒", "Encrypted file storage with a real password, a decoy password and a recovery key.", [

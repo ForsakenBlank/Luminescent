@@ -643,7 +643,8 @@ class FloatingPanel(QWidget):
     def follow_cursor_screen(self):
         """Panels used to reopen wherever they were saved, often another screen than the overlay (which
         opens on the screen with the mouse). Now a panel goes to the overlay's screen, placed the way
-        Settings → Overlay & Interface → Panels like Notes open says."""
+        Settings → Overlay & Interface → Panels like Notes open says. "Where I left them" keeps the spot only
+        while the whole panel is on that screen; otherwise it goes to the middle of it."""
         s = anim._settings
         if self.stays_put or s is None:
             return
@@ -658,20 +659,9 @@ class FloatingPanel(QWidget):
             x = min(max(c.x() + 16, target.left()), target.right() - self.width())
             y = min(max(c.y() + 16, target.top()), target.bottom() - self.height())
             self.move(max(target.left(), x), max(target.top(), y))
-        elif target.contains(self.geometry().center()):
-            return
-        else:
-            src = next((hypr.available_geometry(scr) for scr in QApplication.screens()
-                        if hypr.available_geometry(scr).contains(self.geometry().center())), None)
-            if src is None or src.isEmpty():
-                self.center_on(target)
-            else:
-                # keep the spot relative to the screen, so "top right" stays top right on a bigger or smaller one
-                fx = (self.x() - src.x()) / max(1, src.width() - self.width())
-                fy = (self.y() - src.y()) / max(1, src.height() - self.height())
-                fx, fy = min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))
-                self.move(target.x() + int(fx * max(0, target.width() - self.width())),
-                          target.y() + int(fy * max(0, target.height() - self.height())))
+        elif not target.contains(self.geometry()):
+            # "where I left them", but never on another monitor or hanging off the edge of this one
+            self.center_on(target)
         self.geometry_changed.emit()
 
     def center_on(self, screen: QRect | None = None):

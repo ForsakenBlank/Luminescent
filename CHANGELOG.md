@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+* **Panels and pop-ups open where you are**: a panel opened by its hotkey goes to the middle of the screen with
+  the mouse (Settings → Overlay & Interface → Panels like Notes open; "Where I left them" still keeps your spot,
+  but never on another monitor or half off the screen). Questions like "Name:", confirmations, the colour picker
+  and the theme editor open in the middle of the screen with the mouse too (or of the window that asked, when the
+  mouse is on it). New timers, new sticky notes and snapping use that screen instead of always the primary one.
+* **Theme folders in any order**: drag a folder's header (Built-in and My themes too), or right-click it → Move
+  up / down / to the top / to the bottom. Right-click a theme → Move earlier / later orders the themes inside it.
+* **Rounder hover effects**: the ✕ and other icon buttons are round, so the ✕ in a corner no longer pokes out of
+  the window when you hover it; small buttons, menu rows and list rows always have rounded corners (unless the
+  theme's corner radius is 0); dashboard rows sit inside their box's rounded corners.
+* **Colour picker buttons**: Cancel and Done lost their look when the picker was opened from a colour swatch (the
+  Caelestia & Glass colours, the theme editor): Done showed black text on a dark button. Fixed.
+* **Every dialog in Luminescent's look**: the vault password and recovery key, the keybind editor, the dashboard
+  item editor, Hearing Guard calibration, automation variables and the date picker were plain system windows.
+* **Disabled buttons look disabled** (a greyed accent button no longer looks clickable), and so do disabled
+  fields and check boxes.
+* **Tidier fields**: numbers and times in spin boxes are no longer glued to the left edge, date fields with a
+  calendar have a proper arrow, drop-down lists have rounded rows, and the reminders editor fits the settings page.
+* **Long names end in "…"** on the dashboard instead of being cut off mid-letter.
+* **Clipboard page**: when the snippets folder does not exist yet it offers to make it (or pick another one).
+* **Notes** has a ＋ next to its search for a new note.
+
 ## 1.5.0
 
 * **A new colour picker everywhere** (themes, folders, settings, Caelestia, Snippets): a saturation / brightness

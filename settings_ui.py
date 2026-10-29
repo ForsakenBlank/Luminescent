@@ -14,10 +14,10 @@ import logging
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QStackedWidget, QButtonGroup,
     QScrollArea, QLineEdit, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QPushButton, QSlider,
-    QColorDialog, QFileDialog
+    QFileDialog
 )
 from PyQt6.QtCore import Qt, QTimer, QEvent, pyqtSignal
-from PyQt6.QtGui import QColor, QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut
 
 from core import theme, widgets, backup, anim, APP_NAME
 from core.guard import alive
@@ -51,9 +51,13 @@ class HotkeyEdit(QWidget):
 
     def __init__(self):
         super().__init__()
-        lay = QHBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(4)
+        lay = QHBoxLayout()
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(8)
+        outer.addLayout(lay)
         self.box = QFrame()
         self.box.setObjectName("keyBox")
         self.box.setFixedHeight(32)
@@ -76,13 +80,15 @@ class HotkeyEdit(QWidget):
         self.edit.hide()
         self.edit.textChanged.connect(self._validate)
         self.edit.installEventFilter(self)
-        self.edit.returnPressed.connect(self._stop_typing)
         bl.addWidget(self.edit)
         lay.addWidget(self.box)
 
         self.record = QPushButton()
         self.record.setProperty("variant", "ghost")
         self.record.setCheckable(True)
+        # never the button Enter presses in a dialog: Enter after typing a combo used to start recording
+        self.record.setAutoDefault(False)
+        self.record.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.record.setFixedHeight(32)
         self.record.setCursor(Qt.CursorShape.PointingHandCursor)
         rl = QHBoxLayout(self.record)
@@ -100,14 +106,19 @@ class HotkeyEdit(QWidget):
         self.record.toggled.connect(self._toggle_record)
         lay.addWidget(self.record)
         clear = widgets.icon_button("✕", "Clear (no hotkey)", 26, 11, ghost=True)
+        clear.setAutoDefault(False)
+        clear.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         clear.clicked.connect(lambda: self.set_value(""))
         lay.addWidget(clear)
-        self.warning = widgets.label("", 12, tone="danger")
-        self.warning.hide()
-        lay.addWidget(self.warning)
         lay.addStretch()
+        self.warning = widgets.label("", 12, tone="danger")
+        self.warning.setWordWrap(True)
+        self.warning.hide()
+        outer.addWidget(self.warning)
         self._held: list[str] = []
         self._had_key = False
+        self._before_typing = ""
+        self.box.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.conflict_fn = None          # combo -> "" or what else uses it (checked as you type / record)
         self._show_caps()
 
@@ -119,6 +130,7 @@ class HotkeyEdit(QWidget):
         self._show_caps()
 
     def focus_edit(self):
+        self._before_typing = self.edit.text()
         self.caps.hide()
         self.edit.show()
         self.edit.setFocus()
@@ -151,6 +163,15 @@ class HotkeyEdit(QWidget):
         super().mousePressEvent(e)
 
     def eventFilter(self, obj, e):
+        if obj is self.edit and e.type() == QEvent.Type.KeyPress and \
+                e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Escape):
+            # enter / esc only finish typing: they must not reach the dialog (which would press a button,
+            # save or close it)
+            if e.key() == Qt.Key.Key_Escape:
+                self.edit.setText(self._before_typing)
+            self._stop_typing()
+            self.box.setFocus()
+            return True
         if obj is self.edit and e.type() == QEvent.Type.FocusOut and not self.record.isChecked():
             QTimer.singleShot(0, self._stop_typing)
         return super().eventFilter(obj, e)
@@ -277,9 +298,10 @@ class ColorButton(QPushButton):
         self._hex.setText(self._value.upper())
 
     def _pick(self):
-        c = QColorDialog.getColor(QColor(self._value), self, "Pick a colour")
-        if c.isValid():
-            self.set_value(c.name())
+        from core.colorpick import pick_colour
+        c = pick_colour(self, self._value)
+        if c:
+            self.set_value(c)
 
 
 class PathEdit(QWidget):
@@ -1132,6 +1154,19 @@ class SettingsPage(QWidget):
             w.setMinimumWidth(220)
             w.setFixedHeight(32)
             return w
+        if t == "font":
+            from PyQt6.QtGui import QFontDatabase
+            w = QComboBox()
+            w.setEditable(True)
+            w.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+            w.addItem("(the theme's own)", "")
+            for fam in QFontDatabase.families():
+                if not QFontDatabase.isPrivateFamily(fam):
+                    w.addItem(fam, fam)
+            w.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+            w.setMinimumWidth(260)
+            w.setFixedHeight(32)
+            return w
         full = f"{section_key}.{f.key}"
         if t == "widget":
             if full == "general.backup":
@@ -1140,6 +1175,9 @@ class SettingsPage(QWidget):
                 return QuitWidget(self.launcher)
             if full == "general.updates":
                 return UpdatesWidget(self.launcher)
+            if full == "caelestia.sync":
+                from modules.caelestia import SyncWidget
+                return SyncWidget(self.launcher)
         if t == "custom":
             if full == "ui.nav_order":
                 return NavOrderEditor()
@@ -1147,6 +1185,9 @@ class SettingsPage(QWidget):
                 return CheckListEditor(START_PANELS, 2)
             if full == "general.tray_items":
                 return CheckListEditor(TRAY_ITEMS, 2)
+            if full == "caelestia.glass":
+                from modules.caelestia import GlassEditor, CaelestiaModule
+                return GlassEditor(CaelestiaModule.open_classes)
             if full == "reminders.items":
                 try:
                     from modules.reminders import RemindersEditor
@@ -1223,6 +1264,9 @@ class SettingsPage(QWidget):
             return w.isChecked()
         if t == "choice":
             return w.currentData()
+        if t == "font":
+            i = w.findText(w.currentText())
+            return (w.itemData(i) or "") if i >= 0 else w.currentText().strip()
         if t == "custom" and hasattr(w, "get_value"):
             return w.get_value()
         return f.default
@@ -1243,6 +1287,12 @@ class SettingsPage(QWidget):
         elif t == "choice":
             i = w.findData(v)
             w.setCurrentIndex(i if i >= 0 else 0)
+        elif t == "font":
+            i = w.findData(v or "")
+            if i >= 0:
+                w.setCurrentIndex(i)
+            else:
+                w.setEditText(str(v))
         elif t == "custom" and hasattr(w, "set_value"):
             w.set_value(copy.deepcopy(v))
 

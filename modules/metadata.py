@@ -365,9 +365,9 @@ class MetaPanel(widgets.FloatingPanel):
 
         btns = QHBoxLayout()
         btns.setSpacing(8)
-        self.strip_copy_btn = widgets.button("🧹 Strip & copy to clipboard", "primary")
+        self.strip_copy_btn = widgets.button("🧹 Strip && copy to clipboard", "primary")
         self.strip_copy_btn.clicked.connect(self.strip_and_copy)
-        self.strip_save_btn = widgets.button("💾 Strip & save file")
+        self.strip_save_btn = widgets.button("💾 Strip && save file")
         self.strip_save_btn.clicked.connect(self.strip_and_save)
         for b in (self.strip_copy_btn, self.strip_save_btn):
             b.hide()

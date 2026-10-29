@@ -23,7 +23,7 @@ import subprocess
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QScrollArea, QGridLayout, QVBoxLayout, QHBoxLayout, QFrame, QColorDialog,
+    QApplication, QWidget, QLabel, QScrollArea, QGridLayout, QVBoxLayout, QHBoxLayout, QFrame,
     QLineEdit, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QFile, QSize, QRect, QPoint, QMimeData, QUrl
@@ -897,9 +897,10 @@ class SnippetsView(QWidget):
 
     def _folder_colour(self, path: str):
         cur = self.m.folder_colours().get(os.path.normcase(path), theme.P.folder_color)
-        c = QColorDialog.getColor(QColor(cur), self, "Folder colour")
-        if c.isValid():
-            self.m.set_folder_colour(path, c.name())
+        from core.colorpick import pick_colour
+        c = pick_colour(self, cur, "Folder colour")
+        if c:
+            self.m.set_folder_colour(path, c)
             self.load()
 
     def _rename(self, path: str):

@@ -85,6 +85,7 @@ class Launcher:
 
         theme.load_fonts()
         theme.set_text_scale(self.settings.get("ui.text_scale", 1.0))
+        theme.set_overrides(self._look_overrides())
         wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
         self.themes = ThemeStore(self.settings)
         self.themes.use_active()
@@ -272,6 +273,15 @@ class Launcher:
             pass
         terminal.write_fragment(ICON_PNG)
 
+    def _look_overrides(self) -> dict:
+        try:
+            radius = int(self.settings.get("ui.radius_override", -1))
+        except (TypeError, ValueError):
+            radius = -1
+        return {"font_family": self.settings.get("ui.font_override", "") or "",
+                "mono_family": self.settings.get("ui.mono_font_override", "") or "",
+                "radius": radius if radius >= 0 else -1}
+
     def apply_theme(self, tid: str):
         self.themes.apply(tid)
 
@@ -322,6 +332,9 @@ class Launcher:
             QTimer.singleShot(0, self._restyle)
         if theme.set_text_scale(self.settings.get("ui.text_scale", 1.0)):
             QTimer.singleShot(0, lambda: self.overlay.rebuild(between=self._restyle_all))
+        if theme.set_overrides(self._look_overrides()):
+            # a new font or corner radius for every theme: re-apply the active one
+            QTimer.singleShot(0, lambda: self.themes.apply(self.themes.data["active"]))
         wallpaper.CUSTOM_COMMAND = self.settings.get("ui.wallpaper_command", "") or ""
         self.hotkeys.unregister_all("launcher")
         self._register_global_hotkeys()
@@ -817,6 +830,24 @@ def _smoke(launcher: "Launcher", app: QApplication):
     steps = [lambda k=k: launcher.overlay.open(k) for k, _ in ALL_PAGES]
     steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide,
               lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark")]
+
+    def dialogs():
+        from ui.themes_page import ThemeDialog
+        from core.colorpick import ColourDialog
+        from modules.keybinds import _KeysDialog
+        for d in (ThemeDialog(launcher, launcher.themes.active()), ColourDialog(None, "#7B6CF6", "Smoke"),
+                  _KeysDialog(None, launcher, "Smoke", "ctrl+k", mine={}, tools=[])):
+            d.show()
+            d.close()
+            d.deleteLater()
+        launcher.toasts.show("Smoke", "A long message " * 60)
+
+    def settings_sections():
+        launcher.overlay.open("settings")
+        page = launcher.overlay.page("settings")
+        for s in SCHEMA:
+            page.open_section(s.key)
+    steps += [dialogs, settings_sections, launcher.overlay.hide]
 
     def run(i=0):
         if i < len(steps):

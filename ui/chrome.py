@@ -45,6 +45,11 @@ def default_items(top: int) -> list[dict]:
              "frozen": False}]
 
 
+CLOCK_FORMATS = {"24": "%H:%M", "24s": "%H:%M:%S", "12": "%I:%M %p", "12s": "%I:%M:%S %p"}
+DATE_FORMATS = {"long": "%A %d %B", "short": "%a %d %b", "full": "%A %d %B %Y", "numeric": "%d/%m/%Y",
+                "us": "%m/%d/%Y", "iso": "%Y-%m-%d"}
+
+
 # ── what an element shows ─────────────────────────────────────────────────────
 class _Content(QWidget):
     def __init__(self, kind: str, scale: float, launcher, data: dict | None = None):
@@ -125,10 +130,13 @@ class _Content(QWidget):
     def tick(self):
         if self.time is not None or self.date is not None:
             now = datetime.now()
+            st = getattr(self.launcher, "settings", None)
             if self.time is not None:
-                self.time.setText(now.strftime("%H:%M"))
+                fmt = CLOCK_FORMATS.get(st.get("ui.clock_format", "24") if st else "24", "%H:%M")
+                self.time.setText(now.strftime(fmt).lstrip("0") if fmt.startswith("%I") else now.strftime(fmt))
             if self.date is not None:
-                self.date.setText(now.strftime("%A %d %B").upper().replace(" 0", " "))
+                fmt = DATE_FORMATS.get(st.get("ui.date_format", "long") if st else "long", "%A %d %B")
+                self.date.setText(now.strftime(fmt).upper().replace(" 0", " "))
         if self.big is not None:
             name = str(self.data.get("text", "")).strip()
             if self.kind == "greeting":

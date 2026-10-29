@@ -567,7 +567,7 @@ class ItemDialog(QDialog):
         self.item = dict(item or {"kind": kind})
         self.kind = self.item.get("kind") or "item"
         self.setWindowTitle(("Edit " if item else "New ") + ("group" if self.kind == "group" else "item"))
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        widgets.card_dialog(self)
         self.setMinimumWidth(560)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(18, 18, 18, 18)

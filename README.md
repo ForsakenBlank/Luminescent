@@ -125,9 +125,12 @@ every panel, page and menu) and whether it opens on the page you were on last.
   arguments** and **run a command in a terminal window**; headings and separators; **groups** that run several
   items in order; a lock button and a search box; running items get a green dot and a **Stop**; folder items have
   **Open terminal here**.
-* **Themes**: click a theme to apply it everywhere. Right-click → **Settings…** for every colour (full colour wheel),
-  font, corner radius, glow, a background image behind the overlay (with an opacity slider), the card icon, a
-  **desktop wallpaper** (a picture, or a **Wallpaper Engine** project) and the **settings profile** it uses.
+* **Themes**: click a theme to apply it everywhere. Right-click → **Settings…** opens the theme editor: every colour
+  in a list on the left, picked right there with a colour square, hue bar, hex and R G B boxes and swatches (the
+  theme's, Caelestia's, your recent picks), with a live preview, a sample panel and a contrast check. Its other tabs
+  hold the font, corner radius, glow, a background image behind the overlay (with an opacity slider), the card icon,
+  the **Caelestia shell's** primary, secondary and third colours, a **desktop wallpaper** (a picture, or a
+  **Wallpaper Engine** project), the **settings profile** it uses and module accents.
   Group themes in colour-coded folders. Dark and Light are built in and can not be deleted.
   **Import… / Export to a file…** share a theme as a `.lumtheme` file; **From a colour…** makes a whole theme from one
   accent colour; Settings… → **Module accents** gives a module its own colour (Notes in green…). A **Next theme**
@@ -234,9 +237,14 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   automatically if Hyprland reports an error) and Luminescent's own hotkeys change right there. **New keybind** binds
   keys or a **mouse button** (side, middle or extra buttons, e.g. a Logitech mouse's back and forward) to opening an
   app, running a command, any Luminescent tool, the volume or other keys.
-* **Caelestia & Glass**: every file in `~/.config/caelestia` as a form (switches, numbers, colour swatches) or as
-  text, saved with a backup; Caelestia's colours and wallpaper, and a Luminescent theme made from them; and glass
-  windows per app: how see-through each app is focused and unfocused, blur on or off, and the blur strength.
+* **Caelestia** (its own page in Settings): applying a theme recolours the Caelestia shell (bar, launcher,
+  dashboard, notifications) by rewriting `~/.local/state/caelestia/scheme.json`, which Caelestia watches. Its own
+  colours are kept in `data/caelestia-backups` and **Restore** puts them back. Optional: keep the shell on the theme's
+  colours, colour other apps through Caelestia's own theming (GTK, terminals, Hyprland borders, Discord, btop...),
+  and set the shell's look in `shell.json` (see-through panels, rounding, spacing, padding, text size, animation
+  length). The **Caelestia & Glass** window edits every file in `~/.config/caelestia` as a form or as text, saved with
+  a backup. **Glass apps** (Settings → Caelestia, or the window's Glass tab) make any app see-through: how solid it
+  is focused and unfocused, blur on or off, and the blur strength.
 * **Calendar** page: Atlas's events and tasks next to your reminders, with notifications on the PC.
 * **Reminders** (Settings → Reminders): pop-ups, sounds, notifications, and **Switch theme**, so a 08:00 reminder can
   switch to Light and a 20:00 one to Dark. Also monthly and every-N-days schedules, and quick reminders from the

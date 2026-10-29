@@ -19,7 +19,7 @@ import subprocess
 
 from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QHBoxLayout, QComboBox, QDialog,
-    QFormLayout, QAbstractItemView, QHeaderView, QWidget, QStackedWidget, QFrame, QCompleter
+    QFormLayout, QAbstractItemView, QHeaderView, QWidget, QStackedWidget, QFrame, QCompleter, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QBrush
@@ -75,33 +75,52 @@ class _KeysDialog(QDialog):
         super().__init__(parent)
         from settings_ui import HotkeyEdit
         self.setWindowTitle(title)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        widgets.card_dialog(self)
         self.launcher = launcher
         self.mine = mine is not None
         lay = QVBoxLayout(self)
-        lay.setSpacing(10)
-        form = QFormLayout()
-        form.setSpacing(8)
+        lay.setContentsMargins(22, 16, 22, 18)
+        lay.setSpacing(8)
+
+        def heading(text: str):
+            lay.addSpacing(4)
+            lay.addWidget(widgets.label(text, 10.5, 600, mono=True, spacing=0.14, tone="accent"))
+
+        heading("KEYS")
         self.keys = HotkeyEdit()
         self.keys.set_value(combo)
         if launcher is not None:
             self.keys.recording_changed.connect(launcher.hotkeys.set_suspended)
-        form.addRow("Keys", self.keys)
+        lay.addWidget(self.keys)
+        hint = widgets.label("Click the keys to type a combo (super+shift+g) and press Enter, or press Record and "
+                             "then the keys. Record can not see combos Hyprland already uses, so type those.", 12,
+                             tone="muted")
+        hint.setWordWrap(True)
+        lay.addWidget(hint)
         if not IS_WIN:
             # a mouse button keeps the modifiers already typed: ctrl + side button
-            form.addRow("", MousePad(self._mouse))
+            heading("OR A MOUSE BUTTON")
+            row = QHBoxLayout()
+            row.setSpacing(8)
+            row.addWidget(MousePad(self._mouse), 1)
             pick = QComboBox()
-            pick.addItem("…or pick a mouse button", "")
+            pick.setFixedHeight(32)
+            pick.addItem("Pick from a list…", "")
             for key, label in hk.MOUSE_BUTTONS:
                 pick.addItem(label, key)
             pick.activated.connect(lambda i: self._mouse(pick.itemData(i)) if pick.itemData(i) else None)
-            form.addRow("", pick)
+            row.addWidget(pick)
+            lay.addLayout(row)
         self.command = QLineEdit()
+        self.command.setFixedHeight(32)
         self.command.setPlaceholderText("e.g. kitty, or uwsm app -- zen-browser")
         if with_command:
-            form.addRow("Runs", self.command)
+            heading("RUNS")
+            lay.addWidget(self.command)
         self.name = QLineEdit()
+        self.name.setFixedHeight(32)
         self.does = QComboBox()
+        self.does.setFixedHeight(32)
         self.stack = QStackedWidget()
         self._values: dict[str, QWidget] = {}
         if self.mine:
@@ -114,31 +133,47 @@ class _KeysDialog(QDialog):
                 self.does.addItem(label, key)
                 self._values[key] = w = self._value_widget(key, tools or [])
                 self.stack.addWidget(w)
-            self.does.currentIndexChanged.connect(lambda _i: self.stack.setCurrentWidget(
-                self._values[self.does.currentData()]))
+            self.does.currentIndexChanged.connect(lambda _i: self._show_value())
             i = self.does.findData(m.get("does", "app"))
             self.does.setCurrentIndex(max(0, i))
-            self.stack.setCurrentWidget(self._values[self.does.currentData()])
+            self._show_value()
             self._set_value(m.get("does", "app"), m.get("value", ""))
-            form.addRow("Does", self.does)
-            form.addRow("", self.stack)
-            form.addRow("Name", self.name)
-        lay.addLayout(form)
-        hint = QLabel("Click the keys to type a combo (super+shift+g), press Record, or click the box above with a "
-                      "mouse button. Record can not see combos Hyprland already uses, so type those.")
-        hint.setObjectName("lumHint")
-        hint.setWordWrap(True)
-        lay.addWidget(hint)
+            heading("WHAT IT DOES")
+            form = QFormLayout()
+            form.setHorizontalSpacing(14)
+            form.setVerticalSpacing(8)
+            form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            form.addRow(widgets.label("Does", 13, tone="secondary"), self.does)
+            form.addRow(widgets.label("What", 13, tone="secondary"), self.stack)
+            form.addRow(widgets.label("Name", 13, tone="secondary"), self.name)
+            lay.addLayout(form)
+        lay.addSpacing(8)
         btns = QHBoxLayout()
+        btns.setSpacing(8)
         btns.addStretch()
-        cancel = widgets.button("Cancel")
+        cancel = widgets.button("Cancel", "ghost")
+        cancel.setAutoDefault(False)
         cancel.clicked.connect(self.reject)
         ok = widgets.button("Save", "primary")
+        ok.setAutoDefault(False)
+        ok.setDefault(True)
         ok.clicked.connect(self.accept)
         btns.addWidget(cancel)
         btns.addWidget(ok)
         lay.addLayout(btns)
-        self.resize(560, 0)
+        self.setMinimumWidth(600)
+        self.adjustSize()
+
+    def _show_value(self):
+        w = self._values.get(self.does.currentData())
+        if w is None:
+            return
+        self.stack.setCurrentWidget(w)
+        # the stack is as tall as its current page, not its tallest one
+        for other in self._values.values():
+            other.setSizePolicy(other.sizePolicy().horizontalPolicy(),
+                                QSizePolicy.Policy.Preferred if other is w else QSizePolicy.Policy.Ignored)
+        self.stack.adjustSize()
 
     def _mouse(self, button: str):
         mods = [p for p in hk.normalize(self.keys.value()).split("+") if p in hk.MODIFIERS]

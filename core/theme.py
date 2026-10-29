@@ -129,6 +129,23 @@ def luminance(hex_colour: str) -> float:
     return 0.299 * r + 0.587 * g + 0.114 * b
 
 
+def contrast(a: str, b: str) -> float:
+    """The WCAG contrast ratio of two colours (1 = none, 21 = black on white; 4.5 reads well)."""
+    def lum(c: str) -> float:
+        h = c.lstrip("#")
+        out = []
+        for i in (0, 2, 4):
+            v = int(h[i:i + 2], 16) / 255
+            out.append(v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2]
+    try:
+        la, lb = lum(a), lum(b)
+    except (ValueError, IndexError):
+        return 1.0
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+
 def mix(a: str, b: str, t: float) -> str:
     """`a` blended towards `b` by t (0..1), as #RRGGBB."""
     ha, hb = a.lstrip("#"), b.lstrip("#")
@@ -149,11 +166,28 @@ def derive_primary_text(colours: dict) -> str:
         return prim
 
 
+# set in Settings → Overlay & Interface: a font, monospace font or corner radius for every theme
+# ({"font_family", "mono_family", "radius"}; missing = the theme's own).
+OVERRIDES: dict = {}
+_BUNDLED_MONO = MONO_FAMILY
+
+
+def set_overrides(values: dict) -> bool:
+    """Returns True when they changed (the caller then re-applies the theme)."""
+    global OVERRIDES, MONO_FAMILY, MONO_CSS
+    new = {k: v for k, v in (values or {}).items() if v not in (None, "", -1)}
+    changed = new != OVERRIDES
+    OVERRIDES = new
+    MONO_FAMILY = new.get("mono_family") or _BUNDLED_MONO
+    MONO_CSS = f'"{MONO_FAMILY}", "Cascadia Mono", Consolas, monospace'
+    return changed
+
+
 def use(values: dict) -> Palette:
     """Make `values` (a theme's colours + look) the active palette. Unknown keys are ignored."""
     global P
     base = {k: v for k, v in Palette().__dict__.items()}
-    vals = dict(values or {})
+    vals = {**dict(values or {}), **{k: v for k, v in OVERRIDES.items() if k in ("font_family", "radius")}}
     if not vals.get("primary_text"):
         vals["primary_text"] = derive_primary_text(vals)
     base.update({k: v for k, v in vals.items() if k in _FIELDS and v not in (None, "")})
@@ -193,7 +227,9 @@ def accent_roles(accent: str, bg: str) -> dict:
         "primary_hover": mix(accent, "#000000", 0.12) if light else mix(accent, "#FFFFFF", 0.14),
         "primary_muted": mix(accent, bg, 0.80 if light else 0.78),
         "primary_text": mix(accent, "#000000", 0.45) if light else mix(accent, "#FFFFFF", 0.35),
-        "on_primary": "#1A1600" if luminance(accent) > 150 else "#FFFFFF",
+        # white while it still reads well, else whichever reads better
+        "on_primary": "#FFFFFF" if contrast("#FFFFFF", accent) >= 3.8 or
+                      contrast("#FFFFFF", accent) >= contrast("#1A1600", accent) else "#1A1600",
     }
 
 
@@ -410,6 +446,7 @@ def stylesheet() -> str:
     QDialog, QMessageBox, QInputDialog, QColorDialog, QFileDialog {{
         background: {p.bg_base};
     }}
+    QDialog[card="true"] {{ background: transparent; }}
 
     QMenu {{
         background-color: {p.bg_base}; color: {p.text_primary};

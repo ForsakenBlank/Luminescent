@@ -6,8 +6,8 @@ import subprocess
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QMessageBox, QInputDialog, QMenu, QSizePolicy, QDialog, QLineEdit, QGraphicsOpacityEffect,
-    QDateTimeEdit, QDialogButtonBox
+    QMessageBox, QMenu, QSizePolicy, QDialog, QLineEdit, QGraphicsOpacityEffect,
+    QDateTimeEdit
 )
 from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, pyqtSignal, QTimer,
                           QPropertyAnimation, QEasingCurve)
@@ -675,19 +675,158 @@ class FloatingPanel(QWidget):
 
 
 # ── dialogs ───────────────────────────────────────────────────────────────────
-def _on_top(dlg: QDialog):
-    dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+DIALOG_HEAD = 38
+
+
+class _CardLook(QObject):
+    """Makes a QDialog a frameless rounded card like the panels: an outline, a header strip with the title,
+    an accent tick and ✕, and dragging by the header. Every Luminescent dialog goes through card_dialog()."""
+
+    def __init__(self, dlg: QDialog, closable: bool):
+        super().__init__(dlg)
+        self.dlg = dlg
+        self._drag = None
+        self.head = QFrame(dlg)
+        self.head.setObjectName("dlgHead")
+        self.head.setStyleSheet("#dlgHead { background: transparent; border: none; }")
+        self.head.setCursor(Qt.CursorShape.SizeAllCursor)
+        h = QHBoxLayout(self.head)
+        h.setContentsMargins(16, 0, 8, 0)
+        h.setSpacing(8)
+        self.title = label("", 10.5, 600, mono=True, spacing=0.16)
+        self.title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        h.addWidget(self.title)
+        h.addStretch()
+        self.close_btn = icon_button("✕", "Close (Esc)", 26, 11, ghost=True)
+        self.close_btn.setAutoDefault(False)
+        self.close_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.close_btn.clicked.connect(dlg.reject)
+        self.close_btn.setVisible(closable)
+        h.addWidget(self.close_btn)
+        self.head.installEventFilter(self)
+        dlg.installEventFilter(self)
+        self._sync_title()
+
+    def _sync_title(self):
+        self.title.setText(hypr_strip(self.dlg.windowTitle()).upper())
+
+    def eventFilter(self, obj, e):
+        t = e.type()
+        if obj is self.dlg:
+            if t == QEvent.Type.Paint:
+                self._paint()
+            elif t == QEvent.Type.Resize:
+                self.head.setGeometry(1, 1, self.dlg.width() - 2, DIALOG_HEAD - 1)
+                self.head.raise_()
+            elif t == QEvent.Type.WindowTitleChange:
+                self._sync_title()
+            return False
+        if obj is self.head:
+            if t == QEvent.Type.MouseButtonPress and e.button() == Qt.MouseButton.LeftButton:
+                if not system_move(self.dlg):
+                    self._drag = global_cursor(e) - self.dlg.pos()
+                return True
+            if t == QEvent.Type.MouseMove and self._drag is not None:
+                self.dlg.move(global_cursor(e) - self._drag)
+                return True
+            if t == QEvent.Type.MouseButtonRelease:
+                self._drag = None
+                return True
+        return False
+
+    def _paint(self):
+        from PyQt6.QtGui import QPainterPath, QPen
+        from PyQt6.QtCore import QRectF
+        p = theme.P
+        r = max(4, p.radius)
+        painter = QPainter(self.dlg)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rect = QRectF(self.dlg.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        path = QPainterPath()
+        path.addRoundedRect(rect, r, r)
+        painter.fillPath(path, QColor(p.bg_base))
+        # the header strip, clipped to the rounded top
+        painter.save()
+        painter.setClipPath(path)
+        painter.fillRect(QRectF(0, 0, self.dlg.width(), DIALOG_HEAD), QColor(p.bg_header))
+        painter.fillRect(QRectF(0, DIALOG_HEAD - 1, self.dlg.width(), 1), QColor(p.border))
+        painter.fillRect(QRectF(0, DIALOG_HEAD - 1, 40, 1), QColor(p.primary))
+        painter.restore()
+        pen = QPen(QColor(theme.mix(p.border, p.text_muted, 0.35)))
+        pen.setWidthF(1.0)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawPath(path)
+        painter.end()
+
+
+def hypr_strip(title: str) -> str:
+    """A window title without the invisible Hyprland markers."""
+    return "".join(c for c in title if c not in (hypr.NO_ACTIVATE, hypr.NO_FOCUS, hypr.NO_PIN, hypr.BLUR))
+
+
+def card_dialog(dlg: QDialog, closable: bool = True) -> QDialog:
+    """Give a dialog the rounded card look (call it in __init__, before the dialog is shown). Its layout keeps
+    its own margins; the header strip sits above it."""
+    if getattr(dlg, "_card_look", None) is not None:
+        return dlg
+    dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+    dlg.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    dlg.setProperty("card", True)
+    dlg.setContentsMargins(0, DIALOG_HEAD, 0, 0)
+    dlg._card_look = _CardLook(dlg, closable)
     return dlg
 
 
+def _on_top(dlg: QDialog):
+    return card_dialog(dlg)
+
+
+class _AskDialog(QDialog):
+    """The body of message / confirm / choose / ask_text: a text, an optional field and a row of buttons."""
+
+    def __init__(self, parent, title: str, text: str, width: int = 420):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        card_dialog(self)
+        self.clicked = None
+        self.lay = QVBoxLayout(self)
+        self.lay.setContentsMargins(20, 16, 20, 18)
+        self.lay.setSpacing(14)
+        if text:
+            self.text = label(text, 13)
+            self.text.setWordWrap(True)
+            self.text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self.text.setMinimumWidth(width - 40)
+            self.lay.addWidget(self.text)
+        self.buttons = QHBoxLayout()
+        self.buttons.setSpacing(8)
+        self.buttons.addStretch()
+        self.setMinimumWidth(width)
+
+    def add_button(self, text: str, variant: str = "", accept: bool = True, default: bool = False) -> QPushButton:
+        b = button(text, variant)
+        b.setMinimumWidth(84)
+        b.setAutoDefault(False)
+        b.setDefault(default)
+        b.clicked.connect(lambda: self._done(b, accept))
+        self.buttons.addWidget(b)
+        return b
+
+    def _done(self, b, accept: bool):
+        self.clicked = b
+        (self.accept if accept else self.reject)()
+
+    def finish(self):
+        self.lay.addLayout(self.buttons)
+        self.adjustSize()
+
+
 def message(parent, title: str, text: str, icon=QMessageBox.Icon.Information):
-    box = QMessageBox(parent)
-    box.setWindowTitle(title)
-    box.setText(text)
-    box.setIcon(icon)
-    box.setStandardButtons(QMessageBox.StandardButton.Ok)
-    _on_top(box)
-    box.exec()
+    dlg = _AskDialog(parent, title, ("⚠  " if icon == QMessageBox.Icon.Warning else "") + text)
+    dlg.add_button("OK", "primary", default=True)
+    dlg.finish()
+    dlg.exec()
 
 
 def error(parent, title: str, text: str):
@@ -695,78 +834,74 @@ def error(parent, title: str, text: str):
 
 
 def confirm(parent, title: str, text: str, yes: str = "Yes", no: str = "No", danger: bool = False) -> bool:
-    box = QMessageBox(parent)
-    box.setWindowTitle(title)
-    box.setText(text)
-    box.setIcon(QMessageBox.Icon.Question)
-    yes_btn = box.addButton(yes, QMessageBox.ButtonRole.YesRole)
-    box.addButton(no, QMessageBox.ButtonRole.NoRole)
+    dlg = _AskDialog(parent, title, text)
+    no_btn = dlg.add_button(no, "ghost", accept=False, default=danger)
+    yes_btn = dlg.add_button(yes, "danger" if danger else "primary", default=not danger)
     if danger:
-        yes_btn.setProperty("variant", "danger")
-    box.setDefaultButton(yes_btn if not danger else box.buttons()[1])
-    _on_top(box)
-    box.exec()
-    return box.clickedButton() is yes_btn
+        yes_btn.setStyleSheet(f"QPushButton {{ border: 1px solid {theme.DANGER}; }}")
+    dlg.finish()
+    (no_btn if danger else yes_btn).setFocus()
+    dlg.exec()
+    return dlg.clicked is yes_btn
 
 
 def choose(parent, title: str, text: str, buttons: list[str], cancel: str = "Cancel") -> str | None:
-    """Show a message box with custom buttons. Returns the clicked label or None for cancel."""
-    box = QMessageBox(parent)
-    box.setWindowTitle(title)
-    box.setText(text)
+    """A message with custom buttons. Returns the clicked label or None for cancel."""
+    dlg = _AskDialog(parent, title, text, max(420, 120 + 110 * len(buttons)))
+    dlg.add_button(cancel, "ghost", accept=False)
     made = {}
-    for label in buttons:
-        made[label] = box.addButton(label, QMessageBox.ButtonRole.AcceptRole)
-    cancel_btn = box.addButton(cancel, QMessageBox.ButtonRole.RejectRole)
-    _on_top(box)
-    box.exec()
-    clicked = box.clickedButton()
-    if clicked is None or clicked is cancel_btn:
-        return None
-    for label, b in made.items():
-        if b is clicked:
-            return label
+    for i, text_ in enumerate(buttons):
+        made[text_] = dlg.add_button(text_, "primary" if i == len(buttons) - 1 else "", default=i == len(buttons) - 1)
+    dlg.finish()
+    dlg.exec()
+    for text_, b in made.items():
+        if b is dlg.clicked:
+            return text_
     return None
 
 
-def ask_text(parent, title: str, label: str, default: str = "") -> tuple[str, bool]:
-    dlg = QInputDialog(parent)
-    dlg.setWindowTitle(title)
-    dlg.setLabelText(label)
-    dlg.setTextValue(default)
-    dlg.setInputMode(QInputDialog.InputMode.TextInput)
-    _on_top(dlg)
+def ask_text(parent, title: str, label_: str, default: str = "") -> tuple[str, bool]:
+    dlg = _AskDialog(parent, title, label_)
+    edit = QLineEdit(default)
+    edit.setFixedHeight(34)
+    edit.selectAll()
+    dlg.lay.addWidget(edit)
+    dlg.add_button("Cancel", "ghost", accept=False)
+    dlg.add_button("OK", "primary", default=True)
+    dlg.finish()
+    edit.setFocus()
     ok = dlg.exec() == QDialog.DialogCode.Accepted
-    return dlg.textValue(), ok
+    return edit.text(), ok
 
 
-def ask_choice(parent, title: str, label: str, items: list[str], current: int = 0) -> tuple[str, bool]:
-    dlg = QInputDialog(parent)
-    dlg.setWindowTitle(title)
-    dlg.setLabelText(label)
-    dlg.setComboBoxItems(items)
-    dlg.setTextValue(items[current] if items else "")
-    dlg.setOption(QInputDialog.InputDialogOption.UseListViewForComboBoxItems, True)
-    _on_top(dlg)
-    ok = dlg.exec() == QDialog.DialogCode.Accepted
-    return dlg.textValue(), ok
+def ask_choice(parent, title: str, label_: str, items: list[str], current: int = 0) -> tuple[str, bool]:
+    from PyQt6.QtWidgets import QListWidget
+    dlg = _AskDialog(parent, title, label_)
+    lst = QListWidget()
+    lst.addItems(items)
+    lst.setCurrentRow(max(0, min(current, len(items) - 1)))
+    lst.setMinimumHeight(min(320, 36 * max(3, len(items))))
+    lst.itemDoubleClicked.connect(lambda _it: dlg.accept())
+    dlg.lay.addWidget(lst)
+    dlg.add_button("Cancel", "ghost", accept=False)
+    dlg.add_button("OK", "primary", default=True)
+    dlg.finish()
+    lst.setFocus()
+    ok = dlg.exec() == QDialog.DialogCode.Accepted and lst.currentItem() is not None
+    return (lst.currentItem().text() if lst.currentItem() else ""), ok
 
 
-def ask_datetime(parent, title: str, label: str, default=None):
+def ask_datetime(parent, title: str, label_: str, default=None):
     """A date + time picker. Returns a datetime, or None when cancelled."""
-    dlg = QDialog(parent)
-    dlg.setWindowTitle(title)
-    lay = QVBoxLayout(dlg)
-    lay.addWidget(QLabel(label))
+    dlg = _AskDialog(parent, title, label_)
     edit = QDateTimeEdit(QDateTime(default) if default is not None else QDateTime.currentDateTime().addSecs(3600))
     edit.setCalendarPopup(True)
     edit.setDisplayFormat("ddd d MMM yyyy  HH:mm")
-    lay.addWidget(edit)
-    box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-    box.accepted.connect(dlg.accept)
-    box.rejected.connect(dlg.reject)
-    lay.addWidget(box)
-    _on_top(dlg)
+    edit.setFixedHeight(34)
+    dlg.lay.addWidget(edit)
+    dlg.add_button("Cancel", "ghost", accept=False)
+    dlg.add_button("OK", "primary", default=True)
+    dlg.finish()
     if dlg.exec() != QDialog.DialogCode.Accepted:
         return None
     return edit.dateTime().toPyDateTime().replace(second=0, microsecond=0)

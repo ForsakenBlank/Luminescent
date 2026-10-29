@@ -1600,15 +1600,14 @@ class Notify(Node):
 class MessageNode(Node):
     def receive(self, port, inp):
         from PyQt6.QtWidgets import QMessageBox
-        from PyQt6.QtCore import Qt
         box = QMessageBox()
         box.setWindowTitle(str(self.f("title", inp)))
         box.setText(str(self.f("text", inp)))
-        box.setWindowFlags(box.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        from core import widgets
+        widgets.card_dialog(box)
         box.finished.connect(lambda _r: self.fire("ok", inp))
         self._box = box
         box.open()
-        from core import widgets
         widgets.bring_to_front(box)
 
 
@@ -1623,13 +1622,12 @@ class Ask(Node):
 
     def receive(self, port, inp):
         from PyQt6.QtWidgets import QInputDialog
-        from PyQt6.QtCore import Qt
         from core import widgets
         dlg = QInputDialog()
         dlg.setWindowTitle(self.label())
         dlg.setLabelText(str(self.f("question", inp)))
         dlg.setTextValue(str(self.f("default", inp)))
-        dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        widgets.card_dialog(dlg)
 
         def done(result):
             if result:

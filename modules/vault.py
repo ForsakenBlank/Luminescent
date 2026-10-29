@@ -72,6 +72,7 @@ class PasswordDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+        widgets.card_dialog(self)
         self.setMinimumWidth(380)
         self.forgot_clicked = False
         self._confirm = confirm
@@ -139,6 +140,7 @@ class RecoveryKeyDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Vault recovery key")
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+        widgets.card_dialog(self)
         self.setMinimumWidth(460)
         lay = QVBoxLayout(self)
         lay.setSpacing(10)

@@ -11,7 +11,7 @@ import os
 
 from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QScrollArea, QDialog, QFormLayout,
-    QLineEdit, QSpinBox, QCheckBox, QComboBox, QFontComboBox, QColorDialog, QFileDialog, QPushButton, QSlider
+    QLineEdit, QCheckBox, QComboBox, QFontComboBox, QFileDialog, QPushButton, QSlider, QStackedWidget
 )
 from PyQt6.QtCore import Qt, QRectF, QTimer
 from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPixmap, QFont
@@ -344,10 +344,10 @@ class ThemesPage(QWidget):
 
     def theme_from_colour(self, colour: str = ""):
         if not colour:
-            c = QColorDialog.getColor(QColor(theme.P.primary), self, "The theme's accent colour")
-            if not c.isValid():
+            from core.colorpick import pick_colour
+            colour = pick_colour(self, theme.P.primary, "The theme's accent colour")
+            if not colour:
                 return
-            colour = c.name()
         mode = widgets.choose(self, "Theme from a colour", f"A dark or a light theme around {colour.upper()}?",
                               ["Dark", "Light"])
         if mode is None:
@@ -359,8 +359,8 @@ class ThemesPage(QWidget):
         name, ok = widgets.ask_text(self, "New folder", "Folder name:")
         if not ok or not name.strip():
             return
-        c = QColorDialog.getColor(QColor(theme.P.primary), self, "Folder colour")
-        self.store.add_folder(name, c.name() if c.isValid() else theme.P.primary)
+        from core.colorpick import pick_colour
+        self.store.add_folder(name, pick_colour(self, theme.P.primary, "Folder colour") or theme.P.primary)
 
     def edit(self, t: dict):
         dlg = ThemeDialog(self.launcher, t, self)
@@ -410,85 +410,237 @@ class ThemesPage(QWidget):
             self.store.update_folder(f["id"], name=name.strip())
 
     def _folder_colour(self, f):
-        c = QColorDialog.getColor(QColor(f.get("colour", theme.P.primary)), self, "Folder colour")
-        if c.isValid():
-            self.store.update_folder(f["id"], colour=c.name())
+        from core.colorpick import pick_colour
+        c = pick_colour(self, f.get("colour", theme.P.primary), "Folder colour")
+        if c:
+            self.store.update_folder(f["id"], colour=c)
 
 
-class _Swatch(QPushButton):
-    def __init__(self, colour: str, on_change):
+ROLE_GROUPS = [
+    ("ACCENT", ["primary", "primary_hover", "primary_muted", "primary_text", "on_primary"]),
+    ("BACKGROUNDS", ["bg_base", "bg_card", "bg_card_hover", "bg_frame", "bg_header", "border"]),
+    ("TEXT", ["text_primary", "text_secondary", "text_muted"]),
+    ("FOLDERS", ["folder_color", "folder_border"]),
+]
+ACCENT_SHADES = ("primary_hover", "primary_muted", "primary_text", "on_primary")
+
+
+class _RoleRow(QFrame):
+    """One colour of the theme in the list on the left: chip, name and code. Click to edit it."""
+
+    def __init__(self, dlg: "ThemeDialog", role: str, label: str):
         super().__init__()
-        self._on_change = on_change
-        self.setFixedSize(96, 26)
+        self.dlg, self.role = dlg, role
+        self.setObjectName("roleRow")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.clicked.connect(self._pick)
-        self.set(colour)
+        self.setFixedHeight(34)
+        h = QHBoxLayout(self)
+        h.setContentsMargins(8, 0, 10, 0)
+        h.setSpacing(10)
+        self.chip = QFrame()
+        self.chip.setFixedSize(20, 20)
+        h.addWidget(self.chip)
+        self.name = widgets.label(label, 12.5)
+        h.addWidget(self.name, 1)
+        self.code = widgets.label("", 11, mono=True, tone="muted")
+        h.addWidget(self.code)
+        for w in (self.chip, self.name, self.code):
+            w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-    def set(self, colour: str):
-        self.colour = colour
-        txt = "#000" if QColor(colour).lightness() > 128 else "#fff"
-        self.setText(colour.upper())
-        self.setStyleSheet(f"QPushButton {{ background: {colour}; color: {txt}; border: 1px solid {theme.P.border};"
-                           f" font-family: {theme.MONO_CSS}; padding: 0; }}")
+    def show_colour(self, c: str, selected: bool):
+        # restyling is slow-ish and this runs while a colour is dragged: only what changed
+        if c != getattr(self, "_c", None):
+            self._c = c
+            p = theme.P
+            self.chip.setStyleSheet(f"background: {c}; border: 1px solid {theme.mix(p.border, p.text_muted, 0.3)};"
+                                    f" border-radius: 5px;")
+            self.code.setText(c.upper())
+        if selected == getattr(self, "_sel", None):
+            return
+        self._sel = selected
+        p = theme.P
+        bg = p.primary_muted if selected else "transparent"
+        edge = p.primary if selected else "transparent"
+        self.setStyleSheet(f"#roleRow {{ background: {bg}; border: 1px solid {edge}; border-radius: {max(4, p.radius - 4)}px; }}"
+                           f"#roleRow:hover {{ background: {p.primary_muted if selected else p.bg_card_hover}; }}")
 
-    def _pick(self):
-        dlg = QColorDialog(QColor(self.colour), self)
-        dlg.setWindowTitle("Pick a colour")
-        dlg.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel, False)
-        before = self.colour
-        dlg.currentColorChanged.connect(lambda c: (self.set(c.name()), self._on_change()))
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            self.set(before)
-        self._on_change()
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.dlg.select(self.role)
 
 
 class ThemeDialog(QDialog):
+    """Edit a theme: its colours (picked right here, with a live preview), look, desktop and module accents."""
+
     def __init__(self, launcher, t: dict, parent=None):
         super().__init__(parent)
+        from core.colorpick import ColourPicker, ColourField
         self.launcher = launcher
-        self.t = {**t, "colours": dict(t.get("colours", {}))}
-        self.setWindowTitle(f"Theme settings — {t['name']}")
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        self.resize(760, 640)
-        root = QHBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(16)
+        self.t = {**t, "colours": {**theme.PRESETS["dark"], **dict(t.get("colours", {}))}}
+        self.colours = dict(self.t["colours"])
+        self.setWindowTitle(f"Theme settings · {t['name']}")
+        widgets.card_dialog(self)
+        self.resize(1120, 720)
+        self._role = "primary"
+        self._sample_timer = QTimer(self)
+        self._sample_timer.setSingleShot(True)
+        self._sample_timer.setInterval(120)
+        self._sample_timer.timeout.connect(self._update_sample)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        host = QWidget()
-        form = QFormLayout(host)
-        form.setSpacing(7)
-        scroll.setWidget(host)
-        root.addWidget(scroll, 1)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 12, 18, 16)
+        root.setSpacing(12)
 
+        # name + tabs
+        top = QHBoxLayout()
+        top.setSpacing(10)
         self.name = QLineEdit(t["name"])
-        form.addRow("Name", self.name)
-        head = widgets.label("COLOURS", 11, 600, mono=True, spacing=0.14)
-        gen = widgets.button("Match everything to the accent", "ghost",
-                             "Picks backgrounds, text and borders that go with the accent colour below")
-        gen.clicked.connect(self._generate)
-        form.addRow(head, gen)
-        self.swatches = {}
-        for role, label in theme.COLOUR_ROLES:
-            sw = _Swatch(self.t["colours"].get(role, theme.PRESETS["dark"][role]), self._update_preview)
-            self.swatches[role] = sw
-            form.addRow(label, sw)
+        self.name.setFixedHeight(34)
+        self.name.setFixedWidth(260)
+        self.name.setPlaceholderText("Theme name")
+        top.addWidget(self.name)
+        top.addSpacing(10)
+        self.pages = QStackedWidget()
+        self._tabs = []
+        for i, title in enumerate(("Colours", "Look", "Desktop && Caelestia", "Module accents")):
+            b = QPushButton(title)
+            b.setObjectName("boardTab")
+            b.setCheckable(True)
+            b.setAutoDefault(False)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _c=False, i=i: self._tab(i))
+            top.addWidget(b)
+            self._tabs.append(b)
+        top.addStretch()
+        root.addLayout(top)
 
-        head2 = widgets.label("LOOK", 11, 600, mono=True, spacing=0.14)
-        form.addRow(head2)
+        body = QHBoxLayout()
+        body.setSpacing(18)
+        body.addWidget(self.pages, 1)
+
+        # the preview column, on every tab
+        side = QVBoxLayout()
+        side.setSpacing(10)
+        side.addWidget(widgets.label("PREVIEW", 10.5, 600, mono=True, spacing=0.14, tone="muted"))
+        self.preview = QLabel()
+        self.preview.setFixedSize(int(PREV_W * 1.7), int(PREV_H * 1.7))
+        side.addWidget(self.preview)
+        self.sample = QFrame()
+        self.sample.setObjectName("sampleBox")
+        self.sample.setFixedWidth(int(PREV_W * 1.7))
+        sl = QVBoxLayout(self.sample)
+        sl.setContentsMargins(14, 12, 14, 14)
+        sl.setSpacing(8)
+        self.s_title = QLabel("Sample panel")
+        self.s_text = QLabel("Secondary text reads like this.")
+        self.s_text.setWordWrap(True)
+        self.s_muted = QLabel("muted · hints · counts")
+        sl.addWidget(self.s_title)
+        sl.addWidget(self.s_text)
+        sl.addWidget(self.s_muted)
+        self.s_input = QLineEdit("An input box")
+        sl.addWidget(self.s_input)
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        self.s_btn = QPushButton("Button")
+        self.s_btn.setAutoDefault(False)
+        self.s_acc = QPushButton("Accent")
+        self.s_acc.setAutoDefault(False)
+        self.s_check = QCheckBox("Ticked")
+        self.s_check.setChecked(True)
+        row.addWidget(self.s_btn)
+        row.addWidget(self.s_acc)
+        row.addWidget(self.s_check)
+        row.addStretch()
+        sl.addLayout(row)
+        side.addWidget(self.sample)
+        self.contrast = widgets.label("", 11.5, tone="muted")
+        self.contrast.setWordWrap(True)
+        self.contrast.setFixedWidth(int(PREV_W * 1.7))
+        side.addWidget(self.contrast)
+        side.addStretch()
+        body.addLayout(side)
+        root.addLayout(body, 1)
+
+        # ── colours tab ──
+        cpage = QWidget()
+        ch = QHBoxLayout(cpage)
+        ch.setContentsMargins(0, 0, 0, 0)
+        ch.setSpacing(16)
+        lst = QWidget()
+        lv = QVBoxLayout(lst)
+        lv.setContentsMargins(0, 0, 6, 0)
+        lv.setSpacing(4)
+        labels = dict(theme.COLOUR_ROLES)
+        self.rows: dict[str, _RoleRow] = {}
+        for title, roles in ROLE_GROUPS:
+            lv.addSpacing(6)
+            lv.addWidget(widgets.label(title, 10, 600, mono=True, spacing=0.14, tone="accent"))
+            for role in roles:
+                r = _RoleRow(self, role, labels.get(role, role))
+                self.rows[role] = r
+                lv.addWidget(r)
+        lv.addStretch()
+        sc = QScrollArea()
+        sc.setWidgetResizable(True)
+        sc.setFrameShape(QFrame.Shape.NoFrame)
+        sc.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        sc.setWidget(lst)
+        sc.setFixedWidth(290)
+        ch.addWidget(sc)
+        pv = QVBoxLayout()
+        pv.setSpacing(10)
+        self.role_title = widgets.label("", 15, 600)
+        pv.addWidget(self.role_title)
+        self.picker = ColourPicker(self.colours["primary"])
+        self.picker.changed.connect(self._picked)
+        pv.addWidget(self.picker, 1)
+        self.follow = QCheckBox("The other accent colours follow the accent (hover, muted, text, text on accent)")
+        self.follow.setChecked(True)
+        pv.addWidget(self.follow)
+        quick = QHBoxLayout()
+        quick.setSpacing(8)
+        gen = widgets.button("Match everything to the accent", "", "Picks backgrounds, text and borders that go "
+                                                                   "with the accent colour")
+        gen.setAutoDefault(False)
+        gen.clicked.connect(self._generate)
+        quick.addWidget(gen)
+        flip = widgets.button("Swap dark / light", "ghost", "The same accent on a light background (or a dark one)")
+        flip.setAutoDefault(False)
+        flip.clicked.connect(self._flip)
+        quick.addWidget(flip)
+        undo = widgets.button("Undo all changes", "ghost")
+        undo.setAutoDefault(False)
+        undo.clicked.connect(self._undo_all)
+        quick.addWidget(undo)
+        quick.addStretch()
+        pv.addLayout(quick)
+        ch.addLayout(pv, 1)
+        self.pages.addWidget(cpage)
+
+        # ── look tab ──
+        lpage, form = self._form_page()
         self.font = QFontComboBox()
         self.font.setCurrentFont(QFont(t.get("font_family", "Geist")))
-        form.addRow("Font", self.font)
-        self.radius = QSpinBox()
+        self.font.setFixedHeight(32)
+        self.font.currentFontChanged.connect(self._changed)
+        form.addRow(self._lbl("Font"), self.font)
+        rad = QWidget()
+        rl = QHBoxLayout(rad)
+        rl.setContentsMargins(0, 0, 0, 0)
+        self.radius = QSlider(Qt.Orientation.Horizontal)
         self.radius.setRange(0, 30)
         self.radius.setValue(int(t.get("radius", 10)))
-        form.addRow("Corner radius", self.radius)
+        rlbl = widgets.label("", 12, mono=True)
+        rlbl.setFixedWidth(46)
+        self.radius.valueChanged.connect(lambda v: (rlbl.setText(f"{v} px"), self._changed()))
+        rlbl.setText(f"{self.radius.value()} px")
+        rl.addWidget(self.radius, 1)
+        rl.addWidget(rlbl)
+        form.addRow(self._lbl("Corner radius"), rad)
         self.glow = QCheckBox("Accent glow around the overlay")
         self.glow.setChecked(bool(t.get("glow", True)))
-        form.addRow("", self.glow)
+        form.addRow(self._lbl(""), self.glow)
         self.bg_image = self._path_row(form, "Background image", t.get("background_image", ""), IMAGE_FILTER,
                                        "Shown behind the overlay content.")
         op = QWidget()
@@ -497,105 +649,164 @@ class ThemeDialog(QDialog):
         self.opacity = QSlider(Qt.Orientation.Horizontal)
         self.opacity.setRange(0, 100)
         self.opacity.setValue(int(float(t.get("image_opacity", 0.35)) * 100))
-        olbl = QLabel()
-        olbl.setFixedWidth(40)
-        self.opacity.valueChanged.connect(lambda v: olbl.setText(f"{v}%"))
+        olbl = widgets.label("", 12, mono=True)
+        olbl.setFixedWidth(46)
+        self.opacity.valueChanged.connect(lambda v: (olbl.setText(f"{v}%"), self._changed()))
         olbl.setText(f"{self.opacity.value()}%")
         ol.addWidget(self.opacity, 1)
         ol.addWidget(olbl)
-        form.addRow("Image opacity", op)
+        form.addRow(self._lbl("Image opacity"), op)
         self.icon = self._path_row(form, "Card icon", t.get("icon", ""), IMAGE_FILTER,
                                    "Shown on the theme card. Empty: the background image or a preview.")
+        self.pages.addWidget(lpage)
 
-        head_m = widgets.label("MODULE ACCENTS", 11, 600, mono=True, spacing=0.14)
-        form.addRow(head_m)
-        hint = QLabel("Give a module its own accent colour (e.g. Notes in green). Empty: the theme's accent.")
-        hint.setObjectName("lumHint")
+        # ── desktop tab ──
+        dpage, form = self._form_page()
+        cae = dict(t.get("caelestia") or {})
+        form.addRow(self._heading("CAELESTIA SHELL"))
+        hint = widgets.label("With Settings → Caelestia → The shell follows the theme on, applying this theme recolours "
+                             "the Caelestia bar, launcher, dashboard and notifications. Its two main colours:", 12,
+                             tone="muted")
         hint.setWordWrap(True)
         form.addRow(hint)
-        self.module_swatches = {}
-        mods = dict(self.t.get("modules") or {})
-        for key, m in launcher.modules.items():
-            if key in ("doodle", "colorpicker"):
-                continue                      # no windows of their own to colour
-            row = QHBoxLayout()
-            row.setSpacing(6)
-            sw = _Swatch(mods.get(key) or theme.P.primary, self._update_preview)
-            sw.setProperty("unset", key not in mods)
-            if key not in mods:
-                sw.setText("THEME")
-            sw.clicked.connect(lambda _=False, s=sw: self._module_picked(s))
-            clear = widgets.icon_button("✕", "Use the theme's accent", 26, 11)
-            clear.clicked.connect(lambda _=False, s=sw: (s.setProperty("unset", True), s.set(theme.P.primary),
-                                                          s.setText("THEME")))
-            row.addWidget(sw)
-            row.addWidget(clear)
-            row.addStretch()
-            self.module_swatches[key] = sw
-            form.addRow(f"{m.icon}  {m.title}", row)
-
-        head3 = widgets.label("WHEN THIS THEME IS APPLIED", 11, 600, mono=True, spacing=0.14)
-        form.addRow(head3)
+        self.cae_fields = {}
+        for key, label, auto in (("primary", "Primary", "Use the accent"), ("secondary", "Secondary", "Matched to the primary"),
+                                 ("tertiary", "Third colour", "Matched to the primary")):
+            line = QHBoxLayout()
+            line.setSpacing(10)
+            field = ColourField(cae.get(key) or "#7B6CF6", f"Caelestia {label.lower()}")
+            box = QCheckBox(auto)
+            box.setChecked(not cae.get(key))
+            field.setEnabled(bool(cae.get(key)))
+            box.toggled.connect(lambda on, f=field: (f.setEnabled(not on), self._update_shell()))
+            field.changed.connect(lambda _c: self._update_shell())
+            line.addWidget(field)
+            line.addWidget(box)
+            line.addStretch()
+            self.cae_fields[key] = (field, box)
+            form.addRow(self._lbl(label), line)
+        self.shell_preview = QLabel()
+        self.shell_preview.setFixedHeight(46)
+        form.addRow(self._lbl("Shell colours"), self.shell_preview)
+        form.addRow(self._heading("WHEN THIS THEME IS APPLIED"))
         self.wallpaper = self._path_row(
             form, "Desktop wallpaper", t.get("wallpaper", ""),
             "Pictures or Wallpaper Engine projects (*.jpg *.jpeg *.png *.webp *.bmp project.json *.json *.pkg *.mp4);;"
             "All files (*)",
-            "A picture becomes the desktop wallpaper (through Noctalia, swww, hyprpaper or swaybg). A Wallpaper "
-            "Engine project.json (or a file in its folder) is played with linux-wallpaperengine. Empty: the "
-            "wallpaper is left alone.")
+            "A picture becomes the desktop wallpaper (through Noctalia, swww, hyprpaper or swaybg, or your own "
+            "command in Settings). A Wallpaper Engine project.json is played with linux-wallpaperengine. Empty: "
+            "the wallpaper is left alone.")
         self.profile = QComboBox()
+        self.profile.setFixedHeight(32)
         self.profile.addItem("Default settings", "")
         for p in launcher.settings.profiles():
             if p["id"] != "default":
                 self.profile.addItem(f"Profile: {p['name']}", p["id"])
         self.profile.setCurrentIndex(max(0, self.profile.findData(t.get("profile", ""))))
-        form.addRow("Settings profile", self.profile)
-        pl = QLabel("Profiles are made in Settings (top of the page). Each holds its own hotkeys, sizes, sounds…")
-        pl.setObjectName("lumHint")
+        form.addRow(self._lbl("Settings profile"), self.profile)
+        pl = widgets.label("Profiles are made in Settings (top of the page). Each holds its own hotkeys, sizes, "
+                           "sounds…", 12, tone="muted")
         pl.setWordWrap(True)
-        form.addRow("", pl)
+        form.addRow(self._lbl(""), pl)
+        self.pages.addWidget(dpage)
 
-        side = QVBoxLayout()
-        side.setSpacing(8)
-        side.addWidget(widgets.label("PREVIEW", 11, 600, mono=True, spacing=0.14))
-        self.preview = QLabel()
-        self.preview.setFixedSize(PREV_W * 2, PREV_H * 2)
-        side.addWidget(self.preview)
-        side.addStretch()
+        # ── module accents tab ──
+        mpage, form = self._form_page()
+        hint = widgets.label("Give a module its own accent colour (e.g. Notes in green). Untouched: the theme's "
+                             "accent.", 12, tone="muted")
+        hint.setWordWrap(True)
+        form.addRow(hint)
+        self.module_fields = {}
+        mods = dict(self.t.get("modules") or {})
+        for key, m in launcher.modules.items():
+            if key in ("doodle", "colorpicker"):
+                continue                      # no windows of their own to colour
+            line = QHBoxLayout()
+            line.setSpacing(10)
+            field = ColourField(mods.get(key) or self.colours["primary"], f"{m.title} accent")
+            box = QCheckBox("The theme's accent")
+            box.setChecked(key not in mods)
+            field.setEnabled(key in mods)
+            box.toggled.connect(lambda on, f=field: f.setEnabled(not on))
+            line.addWidget(field)
+            line.addWidget(box)
+            line.addStretch()
+            self.module_fields[key] = (field, box)
+            form.addRow(self._lbl(f"{m.icon}  {m.title}"), line)
+        self.pages.addWidget(mpage)
+
+        # buttons
         btns = QHBoxLayout()
-        cancel = widgets.button("Cancel")
+        btns.setSpacing(8)
+        btns.addStretch()
+        cancel = widgets.button("Cancel", "ghost")
+        cancel.setAutoDefault(False)
         cancel.clicked.connect(self.reject)
         ok = widgets.button("Save", "primary")
+        ok.setAutoDefault(False)
         ok.setDefault(True)
         ok.clicked.connect(self.accept)
         btns.addWidget(cancel)
         btns.addWidget(ok)
-        side.addLayout(btns)
-        root.addLayout(side)
-        self._update_preview()
+        root.addLayout(btns)
+
+        self._start = dict(self.colours)
+        self._tab(0)
+        self.select("primary")
+        self._changed()
         QTimer.singleShot(0, lambda: widgets.bring_to_front(self))
+
+    # ── building bits ──────────────────────────────────────────────────────
+    def _form_page(self):
+        page = QWidget()
+        form = QFormLayout(page)
+        form.setContentsMargins(0, 4, 8, 0)
+        form.setHorizontalSpacing(16)
+        form.setVerticalSpacing(10)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        sc = QScrollArea()
+        sc.setWidgetResizable(True)
+        sc.setFrameShape(QFrame.Shape.NoFrame)
+        sc.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        sc.setWidget(page)
+        return sc, form
+
+    @staticmethod
+    def _lbl(text: str) -> QLabel:
+        lbl = widgets.label(text, 13, tone="secondary")
+        lbl.setFixedWidth(150)
+        return lbl
+
+    @staticmethod
+    def _heading(text: str) -> QLabel:
+        h = widgets.label(text, 10.5, 600, mono=True, spacing=0.14, tone="accent")
+        h.setContentsMargins(0, 8, 0, 0)
+        return h
 
     def _path_row(self, form, label, value, flt, help_text) -> QLineEdit:
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(2)
+        lay.setSpacing(4)
         row = QHBoxLayout()
+        row.setSpacing(6)
         edit = QLineEdit(value)
-        edit.textChanged.connect(self._update_preview)
+        edit.setFixedHeight(32)
+        edit.textChanged.connect(self._changed)
         b = widgets.button("Browse…")
+        b.setAutoDefault(False)
         b.clicked.connect(lambda: self._browse(edit, flt))
-        c = widgets.icon_button("✕", "Clear", 26, 11)
+        c = widgets.icon_button("✕", "Clear", 28, 11, ghost=True)
+        c.setAutoDefault(False)
         c.clicked.connect(lambda: edit.setText(""))
         row.addWidget(edit, 1)
         row.addWidget(b)
         row.addWidget(c)
         lay.addLayout(row)
-        h = QLabel(help_text)
-        h.setObjectName("lumHint")
+        h = widgets.label(help_text, 12, tone="muted")
         h.setWordWrap(True)
         lay.addWidget(h)
-        form.addRow(label, w)
+        form.addRow(self._lbl(label), w)
         return edit
 
     def _browse(self, edit: QLineEdit, flt: str):
@@ -603,35 +814,130 @@ class ThemeDialog(QDialog):
         if p:
             edit.setText(p)
 
+    def _tab(self, i: int):
+        for j, b in enumerate(self._tabs):
+            b.setChecked(i == j)
+        self.pages.setCurrentIndex(i)
+
+    # ── colours ────────────────────────────────────────────────────────────
+    def select(self, role: str):
+        self._role = role
+        self.role_title.setText(dict(theme.COLOUR_ROLES).get(role, role))
+        self.picker.set_colour(self.colours[role])
+        self.picker.set_original(self._start.get(role, self.colours[role]) if hasattr(self, "_start")
+                                 else self.colours[role])
+        self.follow.setVisible(role == "primary")
+        self._paint_rows()
+
+    def _paint_rows(self):
+        for role, row in self.rows.items():
+            row.show_colour(self.colours[role], role == self._role)
+
+    def _picked(self, c: str):
+        self.colours[self._role] = c
+        if self._role == "primary" and self.follow.isChecked():
+            self.colours.update(theme.accent_roles(c, self.colours["bg_base"]))
+            self.colours["folder_border"] = self.colours["primary_text"]
+        self._paint_rows()
+        self._changed()
+
+    def _generate(self):
+        light = theme.luminance(self.colours["bg_base"]) > 140
+        self.colours.update(theme.generate(self.colours["primary"], light))
+        self.select(self._role)
+        self._changed()
+
+    def _flip(self):
+        light = theme.luminance(self.colours["bg_base"]) > 140
+        self.colours.update(theme.generate(self.colours["primary"], not light))
+        self.select(self._role)
+        self._changed()
+
+    def _undo_all(self):
+        self.colours = dict(self._start)
+        self.select(self._role)
+        self._changed()
+
+    # ── preview ────────────────────────────────────────────────────────────
+    def _changed(self, *_):
+        if not hasattr(self, "preview"):
+            return
+        self.preview.setPixmap(_preview(self.result_theme(), self.preview.width(), self.preview.height()))
+        self._sample_timer.start()
+        self._update_shell()
+        c = self.colours
+        lines = []
+        for fg, bg, what in ((c["text_primary"], c["bg_base"], "Text on the background"),
+                             (c["text_muted"], c["bg_card"], "Muted text on cards"),
+                             (c["on_primary"], c["primary"], "Text on the accent")):
+            r = theme.contrast(fg, bg)
+            mark = "✓" if r >= 4.5 else ("≈" if r >= 3 else "⚠ hard to read")
+            lines.append(f"{what}: {r:.1f} : 1  {mark}")
+        self.contrast.setText("\n".join(lines))
+
+    def _update_sample(self):
+        """The sample panel in the theme being edited, with the real stylesheet."""
+        old = theme.P
+        try:
+            theme.use(ThemeStore.palette_values(self.result_theme()))
+            css = theme.stylesheet()
+            p = theme.P
+        finally:
+            theme.P = old
+        self.sample.setStyleSheet(css + f"#sampleBox {{ background: {p.bg_base}; border: 1px solid {p.border};"
+                                        f" border-radius: {p.radius}px; }}")
+        for w, px, weight, colour in ((self.s_title, 14, 600, p.text_primary), (self.s_text, 12.5, 400, p.text_secondary),
+                                      (self.s_muted, 11, 400, p.text_muted)):
+            w.setFont(theme.qfont(px, weight, family=p.font_family))
+            w.setStyleSheet(f"color: {colour}; background: transparent;")
+        self.s_acc.setProperty("variant", "primary")
+        for w in (self.s_acc, self.s_btn, self.s_check, self.s_input):
+            w.style().unpolish(w)
+            w.style().polish(w)
+
+    def _update_shell(self):
+        if not hasattr(self, "shell_preview"):
+            return
+        from core import caelestia_sync
+        pri, sec = caelestia_sync.shell_colours(self.result_theme())
+        ter = self.result_theme().get("caelestia", {}).get("tertiary") or caelestia_sync.auto_tertiary(pri)
+        for key, c in (("primary", pri), ("secondary", sec), ("tertiary", ter)):
+            field, box = self.cae_fields[key]
+            if box.isChecked():
+                field.set_value(c)          # an automatic colour shows what it will be
+        w, h = 300, 40
+        px = QPixmap(w, h)
+        px.fill(QColor(0, 0, 0, 0))
+        p = QPainter(px)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(self.colours["bg_base"]))
+        p.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), 10, 10)
+        for i, (c, name) in enumerate(((pri, "PRIMARY"), (sec, "SECONDARY"), (ter, "THIRD"))):
+            x = 8 + i * 97
+            p.setBrush(QColor(c))
+            p.drawRoundedRect(QRectF(x, 8, 24, 24), 7, 7)
+            p.setPen(QColor(self.colours["text_secondary"]))
+            p.setFont(theme.qfont(9.5, 600, mono=True))
+            p.drawText(QRectF(x + 30, 8, 64, 24), Qt.AlignmentFlag.AlignVCenter, name)
+            p.setPen(Qt.PenStyle.NoPen)
+        p.end()
+        self.shell_preview.setPixmap(px)
+
+    # ── result ─────────────────────────────────────────────────────────────
     def result_theme(self) -> dict:
         t = dict(self.t)
         t["name"] = self.name.text().strip() or t["name"]
-        t["colours"] = {role: sw.colour for role, sw in self.swatches.items()}
-        t.update({"font_family": self.font.currentFont().family(), "radius": self.radius.value(),
-                  "glow": self.glow.isChecked(), "background_image": self.bg_image.text().strip(),
-                  "image_opacity": self.opacity.value() / 100.0, "icon": self.icon.text().strip(),
-                  "wallpaper": self.wallpaper.text().strip(), "profile": self.profile.currentData() or ""})
-        if hasattr(self, "module_swatches"):
-            t["modules"] = {k: sw.colour for k, sw in self.module_swatches.items() if not sw.property("unset")}
+        t["colours"] = dict(self.colours)
+        if hasattr(self, "font"):
+            t.update({"font_family": self.font.currentFont().family(), "radius": self.radius.value(),
+                      "glow": self.glow.isChecked(), "background_image": self.bg_image.text().strip(),
+                      "image_opacity": self.opacity.value() / 100.0, "icon": self.icon.text().strip()})
+        if hasattr(self, "wallpaper"):
+            t["wallpaper"] = self.wallpaper.text().strip()
+            t["profile"] = self.profile.currentData() or ""
+        if hasattr(self, "cae_fields"):
+            t["caelestia"] = {k: f.value() for k, (f, box) in self.cae_fields.items() if not box.isChecked()}
+        if hasattr(self, "module_fields"):
+            t["modules"] = {k: f.value() for k, (f, box) in self.module_fields.items() if not box.isChecked()}
         return t
-
-    @staticmethod
-    def _module_picked(sw: _Swatch):
-        # runs after the colour dialog: a cancelled pick leaves the module on the theme's accent
-        if sw.property("unset") and sw.colour.upper() == theme.P.primary.upper():
-            sw.setText("THEME")
-        else:
-            sw.setProperty("unset", False)
-
-    def _generate(self):
-        accent = self.swatches["primary"].colour
-        light = theme.luminance(self.swatches["bg_base"].colour) > 140
-        for role, value in theme.generate(accent, light).items():
-            if role in self.swatches:
-                self.swatches[role].set(value)
-        self._update_preview()
-
-    def _update_preview(self, *_):
-        if not hasattr(self, "preview"):
-            return
-        self.preview.setPixmap(_preview(self.result_theme(), PREV_W * 2, PREV_H * 2))

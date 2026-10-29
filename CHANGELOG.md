@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.5.0
+
+* **The Caelestia shell follows your theme**: applying a theme now recolours the Caelestia bar, launcher,
+  dashboard and notifications (its primary and secondary colours, backgrounds and text). A theme can pick its own
+  shell colours in its editor → Desktop & Caelestia. Caelestia's own colours are kept, and Settings → Caelestia →
+  Restore puts them back.
+* **Caelestia has its own Settings page**, near the top: the shell follows the theme, keep it on the theme's colours,
+  colour other apps through Caelestia's own theming (GTK, terminals, Hyprland borders, Discord, btop...), the shell's
+  look in shell.json (see-through panels and how solid they are, rounding, spacing, padding, text size, animation
+  length) and **Glass apps**: make any app see-through, focused and unfocused, with blur and its strength.
+* **A new theme editor**: every colour in a list, edited right there with Luminescent's own colour picker, a live
+  preview, a sample panel in the theme's colours, a contrast check, Match everything to the accent, Swap dark /
+  light and Undo all changes. The other accent shades follow the accent while you pick it.
+* **A new colour picker everywhere** (themes, settings, folders, Caelestia files): a colour square, a hue bar, hex
+  and R G B boxes, the colour before and after, and swatches from the theme, Caelestia and your recent picks.
+* **Every pop-up window** (confirmations, questions, the keybind window, the vault's password box...) is a rounded
+  card with an outline and a title bar you can drag, instead of a square window with no edge.
+* **Fix**: long notifications are no longer cut off. They grow to fit; a very long one shows its start with "Click
+  to read all". Click again or ✕ to dismiss, right-click to copy, and long ones stay up longer.
+* **Notifications in Settings → General**: which corner and screen, width, how many at once, how long they stay and
+  how solid the background is.
+* **Fix**: in the keybind window, pressing Enter after typing a combo no longer starts recording over it. The window
+  is laid out in clear sections (keys, mouse button, what it does) without overlapping.
+* **More to customise in Settings → Overlay & Interface**: a font, a monospace font and a corner rounding for every
+  theme, and the clock (12 or 24 hour, with or without seconds) and date formats.
+* Text on an accent colour is picked so it stays readable (dark text on light accents).
+
 ## 1.4.0
 
 * **Updates you can see**: Settings → General → Updates shows your version, a Check for updates button and every

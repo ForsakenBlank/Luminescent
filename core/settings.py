@@ -34,7 +34,7 @@ DEFAULT_PROFILE = "default"
 
 
 # Field types understood by settings_ui:
-#   hotkey  text  dir  file  int  float  opacity  bool  color  choice  custom  widget (not stored)
+#   hotkey  text  dir  file  int  float  opacity  bool  color  font  choice  custom  widget (not stored)
 #   hidden (stored, but not shown on the Settings page)
 @dataclass
 class Field:
@@ -118,6 +118,21 @@ SCHEMA = [
                        ("system", _os("Desktop notifications (Noctalia, mako, dunst…)", "Windows notifications"))],
               help="Reminders and dose warnings always use desktop notifications as well, so they also show up "
                    "in your notification history."),
+        Field("toast_corner", "Luminescent notifications show in the", "choice", "tr",
+              choices=[("tr", "Top right"), ("tc", "Top centre"), ("tl", "Top left"), ("br", "Bottom right"),
+                       ("bc", "Bottom centre"), ("bl", "Bottom left")],
+              help="Long messages grow to fit; a very long one shows its start, click it to read all. Click "
+                   "again or ✕ to dismiss, right-click to copy."),
+        Field("toast_screen", "…on", "choice", "primary",
+              choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")]),
+        Field("toast_width", "Notification width (px)", "int", 360, min=240, max=720, step=10),
+        Field("toast_max", "Most notifications shown at once", "int", 5, min=1, max=12),
+        Field("toast_time", "How long notifications stay", "choice", 1.0,
+              choices=[(0.5, "Short (half as long)"), (1.0, "Normal"), (1.5, "Longer"), (2.0, "Twice as long"),
+                       (3.0, "Three times as long")],
+              help="Longer messages already stay up longer, and hovering one keeps it up."),
+        Field("toast_opacity", "Notification background", "opacity", 1.0, "100% = solid. Lower lets the desktop "
+              "show through.", min=0.5, max=1.0),
         Field("start_panels", "Show on start", "custom", ["notes"],
               "Panels that open by themselves when Luminescent starts."),
         Field("tray_items", "Tray menu", "custom", [k for k, _ in TRAY_ITEMS],
@@ -170,6 +185,18 @@ SCHEMA = [
               "Makes the text in every panel, page, menu and pop-up bigger or smaller.", restart=True,
               choices=[(0.85, "Small (85%)"), (1.0, "Normal (100%)"), (1.1, "Large (110%)"),
                        (1.2, "Larger (120%)"), (1.35, "Huge (135%)"), (1.5, "Biggest (150%)")]),
+        Field("font_override", "Font for every theme", "font", "",
+              "Blank: each theme's own font (Themes → right-click → Settings… → Look)."),
+        Field("mono_font_override", "Monospace font", "font", "",
+              "Used for hotkeys, codes, counts and labels in capitals. Blank: Geist Mono (built in)."),
+        Field("radius_override", "Corner rounding for every theme (px)", "int", -1,
+              "-1: each theme's own. 0 = square corners.", min=-1, max=30),
+        Field("clock_format", "Clock", "choice", "24",
+              choices=[("24", "24 hour (17:05)"), ("24s", "24 hour with seconds"), ("12", "12 hour (5:05 PM)"),
+                       ("12s", "12 hour with seconds")]),
+        Field("date_format", "Date", "choice", "long",
+              choices=[("long", "Thursday 29 October"), ("short", "Thu 29 Oct"), ("full", "Thursday 29 October 2026"),
+                       ("numeric", "29/10/2026"), ("us", "10/29/2026"), ("iso", "2026-10-29")]),
         Field("remember_page", "Open on the page I was on last", "bool", False,
               "Off: the overlay always opens on the Dashboard."),
         Field("last_page", "", "hidden", "dashboard"),
@@ -235,6 +262,50 @@ SCHEMA = [
         Field("hover", "Hover effects", "bool", True,
               "Dashboard boxes and cards light up their edge in the accent colour under the mouse."),
     ] + [Field(key, label, "bool", True, help) for key, label, help in ANIM_KINDS]),
+
+    Section("caelestia", "Caelestia", "◐",
+            _os("The Caelestia shell: its colours follow your Luminescent theme, its look (see-through panels, "
+                "rounding, sizes), its config files, and see-through glass windows per app.",
+                "Caelestia is a Linux (Hyprland) shell, so most of this page does nothing on Windows."), [
+        Field("enabled", "Enable Caelestia & Glass", "bool", True),
+        Field("hotkey", "Open the Caelestia & Glass window", "hotkey", "",
+              "Its Shell files tab edits every file in ~/.config/caelestia as a form."),
+        Field("follow_theme", "The shell follows the theme", "bool", True,
+              "Applying a Luminescent theme recolours the Caelestia bar, launcher, dashboard and notifications: "
+              "its primary and secondary colours, backgrounds and text. Pick a theme's own shell colours in "
+              "Themes → right-click → Settings… → Desktop & Caelestia. Caelestia's own colours are kept in "
+              "data/caelestia-backups, and Restore below puts them back."),
+        Field("keep_colours", "Keep the shell on the theme's colours", "bool", False,
+              "When something else changes Caelestia's colours (a new wallpaper with a dynamic scheme, "
+              "caelestia scheme set...), Luminescent puts the theme's back."),
+        Field("apply_apps", "Colour other apps through Caelestia too", "bool", False,
+              "Runs Caelestia's own theming with the theme's colours: GTK apps, terminals, Hyprland borders, "
+              "Discord, btop, fuzzel... (whatever ~/.config/caelestia/cli.json allows)."),
+        Field("sync", "Shell colours", "widget", None),
+        Field("shell_appearance", "Luminescent sets the shell's look", "bool", False,
+              "Writes the values below into ~/.config/caelestia/shell.json (appearance), with a backup first. "
+              "Off: shell.json is left alone."),
+        Field("shell_transparency", "See-through shell", "bool", False,
+              "The bar, drawers and panels let the wallpaper show through (and blur it)."),
+        Field("shell_transparency_base", "How solid the shell is", "opacity", 0.85,
+              "100% = not see-through at all."),
+        Field("shell_transparency_layers", "How solid boxes inside it are", "opacity", 0.4),
+        Field("shell_rounding", "Corner rounding", "float", 1.0, "1 = Caelestia's normal rounding, 0 = square.",
+              min=0, max=3, step=0.1),
+        Field("shell_spacing", "Spacing", "float", 1.0, "Space between things (1 = normal).", min=0.2, max=3,
+              step=0.1),
+        Field("shell_padding", "Padding", "float", 1.0, "Space inside boxes (1 = normal).", min=0.2, max=3, step=0.1),
+        Field("shell_font_scale", "Text size", "float", 1.0, "1 = normal.", min=0.5, max=2.5, step=0.05),
+        Field("shell_anim_scale", "Animation length", "float", 1.0, "1 = normal, 0.5 = twice as fast, 0 = none.",
+              min=0, max=4, step=0.1),
+        Field("glass", "Glass apps (see-through windows)", "custom", [],
+              "Make any app see-through: how solid it is when focused and when not, and whether what is behind "
+              "it is blurred. Pick an open window or type its class (kitty, firefox, code...). Hyprland window "
+              "rules added while Luminescent runs; your config file is not changed."),
+        Field("blur_size", "Blur strength: size", "int", 0, "0 = keep Hyprland's own.", min=0, max=30),
+        Field("blur_passes", "Blur strength: passes", "int", 0, "0 = keep Hyprland's own. More = smoother "
+              "and blurrier.", min=0, max=6),
+    ]),
 
     Section("dashboard", "Dashboard & Scripts", "▦", "How dashboard items start.", [
         Field("use_terminal", _os("Run scripts (.py, .sh...) in a terminal window",
@@ -578,15 +649,6 @@ SCHEMA += [
         Field("lead_minutes", "Remind me this many minutes before an event", "int", 15, min=0, max=1440,
               help="Used when the event has no reminder time of its own in Atlas."),
         Field("task_hour", "Remind me of tasks due today at (hour)", "int", 9, min=0, max=23),
-    ]),
-    Section("caelestia", "Caelestia & Glass", "◐",
-            "The Caelestia shell's config files as forms you can edit (with a backup on every save), its colours "
-            "and wallpaper, and see-through glass windows per app (focused and unfocused) with the blur strength.", [
-        Field("enabled", "Enable Caelestia & Glass", "bool", True),
-        Field("hotkey", "Open hotkey", "hotkey", ""),
-        Field("glass", "", "hidden", []),
-        Field("blur_size", "", "hidden", 0),
-        Field("blur_passes", "", "hidden", 0),
     ]),
 ]
 

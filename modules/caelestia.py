@@ -21,11 +21,11 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QStackedWidget, QPlainTextEdit,
-    QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox, QPushButton, QScrollArea, QFrame, QLabel, QColorDialog,
+    QLineEdit, QCheckBox, QSpinBox, QDoubleSpinBox, QPushButton, QScrollArea, QFrame, QLabel,
     QComboBox, QSlider, QGridLayout
 )
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher, pyqtSignal
+from PyQt6.QtGui import QPixmap
 
 from core import widgets, theme, hypr, IS_WIN, DATA_DIR
 from core.module import Module
@@ -214,9 +214,10 @@ class JsonForm(QWidget):
                     store(t)
 
             def pick():
-                c = QColorDialog.getColor(QColor(e.text()), box, "Colour")
-                if c.isValid():
-                    e.setText(c.name())
+                from core.colorpick import pick_colour
+                c = pick_colour(box, e.text(), nice(k))
+                if c:
+                    e.setText(c)
             paint(val)
             e.textChanged.connect(typed)
             sw.clicked.connect(pick)
@@ -249,6 +250,188 @@ class JsonForm(QWidget):
         # inner cards come later in the list: settle them first, so their parents see the result
         for card, inside in reversed(self.cards):
             card.setVisible(not q or any(not w.isHidden() for w in inside))
+
+
+# ── glass apps ────────────────────────────────────────────────────────────────
+class GlassEditor(QWidget):
+    """The list of see-through apps: per app how solid it is focused and unfocused, and blur on or off.
+    get_value() / set_value() for the Settings page; `changed` fires on every edit."""
+    changed = pyqtSignal()
+
+    def __init__(self, open_classes=None):
+        super().__init__()
+        self._rules: list[dict] = []
+        self._open_classes = open_classes or (lambda: [])
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(6)
+        self.list = QVBoxLayout()
+        self.list.setSpacing(6)
+        lay.addLayout(self.list)
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        self.pick = QComboBox()
+        self.pick.setEditable(True)
+        self.pick.setFixedHeight(32)
+        self.pick.setMinimumWidth(260)
+        self.pick.lineEdit().setPlaceholderText("Window class, e.g. kitty (or pick an open window)")
+        self.pick.lineEdit().returnPressed.connect(self._add)
+        row.addWidget(self.pick, 1)
+        add = widgets.button("＋  Add app", "primary")
+        add.setAutoDefault(False)
+        add.clicked.connect(self._add)
+        row.addWidget(add)
+        lay.addLayout(row)
+        self._fill()
+
+    def get_value(self) -> list[dict]:
+        return [dict(r) for r in self._rules]
+
+    def set_value(self, rules):
+        self._rules = [dict(r) for r in (rules or []) if isinstance(r, dict) and r.get("cls")]
+        self._fill()
+
+    def _fill(self):
+        widgets.clear_layout(self.list)
+        if not self._rules:
+            self.list.addWidget(widgets.label("No apps yet. Pick one below and press Add app.", 12, tone="muted"))
+        for i, r in enumerate(self._rules):
+            self.list.addWidget(self._row(i, r))
+        self.pick.clear()
+        seen = {r["cls"] for r in self._rules}
+        try:
+            classes = self._open_classes()
+        except Exception:
+            classes = []
+        for c in classes:
+            if c not in seen:
+                self.pick.addItem(c)
+        self.pick.setEditText("")
+
+    def _row(self, i: int, r: dict) -> QWidget:
+        card = QFrame()
+        card.setObjectName("lumCard")
+        h = QHBoxLayout(card)
+        h.setContentsMargins(12, 6, 8, 6)
+        h.setSpacing(10)
+        name = widgets.label(r["cls"], 13, 600, mono=True)
+        name.setMinimumWidth(110)
+        h.addWidget(name, 1)
+        for key, label in (("active", "Focused"), ("inactive", "Not focused")):
+            h.addWidget(widgets.label(label, 11.5, tone="secondary"))
+            sl = QSlider(Qt.Orientation.Horizontal)
+            sl.setRange(10, 100)
+            sl.setFixedWidth(100)
+            sl.setValue(int(round(float(r.get(key, 1.0)) * 100)))
+            val = widgets.label(f"{sl.value()} %", 11.5, mono=True)
+            val.setFixedWidth(44)
+            sl.valueChanged.connect(lambda x, l=val: l.setText(f"{x} %"))
+            sl.valueChanged.connect(lambda x, k=key: self._set(i, k, x / 100))
+            h.addWidget(sl)
+            h.addWidget(val)
+        b = QCheckBox("Blur")
+        b.setToolTip("Blur what is behind the window")
+        b.setChecked(bool(r.get("blur", True)))
+        b.toggled.connect(lambda on: self._set(i, "blur", on))
+        h.addWidget(b)
+        rm = widgets.icon_button("✕", "Remove", 24, 11, ghost=True)
+        rm.setAutoDefault(False)
+        rm.clicked.connect(lambda: self._remove(i))
+        h.addWidget(rm)
+        return card
+
+    def _set(self, i: int, key: str, value):
+        if 0 <= i < len(self._rules):
+            self._rules[i][key] = value
+            self.changed.emit()
+
+    def _remove(self, i: int):
+        if 0 <= i < len(self._rules):
+            self._rules.pop(i)
+            self._fill()
+            self.changed.emit()
+
+    def _add(self):
+        cls = self.pick.currentText().strip()
+        if not cls or any(r["cls"] == cls for r in self._rules):
+            return
+        self._rules.append({"cls": cls, "active": 0.92, "inactive": 0.78, "blur": True})
+        self._fill()
+        self.changed.emit()
+
+
+class SyncWidget(QWidget):
+    """Settings → Caelestia: what the shell's colours are, and buttons to apply or restore them."""
+
+    def __init__(self, launcher):
+        super().__init__()
+        self.launcher = launcher
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        self.swatches = QHBoxLayout()
+        self.swatches.setSpacing(8)
+        lay.addLayout(self.swatches)
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        for text, variant, fn in (("Apply the theme to the shell now", "primary", self._apply),
+                                  ("Restore Caelestia's own colours", "", self._restore),
+                                  ("Open Caelestia && Glass", "ghost", self._open)):
+            b = widgets.button(text, variant)
+            b.setAutoDefault(False)
+            b.clicked.connect(fn)
+            row.addWidget(b)
+        row.addStretch()
+        lay.addLayout(row)
+        self.status = widgets.label("", 12, tone="muted")
+        self.status.setWordWrap(True)
+        lay.addWidget(self.status)
+        self.refresh()
+
+    def _module(self):
+        return self.launcher.modules.get("caelestia") if self.launcher else None
+
+    def refresh(self):
+        from core import caelestia_sync
+        widgets.clear_layout(self.swatches)
+        t = self.launcher.themes.active() if self.launcher else {}
+        pri, sec = caelestia_sync.shell_colours(t)
+        for c, name in ((pri, "Primary"), (sec, "Secondary")):
+            chip = QFrame()
+            chip.setFixedSize(22, 22)
+            chip.setStyleSheet(f"background: {c}; border: 1px solid {theme.P.border}; border-radius: 6px;")
+            self.swatches.addWidget(chip)
+            self.swatches.addWidget(widgets.label(f"{name} {c}", 12, mono=True, tone="secondary"))
+            self.swatches.addSpacing(10)
+        self.swatches.addStretch()
+        if IS_WIN:
+            self.status.setText("Caelestia is a Linux shell.")
+        elif not caelestia_sync.installed():
+            self.status.setText("Caelestia was not found (~/.local/state/caelestia and ~/.config/caelestia are "
+                                "missing), so there is no shell to recolour.")
+        else:
+            cur = caelestia_sync.read_scheme()
+            self.status.setText(f"From the theme \"{t.get('name', '')}\". Caelestia's scheme now: "
+                                f"{cur.get('name', '?')} {cur.get('flavour', '')} ({cur.get('mode', '?')}).")
+
+    def _apply(self):
+        m = self._module()
+        err = m.sync_colours(force=True) if m else "Caelestia & Glass is turned off."
+        self.refresh()
+        if err:
+            self.status.setText(f"⚠ {err}")
+
+    def _restore(self):
+        from core import caelestia_sync
+        err = caelestia_sync.restore()
+        self.refresh()
+        self.status.setText(f"⚠ {err}" if err else "Caelestia's own colours are back. Turn off \"The shell follows "
+                                                    "the theme\" or the next theme you pick recolours it again.")
+
+    def _open(self):
+        m = self._module()
+        if m and m.running:
+            m.toggle()
 
 
 # ── the panel ─────────────────────────────────────────────────────────────────
@@ -291,6 +474,8 @@ class CaelestiaPanel(widgets.FloatingPanel):
         self.pages.setCurrentIndex(i)
         if i == 0:
             self.reload_files()
+        elif i == 1:
+            self.glass_editor.set_value(self.m.glass())
         elif i == 2:
             self._fill_colours()
 
@@ -487,31 +672,26 @@ class CaelestiaPanel(widgets.FloatingPanel):
             g.addWidget(s[0], row, 1)
             g.addWidget(s[1], row, 2)
         v.addWidget(blur)
-        self.glass_list = QVBoxLayout()
-        self.glass_list.setSpacing(6)
-        box = QWidget()
-        box.setLayout(self.glass_list)
+        self.glass_editor = GlassEditor(self.m.open_classes)
+        self.glass_editor.set_value(self.m.glass())
+        self.glass_editor.changed.connect(self._glass_changed)
         sc = QScrollArea()
         sc.setWidgetResizable(True)
         sc.setFrameShape(QFrame.Shape.NoFrame)
+        box = QWidget()
+        bl = QVBoxLayout(box)
+        bl.setContentsMargins(0, 0, 6, 0)
+        bl.addWidget(self.glass_editor)
+        bl.addStretch()
         sc.setWidget(box)
         v.addWidget(sc, 1)
-        row = QHBoxLayout()
-        self.app_pick = QComboBox()
-        self.app_pick.setEditable(True)
-        self.app_pick.lineEdit().setPlaceholderText("Window class, e.g. kitty (or pick an open window)")
-        row.addWidget(self.app_pick, 1)
-        add = widgets.button("＋  Add app", "primary")
-        add.clicked.connect(self._add_glass)
-        row.addWidget(add)
-        apply = widgets.button("Apply now")
-        apply.clicked.connect(self._apply_glass)
-        row.addWidget(apply)
-        v.addLayout(row)
         self.glass_status = widgets.label("", 11, tone="muted")
         self.glass_status.setWordWrap(True)
         v.addWidget(self.glass_status)
-        self._fill_glass()
+        self._glass_timer = QTimer(self)
+        self._glass_timer.setSingleShot(True)
+        self._glass_timer.setInterval(250)
+        self._glass_timer.timeout.connect(self._apply_glass)
         return page
 
     def _slider(self, lo: int, hi: int, val: int):
@@ -524,76 +704,9 @@ class CaelestiaPanel(widgets.FloatingPanel):
         s.sliderReleased.connect(self._save_glass)
         return s, lbl
 
-    def _fill_glass(self):
-        widgets.clear_layout(self.glass_list)
-        rules = self.m.glass()
-        if not rules:
-            self.glass_list.addWidget(widgets.label("No apps yet. Pick one below and press Add app.", 12,
-                                                    tone="muted"))
-        for i, r in enumerate(rules):
-            self.glass_list.addWidget(self._glass_row(i, r))
-        self.glass_list.addStretch()
-        self.app_pick.clear()
-        seen = {r["cls"] for r in rules}
-        for c in self.m.open_classes():
-            if c not in seen:
-                self.app_pick.addItem(c)
-        self.app_pick.setEditText("")
-
-    def _glass_row(self, i: int, r: dict) -> QWidget:
-        card = QFrame()
-        card.setObjectName("lumCard")
-        h = QHBoxLayout(card)
-        h.setContentsMargins(12, 6, 8, 6)
-        h.setSpacing(10)
-        h.addWidget(widgets.label(r["cls"], 13, 600, mono=True), 1)
-        for key, label in (("active", "Focused"), ("inactive", "Not focused")):
-            h.addWidget(widgets.label(label, 11.5, tone="secondary"))
-            s = QSlider(Qt.Orientation.Horizontal)
-            s.setRange(20, 100)
-            s.setFixedWidth(110)
-            s.setValue(int(round(float(r.get(key, 1.0)) * 100)))
-            val = widgets.label(f"{s.value()} %", 11.5, mono=True)
-            val.setFixedWidth(44)
-            s.valueChanged.connect(lambda x, l=val: l.setText(f"{x} %"))
-            s.sliderReleased.connect(lambda s=s, k=key: self._set_glass(i, k, s.value() / 100))
-            h.addWidget(s)
-            h.addWidget(val)
-        b = QCheckBox("Blur")
-        b.setChecked(bool(r.get("blur", True)))
-        b.toggled.connect(lambda on: self._set_glass(i, "blur", on))
-        h.addWidget(b)
-        rm = widgets.icon_button("✕", "Remove", 24, 11, ghost=True)
-        rm.clicked.connect(lambda: self._remove_glass(i))
-        h.addWidget(rm)
-        return card
-
-    def _set_glass(self, i: int, key: str, value):
-        rules = self.m.glass()
-        if 0 <= i < len(rules):
-            rules[i][key] = value
-            self.m.set_glass(rules)
-            self._apply_glass()
-
-    def _remove_glass(self, i: int):
-        rules = self.m.glass()
-        if 0 <= i < len(rules):
-            rules.pop(i)
-            self.m.set_glass(rules)
-            self._fill_glass()
-            self._apply_glass()
-
-    def _add_glass(self):
-        cls = self.app_pick.currentText().strip()
-        if not cls:
-            return
-        rules = self.m.glass()
-        if any(r["cls"] == cls for r in rules):
-            return
-        rules.append({"cls": cls, "active": 0.92, "inactive": 0.78, "blur": True})
-        self.m.set_glass(rules)
-        self._fill_glass()
-        self._apply_glass()
+    def _glass_changed(self):
+        self.m.set_glass(self.glass_editor.get_value())
+        self._glass_timer.start()          # sliders fire a lot: apply once they rest
 
     def _save_glass(self):
         self.m.settings.set("caelestia.blur_size", self.blur_size[0].value())
@@ -673,6 +786,12 @@ class CaelestiaModule(Module):
         super().__init__(ctx)
         self.panel: CaelestiaPanel | None = None
         self._hooked = False
+        self._themes_hooked = False
+        self._watch: QFileSystemWatcher | None = None
+        self._keep_timer = QTimer()
+        self._keep_timer.setSingleShot(True)
+        self._keep_timer.setInterval(1500)
+        self._keep_timer.timeout.connect(self._keep_check)
 
     def start(self):
         self.hotkey("hotkey", self.toggle, "Caelestia & Glass")
@@ -680,19 +799,104 @@ class CaelestiaModule(Module):
         if sync is not None and not self._hooked:
             sync.reloaded.connect(lambda: QTimer.singleShot(500, self.apply_glass))   # a reload drops the rules
             self._hooked = True
+        launcher = self.ctx.launcher
+        if launcher is not None and not self._themes_hooked:
+            launcher.themes.applied.connect(self._theme_applied)
+            self._themes_hooked = True
         QTimer.singleShot(1500, self.apply_glass)
+        QTimer.singleShot(800, self.sync_colours)
+        QTimer.singleShot(900, self.sync_appearance)
+        self._watch_scheme()
 
     def stop(self):
         self.apply_glass(off=True)
+        if self._themes_hooked and self.ctx.launcher is not None:
+            try:
+                self.ctx.launcher.themes.applied.disconnect(self._theme_applied)
+            except TypeError:
+                pass
+            self._themes_hooked = False
+        if self._watch is not None:
+            self._watch.deleteLater()
+            self._watch = None
+        self._keep_timer.stop()
         if self.panel:
             self.panel.close()
             self.panel.deleteLater()
             self.panel = None
 
+    # ── the shell follows the theme ────────────────────────────────────────
+    def _theme_applied(self, t: dict):
+        if self.running and self.s("follow_theme", True):
+            self.sync_colours(t, force=True)
+
+    def sync_colours(self, t: dict | None = None, force: bool = False) -> str:
+        """Give Caelestia the theme's colours. Without `force` only when "The shell follows the theme" is on and
+        the shell has other colours; with it always (the Apply button, a theme being applied)."""
+        from core import caelestia_sync
+        if IS_WIN or not (force or self.s("follow_theme", True)):
+            return ""
+        if not caelestia_sync.installed() or os.environ.get("LUMINESCENT_HOME"):
+            # no stray scheme.json on a PC without Caelestia, and none from a test copy
+            return "" if not force else "Caelestia was not found (no ~/.config/caelestia or ~/.local/state/caelestia)."
+        launcher = self.ctx.launcher
+        if t is None and launcher is not None:
+            t = launcher.themes.active()
+        if not t:
+            return "No theme."
+        _mode, cols = caelestia_sync.palette(t)
+        if not force and (caelestia_sync.read_scheme().get("colours") or {}) == cols:
+            caelestia_sync._last_written.update(cols)
+            return ""
+        err = caelestia_sync.write_scheme(t)
+        if err:
+            self.ctx.notify(self.title, f"Could not change Caelestia's colours: {err}")
+            return err
+        if self.s("apply_apps", False):
+            caelestia_sync.apply_to_apps(t)
+        return ""
+
+    def _watch_scheme(self):
+        from core import caelestia_sync
+        if IS_WIN or self._watch is not None or not os.path.isdir(caelestia_sync.STATE_DIR):
+            return
+        # the folder, not the file: scheme.json is replaced, not written in place
+        self._watch = QFileSystemWatcher([caelestia_sync.STATE_DIR])
+        self._watch.directoryChanged.connect(lambda _p: self._keep_timer.start())
+
+    def _keep_check(self):
+        from core import caelestia_sync
+        if self.running and self.s("follow_theme", True) and self.s("keep_colours", False) \
+                and caelestia_sync.changed_by_someone_else():
+            self.sync_colours(force=True)
+
+    def sync_appearance(self) -> str:
+        from core import caelestia_sync
+        if IS_WIN or not self.s("shell_appearance", False) or os.environ.get("LUMINESCENT_HOME"):
+            return ""
+        err = caelestia_sync.set_appearance({key: self.s(key) for key, _path, _kind in caelestia_sync.APPEARANCE
+                                             if self.s(key) is not None})
+        if err:
+            self.ctx.notify(self.title, f"Could not change shell.json: {err}")
+        return err
+
     def retheme(self):
+        # the panel is rebuilt in the new colours the next time it opens
         if self.panel and not self.panel.isVisible():
-            self.stop()
-            self.start()
+            self.panel.close()
+            self.panel.deleteLater()
+            self.panel = None
+
+    def apply_settings(self):
+        """Settings saved: no restart (that would close the panel with unsaved edits), just apply them."""
+        self.hotkeys.unregister_all(self.key)
+        self.hotkey("hotkey", self.toggle, "Caelestia & Glass")
+        self.apply_glass()
+        self.sync_colours()
+        self.sync_appearance()
+        self._watch_scheme()
+        if self.panel and self.panel.isVisible():
+            self.panel.glass_editor.set_value(self.glass())
 
     def actions(self):
         return [("open", "Caelestia shell settings and glass", self.toggle)]

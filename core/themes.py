@@ -371,7 +371,7 @@ class ThemeStore(QObject):
             raise ValueError("This file is not a Luminescent theme (.lumtheme).")
         src = d["theme"]
         t = new_theme(str(src.get("name") or "Imported theme"))
-        for k in ("colours", "font_family", "radius", "glow", "image_opacity", "modules"):
+        for k in ("colours", "font_family", "radius", "glow", "image_opacity", "modules", "caelestia"):
             if k in src:
                 t[k] = copy.deepcopy(src[k])
         t["colours"] = {**theme.PRESETS["dark"], **{k: v for k, v in (t.get("colours") or {}).items()

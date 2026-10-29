@@ -903,6 +903,7 @@ class CalibrateDialog(QDialog):
         self.m = module
         self.setWindowTitle("Calibrate Hearing Guard")
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
+        widgets.card_dialog(self)
         self.setMinimumWidth(480)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(20, 20, 20, 20)

@@ -516,6 +516,13 @@ class UpdatesWidget(QWidget):
         lay.addLayout(self.list)
         self._got.connect(self._show)
         self.releases: list[dict] = []
+        self._asked = False
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if not self._asked and "--smoke" not in __import__("sys").argv:
+            self._asked = True                 # the list fills in by itself the first time you look
+            self.check()
 
     def check(self):
         import threading

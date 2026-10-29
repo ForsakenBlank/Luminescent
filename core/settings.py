@@ -564,6 +564,15 @@ SCHEMA += [
         Field("enabled", "Enable Atlas Sync", "bool", True),
         Field("hotkey", "Open Atlas Sync", "hotkey", ""),
     ]),
+    Section("caelestia", "Caelestia & Glass", "◐",
+            "The Caelestia shell's config files as forms you can edit (with a backup on every save), its colours "
+            "and wallpaper, and see-through glass windows per app (focused and unfocused) with the blur strength.", [
+        Field("enabled", "Enable Caelestia & Glass", "bool", True),
+        Field("hotkey", "Open hotkey", "hotkey", ""),
+        Field("glass", "", "hidden", []),
+        Field("blur_size", "", "hidden", 0),
+        Field("blur_passes", "", "hidden", 0),
+    ]),
 ]
 
 SECTIONS = {s.key: s for s in SCHEMA}

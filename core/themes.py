@@ -246,6 +246,35 @@ class ThemeStore(QObject):
         self.add(t)
         return t
 
+    def from_colours(self, name: str, roles: dict) -> str:
+        """A theme from another app's colours ({"primary", "bg", "card", "text", "muted", "border"}). A theme
+        with the same name is updated instead of adding another. Returns its id ('' without an accent)."""
+        accent = roles.get("primary") or ""
+        if not accent.startswith("#"):
+            return ""
+        bg = roles.get("bg") or ""
+        light = bool(bg) and theme.luminance(bg) > 140
+        cols = {**theme.PRESETS["light" if light else "dark"], **theme.generate(accent, light)}
+        for role, keys in (("bg", ("bg_base",)), ("card", ("bg_card", "folder_color")), ("text", ("text_primary",)),
+                           ("muted", ("text_secondary",)), ("border", ("border",))):
+            if roles.get(role, "").startswith("#"):
+                for k in keys:
+                    cols[k] = roles[role]
+        if roles.get("bg", "").startswith("#"):
+            cols["bg_frame"] = theme.mix(roles["bg"], "#000000" if not light else "#FFFFFF", 0.25)
+            cols["bg_header"] = theme.mix(roles["bg"], cols["bg_card"], 0.5)
+            cols["bg_card_hover"] = theme.mix(cols["bg_card"], cols["text_primary"], 0.06)
+        old = next((t for t in self.themes() if t.get("name") == name and not t.get("builtin")), None)
+        if old is not None:
+            t = copy.deepcopy(old)
+            t["colours"] = cols
+            self.update_theme(t)
+            return t["id"]
+        t = new_theme(name)
+        t["colours"] = cols
+        self.add(t)
+        return t["id"]
+
     def set_accent(self, tid: str, accent: str):
         """Give a theme a new accent colour; its accent shades follow."""
         t = self.get(tid)

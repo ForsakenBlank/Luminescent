@@ -89,7 +89,8 @@ leaves edit mode.
 
 `Ctrl+1…9` switch pages. Start typing on the Dashboard or Themes page and the command palette opens with what you
 typed. The top-left corner shows the time, running timers, the Hearing Guard level and the next reminder. Settings →
-Overlay & Interface picks the pages in the navigation bar (Notes, Timers, Calculator, Today and Usage can be added),
+Overlay & Interface picks the pages in the navigation bar (Notes, Timers, Calculator, Today, Usage, Hearing
+Guard, System Monitor and Media can be added),
 the screen it opens on (the one with the mouse by default), the frosted background, the **Text size** (85% to 150%,
 every panel, page and menu) and whether it opens on the page you were on last.
 
@@ -107,7 +108,7 @@ every panel, page and menu) and whether it opens on the page you were on last.
   Tip: add your auto clicker (or any program) as an item, give it a hotkey, and it is one key, one click in the tray
   or one search in the palette away.
   **Pages as boxes**: `＋ Add` (or right-click the open space → Add here) puts Themes, Clipboard, Settings, Notes,
-  Timers, Calculator, Today or Usage on the dashboard as a box you drag and **resize** (right edge, bottom edge,
+  Timers, Calculator, Today, Usage, Hearing Guard, System Monitor or Media on the dashboard as a box you drag and **resize** (right edge, bottom edge,
   corner). Each dashboard remembers its boxes, where they are and what they show (the Settings section, the
   Clipboard folder, the open note…), also after a restart. ⤢ opens the full page, ✕ takes the box off.
   **Select like a desktop**: drag on the open space to draw a selection box, Ctrl/Shift+click headers to add to it;
@@ -125,13 +126,22 @@ every panel, page and menu) and whether it opens on the page you were on last.
   arguments** and **run a command in a terminal window**; headings and separators; **groups** that run several
   items in order; a lock button and a search box; running items get a green dot and a **Stop**; folder items have
   **Open terminal here**.
-* **Themes**: click a theme to apply it everywhere. Right-click → **Settings…** for every colour (full colour wheel),
-  font, corner radius, glow, a background image behind the overlay (with an opacity slider), the card icon, a
-  **desktop wallpaper** (a picture, or a **Wallpaper Engine** project) and the **settings profile** it uses.
+* **Themes**: click a theme to apply it everywhere. Right-click → **Settings…** opens the theme editor: three
+  columns you can resize by dragging the lines between them (the parts of the theme, that part's settings and a
+  live preview) for every colour, font, corner radius, glow, a background image behind the overlay (with an opacity
+  slider), the card icon, a **desktop wallpaper** (a picture, or a **Wallpaper Engine** project) and the **settings
+  profile** it uses. Every module, the **notifications** and the **warnings on screen** can have a whole look of
+  their own (an accent or any of the colours, and their own corner radius), not only an accent; "Copy the look of…"
+  and "Match all its colours to it" make that quick.
+  **Colours and gradients**: clicking a colour (here and everywhere else in Luminescent) opens the colour picker: a
+  saturation / brightness square, a hue strip, the old colour next to the new one (click it to go back), a hex box
+  that also takes rgb(…), hsl(…) and colour names, an eyedropper, how readable text is on it, and your recent
+  picks and this theme's colours. Switch it to **Gradient** and any colour of a theme becomes a gradient: click the
+  bar to add colours, drag them to move them (down off the bar to remove one), and pick Linear, Radial or Sweep,
+  the angle or a preset. Backgrounds, cards, headers, buttons, sliders, borders and the page switcher draw them.
   Group themes in colour-coded folders. Dark and Light are built in and can not be deleted.
   **Import… / Export to a file…** share a theme as a `.lumtheme` file; **From a colour…** makes a whole theme from one
-  accent colour; Settings… → **Module accents** gives a module its own colour (Notes in green…). A **Next theme**
-  hotkey cycles through the active theme's folder.
+  accent colour. A **Next theme** hotkey cycles through the active theme's folder.
 * **Clipboard**: your Snippets folder as cards; click to paste. `＋ Save clipboard here` stores whatever is on the
   clipboard (text, an image, copied files) into the folder you are in. Folders can be coloured (right-click).
   The search box looks through every folder. Drag a card onto another to reorder, onto a folder (or the breadcrumb)
@@ -139,8 +149,13 @@ every panel, page and menu) and whether it opens on the page you were on last.
 * **Settings**: every option, grouped by module, with a search box that highlights what you typed and counts the
   matches per section. Tick **Only matching settings** under it to hide every setting that does not mention it. **Settings profiles** at the top: each profile
   has its own hotkeys, sizes, sounds… and a theme can switch to one. General, Overlay and Dashboard settings are shared.
-  A hotkey that clashes is flagged while you record it. General has **Show on start** (which panels open by
-  themselves), the **tray menu** editor and a weekly automatic backup (last 5 kept).
+  A hotkey that clashes is flagged while you record it. Hover a section and click its ☆ to **pin** it to the top of
+  the list. A module's page has buttons that do what its hotkeys do (open the panel, pick a colour, new timer…), or
+  **Turn it on** when the module is off. General has **Show on start** (which panels open by themselves), the
+  **tray menu** editor, a weekly automatic backup (last 5 kept) and the **notifications**: where they appear, their
+  width, accent style (a glow, a stripe, a line along the top, an outline or none), how long they stay, how many at
+  once, background opacity, text size and the icon. **Show a notification** tries them out before you save. Long
+  messages are never cut off: the card grows to fit. Hover a card for ✕, right-click it to copy the text.
 * **Automation**: a huge workspace you move around in (right- or middle-drag, Space + drag; the wheel zooms) where
   you place nodes and wire them together, like Upload Labs. Drag from a port to another to wire them: **round
   ports** carry pulses ("this happened, now do that"), each carrying a bit of text; **diamond ports** carry values,
@@ -237,14 +252,22 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
 * **Caelestia & Glass**: every file in `~/.config/caelestia` as a form (switches, numbers, colour swatches) or as
   text, saved with a backup; Caelestia's colours and wallpaper, and a Luminescent theme made from them; and glass
   windows per app: how see-through each app is focused and unfocused, blur on or off, and the blur strength.
+  **Colours** lets you change and apply every colour of Caelestia's scheme (a backup is made first). Keep your
+  colours for that Caelestia scheme (they come back whenever Caelestia uses or remakes it) or for a Luminescent
+  theme (written into Caelestia whenever that theme is applied). Caelestia draws its colours flat, so gradients can
+  not go into its scheme.
 * **Calendar** page: Atlas's events and tasks next to your reminders, with notifications on the PC.
 * **Reminders** (Settings → Reminders): pop-ups, sounds, notifications, and **Switch theme**, so a 08:00 reminder can
   switch to Light and a 20:00 one to Dark. Also monthly and every-N-days schedules, and quick reminders from the
   command palette: `remind me in 20m to stretch`, `at 17:30 call mum`.
 * **Hearing Guard**: estimated dB(A) at the ear, a dip limiter and the NIOSH daily dose. Calibrate once per device
-  with a phone sound-meter app (Calibrate… in its panel). Headphone volume wheels are invisible to the PC: calibrate
-  with the wheel at max. **WEEK** shows the last seven days, **APPS** every program playing with its own level and
-  volume slider.
+  with a phone sound-meter app (Calibrate… in its panel). Headphone volume wheels are invisible to the PC, so for
+  headphones with a volume of their own set **Headset's own volume** and the estimate (and calibrating) follows it.
+  **Record mode** only keeps the readings: no warnings and nothing turned down. Volumes past 100 % are handled and
+  the cap goes up to 150 %. **Today** has a dB scale, the limit line and the time, level and listening time on
+  hover; **WEEK** shows the last seven days with the 100 % line, **APPS** every program playing with its own level
+  and volume slider. Hearing Guard, System Monitor and Media can also be pages in the overlay and boxes on the
+  dashboard.
 * **Ghost Vault**: a search box for names anywhere in the vault, and thumbnails for pictures (decrypted in memory,
   never written to disk).
 * **Metadata Stripper**: drop a whole folder to strip every image and video in it (to copies, or in place after a

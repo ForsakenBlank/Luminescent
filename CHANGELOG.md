@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 * **A new colour picker everywhere** (themes, folders, settings, Caelestia, Snippets): a saturation / brightness
   square, a hue strip, the colour you started with next to the new one (click it to go back), a hex box that also

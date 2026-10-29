@@ -221,7 +221,7 @@ class ThemeCard(QFrame):
         row = QHBoxLayout()
         row.setContentsMargins(4, 0, 4, 2)
         row.setSpacing(8)
-        name = widgets.label(t["name"], 13, 500)
+        name = widgets.elided(t["name"], 13, 500)
         row.addWidget(name, 1)
         check = QLabel("✓" if active else "")
         check.setFixedSize(18, 18)
@@ -236,7 +236,7 @@ class ThemeCard(QFrame):
         tip = "Built-in theme" if t.get("builtin") else ""
         if t.get("profile"):
             tip += f"\nSettings profile: {page.launcher.settings.profile_name(t['profile'])}"
-        self.setToolTip((tip + "\nClick to use · right-click for settings").strip())
+        self.setToolTip((t["name"] + "\n" + tip + "\nClick to use · right-click for settings").replace("\n\n", "\n"))
 
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
@@ -381,7 +381,8 @@ class ThemesPage(QWidget):
         v.setContentsMargins(24, 4, 24, 24)
         v.setSpacing(22)
         avail = (self.width() if self.width() > 300 else 1178) - 48 - 10
-        card_w = max(150, (avail - GAP * (COLS - 1)) // COLS)
+        cols = max(1, min(COLS, (avail + GAP) // (170 + GAP)))     # fewer columns on a narrow page, never cut off
+        card_w = max(150, (avail - GAP * (cols - 1)) // cols)
         active = self.store.data["active"]
         act = self.store.get(active)
         self.active_lbl.setText(f"ACTIVE: {act['name'].upper()}" if act else "")
@@ -405,10 +406,10 @@ class ThemesPage(QWidget):
                 grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
                 cards = [ThemeCard(self, t, t["id"] == active, card_w) for t in themes]
                 for i, c in enumerate(cards):
-                    grid.addWidget(c, i // COLS, i % COLS)
+                    grid.addWidget(c, i // cols, i % cols)
                 h = max((c.sizeHint().height() for c in cards), default=160)
                 n = len(cards)
-                grid.addWidget(AddCard(self, folder["id"] if folder else "", card_w, h), n // COLS, n % COLS)
+                grid.addWidget(AddCard(self, folder["id"] if folder else "", card_w, h), n // cols, n % cols)
                 group.addLayout(grid)
             v.addWidget(box)
             self._reorder.add(box, header)

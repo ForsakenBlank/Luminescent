@@ -61,11 +61,17 @@ jobs:
         with:
           path: out
           merge-multiple: true
+      # the release text is this version's part of CHANGELOG.md, under the download steps
+      - name: Notes from the changelog
+        run: |
+          v="${{ steps.v.outputs.tag }}"
+          awk -v h="## ${v#v}" '$0 == h {on=1; next} /^## / && on {exit} on' CHANGELOG.md > changes.md
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.v.outputs.tag }}
           name: Luminescent ${{ steps.v.outputs.tag }}
-          generate_release_notes: true
+          body_path: changes.md
+          append_body: true
           body: |
             **Windows**: download `Luminescent-windows.zip`, unzip it anywhere and run `Luminescent.exe`.
             **Linux**: download `Luminescent-linux.tar.gz`, unpack it and run `Luminescent/Luminescent` (Hyprland for global hotkeys).

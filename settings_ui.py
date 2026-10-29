@@ -8,6 +8,7 @@ counts), rows of "label | field" with a hairline between them, and a footer
 """
 import os
 import copy
+import html
 import logging
 
 from PyQt6.QtWidgets import (
@@ -18,7 +19,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QEvent, pyqtSignal
 from PyQt6.QtGui import QColor, QKeySequence, QShortcut
 
-from core import theme, widgets, backup, APP_NAME
+from core import theme, widgets, backup, anim, APP_NAME
 from core import hotkeys as hk
 from core.settings import (SCHEMA, Field, defaults, NAV_SECTIONS, ALL_PAGES, REQUIRED_PAGES, START_PANELS, TRAY_ITEMS,
                            SETTINGS_FILE)
@@ -608,19 +609,49 @@ class _SideButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 0, 12, 0)
+        self.title = title
+        self.total = count
         self.name = widgets.label(title, 13, 500, tone="")
-        n = widgets.label(str(count), 10, mono=True, tone="muted")
-        for w in (self.name, n):
+        self.count = widgets.label(str(count), 10, mono=True, tone="muted")
+        for w in (self.name, self.count):
             w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         lay.addWidget(self.name, 1)
-        lay.addWidget(n)
+        lay.addWidget(self.count)
         self.toggled.connect(self._tone)
         self._tone(False)
+
+    def set_matches(self, n: int | None, q: str = ""):
+        # n: how many settings match the search (None: no search, show the total)
+        self.count.setText(str(self.total) if n is None else f"{n} found" if n else "")
+        set_marked(self.name, self.title, q)
 
     def _tone(self, on: bool):
         self.name.setProperty("tone", "primary" if on else "secondary")
         self.name.style().unpolish(self.name)
         self.name.style().polish(self.name)
+
+
+def set_marked(lbl: QLabel, plain: str, q: str):
+    """Show `plain` in the label with every `q` in it highlighted (plain text again when q is empty)."""
+    low = plain.lower()
+    if not q or q not in low:
+        if lbl.textFormat() != Qt.TextFormat.PlainText or lbl.text() != plain:
+            lbl.setTextFormat(Qt.TextFormat.PlainText)
+            lbl.setText(plain)
+        return
+    p = theme.P
+    out, i = [], 0
+    while True:
+        j = low.find(q, i)
+        if j < 0:
+            break
+        out.append(html.escape(plain[i:j]))
+        out.append(f'<span style="background-color: {theme.rgba(p.primary, 0.38)}; color: {p.text_primary};">'
+                   f"{html.escape(plain[j:j + len(q)])}</span>")
+        i = j + len(q)
+    out.append(html.escape(plain[i:]))
+    lbl.setTextFormat(Qt.TextFormat.RichText)
+    lbl.setText("".join(out).replace("\n", "<br>"))
 
 
 # ── the page ──────────────────────────────────────────────────────────────────
@@ -633,12 +664,16 @@ class SettingsPage(QWidget):
         self.launcher = launcher
         self._widgets: dict[str, tuple[Field, object]] = {}   # "section.key" -> (field, widget)
         self._pages: dict[str, int] = {}
+        self._built: set[int] = set()          # sections are built the first time they are needed
+        self._rows: dict[int, list] = {}        # section index -> [(field, row, [(label, plain text)])]
+        self._heads: dict[int, list] = {}       # section index -> [(label, plain text)] (title, description)
+        self._query = ""
         self._loaded: dict = {}
         self._stale = False
         self._note = ""
         settings.changed.connect(self._mark_stale)
         settings.quietly_changed.connect(self._quiet_change)
-        settings.profile_changed.connect(lambda _pid: self._mark_stale())
+        settings.profile_changed.connect(self._profile_changed)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -655,8 +690,9 @@ class SettingsPage(QWidget):
         sl.setContentsMargins(10, 14, 10, 14)
         sl.setSpacing(2)
         search_box = QFrame()
-        sbl = QHBoxLayout(search_box)
+        sbl = QVBoxLayout(search_box)
         sbl.setContentsMargins(0, 0, 0, 10)
+        sbl.setSpacing(6)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search settings")
         self.search.setFixedHeight(32)
@@ -668,6 +704,13 @@ class SettingsPage(QWidget):
         slash.setParent(self.search)
         slash.adjustSize()
         self._slash = slash
+        self.only = QCheckBox("Only matching settings")
+        self.only.setToolTip("Searching hides every setting whose name or description does not contain what you "
+                             "typed (instead of only hiding whole sections). Matches are highlighted either way.")
+        self.only.setChecked(bool(settings.get("ui.settings_search_only", False)))
+        self.only.toggled.connect(self._only_toggled)
+        widgets.style(self.only, f"font-size: {theme.fs(12)}px; color: {theme.P.text_secondary};")
+        sbl.addWidget(self.only)
         sl.addWidget(search_box)
         QShortcut(QKeySequence("/"), self, activated=lambda: (self.search.setFocus(), self.search.selectAll()),
                   context=Qt.ShortcutContext.WidgetWithChildrenShortcut)
@@ -698,7 +741,7 @@ class SettingsPage(QWidget):
             shl.addWidget(b)
             self.side_buttons.append(b)
             self._pages[section.key] = self.stack.count()
-            self.stack.addWidget(self._build_page(section))
+            self.stack.addWidget(QWidget())         # a stand-in until the section is first shown
         shl.addStretch()
 
         bar = QFrame()
@@ -735,8 +778,52 @@ class SettingsPage(QWidget):
         self._dirty_timer.setInterval(600)
         self._dirty_timer.timeout.connect(self._update_status)
 
+        # the sections nobody opened yet are built in the background, one at a time
+        self._lazy = QTimer(self)
+        self._lazy.setSingleShot(True)
+        self._lazy.setInterval(60)
+        self._lazy.timeout.connect(self._build_next)
+
         self.load_values()
         self._select(0)
+
+    def _ensure(self, i: int):
+        if i in self._built or not 0 <= i < len(SCHEMA):
+            return
+        self._built.add(i)
+        section = SCHEMA[i]
+        real = self._build_page(section, i)
+        old = self.stack.widget(i)
+        cur = self.stack.currentIndex()
+        self.stack.insertWidget(i, real)
+        self.stack.removeWidget(old)
+        old.deleteLater()
+        if cur == i:
+            self.stack.setCurrentIndex(i)
+        # the new fields show what is saved (an unopened section has no unsaved edits)
+        data = self.settings.all()
+        for f in section.fields:
+            full = f"{section.key}.{f.key}"
+            if full in self._widgets:
+                try:
+                    self._set(f, self._widgets[full][1], data.get(section.key, {}).get(f.key, f.default))
+                except Exception:
+                    log.exception("could not load %s", full)
+                    self._set(f, self._widgets[full][1], f.default)
+                if f.type == "hotkey":
+                    self._widgets[full][1].recheck()
+        self._apply_rows(i)
+
+    def _build_next(self):
+        todo = [i for i in range(len(SCHEMA)) if i not in self._built]
+        if not todo or not self.isVisible():
+            return
+        self._ensure(todo[0])
+        if len(todo) > 1:
+            self._lazy.start()
+
+    def _profile_changed(self, _pid: str):
+        self._mark_stale()
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -745,8 +832,11 @@ class SettingsPage(QWidget):
 
     def teardown(self):
         self._dirty_timer.stop()
+        self._lazy.stop()
         self.launcher.hotkeys.set_suspended(False)
-        for sig, slot in ((self.settings.changed, self._mark_stale), (self.settings.quietly_changed, self._quiet_change)):
+        for sig, slot in ((self.settings.changed, self._mark_stale),
+                          (self.settings.quietly_changed, self._quiet_change),
+                          (self.settings.profile_changed, self._profile_changed)):
             try:
                 sig.disconnect(slot)
             except TypeError:
@@ -764,11 +854,15 @@ class SettingsPage(QWidget):
 
     def _select(self, i: int):
         if 0 <= i < len(self.side_buttons):
+            self._ensure(i)
             self.side_buttons[i].setChecked(True)
+            was = self.stack.currentIndex()
             self.stack.setCurrentIndex(i)
+            if was != i and self.isVisible():
+                anim.fade(self.stack.currentWidget(), 0.0, 1.0, "pages", 150)
 
     # ── page building ──────────────────────────────────────────────────────
-    def _build_page(self, section) -> QWidget:
+    def _build_page(self, section, index: int = -1) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -782,10 +876,12 @@ class SettingsPage(QWidget):
         head.setSpacing(12)
         title = widgets.label(section.title, 20, 600)
         head.addWidget(title, 0, Qt.AlignmentFlag.AlignBottom)
+        self._heads[index] = [(title, section.title)]
         if section.description:
             d = widgets.label(section.description, 13, tone="muted")
             d.setWordWrap(True)
             head.addWidget(d, 1, Qt.AlignmentFlag.AlignBottom)
+            self._heads[index].append((d, section.description))
         else:
             head.addStretch()
         lay.addLayout(head)
@@ -798,17 +894,24 @@ class SettingsPage(QWidget):
             lay.addSpacing(8)
 
         rows = []
+        self._rows[index] = []
         for f in section.fields:
             if f.type == "hidden":
                 continue
             w = self._make_widget(section.key, f)
             if f.type != "widget":
                 self._widgets[f"{section.key}.{f.key}"] = (f, w)
-            rows.append(self._row(f, w))
+            row = self._row(f, w)
+            rows.append(row)
+            self._rows[index].append((f, row, row.property("marks") or []))
         for i, row in enumerate(rows):
             if i == len(rows) - 1:
                 row.setObjectName("")       # no hairline under the last row
             lay.addWidget(row)
+        none = widgets.label("Nothing on this page matches the search.", 13, tone="muted")
+        none.hide()
+        lay.addWidget(none)
+        self._heads.setdefault(index, []).append((none, None))
         lay.addStretch()
         scroll.setWidget(page)
         return scroll
@@ -822,6 +925,7 @@ class SettingsPage(QWidget):
         rl.setSpacing(0)
         row.setMinimumHeight(52)
         lbl = widgets.label(f.label + ("  ⟳" if f.restart else ""), 13, tone="secondary")
+        marks = [(lbl, lbl.text())]
         if f.restart:
             lbl.setToolTip("Needs a restart to fully apply")
         lbl.setFixedWidth(LABEL_W)
@@ -841,6 +945,7 @@ class SettingsPage(QWidget):
             if f.help:
                 h = widgets.label(f.help, 12, tone="muted")
                 h.setWordWrap(True)
+                marks.append((h, f.help))
                 h.mousePressEvent = lambda e, cb=w: cb.toggle()
                 h.setCursor(Qt.CursorShape.PointingHandCursor)
                 line.addWidget(h, 1)
@@ -854,8 +959,11 @@ class SettingsPage(QWidget):
             line.addStretch()
             col.addLayout(line)
             if f.help:
-                col.addWidget(self._help(f.help))
+                h = self._help(f.help)
+                marks.append((h, f.help))
+                col.addWidget(h)
         rl.addLayout(col, 1)
+        row.setProperty("marks", marks)
         return row
 
     def _help(self, text: str) -> QLabel:
@@ -925,19 +1033,55 @@ class SettingsPage(QWidget):
                     return QLabel(f"Reminders editor unavailable: {e}")
         return QLabel(f"(unsupported field type {t})")
 
+    @staticmethod
+    def _field_hit(f: Field, q: str) -> bool:
+        return q in f"{f.label} {f.help}".lower()
+
+    def _section_hits(self, section, q: str) -> int:
+        return sum(1 for f in section.fields if f.type != "hidden" and self._field_hit(f, q))
+
     def _filter(self, text: str):
         q = text.strip().lower()
+        self._query = q
+        only = self.only.isChecked()
         first = -1
         for i, section in enumerate(SCHEMA):
-            hay = " ".join([section.title, section.description] + [f.label + " " + f.help for f in section.fields
-                                                                   if f.type != "hidden"]).lower()
-            hide = bool(q) and q not in hay
+            hits = self._section_hits(section, q) if q else 0
+            if only:
+                hide = bool(q) and not hits
+            else:
+                hay = f"{section.title} {section.description}".lower()
+                hide = bool(q) and not hits and q not in hay
             self.side_buttons[i].setHidden(hide)
+            self.side_buttons[i].set_matches(hits if q else None, q)
             if not hide and first < 0:
                 first = i
         cur = self.stack.currentIndex()
         if q and (cur < 0 or self.side_buttons[cur].isHidden()) and first >= 0:
             self._select(first)
+        for i in self._built:
+            self._apply_rows(i)
+
+    def _apply_rows(self, i: int):
+        """Highlight the search in a section's rows, and with "Only matching settings" hide the rest."""
+        q, only = self._query, self.only.isChecked()
+        shown = 0
+        for f, row, marks in self._rows.get(i, []):
+            hit = bool(q) and self._field_hit(f, q)
+            row.setVisible(not (q and only and not hit))
+            shown += row.isVisibleTo(row.parentWidget()) if row.parentWidget() is not None else 1
+            for lbl, plain in marks:
+                set_marked(lbl, plain, q)
+        for lbl, plain in self._heads.get(i, []):
+            if plain is None:
+                lbl.setVisible(bool(q) and only and not shown)
+            else:
+                set_marked(lbl, plain, q)
+
+    def _only_toggled(self, on: bool):
+        self.settings.set("ui.settings_search_only", bool(on))
+        self.settings.save_quiet()
+        self._filter(self.search.text())
 
     # ── values ─────────────────────────────────────────────────────────────
     @staticmethod
@@ -1039,18 +1183,23 @@ class SettingsPage(QWidget):
         if not combo:
             return ""
         sec_key = full.split(".", 1)[0]
-        for other, (f, w) in self._widgets.items():
-            if other == full or f.type != "hotkey":
-                continue
-            osec = other.split(".", 1)[0]
+        saved = self.settings.all()
+        for section in SCHEMA:
+            osec = section.key
             en = self._widgets.get(f"{osec}.enabled")
-            if en is not None and not en[1].isChecked():
+            enabled = en[1].isChecked() if en is not None else saved.get(osec, {}).get("enabled", True)
+            if not enabled:
                 continue                     # a module that is switched off
-            if osec == sec_key and sec_key == "doodle" and "esc" in combo:
-                continue
-            if hk.normalize(w.value()) == combo:
-                from core.settings import SECTIONS
-                return f"Also used by {SECTIONS[osec].title} → {f.label}"
+            for f in section.fields:
+                other = f"{osec}.{f.key}"
+                if other == full or f.type != "hotkey":
+                    continue
+                if osec == sec_key and sec_key == "doodle" and "esc" in combo:
+                    continue
+                w = self._widgets.get(other)
+                value = w[1].value() if w is not None else saved.get(osec, {}).get(f.key, "")
+                if hk.normalize(value) == combo:
+                    return f"Also used by {section.title} → {f.label}"
         other = self.launcher.dashboard.hotkey_users().get(combo)
         if other:
             return f"Also used by {other}"
@@ -1127,6 +1276,7 @@ class SettingsPage(QWidget):
             self.load_values()
         self._update_status()
         self._dirty_timer.start()
+        self._lazy.start(400)
 
     def on_hide(self):
         self._dirty_timer.stop()

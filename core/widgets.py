@@ -13,7 +13,7 @@ from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, 
                           QPropertyAnimation, QEasingCurve)
 from PyQt6.QtGui import QPainter, QColor, QPixmap
 
-from core import IS_WIN, theme, hypr
+from core import IS_WIN, theme, hypr, anim
 
 log = logging.getLogger("widgets")
 _uid = 0
@@ -539,21 +539,85 @@ class FloatingPanel(QWidget):
     # ── behaviour ──────────────────────────────────────────────────────────
     def close_requested(self):
         if self._close_hides:
-            self.hide()
+            self.fade_hide()
         else:
             self.close()
 
+    def fade_hide(self):
+        """Hide, fading the panel out first when panel animations are on."""
+        if not self.isVisible() or self.property("fading_out"):
+            return
+        if not anim.on("panels"):
+            self.hide()
+            return
+        self.setProperty("fading_out", True)
+
+        def done():
+            self.setProperty("fading_out", False)
+            self.hide()
+            self.container.setGraphicsEffect(None)
+        anim.fade(self.container, 1.0, 0.0, "panels", 140, then=done, curve=QEasingCurve.Type.InCubic)
+
     def show_and_raise(self, activate: bool = True):
+        if self.property("fading_out"):
+            anim.stop(self.container)
+            self.setProperty("fading_out", False)
+            self.container.setGraphicsEffect(None)
+        elif not self.isVisible():
+            self.follow_cursor_screen()
         self.show()
         raise_window(self)
         if activate and not self.testAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating):
             bring_to_front(self)
 
     def toggle(self):
-        if self.isVisible():
-            self.hide()
+        if self.isVisible() and not self.property("fading_out"):
+            self.fade_hide()
         else:
             self.show_and_raise()
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if not e.spontaneous():
+            anim.fade(self.container, 0.0, 1.0, "panels", 160)
+
+    # sticky notes and the like stay exactly where they were put
+    stays_put = False
+
+    def follow_cursor_screen(self):
+        """Panels used to reopen wherever they were saved, often another screen than the overlay (which
+        opens on the screen with the mouse). Now a panel goes to the overlay's screen, placed the way
+        Settings → Overlay & Interface → Panels like Notes open says."""
+        s = anim._settings
+        if self.stays_put or s is None:
+            return
+        on_cursor = s.get("ui.overlay_screen", "cursor") == "cursor"
+        target = cursor_screen_geometry() if on_cursor else primary_geometry()
+        if target.isEmpty():
+            return
+        how = s.get("ui.panel_place", "kept")
+        if how == "centre":
+            self.center_on(target)
+        elif how == "cursor":
+            c = hypr.cursor_pos()
+            x = min(max(c.x() + 16, target.left()), target.right() - self.width())
+            y = min(max(c.y() + 16, target.top()), target.bottom() - self.height())
+            self.move(max(target.left(), x), max(target.top(), y))
+        elif target.contains(self.geometry().center()):
+            return
+        else:
+            src = next((hypr.available_geometry(scr) for scr in QApplication.screens()
+                        if hypr.available_geometry(scr).contains(self.geometry().center())), None)
+            if src is None or src.isEmpty():
+                self.center_on(target)
+            else:
+                # keep the spot relative to the screen, so "top right" stays top right on a bigger or smaller one
+                fx = (self.x() - src.x()) / max(1, src.width() - self.width())
+                fy = (self.y() - src.y()) / max(1, src.height() - self.height())
+                fx, fy = min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))
+                self.move(target.x() + int(fx * max(0, target.width() - self.width())),
+                          target.y() + int(fy * max(0, target.height() - self.height())))
+        self.geometry_changed.emit()
 
     def center_on(self, screen: QRect | None = None):
         s = screen or primary_geometry()

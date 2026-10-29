@@ -202,8 +202,8 @@ class MediaModule(Module):
             with self.themed():
                 self.panel = MediaPanel(self)
             self.panel.hidden.connect(self._poll.stop)
-        if self.panel.isVisible():
-            self.panel.hide()
+        if self.panel.isVisible() and not self.panel.property("fading_out"):
+            self.panel.fade_hide()
         else:
             self.panel.show_and_raise(activate=False)
             self.refresh()

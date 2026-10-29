@@ -6,9 +6,10 @@ Used instead of desktop notifications when Settings → General → Notification
 "Luminescent". They never take the keyboard focus.
 """
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import Qt, QTimer, QEasingCurve
 
-from core import theme, widgets
+from core import theme, widgets, anim
+from core.guard import alive
 
 WIDTH = 340
 GAP = 10
@@ -34,6 +35,7 @@ class _Toast(QWidget):
         box.setStyleSheet(f"#toastBox {{ background: {p.bg_base}; border: 1px solid {p.border};"
                           f" border-radius: {p.radius}px; }}")
         outer.addWidget(box)
+        self.box = box
         row = QHBoxLayout(box)
         row.setContentsMargins(0, 0, 14, 0)
         row.setSpacing(12)
@@ -65,7 +67,6 @@ class _Toast(QWidget):
         self._life.setSingleShot(True)
         self._life.timeout.connect(self.fade_out)
         self._life.start(max(1500, int(ms)))
-        self._anim = None
         self._closing = False
 
     def enterEvent(self, e):
@@ -84,18 +85,12 @@ class _Toast(QWidget):
         if self._closing:
             return
         self._closing = True
-        if self.manager.perf():
-            self._gone()
-            return
-        self._anim = QPropertyAnimation(self, b"windowOpacity")
-        self._anim.setDuration(180)
-        self._anim.setStartValue(self.windowOpacity())
-        self._anim.setEndValue(0.0)
-        self._anim.setEasingCurve(QEasingCurve.Type.InCubic)
-        self._anim.finished.connect(self._gone)
-        self._anim.start()
+        # window opacity does nothing on Wayland, so the card inside the window fades
+        anim.fade(self.box, 1.0, 0.0, "toasts", 180, then=self._gone, curve=QEasingCurve.Type.InCubic)
 
     def _gone(self):
+        if not alive(self):
+            return
         self.manager.removed(self)
         self.close()
         self.deleteLater()
@@ -110,6 +105,7 @@ class ToastManager:
         return bool(self.settings.get("ui.performance_mode", False))
 
     def show(self, title: str, message: str, ms: int = 4000):
+        self._toasts = [t for t in self._toasts if alive(t)]
         while len(self._toasts) >= MAX_SHOWN:
             old = self._toasts.pop(0)
             old.close()
@@ -117,15 +113,8 @@ class ToastManager:
         t = _Toast(self, title, message, ms)
         self._toasts.append(t)
         self._layout()
-        if not self.perf():
-            t.setWindowOpacity(0.0)
         t.show()
-        if not self.perf():
-            a = QPropertyAnimation(t, b"windowOpacity", t)
-            a.setDuration(160)
-            a.setStartValue(0.0)
-            a.setEndValue(1.0)
-            a.start()
+        anim.fade(t.box, 0.0, 1.0, "toasts", 170)
 
     def removed(self, t: _Toast):
         if t in self._toasts:
@@ -135,12 +124,14 @@ class ToastManager:
     def _layout(self):
         g = widgets.primary_geometry()
         y = g.top() + MARGIN
+        self._toasts = [t for t in self._toasts if alive(t)]
         for t in reversed(self._toasts):            # newest on top
             t.move(g.right() - WIDTH - MARGIN, y)
             y += t.height() + GAP
 
     def clear(self):
         for t in self._toasts:
-            t.close()
-            t.deleteLater()
+            if alive(t):
+                t.close()
+                t.deleteLater()
         self._toasts = []

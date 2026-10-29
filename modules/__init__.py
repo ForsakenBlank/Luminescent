@@ -27,6 +27,7 @@ REGISTRY = [
     ("media", "modules.media:MediaModule"),
     ("qr", "modules.qr:QrModule"),
     ("sysmon", "modules.sysmon:SysmonModule"),
+    ("atlas_sync", "modules.atlas_sync:AtlasSyncModule"),
 ]
 # The File Launcher was retired on 2026-10-25: its shortcuts moved into the Dashboard (ui/dashboard.py).
 

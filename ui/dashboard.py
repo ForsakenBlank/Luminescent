@@ -3,7 +3,7 @@ Dashboard: hack-client style "tab boxes" you can drag around, collapse, and
 fill with items that open a script, program, file, folder, URL or command.
 
     data/dashboard.json:
-    {"layout": 3, "active": board id, "locked": false,
+    {"layout": 3, "active": board id, "locked": false, "screens": {screen name: board id},
      "boards": [{"id", "name",
                  "tabs": [{"id", "kind", "title", "x", "y", "w", "h", "collapsed", "screen", "page", "state",
                            "items": [{"id", "kind", "name", "path", "args", "hotkey", "action",
@@ -11,8 +11,9 @@ fill with items that open a script, program, file, folder, URL or command.
 
 Boards are whole dashboards (Work, Gaming...) switched from the toolbar. The boxes float
 on the whole screen (x/y are pixels on the screen named by `screen`, "" = the screen the
-overlay opens on). Layout 1 files (panel-relative boxes) and layout 2 files (one board)
-are moved over once.
+overlay opens on). `screens` pins a board to another screen: that screen then always shows
+it, whichever board the toolbar has switched to. Layout 1 files (panel-relative boxes) and
+layout 2 files (one board) are moved over once.
 
 A tab's `kind` is "items" (a box of items) or "page": a whole overlay page (Themes,
 Settings, Clipboard...) in a box you can resize, `page` says which one and `state`
@@ -36,10 +37,11 @@ from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QDialog, QFormLayout, QLineEdit,
     QFileDialog, QSizePolicy, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView, QApplication
 )
-from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QRect, QMimeData, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QRect, QMimeData, QSize, QEasingCurve, pyqtSignal
 from PyQt6.QtGui import QDrag, QPixmap, QPainter, QColor, QIcon
 
-from core import DATA_DIR, save_json, load_json, widgets, runner, desktop, usage, theme, events
+from core import DATA_DIR, save_json, load_json, widgets, runner, desktop, usage, theme, events, anim
+from core.guard import alive
 from core import hotkeys as hk
 from core.settings import ALL_PAGES
 
@@ -59,6 +61,11 @@ ORIGIN = (96, 136)          # where the first box sits: below the logo and the p
 LAYOUT = 3
 TOOLS_TAB = "tools"
 ITEM_MIME = "application/x-luminescent-item"
+BOX_MIME = "application/x-luminescent-boxes"       # boxes dragged onto another screen
+TIDY_STYLES = [("columns", "Columns (every box keeps its width)"), ("grid", "Grid (tabs the same width)"),
+               ("rows", "Rows (left to right, then the next row)")]
+TIDY_ORDERS = [("position", "Keep the order they are in"), ("name", "By name, A to Z"),
+               ("size", "Biggest first")]
 ITEM_KEYS = ("kind", "name", "path", "args", "hotkey", "action", "cwd")
 FULL_PAGES = ("dashboard", "automation")     # whole-screen pages: never a box on the dashboard
 
@@ -143,6 +150,9 @@ class DashboardStore(QObject):
         if not any(b["id"] == d.get("active") for b in d["boards"]):
             d["active"] = d["boards"][0]["id"]
         d.setdefault("locked", False)
+        ids = {b["id"] for b in d["boards"]}
+        pins = d.get("screens") if isinstance(d.get("screens"), dict) else {}
+        d["screens"] = {k: v for k, v in pins.items() if isinstance(k, str) and v in ids}
         return d
 
     def _to_screen_layout(self, d: dict):
@@ -258,8 +268,26 @@ class DashboardStore(QObject):
         if len(self.data["boards"]) < 2:
             return
         self.data["boards"] = [b for b in self.data["boards"] if b["id"] != bid]
+        self.data["screens"] = {k: v for k, v in self.data.get("screens", {}).items() if v != bid}
         if self.data.get("active") == bid:
             self.data["active"] = self.data["boards"][0]["id"]
+        self._structural()
+
+    # ── screens ────────────────────────────────────────────────────────────
+    def screen_board(self, screen: str) -> dict | None:
+        """The board pinned to `screen`, if any."""
+        return self.board(self.data.get("screens", {}).get(screen, ""))
+
+    def pinned_screens(self, bid: str) -> list[str]:
+        return [k for k, v in self.data.get("screens", {}).items() if v == bid]
+
+    def set_screen_board(self, screen: str, bid: str = ""):
+        """Pin a board to a screen ("" = the screen shows the active board again)."""
+        pins = self.data.setdefault("screens", {})
+        if bid and self.board(bid) is not None:
+            pins[screen] = bid
+        else:
+            pins.pop(screen, None)
         self._structural()
 
     def move_tab_to_board(self, tid: str, bid: str):
@@ -312,18 +340,23 @@ class DashboardStore(QObject):
         self.schedule_save()
 
     # ── edits ──────────────────────────────────────────────────────────────
-    def add_tab(self, title: str, x: int, y: int, screen: str = "") -> dict:
+    def _tabs_of(self, bid: str = "") -> list[dict]:
+        b = self.board(bid) if bid else None
+        return (b or self.active_board())["tabs"]
+
+    def add_tab(self, title: str, x: int, y: int, screen: str = "", board: str = "") -> dict:
         t = {"id": _id(), "kind": "items", "title": title, "x": x, "y": y, "w": BOX_W, "h": PAGE_H,
              "collapsed": False, "screen": screen, "items": []}
-        self.tabs().append(t)
+        self._tabs_of(board).append(t)
         self._structural()
         return t
 
-    def add_page_tab(self, page: str, title: str, x: int, y: int, w: int, h: int, screen: str = "") -> dict:
-        """A whole overlay page (Themes, Settings...) as a box on the active board."""
+    def add_page_tab(self, page: str, title: str, x: int, y: int, w: int, h: int, screen: str = "",
+                     board: str = "") -> dict:
+        """A whole overlay page (Themes, Settings...) as a box on a board (the active one by default)."""
         t = {"id": _id(), "kind": "page", "page": page, "title": title, "x": x, "y": y, "w": w, "h": h,
              "collapsed": False, "screen": screen, "state": {}, "items": []}
-        self.tabs().append(t)
+        self._tabs_of(board).append(t)
         self._structural()
         return t
 
@@ -342,11 +375,12 @@ class DashboardStore(QObject):
             b["tabs"] = [t for t in b["tabs"] if t["id"] not in gone]
         self._structural()
 
-    def restore_tools(self, x: int, y: int):
-        if not any(t["id"] == TOOLS_TAB for t in self.tabs()):
+    def restore_tools(self, x: int, y: int, board: str = "", screen: str = ""):
+        tabs = self._tabs_of(board)
+        if not any(t["id"] == TOOLS_TAB for t in tabs):
             t = self.tools_tab(x, y)
-            t.update({"kind": "items", "h": PAGE_H, "screen": ""})
-            self.tabs().append(t)
+            t.update({"kind": "items", "h": PAGE_H, "screen": screen})
+            tabs.append(t)
             self._structural()
 
     def add_item(self, tid: str, item: dict, index: int = -1):
@@ -940,6 +974,7 @@ class _Box(QFrame):
             return
         if self not in self.page.selected:
             self.page.clear_selection()
+        anim.stop(self, "pos")
         self._press = (e.globalPosition().toPoint(), self.pos())
         self._grab = e.position().toPoint()
         self._group = [(b, b.pos()) for b in self.page.selected if b is not self and b.canvas is self.canvas]
@@ -961,6 +996,11 @@ class _Box(QFrame):
             self.header.setCursor(Qt.CursorShape.ClosedHandCursor)
             self.setProperty("active", True)
             _repolish(self)
+        gp = e.globalPosition().toPoint()
+        other = self.page.canvas_at(gp)
+        if other is not None and other is not self.canvas:
+            self._hand_off(origin)               # the mouse is on another screen: carry the box(es) over
+            return
         g = self.page.snap()
         x, y = self.page.clamp(self.canvas, snap_to(origin.x() + d.x(), g), snap_to(origin.y() + d.y(), g),
                                self.width())
@@ -968,6 +1008,45 @@ class _Box(QFrame):
         dx, dy = x - origin.x(), y - origin.y()
         for b, o in self._group:
             b.move(*self.page.clamp(b.canvas, o.x() + dx, o.y() + dy, b.width()))
+
+    def _hand_off(self, origin: QPoint):
+        """Each screen is a window of its own and a widget can not leave its window, so a box dragged onto
+        another screen continues as a drag and drop: the picture follows the mouse there and the screen it is
+        dropped on takes the box(es)."""
+        group = [(b, o) for b, o in self._group if alive(b)]
+        boxes = [self] + [b for b, _o in group]
+        homes = [(self, origin)] + group
+        self._press = None
+        self._dragging = False
+        self._group = []
+        self.header.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setProperty("active", False)
+        _repolish(self)
+        for b, o in homes:
+            b.move(o)                              # where they go back to if the drop is cancelled
+        md = QMimeData()
+        lead = self.pos()
+        md.setData(BOX_MIME, json.dumps({"lead": self.tab["id"], "grab": [self._grab.x(), self._grab.y()],
+                                         "boxes": [[b.tab["id"], b.x() - lead.x(), b.y() - lead.y()]
+                                                   for b in boxes]}).encode())
+        drag = QDrag(self)
+        drag.setMimeData(md)
+        px = self.grab()
+        if px.height() > 360:                       # a tall page box: the top part is enough to see
+            px = px.copy(0, 0, px.width(), 360)
+        drag.setPixmap(px)
+        drag.setHotSpot(self._grab)
+        for b in boxes:
+            b.hide()
+        self.page.dragging_boxes = True
+        try:
+            done = drag.exec(Qt.DropAction.MoveAction) == Qt.DropAction.MoveAction
+        finally:
+            self.page.dragging_boxes = False
+        if not done:
+            for b in boxes:
+                if alive(b):
+                    b.show()
 
     def mouseReleaseEvent(self, e):
         if self._press is None:
@@ -983,7 +1062,9 @@ class _Box(QFrame):
         target = self.page.canvas_at(widgets.global_cursor(e))
         if target is not None and target is not self.canvas and not self._group:
             at = widgets.global_cursor(e)
-            QTimer.singleShot(0, lambda: self.page.move_box_to_canvas(self, target, target.mapFromGlobal(at) - self._grab))
+            grab = QPoint(self._grab)
+            QTimer.singleShot(0, lambda: self.page.move_box_to_canvas(self, target, target.mapFromGlobal(at) - grab)
+                              if alive(self) and alive(target) else None)
             return
         for b in [self] + [b for b, _p in self._group]:
             b.fit()
@@ -1069,14 +1150,17 @@ class TabBox(_Box):
             return ROW_H + 26
         return sum(r.height() for r in self.rows) + 8
 
+    def target_height(self) -> int:
+        if self.tab.get("collapsed"):
+            return HEADER_H + 2
+        room = max(HEADER_H + ROW_H + 12, self.page.bottom_limit(self) - self.y())
+        return min(HEADER_H + 2 + self._body_height(), room)
+
     def fit(self):
         """Size to the content, but never past the bottom of the screen or the toolbar (the body scrolls)."""
-        if self.tab.get("collapsed"):
-            h = HEADER_H + 2
-        else:
-            room = max(HEADER_H + ROW_H + 12, self.page.bottom_limit(self) - self.y())
-            h = min(HEADER_H + 2 + self._body_height(), room)
-        self.setFixedHeight(h)
+        if anim.busy(self) and self.property("folding"):
+            return                                   # a fold is gliding there already
+        self.setFixedHeight(self.target_height())
         self._grip.place()
 
     def set_width(self, w: int):
@@ -1092,11 +1176,10 @@ class TabBox(_Box):
 
     def set_collapsed(self, on: bool):
         self.tab["collapsed"] = on
-        self.scroll.setVisible(not on)
         self.chevron.setText("▸" if on else "▾")
         self.header.setProperty("collapsed", on)
         _repolish(self.header)
-        self.fit()
+        _fold(self, self.scroll, on)
 
     def apply_filter(self, q: str) -> int:
         """Highlight the rows matching `q`, fade the rest. Returns how many matched."""
@@ -1215,6 +1298,13 @@ class PageBox(_Box):
         if self.isVisible():
             self.shown()
 
+    def safe_mode(self):
+        widgets.clear_layout(self.bl)
+        lbl = widgets.label("Safe mode: page boxes are not loaded.\nRestart normally from the tray.", 12,
+                            tone="muted")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.bl.addWidget(lbl)
+
     def shown(self):
         fn = getattr(self.inner, "on_show", None)
         if callable(fn):
@@ -1250,13 +1340,16 @@ class PageBox(_Box):
     def body_height(self) -> int:
         return int(self.tab.get("h", PAGE_H))
 
-    def fit(self):
+    def target_height(self) -> int:
         if self.tab.get("collapsed"):
-            h = HEADER_H + 2
-        else:
-            room = max(HEADER_H + PAGE_MIN[1], self.page.bottom_limit(self) - self.y())
-            h = min(HEADER_H + 2 + self.body_height(), room)
-        self.setFixedHeight(h)
+            return HEADER_H + 2
+        room = max(HEADER_H + PAGE_MIN[1], self.page.bottom_limit(self) - self.y())
+        return min(HEADER_H + 2 + self.body_height(), room)
+
+    def fit(self):
+        if anim.busy(self) and self.property("folding"):
+            return
+        self.setFixedHeight(self.target_height())
         for g in self._grips:
             g.place()
 
@@ -1271,11 +1364,32 @@ class PageBox(_Box):
 
     def set_collapsed(self, on: bool):
         self.tab["collapsed"] = on
-        self.body.setVisible(not on)
         self.chevron.setText("▸" if on else "▾")
         self.header.setProperty("collapsed", on)
         _repolish(self.header)
-        self.fit()
+        _fold(self, self.body, on)
+
+
+def _fold(box: "_Box", body: QWidget, on: bool):
+    """Fold or unfold a box: its height glides, the body is hidden once it is folded away."""
+    if not box.isVisible() or not anim.on("boxes"):
+        anim.stop(box, "height")
+        box.setProperty("folding", False)
+        body.setVisible(not on)
+        box.fit()
+        return
+    start = box.height()
+    if not on:
+        body.setVisible(True)
+    box.setProperty("folding", True)
+    end = box.target_height()
+
+    def done():
+        box.setProperty("folding", False)
+        body.setVisible(not on)
+        box.fit()
+    anim.value(start, end, lambda v: box.setFixedHeight(int(v)), "boxes", 200, done, box,
+               QEasingCurve.Type.OutCubic, "height")
 
 
 class Canvas(QWidget):
@@ -1294,6 +1408,51 @@ class Canvas(QWidget):
         self._band.setObjectName("lumBand")
         self._band.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self._band.hide()
+        self._ghost = QFrame(self)                  # where dropped boxes will land
+        self._ghost.setObjectName("lumBand")
+        self._ghost.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._ghost.hide()
+        self.setAcceptDrops(True)
+
+    @staticmethod
+    def _boxes_of(md) -> dict | None:
+        if not md.hasFormat(BOX_MIME):
+            return None
+        try:
+            return json.loads(bytes(md.data(BOX_MIME)).decode())
+        except ValueError:
+            return None
+
+    def dragEnterEvent(self, e):
+        if self._boxes_of(e.mimeData()) is not None:
+            e.acceptProposedAction()
+
+    def dragMoveEvent(self, e):
+        d = self._boxes_of(e.mimeData())
+        if d is None:
+            return
+        e.acceptProposedAction()
+        lead = self.page.store.tab(d.get("lead", ""))
+        w = int(lead.get("w", BOX_W)) if lead else BOX_W
+        h = HEADER_H + 2 if not lead or lead.get("collapsed") else min(240, int(lead.get("h", 160)))
+        at = e.position().toPoint() - QPoint(*d.get("grab", [0, 0]))
+        x, y = self.page.clamp(self, at.x(), at.y(), w)
+        self._ghost.setGeometry(x, y, w, h)
+        self._ghost.show()
+        self._ghost.raise_()
+
+    def dragLeaveEvent(self, e):
+        self._ghost.hide()
+
+    def dropEvent(self, e):
+        self._ghost.hide()
+        d = self._boxes_of(e.mimeData())
+        if d is None:
+            return
+        e.acceptProposedAction()
+        at = e.position().toPoint() - QPoint(*d.get("grab", [0, 0]))
+        # after the drag has finished (the source box is still inside QDrag.exec now)
+        QTimer.singleShot(0, lambda: self.page.drop_boxes(d.get("boxes", []), self, at) if alive(self) else None)
 
     def mousePressEvent(self, e):
         e.accept()
@@ -1354,7 +1513,8 @@ def boxable_pages() -> list[tuple[str, str]]:
 class DashboardPage(QWidget):
     """The boxes, straight on the overlay's full-screen layer of every screen, with a toolbar pill at the
     bottom centre of the main one. Each board's boxes are built once and kept: switching boards only hides
-    one set and shows the other, and a change rebuilds only the boxes whose tab changed."""
+    one set and shows the other, and a change rebuilds only the boxes whose tab changed. A screen with a
+    board pinned to it shows that board instead of the active one."""
 
     def __init__(self, launcher, host: QWidget | None = None, main_screen: str = "",
                  extra: dict[str, QWidget] | None = None):
@@ -1364,6 +1524,10 @@ class DashboardPage(QWidget):
         self.selected: list[_Box] = []
         self._boxes: dict[str, dict[str, _Box]] = {}          # board id -> tab id -> box
         self._queue: list[PageBox] = []
+        self._ctx: QWidget | None = None                       # the screen last clicked: menus and dialogs go there
+        self._undo: list[tuple] = []                           # where the boxes were before the last tidy up
+        self._shown_once = False
+        self.dragging_boxes = False
         self._pump_timer = QTimer(self)
         self._pump_timer.setSingleShot(True)
         self._pump_timer.timeout.connect(self._pump)
@@ -1392,9 +1556,21 @@ class DashboardPage(QWidget):
         add.clicked.connect(lambda: self._add_menu(add.mapToGlobal(add.rect().topLeft())))
         dl.addWidget(add)
         tidy = dock_button("Tidy up", variant="ghost")
-        tidy.setToolTip("Line every box up in columns")
+        tidy.setToolTip("Line the boxes up (only the selected ones if any are selected). The arrow next to it "
+                        "picks how; Ctrl+Z puts them back.")
         tidy.clicked.connect(self.tidy)
         dl.addWidget(tidy)
+        tidy_opts = dock_button("▾", variant="ghost")
+        tidy_opts.setToolTip("How Tidy up arranges the boxes")
+        tidy_opts.setStyleSheet("QPushButton { padding: 0px; }")
+        tidy_opts.setFixedWidth(28)
+        tidy_opts.clicked.connect(lambda: self._tidy_menu(tidy_opts.mapToGlobal(tidy_opts.rect().topLeft())))
+        dl.addWidget(tidy_opts)
+        self.undo_btn = dock_button("↶ Undo", variant="ghost")
+        self.undo_btn.setToolTip("Put the boxes back where they were before Tidy up (Ctrl+Z)")
+        self.undo_btn.clicked.connect(self.undo_tidy)
+        self.undo_btn.hide()
+        dl.addWidget(self.undo_btn)
         self.lock_btn = dock_button("", variant="ghost")
         self.lock_btn.setCheckable(True)
         self.lock_btn.clicked.connect(self._toggle_lock)
@@ -1446,8 +1622,38 @@ class DashboardPage(QWidget):
 
     @property
     def boxes(self) -> list[_Box]:
-        """The active board's boxes."""
-        return list(self._boxes.get(self.store.active_board()["id"], {}).values())
+        """The boxes on screen: the active board's, and those of boards pinned to the other screens."""
+        out = []
+        for b in self.shown_boards():
+            out += [x for x in self._boxes.get(b["id"], {}).values() if alive(x)]
+        return out
+
+    # ── which board goes where ─────────────────────────────────────────────
+    def pins(self) -> dict[str, dict]:
+        """Screen name -> the board pinned to it, for the other screens that are here now."""
+        out = {}
+        for name in self.canvases:
+            if name == self.main.screen_name:
+                continue                              # the main screen always shows the active board
+            b = self.store.screen_board(name)
+            if b is not None:
+                out[name] = b
+        return out
+
+    def shown_boards(self) -> list[dict]:
+        out = [self.store.active_board()]
+        for b in self.pins().values():
+            if b not in out:
+                out.append(b)
+        return out
+
+    def board_of_canvas(self, canvas: "Canvas") -> dict:
+        return self.pins().get(canvas.screen_name) or self.store.active_board()
+
+    def _parent(self) -> QWidget:
+        """Menus and dialogs open on the screen you were working on (a menu belongs to a window, and its
+        window decides which screen it shows on)."""
+        return self._ctx if alive(self._ctx) else self
 
     def raise_dock(self):
         self.dock.raise_()
@@ -1456,8 +1662,16 @@ class DashboardPage(QWidget):
         return max(0, int(self.launcher.settings.get("dashboard.snap", GRID) or 0))
 
     # ── building ───────────────────────────────────────────────────────────
-    def canvas_for(self, tab: dict) -> "Canvas":
-        return self.canvases.get(tab.get("screen") or "") or self.main
+    def canvas_for(self, tab: dict, board: dict | None = None) -> "Canvas":
+        pins = self.pins()
+        if board is not None:
+            for name, b in pins.items():
+                if b is board:
+                    return self.canvases[name]
+        c = self.canvases.get(tab.get("screen") or "")
+        if c is None or c.screen_name in pins:
+            return self.main                          # that screen is gone, or shows a board of its own now
+        return c
 
     def _sig(self, tab: dict) -> str:
         return json.dumps([tab.get("title"), tab.get("items"), [self.store.is_running(i["id"]) for i in tab["items"]],
@@ -1484,10 +1698,11 @@ class DashboardPage(QWidget):
                 self._drop_box(cache.pop(tid))
         for t in board["tabs"]:
             b = cache.get(t["id"])
-            canvas = self.canvas_for(t)
+            canvas = self.canvas_for(t, board)
             if t.get("kind") == "page":
                 if b is None:
                     b = cache[t["id"]] = PageBox(self, t, canvas)
+                    b.fresh = True
                     self._queue.append(b)
                 else:
                     b.title_lbl.setText((t.get("title") or page_name(t["page"])).upper())
@@ -1501,6 +1716,7 @@ class DashboardPage(QWidget):
             if b is None:
                 b = cache[t["id"]] = TabBox(self, t, canvas)
                 b.sig = sig
+                b.fresh = True
         if self._queue and not self._pump_timer.isActive():
             self._pump_timer.start(30)
 
@@ -1511,6 +1727,11 @@ class DashboardPage(QWidget):
         active = {id(b) for b in self.boxes}
         self._queue.sort(key=lambda b: id(b) not in active)
         b = self._queue.pop(0)
+        if getattr(self.launcher, "safe_mode", False):
+            b.safe_mode()
+            if self._queue:
+                self._pump_timer.start(0)
+            return
         try:
             b.build()
         except Exception:
@@ -1553,28 +1774,46 @@ class DashboardPage(QWidget):
 
     def _show_active(self, force: bool = False):
         active = self.store.active_board()
+        shown = self.shown_boards()
+        shown_ids = {b["id"] for b in shown}
+        appear = []
         self.setUpdatesEnabled(False)
         try:
             for bid, boxes in self._boxes.items():
-                if bid == active["id"]:
+                if bid in shown_ids:
                     continue
                 for b in boxes.values():
                     if b.isVisible():
                         if isinstance(b, PageBox):
                             b.hidden()
                         b.hide()
-            self._sync_board(active, force)
-            for t in active["tabs"]:
-                b = self._boxes[active["id"]].get(t["id"])
-                if b is not None and not b.isVisible():
-                    b.show()
-                    b.raise_()
-                    if isinstance(b, PageBox) and b.inner is not None:
-                        b.shown()
-            self.selected = [b for b in self.selected if b.isVisible()]
-            self.empty.setVisible(not active["tabs"])
+            for board in shown:
+                self._sync_board(board, force)
+                for t in board["tabs"]:
+                    b = self._boxes[board["id"]].get(t["id"])
+                    if b is not None and not b.isVisible():
+                        b.show()
+                        b.raise_()
+                        if isinstance(b, PageBox) and b.inner is not None:
+                            b.shown()
+                        if getattr(b, "fresh", False) and self._shown_once and self.isVisible():
+                            appear.append(b)
+                    if b is not None:
+                        b.fresh = False
+            self.selected = [b for b in self.selected if alive(b) and b.isVisible()]
+            on_main = any(b.canvas is self.main for b in self.boxes)
+            pinned_away = self.store.pinned_screens(active["id"])
+            self.empty.setText(f"“{active['name']}” is shown on {', '.join(pinned_away)}. Switch to another "
+                               f"dashboard for this screen." if pinned_away and not on_main else
+                               "This dashboard is empty. Click ＋ Add for a tab of items or a page, or "
+                               "right-click anywhere.")
+            self.empty.setVisible(not on_main)
         finally:
             self.setUpdatesEnabled(True)
+        if self.isVisible():
+            self._shown_once = True
+        for b in appear:
+            anim.fade(b, 0.0, 1.0, "boxes", 220)
 
     def _build_boards(self, compact: bool | None = None):
         widgets.clear_layout(self.boards_box)
@@ -1664,6 +1903,7 @@ class DashboardPage(QWidget):
         return bottom
 
     def on_show(self):
+        self._shown_once = True
         QTimer.singleShot(0, self._clamp)
         for b in self.boxes:
             if isinstance(b, PageBox) and b.inner is not None and b.isVisible():
@@ -1724,6 +1964,9 @@ class DashboardPage(QWidget):
         if ctrl and k == Qt.Key.Key_A:
             self.select_all()
             return True
+        if ctrl and k == Qt.Key.Key_Z and self._undo:
+            self.undo_tidy()
+            return True
         if k == Qt.Key.Key_Escape and self.selected:
             self.clear_selection()
             return True
@@ -1731,15 +1974,15 @@ class DashboardPage(QWidget):
 
     def remove_boxes(self, boxes: list[_Box]):
         boxes = list(boxes)
-        if not boxes or self.store.locked and not widgets.confirm(self, "Layout locked", "The layout is locked. "
-                                                                  "Remove them anyway?", yes="Remove"):
+        if not boxes or self.store.locked and not widgets.confirm(
+                self._parent(), "Layout locked", "The layout is locked. Remove them anyway?", yes="Remove"):
             return
         n_items = sum(len(b.tab["items"]) for b in boxes)
         if len(boxes) == 1 and isinstance(boxes[0], PageBox):
             text = f'Take the {boxes[0].tab.get("title") or "page"} box off the dashboard?'
         else:
             text = f"Delete {len(boxes)} box(es)" + (f" with {n_items} item(s)" if n_items else "") + "?"
-        if widgets.confirm(self, "Remove", text, yes="Remove", danger=True):
+        if widgets.confirm(self._parent(), "Remove", text, yes="Remove", danger=True):
             self.store.delete_tabs([b.tab["id"] for b in boxes])
 
     # ── screens ────────────────────────────────────────────────────────────
@@ -1758,12 +2001,49 @@ class DashboardPage(QWidget):
         b.raise_()
 
     def move_box_to_canvas(self, b: _Box, canvas: "Canvas", at: QPoint):
+        if not alive(b) or not alive(canvas):
+            return
         g = self.snap()
-        self._reparent(b, canvas, QPoint(snap_to(at.x(), g), snap_to(at.y(), g)))
-        b.tab["screen"] = canvas.screen_name
-        self.store.set_geometry(b.tab["id"], x=b.x(), y=b.y(), screen=canvas.screen_name)
+        x, y = self.clamp(canvas, snap_to(at.x(), g), snap_to(at.y(), g), b.width())
+        target = self.board_of_canvas(canvas)
+        src = self.store.board_of_tab(b.tab["id"])
+        screen = canvas.screen_name                     # put on a screen by hand: it stays on that screen
+        if src is not None and target is not src:
+            # that screen shows another dashboard: the box joins it (and is built again there)
+            self.store.set_geometry(b.tab["id"], x=x, y=y, screen=screen)
+            b.tab["screen"] = screen
+            self.store.move_tabs_to_board([b.tab["id"]], target["id"])
+            nb = self._boxes.get(target["id"], {}).get(b.tab["id"])
+            if alive(nb):
+                anim.fade(nb, 0.0, 1.0, "boxes", 220)
+            return
+        self._reparent(b, canvas, QPoint(x, y))
+        b.tab["screen"] = screen
+        self.store.set_geometry(b.tab["id"], x=b.x(), y=b.y(), screen=screen)
         if isinstance(b, TabBox):
             b.sig = self._sig(b.tab)
+        anim.fade(b, 0.0, 1.0, "boxes", 220)
+
+    def drop_boxes(self, entries: list, canvas: "Canvas", at: QPoint):
+        """Boxes dragged here from another screen: [[tab id, dx, dy], ...] relative to the first one."""
+        by_id = {b.tab["id"]: b for b in self.boxes}
+        for entry in entries:
+            try:
+                tid, dx, dy = entry[0], int(entry[1]), int(entry[2])
+            except (IndexError, TypeError, ValueError):
+                continue
+            b = by_id.get(tid)
+            if b is not None:
+                self.move_box_to_canvas(b, canvas, at + QPoint(dx, dy))
+                if alive(b) and not b.isVisible() and b.canvas is canvas:
+                    b.show()
+
+    def _screen_label(self, c: "Canvas") -> str:
+        name = c.screen_name or "Main"
+        pinned = self.pins().get(c.screen_name)
+        if c is self.main:
+            return f"{name}  (this screen)"
+        return f"{name}  ({pinned['name']})" if pinned else name
 
     def _screen_menu(self, m, boxes: list[_Box]):
         others = [c for c in self.canvases.values() if c.isVisible()]
@@ -1771,9 +2051,23 @@ class DashboardPage(QWidget):
             return
         sub = m.addMenu("Move to screen")
         for c in self.canvases.values():
-            a = sub.addAction(("●  " if all(b.canvas is c for b in boxes) else "     ") + (c.screen_name or "Main"),
+            a = sub.addAction(("●  " if all(b.canvas is c for b in boxes) else "     ") + self._screen_label(c),
                               lambda c=c: [self.move_box_to_canvas(b, c, b.pos()) for b in boxes])
             a.setEnabled(not all(b.canvas is c for b in boxes))
+
+    def _pin_menu(self, m, canvas: "Canvas"):
+        """Right-click on another screen: which dashboard that screen shows."""
+        if canvas is self.main or len(self.canvases) < 2:
+            return
+        sub = m.addMenu("This screen shows")
+        cur = self.pins().get(canvas.screen_name)
+        a = sub.addAction(("●  " if cur is None else "     ") + "The active dashboard (follows the toolbar)",
+                          lambda: self.store.set_screen_board(canvas.screen_name, ""))
+        a.setToolTip("Boxes you put on this screen belong to whichever dashboard is active")
+        sub.addSeparator()
+        for b in self.store.boards():
+            sub.addAction(("●  " if cur is b else "     ") + f"Always “{b['name']}”",
+                          lambda bid=b["id"]: self.store.set_screen_board(canvas.screen_name, bid))
 
     # ── search, lock ───────────────────────────────────────────────────────
     def _filter(self, text: str):
@@ -1805,13 +2099,13 @@ class DashboardPage(QWidget):
         QTimer.singleShot(150, lambda: self.store.run_item(iid, args))
 
     def new_tab(self, at: QPoint | None = None, canvas: QWidget | None = None):
-        name, ok = widgets.ask_text(self, "New tab", "Name of the tab (e.g. Scripts, Games, Work):")
+        name, ok = widgets.ask_text(self._parent(), "New tab", "Name of the tab (e.g. Scripts, Games, Work):")
         if ok and name.strip():
             canvas = canvas or self.main
             p = at or self._free_spot(canvas)
             g = self.snap()
             self.store.add_tab(name.strip(), snap_to(p.x(), g), snap_to(p.y(), g),
-                               "" if canvas is self.main else canvas.screen_name)
+                               "" if canvas is self.main else canvas.screen_name, self.board_of_canvas(canvas)["id"])
 
     def add_page(self, key: str, at: QPoint | None = None, canvas: QWidget | None = None):
         canvas = canvas or self.main
@@ -1820,23 +2114,23 @@ class DashboardPage(QWidget):
         h = min(PAGE_H, max(PAGE_MIN[1], canvas.height() - p.y() - HEADER_H - 96))
         g = self.snap()
         self.store.add_page_tab(key, page_name(key), snap_to(p.x(), g), snap_to(p.y(), g), w, h,
-                                "" if canvas is self.main else canvas.screen_name)
+                                "" if canvas is self.main else canvas.screen_name, self.board_of_canvas(canvas)["id"])
 
     def add_item(self, tab: dict, kind: str = "item", index: int = -1):
         if kind in ("separator", "heading"):
             name = ""
             if kind == "heading":
-                name, ok = widgets.ask_text(self, "Heading", "Heading text:")
+                name, ok = widgets.ask_text(self._parent(), "Heading", "Heading text:")
                 if not ok or not name.strip():
                     return
             self.store.add_item(tab["id"], {"kind": kind, "name": name.strip()}, index)
             return
-        dlg = ItemDialog(self.launcher, None, self, kind=kind)
+        dlg = ItemDialog(self.launcher, None, self._parent(), kind=kind)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.store.add_item(tab["id"], dlg.item, index)
 
     def add_files(self, tab: dict):
-        paths, _ = QFileDialog.getOpenFileNames(self, "Add files", os.path.expanduser("~"))
+        paths, _ = QFileDialog.getOpenFileNames(self._parent(), "Add files", os.path.expanduser("~"))
         if paths:
             self.store.add_paths(tab["id"], paths)
 
@@ -1844,43 +2138,167 @@ class DashboardPage(QWidget):
         if item.get("kind") == "heading":
             self._rename_item(item)
             return
-        dlg = ItemDialog(self.launcher, item, self, focus=focus)
+        dlg = ItemDialog(self.launcher, item, self._parent(), focus=focus)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.store.update_item(item["id"], **{k: dlg.item.get(k, "") for k in
                                                   ("name", "path", "args", "hotkey", "cwd", "admin", "ask_args",
                                                    "terminal", "group") if k in dlg.item})
 
     def run_with_args(self, item: dict):
-        text, ok = widgets.ask_text(self, item.get("name") or "Run", "Arguments:", item.get("args", ""))
+        text, ok = widgets.ask_text(self._parent(), item.get("name") or "Run", "Arguments:", item.get("args", ""))
         if ok:
             self.run(item["id"], text)
 
-    def tidy(self):
-        """Line the boxes up in columns (a page box spans as many columns as it is wide), screen by screen."""
+    # ── tidy up ────────────────────────────────────────────────────────────
+    def tidy(self, only: "Canvas | None" = None):
+        """Line the boxes up, screen by screen: only the selected ones if any are selected (they stay where the
+        selection starts), else every box. How is up to Settings → Dashboard (or the arrow next to the button);
+        the boxes glide there and Ctrl+Z puts them back."""
         if self.store.locked:
+            self.launcher.notify("Dashboard", "The layout is locked. Unlock it to tidy up.", 2500)
             return
+        style = self.launcher.settings.get("dashboard.tidy_style", "columns")
+        order = self.launcher.settings.get("dashboard.tidy_order", "position")
+        picked = [b for b in self.selected if alive(b) and b.isVisible()]
+        undo = []
         for canvas in self.canvases.values():
-            boxes = [b for b in self.boxes if b.canvas is canvas]
+            if only is not None and canvas is not only:
+                continue
+            boxes = [b for b in (picked or self.boxes) if b.canvas is canvas]
             if not boxes:
                 continue
-            x0, y0 = self.origin(canvas)
-            cols = self._columns(canvas)
-            heights = [y0] * cols
-            for b in boxes:
-                if isinstance(b, TabBox):
-                    b.set_width(BOX_W)
-                span = min(cols, max(1, -(-(b.width() + GAP) // (BOX_W + GAP))))
-                c = min(range(cols - span + 1), key=lambda i: (max(heights[i:i + span]), i))
-                x, y = x0 + c * (BOX_W + GAP), max(heights[c:c + span])
-                b.move(x, y)
-                b.fit()
-                for i in range(c, c + span):
-                    heights[i] = y + b.height() + GAP
+            undo += [(b.tab["id"], b.x(), b.y(), b.width()) for b in boxes]
+            if picked:
+                x0, y0 = min(b.x() for b in boxes), min(b.y() for b in boxes)
+            else:
+                x0, y0 = self.origin(canvas)
+            right = canvas.width() - ORIGIN[0] // 2
+            for b, (x, y, w) in self._arrange(boxes, x0, y0, right, style, order):
+                x, y = self.clamp(canvas, x, y, w)          # a screen that is too full: the headers stay on it
+                if isinstance(b, TabBox) and w != b.width():
+                    b.set_width(w)
+                anim.move(b, QPoint(x, y), "boxes", 260)
                 self.store.set_geometry(b.tab["id"], x=x, y=y, w=b.width())
+        if undo:
+            self._undo = undo
+            self.undo_btn.show()
+            self._clamp_later()
+            QTimer.singleShot(12000, self._forget_undo)
+        for b in self.boxes:
+            QTimer.singleShot(anim.ms(280), b.fit) if anim.on("boxes") else b.fit()
+
+    def _arrange(self, boxes: list[_Box], x0: int, y0: int, right: int, style: str, order: str):
+        """Where each box goes: [(box, (x, y, width))]."""
+        if order == "name":
+            boxes = sorted(boxes, key=lambda b: (b.tab.get("title") or "").lower())
+        elif order == "size":
+            boxes = sorted(boxes, key=lambda b: -(b.width() * b.height()))
+        else:                                    # reading order: row bands from the top, then left to right
+            boxes = sorted(boxes, key=lambda b: (b.y() // 48, b.x()))
+        out = []
+        placed: list[QRect] = []
+        col = BOX_W + GAP
+        if style == "rows":
+            x, y, row_h = x0, y0, 0
+            for b in boxes:
+                w, h = b.width(), b.height()
+                if x > x0 and x + w > right:
+                    x, y, row_h = x0, y + row_h + GAP, 0
+                out.append((b, (x, y, w)))
+                x += w + GAP
+                row_h = max(row_h, h)
+            return out
+        for b in boxes:
+            w = BOX_W if style == "grid" and isinstance(b, TabBox) else b.width()
+            h = b.height()
+            if style == "grid":
+                span = max(1, -(-(w + GAP) // col))
+                w_slot = span * col - GAP
+                xs = [x0 + i * col for i in range(max(1, (right - x0 + GAP) // col))]
+                xs = [x for x in xs if x + w_slot <= right] or [x0]
+            else:
+                # the left edge, the column grid and the right edge of every box placed so far: neat lines
+                xs = {x0} | {x0 + i * col for i in range(max(1, (right - x0) // col))} | \
+                     {r.right() + 1 + GAP for r in placed}
+                xs = sorted(x for x in xs if x + w <= right) or [x0]
+            best = None
+            for x in xs:
+                y = max([r.bottom() + 1 + GAP for r in placed if r.left() < x + w and r.right() + 1 > x],
+                        default=y0)
+                if best is None or (y, x) < best:
+                    best = (y, x)
+            y, x = best
+            placed.append(QRect(x, y, w, h))
+            out.append((b, (x, y, w)))
+        return out
+
+    def undo_tidy(self):
+        if not self._undo:
+            return
+        by_id = {b.tab["id"]: b for b in self.boxes}
+        for tid, x, y, w in self._undo:
+            b = by_id.get(tid)
+            if b is None:
+                continue
+            if isinstance(b, TabBox) and w != b.width():
+                b.set_width(w)
+            anim.move(b, QPoint(x, y), "boxes", 260)
+            self.store.set_geometry(tid, x=x, y=y, w=w)
+        self._forget_undo()
+        for b in self.boxes:
+            QTimer.singleShot(anim.ms(280), b.fit) if anim.on("boxes") else b.fit()
+
+    def _forget_undo(self):
+        self._undo = []
+        if alive(self.undo_btn):
+            self.undo_btn.hide()
+            self._clamp_later()
+
+    def _clamp_later(self):
+        QTimer.singleShot(0, self._clamp)
+
+    def _tidy_menu(self, pos: QPoint):
+        self._ctx = self.main
+        m = widgets.menu(self)
+        s = self.launcher.settings
+        head = m.addAction("ARRANGE")
+        head.setEnabled(False)
+        for key, label in TIDY_STYLES:
+            a = m.addAction(label, lambda k=key: self._set_tidy("dashboard.tidy_style", k))
+            a.setCheckable(True)
+            a.setChecked(s.get("dashboard.tidy_style", "columns") == key)
+        m.addSeparator()
+        head = m.addAction("ORDER")
+        head.setEnabled(False)
+        for key, label in TIDY_ORDERS:
+            a = m.addAction(label, lambda k=key: self._set_tidy("dashboard.tidy_order", k))
+            a.setCheckable(True)
+            a.setChecked(s.get("dashboard.tidy_order", "position") == key)
+        m.addSeparator()
+        m.addAction("Tidy up now", self.tidy)
+        boxes = self.boxes
+        m.addAction("Fold every box", lambda: self._fold_all(boxes, True))
+        m.addAction("Unfold every box", lambda: self._fold_all(boxes, False))
+        if self._undo:
+            m.addAction("Undo the last tidy up   (Ctrl+Z)", self.undo_tidy)
+        m.exec(QPoint(pos.x(), pos.y() - m.sizeHint().height() - 4))
+
+    def _set_tidy(self, key: str, value: str):
+        s = self.launcher.settings
+        s.set(key, value)
+        s.save_quiet()
+        self.tidy()
+
+    def _fold_all(self, boxes: list[_Box], on: bool):
+        for b in boxes:
+            if alive(b) and bool(b.tab.get("collapsed")) != on:
+                b.set_collapsed(on)
+                self.store.set_geometry(b.tab["id"], collapsed=on)
 
     # ── menus ──────────────────────────────────────────────────────────────
     def item_menu(self, box: TabBox, item: dict, pos):
-        m = widgets.menu(self)
+        self._ctx = box.canvas
+        m = widgets.menu(box.canvas)
         kind = item.get("kind", "item")
         idx = box.tab["items"].index(item)
         if runnable(item):
@@ -1926,7 +2344,8 @@ class DashboardPage(QWidget):
         tab = box.tab
         several = box in self.selected and len(self.selected) > 1
         group = list(self.selected) if several else [box]
-        m = widgets.menu(self)
+        self._ctx = box.canvas
+        m = widgets.menu(box.canvas)
         if isinstance(box, PageBox):
             m.addAction(f"Open {page_name(tab['page'])} as the full page",
                         lambda: self.launcher.overlay.show_page(tab["page"]))
@@ -1941,7 +2360,8 @@ class DashboardPage(QWidget):
             m.addAction("Rename tab…", lambda: self._rename_tab(tab))
             m.addAction("Sort items A–Z", lambda: self.store.sort_tab(tab["id"]))
         m.addSeparator()
-        others = [b for b in self.store.boards() if b["id"] != self.store.active_board()["id"]]
+        here = self.store.board_of_tab(tab["id"]) or self.store.active_board()
+        others = [b for b in self.store.boards() if b["id"] != here["id"]]
         if others:
             sub = m.addMenu(f"Move {len(group)} boxes to dashboard" if several else "Move to dashboard")
             for b in others:
@@ -1958,6 +2378,8 @@ class DashboardPage(QWidget):
         m.exec(pos)
 
     def _add_menu(self, pos: QPoint, canvas: QWidget | None = None, at: QPoint | None = None, into=None):
+        if into is None:
+            self._ctx = self.main
         m = into or widgets.menu(self)
         m.addAction("Tab of items…", lambda: self.new_tab(at, canvas))
         sub = m.addMenu("Page") if into is not None else m
@@ -1971,9 +2393,11 @@ class DashboardPage(QWidget):
             m.exec(QPoint(pos.x(), pos.y() - m.sizeHint().height() - 4))
 
     def canvas_menu(self, canvas: "Canvas", pos: QPoint):
-        m = widgets.menu(self)
+        self._ctx = canvas
+        m = widgets.menu(canvas)
         sub = m.addMenu("＋  Add here")
         self._add_menu(pos, canvas, pos, into=sub)
+        self._pin_menu(m, canvas)
         if self.selected:
             m.addSeparator()
             head = m.addAction(f"{len(self.selected)} SELECTED")
@@ -1993,7 +2417,9 @@ class DashboardPage(QWidget):
             m.addAction("Remove them…", lambda: self.remove_boxes(sel))
         m.addSeparator()
         m.addAction("Select all   (Ctrl+A)", self.select_all)
-        m.addAction("Tidy up", self.tidy)
+        m.addAction("Tidy up this screen", lambda: self.tidy(canvas))
+        if self._undo:
+            m.addAction("Undo tidy up   (Ctrl+Z)", self.undo_tidy)
         snap = m.addMenu("Snap to a grid")
         cur = self.snap()
         for v, text in ((0, "Off (smooth, pixel by pixel)"), (4, "4 px"), (8, "8 px"), (16, "16 px"),
@@ -2001,8 +2427,10 @@ class DashboardPage(QWidget):
             a = snap.addAction(text, lambda v=v: self._set_snap(v))
             a.setCheckable(True)
             a.setChecked(cur == v or (v == 0 and cur <= 1))
-        if not any(t["id"] == TOOLS_TAB for t in self.store.tabs()):
-            m.addAction("Bring back the Tools tab", lambda: self.store.restore_tools(pos.x(), pos.y()))
+        board = self.board_of_canvas(canvas)
+        if not any(t["id"] == TOOLS_TAB for t in board["tabs"]):
+            m.addAction("Bring back the Tools tab", lambda: self.store.restore_tools(
+                pos.x(), pos.y(), board["id"], "" if canvas is self.main else canvas.screen_name))
         m.addSeparator()
         m.addAction("Unlock layout" if self.store.locked else "Lock layout", self._toggle_lock)
         m.exec(canvas.mapToGlobal(pos))
@@ -2016,6 +2444,7 @@ class DashboardPage(QWidget):
         b = self.store.board(bid)
         if b is None:
             return
+        self._ctx = self.main
         m = widgets.menu(self)
         boards = self.store.boards()
         if len(boards) > 1:
@@ -2031,6 +2460,14 @@ class DashboardPage(QWidget):
                 m.addAction(f"Move “{b['name']}” left", lambda: self.store.move_board(bid, -1))
             if i < len(boards) - 1:
                 m.addAction(f"Move “{b['name']}” right", lambda: self.store.move_board(bid, 1))
+        screens = [c for c in self.canvases.values() if c is not self.main]
+        if screens:
+            sub = m.addMenu(f"Show “{b['name']}” on screen")
+            pinned = set(self.store.pinned_screens(bid))
+            for c in screens:
+                on = c.screen_name in pinned
+                sub.addAction(("●  " if on else "     ") + c.screen_name,
+                              lambda n=c.screen_name, on=on: self.store.set_screen_board(n, "" if on else bid))
         d = m.addAction(f"Delete “{b['name']}”…", lambda: self._delete_board(b))
         d.setEnabled(len(boards) > 1)
         if above:
@@ -2039,23 +2476,24 @@ class DashboardPage(QWidget):
 
     def _new_board(self):
         cur = self.store.active_board()
-        how = widgets.choose(self, "New dashboard", "How should the new dashboard start?",
+        how = widgets.choose(self._parent(), "New dashboard", "How should the new dashboard start?",
                              ["Empty", "With the Tools tab", f"A copy of “{cur['name']}”"])
         if how is None:
             return
-        name, ok = widgets.ask_text(self, "New dashboard", "Name (e.g. Work, Gaming):")
+        name, ok = widgets.ask_text(self._parent(), "New dashboard", "Name (e.g. Work, Gaming):")
         if ok and name.strip():
             self.store.add_board(name, cur["id"] if how.startswith("A copy") else "", empty=how == "Empty")
 
     def _rename_board(self, b: dict):
-        name, ok = widgets.ask_text(self, "Rename dashboard", "New name:", b["name"])
+        name, ok = widgets.ask_text(self._parent(), "Rename dashboard", "New name:", b["name"])
         if ok and name.strip():
             self.store.rename_board(b["id"], name)
 
     def _delete_board(self, b: dict):
         n = sum(len(t["items"]) for t in b["tabs"])
-        if widgets.confirm(self, "Delete dashboard", f'Delete the dashboard "{b["name"]}" with its {len(b["tabs"])} '
-                                                     f"box(es) and {n} item(s)?", yes="Delete", danger=True):
+        if widgets.confirm(self._parent(), "Delete dashboard",
+                           f'Delete the dashboard "{b["name"]}" with its {len(b["tabs"])} box(es) and {n} item(s)?',
+                           yes="Delete", danger=True):
             self.store.delete_board(b["id"])
 
     def _terminal_here(self, folder: str):
@@ -2065,17 +2503,17 @@ class DashboardPage(QWidget):
             self.launcher.notify("Terminal", err)
 
     def _rename_item(self, item):
-        name, ok = widgets.ask_text(self, "Rename", "New name:", item.get("name", ""))
+        name, ok = widgets.ask_text(self._parent(), "Rename", "New name:", item.get("name", ""))
         if ok and name.strip():
             self.store.update_item(item["id"], name=name.strip())
 
     def _delete_item(self, item):
         if not runnable(item) or widgets.confirm(
-                self, "Delete item", f'Delete "{item.get("name")}" from the dashboard?\n'
+                self._parent(), "Delete item", f'Delete "{item.get("name")}" from the dashboard?\n'
                                      f"(The file itself is not touched.)", yes="Delete", danger=True):
             self.store.delete_item(item["id"])
 
     def _rename_tab(self, tab):
-        name, ok = widgets.ask_text(self, "Rename", "New name:", tab["title"])
+        name, ok = widgets.ask_text(self._parent(), "Rename", "New name:", tab["title"])
         if ok and name.strip():
             self.store.rename_tab(tab["id"], name)

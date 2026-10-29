@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.3.0
+
+* **Fix**: Notes (Alt+N) and the other panels open on the screen with the mouse, at the same spot they had on
+  their old screen, instead of wherever they were last saved (often another monitor). Sticky notes stay put.
+  Settings → Overlay & Interface → Open the overlay on: The primary screen keeps the old behaviour.
+* **Panels like Notes open**: Settings → Overlay & Interface picks where: where you left them, in the middle of
+  the screen, or next to the mouse.
+* **Fix**: letting go of Alt (the Doodle key) no longer moves the mouse onto another window.
+* **Fix**: holding the draw key with nothing drawn yet could leave the Doodle tool strip unclickable.
+* **Doodle: start with a tool**: Settings → Screen Doodle → Start drawing with picks the tool every time you hold
+  the draw key (pen, highlighter, shapes, text), or keeps the one you used last.
+* **Edit the overlay's layout**: ✎ next to the ✕ lets you move the logo, title, clock, date and status chips anywhere
+  on any screen, add more, duplicate them, resize them and freeze them in place (right-click).
+* **Fix**: automation notifications no longer come with an error, and a hard crash now leaves its details in
+  data/crash.log.
+* **Atlas Sync**: swaps notes and timer time with the Atlas app over Wi-Fi. Press Let Atlas connect (tray, command
+  palette or Settings → Atlas Sync), then type the address and code into Atlas → Sync. Atlas shows every change
+  before anything is written.
+* **Fix**: the "wrapped C/C++ object of type QWidget has been deleted" error that could leave the overlay empty and
+  stop Restart from working. Windows that vanished before Hyprland placed them no longer break every later window,
+  and the overlay rebuilds itself if a page gets into a bad state.
+* **Stays up when a part fails**: a module that keeps failing is switched off until the next start, Restart always
+  works, and after two failed starts Luminescent starts in **safe mode** (tray → Safe mode: restart normally).
+* **Animations** for everything: the overlay, pages, the page switcher, dashboard boxes, theme changes, notifications,
+  panels and Automation zoom. Settings → Animations turns each one off, sets the speed, or turns them all off
+  (performance mode does too).
+* **Faster**: switching themes is several times quicker, and so is opening a page for the first time (Settings
+  builds only the section you open).
+* **Dashboards on several screens**: drag boxes onto another screen, right-click menus open on the screen you
+  clicked, and a screen can always show a dashboard of its own (right-click → This screen shows).
+* The overlay now opens on the screen with the mouse (Settings → Overlay & Interface can keep it on the primary one).
+* **Tidy up, reworked**: columns that keep every box's width, a grid or rows; keeps the order or sorts by name or
+  size; only the selected boxes if any are selected; boxes glide into place; Undo or Ctrl+Z puts them back.
+* **Settings search**: matches are highlighted and counted per section, and **Only matching settings** hides the rest.
+* **Automation**: holding right-click to move around and zooming at the same time no longer jumps or smears; the
+  wheel zooms smoothly around the mouse.
+
 ## 1.2.0
 
 * **One-click updates**: tray → Update now downloads the new version, swaps it in and restarts. Your notes and

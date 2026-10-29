@@ -555,6 +555,11 @@ def stylesheet() -> str:
     }}
     QPushButton[nav="true"]:hover {{ background: {p.bg_card_hover}; color: {p.text_primary}; }}
     QPushButton[nav="true"]:checked {{ background: {p.primary}; color: {p.on_primary}; }}
+    QPushButton[nav="true"][pill="true"]:checked {{ background: transparent; }}
+    #lumNavPill {{ background: {p.primary}; border: none; border-radius: 16px; }}
+    #chromeItem {{ background: transparent; border: 1px solid transparent; border-radius: 8px; }}
+    #chromeItem[editing="true"] {{ background: {rgba(p.bg_base, 0.55)}; border: 1px dashed {p.primary}; }}
+    #chromeItem[editing="true"][frozen="true"] {{ border: 1px solid {p.border}; }}
     #lumClose {{
         background: {p.bg_base}; border: 1px solid {p.border}; border-radius: 18px;
         color: {p.text_secondary}; font-size: 13px; padding: 0;

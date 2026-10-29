@@ -34,6 +34,8 @@ from PyQt6.QtGui import QCursor
 from PyQt6.QtNetwork import QLocalSocket
 from PyQt6.QtWidgets import QApplication, QWidget, QDialog
 
+from core.guard import alive
+
 log = logging.getLogger("hypr")
 
 APP_ID = "luminescent"              # the Wayland app id (= Hyprland window class)
@@ -389,6 +391,20 @@ class WindowSync(QObject):
         if want and not title.endswith(want):
             w.setWindowTitle(_strip(title) + want)
 
+    def _prune(self):
+        # a window deleted while it was still listed here (shown, then destroyed before Hyprland mapped it)
+        # used to make every later lookup raise "wrapped C/C++ object ... has been deleted", so no new window
+        # was ever placed again: drop the dead ones first
+        self._pending = [w for w in self._pending if alive(w)]
+        for w in [w for w in self._addr if not alive(w)]:
+            self._by_addr.pop(self._addr.pop(w), None)
+        for w in [w for w in self._by_addr.values() if not alive(w)]:
+            self._by_addr = {a: x for a, x in self._by_addr.items() if x is not w}
+        self._want_focus = {w for w in self._want_focus if alive(w)}
+        self._dirty = {w for w in self._dirty if alive(w)}
+        for w in [w for w in self._track if not alive(w)]:
+            self._track.pop(w, None)
+
     def _forget(self, w: QWidget):
         if w in self._pending:
             self._pending.remove(w)
@@ -400,6 +416,7 @@ class WindowSync(QObject):
         self._track.pop(w, None)
 
     def _flush(self):
+        self._prune()
         for w in list(self._dirty):
             self._dirty.discard(w)
             addr = self._addr.get(w)
@@ -428,24 +445,30 @@ class WindowSync(QObject):
         self._ebuf += bytes(self._events.readAll())
         *lines, self._ebuf = self._ebuf.split(b"\n")
         for raw in lines:
-            line = raw.decode("utf-8", "replace")
-            name, _, data = line.partition(">>")
-            if name == "openwindow":
-                parts = data.split(",", 3)
-                if len(parts) == 4 and parts[2] == APP_ID:
-                    self._opened("0x" + parts[0], parts[3])
-                elif len(parts) == 4:
-                    self.foreign_opened.emit("0x" + parts[0], parts[2])
-            elif name == "closewindow":
-                w = self._by_addr.pop("0x" + data.strip(), None)
-                if w is not None:
-                    self._addr.pop(w, None)
-            elif name == "configreloaded":
-                log.info("Hyprland config reloaded: reinstalling binds and window rules")
-                bootstrap()
-                self.reloaded.emit()
+            try:
+                self._event(raw.decode("utf-8", "replace"))
+            except Exception:
+                log.exception("handling the Hyprland event %r failed", raw[:120])
+
+    def _event(self, line: str):
+        name, _, data = line.partition(">>")
+        if name == "openwindow":
+            parts = data.split(",", 3)
+            if len(parts) == 4 and parts[2] == APP_ID:
+                self._opened("0x" + parts[0], parts[3])
+            elif len(parts) == 4:
+                self.foreign_opened.emit("0x" + parts[0], parts[2])
+        elif name == "closewindow":
+            w = self._by_addr.pop("0x" + data.strip(), None)
+            if w is not None:
+                self._addr.pop(w, None)
+        elif name == "configreloaded":
+            log.info("Hyprland config reloaded: reinstalling binds and window rules")
+            bootstrap()
+            self.reloaded.emit()
 
     def _opened(self, addr: str, title: str):
+        self._prune()
         w = next((p for p in self._pending if p.windowTitle() == title), None)
         if w is None:
             w = next((p for p in self._pending if _strip(p.windowTitle()) == _strip(title)), None)
@@ -460,7 +483,8 @@ class WindowSync(QObject):
             self._centre_dialog(w, addr)
             self._dialog_on_top(w)
             # a panel raised a moment later (Notes re-raises itself after opening) must not cover it
-            QTimer.singleShot(250, lambda d=w: self._dialog_on_top(d) if d in self._addr and d.isVisible() else None)
+            QTimer.singleShot(250, lambda d=w: self._dialog_on_top(d)
+                              if alive(d) and d in self._addr and d.isVisible() else None)
         elif w.testAttribute(Qt.WidgetAttribute.WA_Moved):
             self._move(addr, w)
         else:
@@ -500,6 +524,8 @@ class WindowSync(QObject):
 
     # ── API ────────────────────────────────────────────────────────────────
     def focus(self, w: QWidget):
+        if not alive(w):
+            return
         addr = self._addr.get(w)
         if not addr:
             self._want_focus.add(w)
@@ -507,6 +533,9 @@ class WindowSync(QObject):
         dispatch(f"hl.dsp.focus({{ window = {lstr('address:' + addr)} }})")
 
     def raise_window(self, w: QWidget):
+        self._prune()
+        if not alive(w):
+            return
         addr = self._addr.get(w)
         if addr:
             dispatch(f"hl.dsp.window.alter_zorder({{ mode = \"top\", window = {lstr('address:' + addr)} }})")
@@ -518,7 +547,7 @@ class WindowSync(QObject):
 
     def _open_dialogs(self) -> list[QWidget]:
         modal = QApplication.activeModalWidget()
-        out = [d for d in self._addr if isinstance(d, QDialog) and d.isVisible()]
+        out = [d for d in self._addr if alive(d) and isinstance(d, QDialog) and d.isVisible()]
         if modal is not None and modal in out:
             out.remove(modal)
             out.append(modal)                    # the modal one last, so it ends up on top
@@ -563,10 +592,11 @@ class WindowSync(QObject):
             self._track_timer.start()
 
     def _track_tick(self):
+        self._prune()
         for w, st in list(self._track.items()):
             addr = self._addr.get(w)
             c = self._client(addr) if addr else None
-            if c is None:
+            if c is None or not alive(w):
                 self._track.pop(w, None)
                 continue
             at = tuple(c.get("at") or (0, 0))

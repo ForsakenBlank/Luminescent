@@ -676,8 +676,8 @@ class CalculatorModule(Module):
             with self.themed():
                 self.panel = CalcPanel(self)
             self.panel.hidden.connect(self._panel_hidden)
-        if self.panel.isVisible():
-            self.panel.hide()
+        if self.panel.isVisible() and not self.panel.property("fading_out"):
+            self.panel.fade_hide()
         else:
             self.panel.show_and_raise()
             self.data["panel"]["visible"] = True

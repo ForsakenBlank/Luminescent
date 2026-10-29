@@ -20,10 +20,10 @@ from PyQt6.QtWidgets import (
     QGraphicsItem, QListWidget, QListWidgetItem, QFileDialog, QDialog, QTableWidget, QTableWidgetItem,
     QHeaderView, QDateEdit, QApplication
 )
-from PyQt6.QtCore import Qt, QSize, QRectF, QPointF, QPoint, QTimer, QDate, QEvent
+from PyQt6.QtCore import Qt, QSize, QRectF, QPointF, QPoint, QTimer, QDate, QEvent, QEasingCurve
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QPainterPathStroker, QPolygonF, QFontMetrics, QCursor
 
-from core import theme, widgets
+from core import theme, widgets, anim
 from core.automation import TYPES, CATEGORIES, F, choices_of, default_fields, _id
 
 log = logging.getLogger("automation.ui")
@@ -536,9 +536,13 @@ class GraphView(QGraphicsView):
         self.page = page
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.TextAntialiasing)
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
-        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        # zooming keeps the point under the mouse in place by itself (_apply_zoom): Qt's own anchor goes by where
+        # it last saw the cursor, which can be stale and made the view jump
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.NoAnchor)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
-        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.SmartViewportUpdate)
+        # the view is see-through (the overlay shows behind it): scrolling by copying pixels smeared that
+        # background around while panning, so every move repaints the whole view instead
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -547,20 +551,47 @@ class GraphView(QGraphicsView):
         self.setMouseTracking(True)
         self._pan = None
         self._space = False
+        self._zoom_to = None                 # where a smooth zoom is heading
 
     def zoom(self) -> float:
         return self.transform().m11()
 
-    def set_zoom(self, z: float):
+    def set_zoom(self, z: float, at: QPoint | None = None):
+        anim.stop(self, "zoom")
+        self._zoom_to = None
+        self._apply_zoom(z, at)
+        self.page.zoom_changed()
+
+    def _apply_zoom(self, z: float, at: QPoint | None = None):
         z = max(0.2, min(2.5, z))
         f = z / max(0.01, self.zoom())
+        if abs(f - 1.0) <= 1e-4:
+            return
+        at = at if at is not None else self.viewport().rect().center()
+        before = self.mapToScene(at)
         self.scale(f, f)
-        self.page.zoom_changed()
+        d = (self.mapToScene(at) - before) * self.zoom()
+        h, v = self.horizontalScrollBar(), self.verticalScrollBar()
+        h.setValue(round(h.value() - d.x()))
+        v.setValue(round(v.value() - d.y()))
 
     def wheelEvent(self, e):
         steps = e.angleDelta().y() / 120
-        if steps:
-            self.set_zoom(self.zoom() * (1.15 ** steps))
+        if not steps:
+            return
+        at = e.position().toPoint()
+        if not anim.on("zoom"):
+            self.set_zoom(self.zoom() * (1.15 ** steps), at)
+            return
+        # smooth: every notch moves the target, the view glides after it (around the mouse)
+        target = max(0.2, min(2.5, (self._zoom_to or self.zoom()) * (1.15 ** steps)))
+        self._zoom_to = target
+
+        def done():
+            self._zoom_to = None
+            self.page.zoom_changed()
+        anim.value(self.zoom(), target, lambda z: self._apply_zoom(z, at), "zoom", 140, done, self,
+                   QEasingCurve.Type.OutCubic, "zoom")
 
     def _proxy_at(self, pos) -> bool:
         item = self.itemAt(pos)
@@ -576,8 +607,9 @@ class GraphView(QGraphicsView):
         b = e.button()
         if (b in (Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton) and not self._proxy_at(pos)) or \
                 (b == Qt.MouseButton.LeftButton and self._space):
-            self._pan = (e.position(), self.horizontalScrollBar().value(), self.verticalScrollBar().value(), b,
-                         False)
+            # [last position, button, moved, where it started]: moved step by step from the last position, so a
+            # zoom in the middle of a pan does not throw the view back to where the pan started
+            self._pan = [e.position(), b, False, e.position()]
             self.viewport().setCursor(Qt.CursorShape.ClosedHandCursor)
             return
         if b == Qt.MouseButton.LeftButton and self.scene() is not None:
@@ -593,12 +625,19 @@ class GraphView(QGraphicsView):
 
     def mouseMoveEvent(self, e):
         if self._pan is not None:
-            start, h, v, b, moved = self._pan
-            d = e.position() - start
-            if not moved and abs(d.x()) + abs(d.y()) > 4:
-                self._pan = (start, h, v, b, True)
-            self.horizontalScrollBar().setValue(int(h - d.x()))
-            self.verticalScrollBar().setValue(int(v - d.y()))
+            last, _b, moved, start = self._pan
+            pos = e.position()
+            if not moved:
+                if abs(pos.x() - start.x()) + abs(pos.y() - start.y()) <= 4:
+                    return
+                self._pan[2] = True
+            d = pos - last
+            dx, dy = round(d.x()), round(d.y())
+            if dx or dy:
+                self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - dx)
+                self.verticalScrollBar().setValue(self.verticalScrollBar().value() - dy)
+                # only the whole pixels were used: the rest carries over to the next move
+                self._pan[0] = last + QPointF(dx, dy)
             return
         if self.page.wiring:
             self.page.move_wire(self.mapToScene(e.position().toPoint()))
@@ -610,7 +649,7 @@ class GraphView(QGraphicsView):
 
     def mouseReleaseEvent(self, e):
         if self._pan is not None:
-            _s, _h, _v, b, moved = self._pan
+            _last, b, moved, _start = self._pan
             self._pan = None
             self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
             if b == Qt.MouseButton.RightButton and not moved:
@@ -1102,8 +1141,7 @@ class AutomationPage(QWidget):
 
     # ── live bits ──────────────────────────────────────────────────────────
     def _animate(self) -> bool:
-        return self.isVisible() and bool(self.launcher.settings.get("automation.animate", True)) \
-            and not self.launcher.settings.get("ui.performance_mode", False)
+        return self.isVisible() and anim.on("pulses")
 
     def _pulse(self, wid: str, wire_id: str, text: str):
         sc = self._scenes.get(wid)

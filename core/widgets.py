@@ -586,24 +586,37 @@ class FloatingPanel(QWidget):
 
     def follow_cursor_screen(self):
         """Panels used to reopen wherever they were saved, often another screen than the overlay (which
-        opens on the screen with the mouse). Now a panel goes to the same spot on the mouse's screen."""
+        opens on the screen with the mouse). Now a panel goes to the overlay's screen, placed the way
+        Settings → Overlay & Interface → Panels like Notes open says."""
         s = anim._settings
-        if self.stays_put or s is None or s.get("ui.overlay_screen", "cursor") != "cursor":
+        if self.stays_put or s is None:
             return
-        target = cursor_screen_geometry()
-        if target.isEmpty() or target.contains(self.geometry().center()):
+        on_cursor = s.get("ui.overlay_screen", "cursor") == "cursor"
+        target = cursor_screen_geometry() if on_cursor else primary_geometry()
+        if target.isEmpty():
             return
-        src = next((hypr.available_geometry(scr) for scr in QApplication.screens()
-                    if hypr.available_geometry(scr).contains(self.geometry().center())), None)
-        if src is None or src.isEmpty():
+        how = s.get("ui.panel_place", "kept")
+        if how == "centre":
             self.center_on(target)
+        elif how == "cursor":
+            c = hypr.cursor_pos()
+            x = min(max(c.x() + 16, target.left()), target.right() - self.width())
+            y = min(max(c.y() + 16, target.top()), target.bottom() - self.height())
+            self.move(max(target.left(), x), max(target.top(), y))
+        elif target.contains(self.geometry().center()):
+            return
         else:
-            # keep the spot relative to the screen, so "top right" stays top right on a bigger or smaller one
-            fx = (self.x() - src.x()) / max(1, src.width() - self.width())
-            fy = (self.y() - src.y()) / max(1, src.height() - self.height())
-            fx, fy = min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))
-            self.move(target.x() + int(fx * max(0, target.width() - self.width())),
-                      target.y() + int(fy * max(0, target.height() - self.height())))
+            src = next((hypr.available_geometry(scr) for scr in QApplication.screens()
+                        if hypr.available_geometry(scr).contains(self.geometry().center())), None)
+            if src is None or src.isEmpty():
+                self.center_on(target)
+            else:
+                # keep the spot relative to the screen, so "top right" stays top right on a bigger or smaller one
+                fx = (self.x() - src.x()) / max(1, src.width() - self.width())
+                fy = (self.y() - src.y()) / max(1, src.height() - self.height())
+                fx, fy = min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))
+                self.move(target.x() + int(fx * max(0, target.width() - self.width())),
+                          target.y() + int(fy * max(0, target.height() - self.height())))
         self.geometry_changed.emit()
 
     def center_on(self, screen: QRect | None = None):

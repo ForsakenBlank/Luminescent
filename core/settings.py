@@ -178,6 +178,10 @@ SCHEMA = [
               choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")],
               help="The page switcher, panels and the dashboard's toolbar go to that screen. Dashboard boxes you "
                    "put on a particular screen stay there."),
+        Field("panel_place", "Panels like Notes open", "choice", "kept",
+              choices=[("kept", "Where I left them"), ("centre", "In the middle of the screen"),
+                       ("cursor", "Next to the mouse")],
+              help="On the screen the overlay opens on. Sticky notes always stay where you put them."),
         Field("type_to_search", "Type anywhere on the overlay to search", "bool", True,
               "Start typing on the Dashboard or Themes page and the command palette opens with what you typed."),
         Field("show_clock", "Clock and date in the top-left corner", "bool", True),

@@ -846,7 +846,11 @@ class DoodleModule(Module):
         prev, self._prev_focus = getattr(self, "_prev_focus", ""), ""
         aw = hypr.query("activewindow") if prev and hypr.available() else None
         if prev and isinstance(aw, dict) and aw.get("class") == hypr.APP_ID:
+            # focusing a window makes Hyprland warp the mouse onto it, so every Alt tap used to throw the
+            # mouse onto another window: put it back where it was
+            at = hypr.cursor_pos()
             hypr.dispatch(f"hl.dsp.focus({{ window = {hypr.lstr('address:' + prev)} }})")
+            hypr.move_cursor(at)
 
     def toggle(self):
         self.deactivate() if self._active else self.activate()

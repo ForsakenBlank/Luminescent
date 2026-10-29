@@ -5,6 +5,9 @@
 * **Fix**: Notes (Alt+N) and the other panels open on the screen with the mouse, at the same spot they had on
   their old screen, instead of wherever they were last saved (often another monitor). Sticky notes stay put.
   Settings → Overlay & Interface → Open the overlay on: The primary screen keeps the old behaviour.
+* **Panels like Notes open**: Settings → Overlay & Interface picks where: where you left them, in the middle of
+  the screen, or next to the mouse.
+* **Fix**: letting go of Alt (the Doodle key) no longer moves the mouse onto another window.
 * **Fix**: holding the draw key with nothing drawn yet could leave the Doodle tool strip unclickable.
 * **Doodle: start with a tool**: Settings → Screen Doodle → Start drawing with picks the tool every time you hold
   the draw key (pen, highlighter, shapes, text), or keeps the one you used last.

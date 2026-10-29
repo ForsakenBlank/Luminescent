@@ -84,7 +84,7 @@ NAV_SECTIONS = [("dashboard", "Dashboard"), ("automation", "Automation"), ("them
                 ("clipboard", "Clipboard"), ("settings", "Settings")]
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
 EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
-               ("stats", "Usage")]
+               ("stats", "Usage"), ("calendar", "Calendar")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
@@ -567,6 +567,17 @@ SCHEMA += [
             "type the address and code into Atlas → Sync. Atlas shows every change before anything is written.", [
         Field("enabled", "Enable Atlas Sync", "bool", True),
         Field("hotkey", "Open Atlas Sync", "hotkey", ""),
+        Field("share_theme", "Send my theme to Atlas", "bool", True,
+              "Your current Luminescent theme shows up in Atlas as \"Luminescent: …\". Turn on Settings → Themes → "
+              "Follow Luminescent in Atlas and it switches to it after every sync."),
+        Field("take_themes", "Bring Atlas's own themes here", "bool", True,
+              "Themes you made in Atlas become Luminescent themes named \"Atlas: …\"."),
+        Field("notify_calendar", "Notifications for Atlas events and tasks", "bool", True,
+              "Atlas's calendar events and tasks come over with every sync; this PC then reminds you of them "
+              "like your phone does. They are also on the Calendar page."),
+        Field("lead_minutes", "Remind me this many minutes before an event", "int", 15, min=0, max=1440,
+              help="Used when the event has no reminder time of its own in Atlas."),
+        Field("task_hour", "Remind me of tasks due today at (hour)", "int", 9, min=0, max=23),
     ]),
     Section("caelestia", "Caelestia & Glass", "◐",
             "The Caelestia shell's config files as forms you can edit (with a backup on every save), its colours "

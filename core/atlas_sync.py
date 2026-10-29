@@ -40,7 +40,8 @@ MAX_FRAME = 512 * 1024 * 1024
 PROTOCOL = 1
 
 # what Luminescent can keep, Atlas leaves everything else out of the comparison
-ACCEPTS = {"kinds": ["item", "log"], "items": ["NOTE", "TRACKER:TIMER"]}
+ACCEPTS = {"kinds": ["item", "log", "event", "task", "theme"], "items": ["NOTE", "TRACKER:TIMER"]}
+CURRENT_THEME = "luminescent-current"      # the theme Luminescent is using, as an Atlas theme
 IGNORED_IN_FINGERPRINT = {"updated", "created"}
 
 
@@ -213,7 +214,9 @@ class Store:
         self.state.setdefault("timers", {})      # timer label -> tracker uid
         self.state.setdefault("alias", {})       # a uid Luminescent made -> the one both sides use now
         self.state.setdefault("gone", [])        # timer log uids deleted from Atlas, never offered again
+        self.state.setdefault("notified", [])    # Atlas events and tasks a notification was shown for
         self.last_out: dict = {}
+        self.incoming_themes: list = []           # Atlas themes that came in with the last sync
 
     def save(self):
         tmp = self.path + ".tmp"
@@ -237,9 +240,16 @@ class Store:
         return self._uid(self.state["timers"][label])
 
     # ── what this side has ──
-    def records(self, notes: list, activity: list) -> list:
+    def records(self, notes: list, activity: list, theme: dict | None = None) -> list:
         shadow = self.state["shadow"]
         out = dict(shadow)
+        key = f"theme/{CURRENT_THEME}"
+        if theme is not None:
+            base = shadow.get(key)
+            if not base or base["fields"] != theme:
+                out[key] = {"kind": "theme", "uid": CURRENT_THEME, "fields": theme}
+        else:
+            out.pop(key, None)
         gone = set(self.state["gone"])
 
         seen = set()
@@ -314,6 +324,7 @@ class Store:
                 self.state["gone"].append(d["uid"])
 
         new_lines = []
+        self.incoming_themes = [r for r in upserts if r["kind"] == "theme" and r["uid"] != CURRENT_THEME]
         known = list(self.last_out.values()) + list(shadow.values()) + upserts
         names = {r["uid"]: r["fields"].get("name", "") for r in known if r["kind"] == "item"}
         for rec in upserts:
@@ -363,6 +374,69 @@ class Store:
         self.state["shadow"] = shadow
         self.state["peers"][peer] = {"name": name, "kind": kind, "last": now_ms(), "baseline": baseline}
         self.save()
+
+
+# ── calendar: Atlas events and tasks kept here, unchanged ──────────────────────
+
+def calendar(store: Store) -> tuple[list, list]:
+    """(events, tasks) from Atlas as plain dicts, as of the last sync."""
+    events, tasks = [], []
+    for rec in store.state["shadow"].values():
+        if rec["kind"] == "event":
+            events.append(dict(rec["fields"], uid=rec["uid"]))
+        elif rec["kind"] == "task":
+            tasks.append(dict(rec["fields"], uid=rec["uid"]))
+    events.sort(key=lambda e: int(e.get("startsAt") or 0))
+    tasks.sort(key=lambda t: (t.get("due") is None, int(t.get("due") or 0)))
+    return events, tasks
+
+
+def occurrences(event: dict, start_ms: int, end_ms: int) -> list[int]:
+    """Start times (ms) of an event between start_ms and end_ms, following its repeat rule."""
+    from datetime import timedelta
+    first = int(event.get("startsAt") or 0)
+    rule = str(event.get("repeatRule") or "NONE").upper()
+    until = event.get("repeatUntil")
+    until = int(until) if until else None
+    out = []
+    t = datetime.fromtimestamp(first / 1000)
+    step = {"DAILY": timedelta(days=1), "WEEKDAYS": timedelta(days=1), "WEEKLY": timedelta(weeks=1),
+            "FORTNIGHTLY": timedelta(weeks=2)}.get(rule)
+    for _ in range(4000):
+        ms = int(t.timestamp() * 1000)
+        if ms > end_ms or (until is not None and ms > until):
+            break
+        if ms >= start_ms and not (rule == "WEEKDAYS" and t.weekday() >= 5):
+            out.append(ms)
+        if rule == "NONE":
+            break
+        if step is not None:
+            t += step
+        elif rule == "MONTHLY":
+            m = t.month + 1
+            t = t.replace(year=t.year + (m > 12), month=(m - 1) % 12 + 1) if t.day <= 28 else t + timedelta(days=31)
+        elif rule == "YEARLY":
+            t = t.replace(year=t.year + 1) if not (t.month == 2 and t.day == 29) else t + timedelta(days=365)
+        else:
+            break
+    return out
+
+
+def atlas_theme(name: str, colours: dict, dark: bool) -> dict:
+    """A Luminescent theme's colours as the fields of an Atlas theme record."""
+    c = lambda k, fallback="#808080": colour_to_int(colours.get(k) or fallback)
+    return {"id": CURRENT_THEME, "name": f"Luminescent: {name}", "dark": dark,
+            "background": c("bg_base"), "surface": c("bg_header"), "card": c("bg_card"), "primary": c("primary"),
+            "secondary": c("primary_hover"), "accent": c("primary_text"), "text": c("text_primary"),
+            "mutedText": c("text_secondary"), "border": c("border"), "danger": colour_to_int("#E5484D"),
+            "success": colour_to_int("#4CAF50"), "warning": colour_to_int("#FFB300")}
+
+
+def theme_roles(fields: dict) -> dict:
+    """An Atlas theme record's colours as the roles ThemeStore.from_colours takes."""
+    f = lambda k: int_to_colour(fields.get(k))
+    return {"primary": f("primary"), "bg": f("background"), "card": f("card"), "text": f("text"),
+            "muted": f("mutedText"), "border": f("border")}
 
 
 # ── hosting ─────────────────────────────────────────────────────────────────
@@ -471,8 +545,8 @@ class Host:
             return hello
         if action == "records":
             self.status(f"Comparing with {who}…")
-            notes, activity = self.local()
-            records = self.store.records(notes, activity)
+            got = self.local()
+            records = self.store.records(got[0], got[1], got[2] if len(got) > 2 else None)
             return {"records": records, "baseDigest": baseline_digest(self.store.baseline(request.get("peerId", "")))}
         if action == "apply":
             sync_id = request.get("syncId", "")

@@ -11,11 +11,12 @@ import json
 import os
 import socket
 import threading
+from datetime import datetime
 
 from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 
-from core import DATA_DIR, widgets, save_json, load_json, usage
+from core import DATA_DIR, widgets, save_json, load_json, usage, theme
 from core import atlas_sync
 from core.module import Module
 
@@ -96,6 +97,7 @@ class AtlasSyncModule(Module):
     icon = "⇄"
 
     status_changed = pyqtSignal()
+    calendar_changed = pyqtSignal()
     _run_on_gui = pyqtSignal(object)
 
     def __init__(self, ctx):
@@ -111,8 +113,16 @@ class AtlasSyncModule(Module):
     def start(self):
         self.store = atlas_sync.Store(os.path.join(DATA_DIR, "atlas_sync.json"))
         self.hotkey("hotkey", self.show_panel, "Atlas Sync")
+        if not hasattr(self, "_cal_timer"):
+            self._cal_timer = QTimer(self)
+            self._cal_timer.setInterval(30_000)
+            self._cal_timer.timeout.connect(self.check_calendar)
+        self._cal_timer.start()
+        QTimer.singleShot(5000, self.check_calendar)
 
     def stop(self):
+        if hasattr(self, "_cal_timer"):
+            self._cal_timer.stop()
         self.stop_hosting()
         if self.panel:
             self.panel.close()
@@ -235,8 +245,73 @@ class AtlasSyncModule(Module):
                             pass
             except OSError:
                 pass
-            return notes, activity
+            return notes, activity, self._theme_fields()
         return self._on_gui(read)
+
+    def _theme_fields(self) -> dict | None:
+        """The theme Luminescent is using, for Atlas (Settings → Atlas Sync → Send my theme)."""
+        launcher = self.ctx.launcher
+        if launcher is None or not self.s("share_theme", True):
+            return None
+        t = launcher.themes.active()
+        cols = t.get("colours", {})
+        return atlas_sync.atlas_theme(t.get("name", "Theme"), cols, theme.luminance(cols.get("bg_base", "#000")) <= 140)
+
+    def _import_themes(self):
+        """Atlas themes that came with a sync become Luminescent themes ("Atlas: name")."""
+        launcher = self.ctx.launcher
+        if launcher is None or not self.s("take_themes", True):
+            return
+        for rec in self.store.incoming_themes:
+            name = str(rec["fields"].get("name") or "Theme")
+            try:
+                launcher.themes.from_colours(f"Atlas: {name}", atlas_sync.theme_roles(rec["fields"]))
+            except Exception:
+                self.log.exception("could not make a theme from Atlas theme %s", name)
+        self.store.incoming_themes = []
+
+    # ── Atlas's calendar on this PC ──
+    def calendar(self) -> tuple[list, list]:
+        return atlas_sync.calendar(self.store) if self.store else ([], [])
+
+    def check_calendar(self):
+        """A desktop notification for Atlas events about to start and tasks due today, like the phone shows."""
+        if not self.store or not self.s("notify_calendar", True):
+            return
+        now = datetime.now()
+        now_ms = int(now.timestamp() * 1000)
+        notified = self.store.state["notified"]
+        before = len(notified)
+        events, tasks = self.calendar()
+        lead_default = int(self.s("lead_minutes", 15) or 15)
+        for e in events:
+            mins = e.get("reminderMinutes")
+            mins = lead_default if mins is None else int(mins)
+            if mins < 0:
+                continue
+            for start in atlas_sync.occurrences(e, now_ms - 60_000, now_ms + (mins + 1) * 60_000):
+                key = f"{e['uid']}@{start}"
+                if key in notified or start - mins * 60_000 > now_ms:
+                    continue
+                notified.append(key)
+                when = datetime.fromtimestamp(start / 1000)
+                text = "now" if start <= now_ms + 60_000 else f"at {when:%H:%M}"
+                if e.get("allDay"):
+                    text = "today"
+                self.ctx.toast(f"📅 {e.get('title') or 'Event'}",
+                               f"Starts {text}" + (f" · {e['location']}" if e.get("location") else ""))
+        hour = int(self.s("task_hour", 9) or 9)
+        for t in tasks:
+            if t.get("done") or not t.get("remind", True) or t.get("due") is None:
+                continue
+            due = datetime.fromtimestamp(int(t["due"]) / 1000)
+            key = f"{t['uid']}@{due:%Y-%m-%d}"
+            if due.date() == now.date() and now.hour >= hour and key not in notified:
+                notified.append(key)
+                self.ctx.toast(f"✓ {t.get('title') or 'Task'}", "Due today (from Atlas)")
+        if len(notified) != before:
+            del notified[:-500]
+            self.store.save()
 
     def _write(self, change):
         def write():
@@ -255,4 +330,6 @@ class AtlasSyncModule(Module):
                 usage.flush()
                 with open(usage.ACTIVITY_PATH, "a", encoding="utf-8") as f:
                     f.write("".join(json.dumps(ln, ensure_ascii=False) + "\n" for ln in lines))
+            self._import_themes()
+            QTimer.singleShot(0, self.calendar_changed.emit)
         self._on_gui(write)

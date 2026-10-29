@@ -47,6 +47,8 @@ _MOD_NAMES = {"SUPER": "SUPER", "WIN": "SUPER", "LOGO": "SUPER", "MOD4": "SUPER"
 _KEYCODES = {10: "1", 11: "2", 12: "3", 13: "4", 14: "5", 15: "6", 16: "7", 17: "8", 18: "9", 19: "0",
              20: "-", 21: "=", 82: "Num −", 86: "Num +", 63: "Num *", 106: "Num /", 104: "Num Enter"}
 _MOUSE = {"mouse:272": "Left mouse", "mouse:273": "Right mouse", "mouse:274": "Middle mouse",
+          "mouse:275": "Mouse back", "mouse:276": "Mouse forward", "mouse:277": "Mouse extra 1",
+          "mouse:278": "Mouse extra 2", "mouse:279": "Mouse extra 3", "mouse:280": "Mouse extra 4",
           "mouse_up": "Wheel up", "mouse_down": "Wheel down", "mouse_left": "Wheel left", "mouse_right": "Wheel right"}
 
 # dispatcher paths (hl.dsp.<path>) -> what they do
@@ -649,6 +651,7 @@ class Bind:
     flags: list = field(default_factory=list)
     release: bool = False
     conflict: bool = False
+    combo: str = ""                # Luminescent: its combo as Luminescent writes it ("ctrl+alt+k")
 
     @property
     def editable(self) -> bool:
@@ -853,7 +856,7 @@ def load(luminescent: list[tuple[str, str, str]] | None = None) -> list[Bind]:
             mods = tuple(_MOD_NAMES.get(p.upper(), p.upper()) for p in parts[:-1])
             rows.append(Bind(" + ".join(list(mods) + [key_label(parts[-1])]), mods, parts[-1], label,
                              "", origin="luminescent", owner=owner,
-                             release=combo in ("alt", "ctrl", "shift", "windows")))
+                             release=combo in ("alt", "ctrl", "shift", "windows"), combo=combo))
     seen: dict[tuple, list[Bind]] = {}
     for r in rows:
         seen.setdefault(r.combo_id(), []).append(r)

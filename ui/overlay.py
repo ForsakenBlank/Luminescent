@@ -611,6 +611,9 @@ class MainOverlay:
             if key == "stats":
                 from ui.stats import StatsPage
                 return StatsPage(self.launcher)
+            if key == "calendar":
+                from ui.calendar_page import CalendarPage
+                return CalendarPage(self.launcher)
         except Exception as e:
             log.exception("could not build the %s page", key)
             return self._message_page(f"⚠ The {key} page could not be built:\n{type(e).__name__}: {e}\n\n"

@@ -229,9 +229,15 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   a terminal, delete lines or clear it. Each row shows when it ran; **Pin** keeps a command at the top and **Save to
   Dashboard** turns it into an item that runs it in a terminal.
 * **Keybinds**: every Hyprland bind from your config with what it really does (`SUPER + G → Open BROWSER:
-  zen-browser`, loop binds with their real keys and workspaces) next to Luminescent's hotkeys. Double-click opens the
-  line in an editor; Add / Change keys / Remove edit your config (backup in `data/hypr-backups`, undone
-  automatically if Hyprland reports an error) and reload Hyprland.
+  zen-browser`, loop binds with their real keys and workspaces) next to Luminescent's hotkeys. Every row has ✎ to
+  change its keys and ✕ to remove it; Hyprland binds are edited in your config (backup in `data/hypr-backups`, undone
+  automatically if Hyprland reports an error) and Luminescent's own hotkeys change right there. **New keybind** binds
+  keys or a **mouse button** (side, middle or extra buttons, e.g. a Logitech mouse's back and forward) to opening an
+  app, running a command, any Luminescent tool, the volume or other keys.
+* **Caelestia & Glass**: every file in `~/.config/caelestia` as a form (switches, numbers, colour swatches) or as
+  text, saved with a backup; Caelestia's colours and wallpaper, and a Luminescent theme made from them; and glass
+  windows per app: how see-through each app is focused and unfocused, blur on or off, and the blur strength.
+* **Calendar** page: Atlas's events and tasks next to your reminders, with notifications on the PC.
 * **Reminders** (Settings → Reminders): pop-ups, sounds, notifications, and **Switch theme**, so a 08:00 reminder can
   switch to Light and a 20:00 one to Dark. Also monthly and every-N-days schedules, and quick reminders from the
   command palette: `remind me in 20m to stretch`, `at 17:30 call mum`.
@@ -248,8 +254,8 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   snapped). The undo hotkey puts it back into the tiling layout (Linux) or where it was (Windows).
 * **Screen Ruler**, **Media Controls** (any MPRIS player, needs `playerctl`), **QR Code** (the clipboard as a QR code;
   copy it as a picture or save PNG / SVG) and **System Monitor** (CPU, RAM, GPU, network with a minute of history).
-* **Atlas Sync**: swaps notes and timer time with the [Atlas](https://github.com/ForsakenBlank/Atlas) app on your
-  phone over Wi-Fi. Press **Let Atlas connect** (tray, command palette or Settings), then type the address and code
+* **Atlas Sync**: swaps notes, timer time and themes with the [Atlas](https://github.com/ForsakenBlank/Atlas) app on
+  your phone over Wi-Fi, and brings Atlas's calendar events and tasks to the PC. Press **Let Atlas connect** (tray, command palette or Settings), then type the address and code
   into Atlas → Sync. Atlas lists every change in both directions before anything is written. Notes go both ways and
   to-do lists travel as checklists. Timer time adds up: what your timers ran here and what Atlas timer trackers
   logged end up on both. Nothing goes through the internet and everything sent is locked with the code.
@@ -274,6 +280,9 @@ The overlay fades in and out, pages and Settings sections fade in, a marker slid
 dashboard boxes glide when you tidy, fold or move them, themes crossfade, notifications and panels fade, and the
 Automation page zooms smoothly. **Settings → Animations** has a master switch, a speed (Fast, Normal, Relaxed) and
 one switch per animation. Performance mode turns them all off.
+
+Settings → Animations → **Style** picks how things move: **Caelestia** (a little overshoot, panels rise into
+place), **Smooth** or **Snappy**. **Hover effects** light up the edge of cards and dashboard boxes under the mouse.
 
 ## When something breaks
 

@@ -82,6 +82,8 @@ def pretty(combo: str) -> str:
              "enter": "Enter", "space": "Space", "tab": "Tab", "backspace": "Backspace",
              "delete": "Delete", "insert": "Insert", "home": "Home", "end": "End",
              "page up": "PgUp", "page down": "PgDn", "up": "↑", "down": "↓", "left": "←", "right": "→"}
+    names.update({k: v.replace("Side button (", "Mouse ").replace(")", "").replace("Extra button", "Mouse extra")
+                  for k, v in MOUSE_BUTTONS})
     return "+".join(names.get(p, p.upper() if len(p) == 1 else p.title()) for p in normalize(combo).split("+"))
 
 
@@ -96,7 +98,18 @@ def keysym(key: str) -> str:
         return _KEYSYMS[key]
     if len(key) == 1 and key.isalnum():
         return key
+    if not IS_WIN and is_mouse(key):
+        return key                      # Hyprland binds mouse buttons by number (mouse:275 = side back)
     return ""
+
+
+MOUSE_BUTTONS = [("mouse:274", "Middle button"), ("mouse:275", "Side button (back)"),
+                 ("mouse:276", "Side button (forward)"), ("mouse:277", "Extra button 1"),
+                 ("mouse:278", "Extra button 2"), ("mouse:279", "Extra button 3"), ("mouse:280", "Extra button 4")]
+
+
+def is_mouse(key: str) -> bool:
+    return key.startswith("mouse:") and key[6:].isdigit()
 
 
 def keysyms_of(key: str) -> list[str]:

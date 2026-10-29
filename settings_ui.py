@@ -20,6 +20,7 @@ from PyQt6.QtCore import Qt, QTimer, QEvent, pyqtSignal
 from PyQt6.QtGui import QColor, QKeySequence, QShortcut
 
 from core import theme, widgets, backup, anim, APP_NAME
+from core.guard import alive
 from core import hotkeys as hk
 from core.settings import (SCHEMA, Field, defaults, NAV_SECTIONS, ALL_PAGES, REQUIRED_PAGES, START_PANELS, TRAY_ITEMS,
                            SETTINGS_FILE)
@@ -480,6 +481,127 @@ class BackupWidget(QWidget):
             return
         log.info("backup imported from %s (previous files in %s)", path, auto)
         self.launcher.restart()
+
+
+class UpdatesWidget(QWidget):
+    """Settings → General → Updates: the version you have, a check button, and every release with a button
+    to install it (newer ones update, older ones downgrade)."""
+    _got = pyqtSignal(object)
+
+    def __init__(self, launcher):
+        super().__init__()
+        self.launcher = launcher
+        from core import VERSION
+        from core.updates import is_git, can_install
+        self.version = VERSION
+        self.git = is_git()
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        top = QHBoxLayout()
+        top.setSpacing(8)
+        top.addWidget(widgets.label(f"You have {APP_NAME} {VERSION}", 14, 600))
+        top.addStretch()
+        self.check_btn = widgets.button("Check for updates", "primary")
+        self.check_btn.clicked.connect(self.check)
+        top.addWidget(self.check_btn)
+        lay.addLayout(top)
+        self.status = widgets.label("" if can_install() else
+                                    "This copy can not replace itself (the folder is read-only); the buttons open "
+                                    "the download page instead.", 12, tone="muted")
+        self.status.setWordWrap(True)
+        lay.addWidget(self.status)
+        self.list = QVBoxLayout()
+        self.list.setSpacing(6)
+        lay.addLayout(self.list)
+        self._got.connect(self._show)
+        self.releases: list[dict] = []
+        self._asked = False
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if not self._asked and "--smoke" not in __import__("sys").argv:
+            self._asked = True                 # the list fills in by itself the first time you look
+            self.check()
+
+    def check(self):
+        import threading
+        from core.updates import list_releases
+        self.check_btn.setEnabled(False)
+        self.status.setText("Asking GitHub…")
+
+        def work():
+            try:
+                self._got.emit(list_releases())
+            except Exception as e:
+                self._got.emit(e)
+        threading.Thread(target=work, daemon=True, name="releases").start()
+
+    def _show(self, res):
+        from core.updates import newer
+        if not alive(self):
+            return
+        self.check_btn.setEnabled(True)
+        if isinstance(res, Exception):
+            self.status.setText(f"Could not reach GitHub: {res}")
+            return
+        self.releases = res
+        widgets.clear_layout(self.list)
+        if not res:
+            self.status.setText("No releases found.")
+            return
+        latest = res[0]["tag"]
+        if newer(latest, self.version):
+            self.status.setText(f"{latest} is out. Install it below; your notes and settings are kept.")
+        else:
+            self.status.setText("You have the newest version. Older ones are listed if you want to go back.")
+        for i, rel in enumerate(res[:12]):
+            self.list.addWidget(self._row(rel, i == 0))
+
+    def _row(self, rel: dict, newest: bool) -> QWidget:
+        from core.updates import newer
+        card = QFrame()
+        card.setObjectName("lumCard")
+        v = QVBoxLayout(card)
+        v.setContentsMargins(12, 8, 10, 8)
+        v.setSpacing(4)
+        h = QHBoxLayout()
+        h.setSpacing(8)
+        tag = rel["tag"]
+        h.addWidget(widgets.label(tag, 13, 600, mono=True))
+        h.addWidget(widgets.label(rel["date"], 11, tone="muted"))
+        here = not newer(tag, self.version) and not newer(self.version, tag)
+        if newest:
+            h.addWidget(widgets.label("NEWEST", 9.5, 600, mono=True, spacing=0.12, tone="accent"))
+        if here:
+            h.addWidget(widgets.label("INSTALLED", 9.5, 600, mono=True, spacing=0.12, tone="accent"))
+        h.addStretch()
+        notes = widgets.button("What changed", variant="ghost")
+        h.addWidget(notes)
+        if here:
+            text, variant = "Reinstall", "ghost"
+        elif newer(tag, self.version):
+            text, variant = "Update", "primary"
+        else:
+            text, variant = "Downgrade", ""
+        go = widgets.button(text, variant)
+        go.clicked.connect(lambda: self._install(rel, newest, text))
+        h.addWidget(go)
+        v.addLayout(h)
+        body = widgets.label(rel["notes"].replace("**", "")[:1800] or "No notes.", 12, tone="secondary")
+        body.setWordWrap(True)
+        body.hide()
+        v.addWidget(body)
+        notes.clicked.connect(lambda: body.setVisible(not body.isVisible()))
+        return card
+
+    def _install(self, rel: dict, newest: bool, verb: str):
+        if verb == "Downgrade" and not widgets.confirm(
+                self, "Downgrade", f"Go back to {rel['tag']}? Luminescent restarts into it. Your notes and settings "
+                                   "are kept, but settings added in newer versions are ignored by the older one."):
+            return
+        self.launcher.install_version(None if newest and self.git else rel)
+        self.status.setText(f"Getting {rel['tag']}… Luminescent restarts by itself when it is ready.")
 
 
 class QuitWidget(QWidget):
@@ -1016,6 +1138,8 @@ class SettingsPage(QWidget):
                 return BackupWidget(self.launcher)
             if full == "general.quit":
                 return QuitWidget(self.launcher)
+            if full == "general.updates":
+                return UpdatesWidget(self.launcher)
         if t == "custom":
             if full == "ui.nav_order":
                 return NavOrderEditor()

@@ -24,7 +24,7 @@ from dataclasses import dataclass, field as dc_field
 from PyQt6.QtCore import QObject, pyqtSignal
 
 from core import APP_DIR, HOME_DIR, DATA_DIR, IS_WIN, save_json, load_json
-from core.anim import KINDS as ANIM_KINDS, SPEEDS as ANIM_SPEEDS
+from core.anim import KINDS as ANIM_KINDS, SPEEDS as ANIM_SPEEDS, STYLES as ANIM_STYLES
 
 SETTINGS_FILE = os.path.join(HOME_DIR, "settings.json")
 PROFILES_FILE = os.path.join(DATA_DIR, "profiles.json")
@@ -84,7 +84,7 @@ NAV_SECTIONS = [("dashboard", "Dashboard"), ("automation", "Automation"), ("them
                 ("clipboard", "Clipboard"), ("settings", "Settings")]
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
 EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
-               ("stats", "Usage")]
+               ("stats", "Usage"), ("calendar", "Calendar")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
@@ -130,6 +130,7 @@ SCHEMA = [
         Field("check_updates", "Tell me when a new version is out", "bool", True,
               "Asks GitHub once a day. Tray → Update now downloads it, installs it and restarts; your notes and "
               "settings are kept."),
+        Field("updates", "Updates", "widget", None),
         Field("whats_new", "Show what is new after an update", "bool", True),
         Field("seen_version", "", "hidden", ""),
         Field("keep_awake_hotkey", "Keep awake on / off hotkey", "hotkey", "",
@@ -229,6 +230,10 @@ SCHEMA = [
             "Every animation in Luminescent. Performance mode (Overlay & Interface) turns all of them off.", [
         Field("enabled", "Animations", "bool", True, "Off: everything appears and moves instantly."),
         Field("speed", "Speed", "choice", "normal", choices=ANIM_SPEEDS),
+        Field("style", "Style", "choice", "smooth", choices=ANIM_STYLES,
+              help="How things move: Caelestia glides with a little overshoot and panels rise into place."),
+        Field("hover", "Hover effects", "bool", True,
+              "Dashboard boxes and cards light up their edge in the accent colour under the mouse."),
     ] + [Field(key, label, "bool", True, help) for key, label, help in ANIM_KINDS]),
 
     Section("dashboard", "Dashboard & Scripts", "▦", "How dashboard items start.", [
@@ -433,6 +438,7 @@ SCHEMA = [
                 "Every Luminescent hotkey in one list, clashes in red."), [
         Field("enabled", "Enable Keybinds", "bool", True),
         Field("hotkey", "Open hotkey", "hotkey", "ctrl+alt+k"),
+        Field("custom", "", "hidden", []),
     ]),
 
     Section("vault", "Ghost Vault", "🔒", "Encrypted file storage with a real password, a decoy password and a recovery key.", [
@@ -561,6 +567,26 @@ SCHEMA += [
             "type the address and code into Atlas → Sync. Atlas shows every change before anything is written.", [
         Field("enabled", "Enable Atlas Sync", "bool", True),
         Field("hotkey", "Open Atlas Sync", "hotkey", ""),
+        Field("share_theme", "Send my theme to Atlas", "bool", True,
+              "Your current Luminescent theme shows up in Atlas as \"Luminescent: …\". Turn on Settings → Themes → "
+              "Follow Luminescent in Atlas and it switches to it after every sync."),
+        Field("take_themes", "Bring Atlas's own themes here", "bool", True,
+              "Themes you made in Atlas become Luminescent themes named \"Atlas: …\"."),
+        Field("notify_calendar", "Notifications for Atlas events and tasks", "bool", True,
+              "Atlas's calendar events and tasks come over with every sync; this PC then reminds you of them "
+              "like your phone does. They are also on the Calendar page."),
+        Field("lead_minutes", "Remind me this many minutes before an event", "int", 15, min=0, max=1440,
+              help="Used when the event has no reminder time of its own in Atlas."),
+        Field("task_hour", "Remind me of tasks due today at (hour)", "int", 9, min=0, max=23),
+    ]),
+    Section("caelestia", "Caelestia & Glass", "◐",
+            "The Caelestia shell's config files as forms you can edit (with a backup on every save), its colours "
+            "and wallpaper, and see-through glass windows per app (focused and unfocused) with the blur strength.", [
+        Field("enabled", "Enable Caelestia & Glass", "bool", True),
+        Field("hotkey", "Open hotkey", "hotkey", ""),
+        Field("glass", "", "hidden", []),
+        Field("blur_size", "", "hidden", 0),
+        Field("blur_passes", "", "hidden", 0),
     ]),
 ]
 

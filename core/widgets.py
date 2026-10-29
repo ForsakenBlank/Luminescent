@@ -420,6 +420,7 @@ class FloatingPanel(QWidget):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+        self._outer = outer
         self.container = QFrame()
         self.container.setObjectName("panelContainer")
         outer.addWidget(self.container)
@@ -580,6 +581,12 @@ class FloatingPanel(QWidget):
         super().showEvent(e)
         if not e.spontaneous():
             anim.fade(self.container, 0.0, 1.0, "panels", 160)
+            if anim.on("panels") and anim.style() == "caelestia":
+                # rises a few pixels into place while it fades in (the window itself can not move smoothly
+                # on Wayland, so the panel moves inside it)
+                lay = self._outer
+                anim.value(14.0, 0.0, lambda v: lay.setContentsMargins(0, int(v), 0, 14 - int(v)), "panels", 260,
+                           owner=self, tag="rise")
 
     # sticky notes and the like stay exactly where they were put
     stays_put = False

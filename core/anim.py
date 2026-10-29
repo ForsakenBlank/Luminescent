@@ -31,6 +31,8 @@ KINDS = [
     ("pulses", "Pulses travelling along Automation wires", "Only drawn while the Automation page is open."),
 ]
 SPEEDS = [("fast", "Fast"), ("normal", "Normal"), ("relaxed", "Relaxed")]
+STYLES = [("smooth", "Smooth (gentle ease out)"), ("caelestia", "Caelestia (expressive, with a little overshoot)"),
+          ("snappy", "Snappy (quick start, short)")]
 _FACTOR = {"fast": 0.6, "normal": 1.0, "relaxed": 1.6}
 
 _settings = None
@@ -49,9 +51,27 @@ def on(kind: str = "") -> bool:
     return not kind or bool(s.get(f"animations.{kind}", True))
 
 
+def style() -> str:
+    return (_settings.get("animations.style", "smooth") if _settings is not None else "smooth") or "smooth"
+
+
 def ms(base: int) -> int:
     speed = (_settings.get("animations.speed", "normal") if _settings is not None else "normal") or "normal"
-    return max(1, int(base * _FACTOR.get(speed, 1.0)))
+    k = {"caelestia": 1.25, "snappy": 0.75}.get(style(), 1.0)
+    return max(1, int(base * _FACTOR.get(speed, 1.0) * k))
+
+
+def _curve(curve, motion: bool = False):
+    """The default ease out, as the chosen style has it. Curves picked on purpose (a fade out) stay."""
+    if curve != QEasingCurve.Type.OutCubic:
+        return curve
+    st = style()
+    if st == "caelestia":
+        # things that move overshoot a touch and settle, like Caelestia's shell; fades just ease out longer
+        return QEasingCurve.Type.OutBack if motion else QEasingCurve.Type.OutQuint
+    if st == "snappy":
+        return QEasingCurve.Type.OutExpo
+    return curve
 
 
 def _take(obj, prop: str, a: QObject | None):
@@ -88,7 +108,7 @@ def value(start: float, end: float, fn, kind: str, base_ms: int = 180, then=None
     a.setStartValue(float(start))
     a.setEndValue(float(end))
     a.setDuration(ms(base_ms))
-    a.setEasingCurve(curve)
+    a.setEasingCurve(_curve(curve))
 
     def frame(v):
         if owner is None or alive(owner):
@@ -145,7 +165,7 @@ def move(w: QWidget, to: QPoint, kind: str, base_ms: int = 220, then=None, curve
     a.setStartValue(w.pos())
     a.setEndValue(to)
     a.setDuration(ms(base_ms))
-    a.setEasingCurve(curve)
+    a.setEasingCurve(_curve(curve, True))
     if then:
         a.finished.connect(lambda: then() if alive(w) else None)
     _take(w, "pos", a)
@@ -166,7 +186,7 @@ def geometry(w: QWidget, to: QRect, kind: str, base_ms: int = 200, then=None, cu
     a.setStartValue(w.geometry())
     a.setEndValue(to)
     a.setDuration(ms(base_ms))
-    a.setEasingCurve(curve)
+    a.setEasingCurve(_curve(curve, True))
     if then:
         a.finished.connect(lambda: then() if alive(w) else None)
     _take(w, "geometry", a)

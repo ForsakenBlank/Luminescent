@@ -344,3 +344,23 @@ def icon_for(target: str, kind: str):
 if IS_WIN:
     from core.desktop_win import (install_entry, remove_entry, install_service_menu, remove_service_menu,  # noqa
                                   apply_icon_theme, reveal, icon_for)
+
+
+def apps() -> list[tuple[str, str]]:
+    """[(name, path of its .desktop file)] of every app launchers show, sorted by name (Linux only)."""
+    seen, out = set(), []
+    for d in _desktop_dirs():
+        try:
+            names = sorted(os.listdir(d))
+        except OSError:
+            continue
+        for n in names:
+            if not n.endswith(".desktop") or n in seen:
+                continue
+            seen.add(n)                       # the first folder wins, like the launchers do
+            e = _read_entry(os.path.join(d, n))
+            if e.get("Type", "Application") != "Application" or e.get("NoDisplay") == "true" \
+                    or e.get("Hidden") == "true" or not e.get("Name"):
+                continue
+            out.append((e["Name"], os.path.join(d, n)))
+    return sorted(out, key=lambda a: a[0].lower())

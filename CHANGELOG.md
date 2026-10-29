@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.4.0
+
+* **Updates you can see**: Settings → General → Updates shows your version, a Check for updates button and every
+  release with Update, Reinstall or Downgrade. A new version also shows as a chip on the overlay.
+* **Keybinds, reworked**: every row has ✎ (change keys) and ✕ (remove). Luminescent's own hotkeys change right
+  there instead of in Settings. **New keybind** binds keys to opening an app, running a command, any Luminescent
+  tool, the volume or other keys, while Luminescent runs. A "My keybinds" filter lists them.
+* **Mouse buttons**: side, middle and extra mouse buttons (a Logitech mouse's back and forward buttons...) work
+  as keys: click the box in the keybind window with the button, or pick it from the list. Ctrl + a side button
+  works too. Linux only.
+* **Caelestia & Glass** (new tool): every file in ~/.config/caelestia as a form with switches, numbers and
+  colour swatches (or as text), saved with a backup in data/caelestia-backups; Caelestia's colour scheme and
+  wallpaper with Make a Luminescent theme from it; and per-app glass: how see-through each app is when focused
+  and when not, blur on or off, and Hyprland's blur strength. The glass rules are added while Luminescent runs
+  and come back after a config reload; your config file is not changed.
+* **Calendar page** (add it under Settings → Overlay & Interface → Navigation bar): a month with dots on busy
+  days and each day's Atlas events, Atlas tasks and your Luminescent reminders.
+* **Atlas Sync**: your current theme goes to Atlas (Atlas → Settings → Follow Luminescent's theme switches to it),
+  themes made in Atlas come here as "Atlas: …", and Atlas's events and tasks come over with every sync. This PC
+  then gives you notifications for them like the phone does (Settings → Atlas Sync).
+* **Ten new themes** in a More themes folder: Caelestia, Catppuccin Mocha and Latte, Tokyo Night, Gruvbox, Nord,
+  Rosé Pine, Dracula, Everforest and Material You.
+* **Animation style**: Settings → Animations → Style: Caelestia (things glide with a little overshoot and panels
+  rise into place), Smooth or Snappy. **Hover effects**: cards and dashboard boxes light their edge under the mouse.
+* **More things for the overlay's edit mode** (✎ next to ✕): running timers, the next reminder, now playing,
+  CPU and memory, a greeting with your name and your own text. Your own text and the greeting are edited with
+  right-click.
+* **Automation**: the drag selection box and selected nodes look like the Dashboard's.
+* Clock, chips and every other overlay element stay out of the way of the Automation page.
+
 ## 1.3.0
 
 * **Fix**: Notes (Alt+N) and the other panels open on the screen with the mouse, at the same spot they had on

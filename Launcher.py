@@ -828,7 +828,19 @@ def _smoke(launcher: "Launcher", app: QApplication):
     errors = []
     sys.excepthook = lambda t, e, tb: errors.append("".join(traceback.format_exception(t, e, tb)))
     steps = [lambda k=k: launcher.overlay.open(k) for k, _ in ALL_PAGES]
-    steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide,
+    def theme_editor():
+        # every part of the theme editor once, with its preview drawn
+        from ui.themes_page import ThemeDialog
+        dlg = ThemeDialog(launcher, launcher.themes.active())
+        for key in list(dlg.side_buttons):
+            dlg.show_section(key)
+            if key == "caelestia_colours" and hasattr(dlg, "_cael_grid"):
+                dlg._match_caelestia()
+                dlg._forget_caelestia()
+            dlg.preview.grab()
+        dlg.deleteLater()
+
+    steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide, theme_editor,
               lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark")]
 
     def run(i=0):

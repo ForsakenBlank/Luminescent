@@ -619,6 +619,7 @@ SCHEMA += [
         Field("blur_size", "", "hidden", 0),
         Field("blur_passes", "", "hidden", 0),
         Field("scheme_colours", "", "hidden", {}),
+        Field("before_theme", "", "hidden", {}),
         Field("keep_scheme_colours", "Put my colours back when Caelestia rewrites its scheme", "bool", True,
               "Colours you saved for a Caelestia scheme (Caelestia & Glass → Colours) come back whenever Caelestia "
               "switches to that scheme again or makes it anew (for example from a new wallpaper)."),

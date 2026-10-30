@@ -11,7 +11,8 @@ editable. "Apply to Caelestia" writes them into scheme.json (a backup first); th
 recolours itself. Changed colours can also be kept:
   * for this Caelestia scheme (name / flavour / mode): they are put back whenever Caelestia switches to it again
     or rewrites it (a new wallpaper with a dynamic scheme), while "Put my colours back…" is on;
-  * for a Luminescent theme: written into Caelestia's scheme whenever that theme is applied.
+  * for a Luminescent theme: written into Caelestia's scheme whenever that theme is applied (the theme
+    editor's Caelestia colours page edits them too); a theme without any puts the old colours back.
 Caelestia draws every colour flat (one value per colour role), so gradients can not go into its scheme.
 
 Glass: per app (its window class, e.g. firefox or kitty) how see-through it is when focused and when not,
@@ -949,32 +950,57 @@ class CaelestiaModule(Module):
         """scheme.json changed (Caelestia switched schemes or made one from a wallpaper): put kept colours back."""
         if self._watch is not None and os.path.isfile(SCHEME_PATH) and SCHEME_PATH not in self._watch.files():
             self._watch.addPath(SCHEME_PATH)          # a file replaced in one step drops out of the watch
-        if not self.s("keep_scheme_colours", True):
-            return
         d = scheme_file()
-        kept = self.saved_for_scheme(scheme_id(d))
         now = scheme()
-        todo = {k: v for k, v in kept.items() if k in now and now[k].upper() != v.upper()}
+        kept = self.saved_for_scheme(scheme_id(d)) if self.s("keep_scheme_colours", True) else {}
+        # the active theme's own colours win over the ones kept for the scheme, and both go in one write so
+        # they can never take turns overwriting each other
+        launcher = self.ctx.launcher
+        active = launcher.themes.active() if launcher is not None else {}
+        mine = {k: v for k, v in (((active.get("caelestia") or {}).get("colours")) or {}).items() if is_colour(v)}
+        todo = {k: v for k, v in {**kept, **mine}.items() if k in now and now[k].upper() != v.upper()}
+        if mine:
+            # caelestia made new colours under the theme's, those are what a theme without its own puts back
+            before = dict(self.s("before_theme", {}) or {})
+            before.update({k: now[k] for k in mine if k in todo})
+            self.settings.set("caelestia.before_theme", before)
+            self.settings.save(emit=False)
         if todo:
             err = write_colours(todo)
             if err:
                 self.log.warning("could not put the kept Caelestia colours back: %s", err)
             else:
-                self.log.info("put %d kept colours back into Caelestia's %s scheme", len(todo), scheme_id(d))
+                self.log.info("put %d colours back into Caelestia's %s scheme", len(todo), scheme_id(d))
         if self.panel is not None and self.panel.isVisible() and self.panel.pages.currentIndex() == 2 \
                 and not self.panel._edits:
             self.panel._fill_colours()
 
     def theme_applied(self, t: dict):
-        """A Luminescent theme with Caelestia colours of its own was applied: give them to Caelestia."""
-        cols = ((t.get("caelestia") or {}).get("colours")) or {}
-        if cols and not IS_WIN:
-            now = scheme()
-            todo = {k: v for k, v in cols.items() if k in now and is_colour(v) and now[k].upper() != v.upper()}
-            if todo:
-                err = write_colours(todo)
-                if err:
-                    self.ctx.notify(self.title, err)
+        """A Luminescent theme was applied: give Caelestia that theme's colours, and put back the ones an earlier
+        theme changed that this one leaves alone."""
+        if IS_WIN:
+            return
+        cols = {k: v for k, v in (((t.get("caelestia") or {}).get("colours")) or {}).items() if is_colour(v)}
+        now = scheme()
+        if not now:
+            return
+        # what caelestia had before a theme changed it, so a theme without colours of its own can put it back
+        before = {k: v for k, v in (self.s("before_theme", {}) or {}).items() if is_colour(v)}
+        todo = {k: v for k, v in before.items() if k not in cols}
+        before = {k: v for k, v in before.items() if k in cols}
+        for k, v in cols.items():
+            if k in now:
+                before.setdefault(k, now[k])
+                todo[k] = v
+        todo = {k: v for k, v in todo.items() if k in now and now[k].upper() != v.upper()}
+        self.settings.set("caelestia.before_theme", before)
+        self.settings.save(emit=False)
+        if todo:
+            err = write_colours(todo)
+            if err:
+                self.ctx.notify(self.title, err)
+            else:
+                self.log.info("gave Caelestia %d colours for the theme %s", len(todo), t.get("name", ""))
 
     def theme_from_scheme(self):
         cols = scheme()

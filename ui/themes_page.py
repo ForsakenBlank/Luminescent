@@ -4,7 +4,8 @@ Themes page: a grid of theme cards grouped in colour-coded folders.
 Click a card to apply it. Right-click → Settings… opens the theme editor: every colour
 (each one can be a gradient), font, corner radius, glow, background image + its opacity,
 icon, wallpaper, settings profile, and a whole look of their own (colours, gradients,
-corner radius) for each module, the notifications and the on-screen warnings. Also
+corner radius) for each module, the notifications and the on-screen warnings, and the Caelestia shell's colours
+for the theme. Also
 Rename, Duplicate, Export, Move to folder, Delete. The toolbar imports a .lumtheme file or makes a whole theme from
 one colour. Themes outside a folder are listed under BUILT-IN (Dark, Light) and MY THEMES.
 """
@@ -638,6 +639,9 @@ class SectionPreview(QWidget):
             y += h + 16
             paint_panel(qp, QRectF(0, y, w, 250), base, "A PANEL")
             return
+        if key == "caelestia_colours":
+            self._paint_caelestia(qp, w, y)
+            return
         p = dlg.section_palette(key)
         title = dlg.section_title(key)
         if key == "toasts":
@@ -666,6 +670,46 @@ class SectionPreview(QWidget):
         paint_panel(qp, QRectF(0, y, w, 260), p, title)
         y += 276
         _text(qp, QRectF(0, y, w, 16), "THE REST OF THE APP", base.text_muted, 9.5, 600, True, spacing=0.12)
+        h = min(w * 0.45, 170)
+        paint_overlay(qp, QRectF(0, y + 22, w, h), base, h / 112.0)
+
+    def _paint_caelestia(self, qp: QPainter, w: float, y: float):
+        """a rough caelestia bar and launcher in the colours this theme gives it (caelestia's own for the rest)"""
+        dlg = self.dlg
+        cols = {**(getattr(dlg, "_cael_now", None) or {}), **(((dlg.t.get("caelestia") or {}).get("colours")) or {})}
+        base = dlg.base_palette()
+
+        def c(*names, fallback="#888888"):
+            return QColor(next((cols[n] for n in names if n in cols), fallback))
+
+        qp.setPen(Qt.PenStyle.NoPen)
+        bar = QRectF(0, y, w, 34)
+        qp.setBrush(c("surface", "background", "base"))
+        qp.drawRoundedRect(bar, 17, 17)
+        for i in range(5):
+            dot = QRectF(14 + i * 22, y + 10, 14, 14)
+            qp.setBrush(c("primary") if i == 1 else c("surfaceContainerHigh", "surface1"))
+            qp.drawEllipse(dot)
+        _text(qp, QRectF(w - 70, y, 60, 34), "12:45", c("onSurface", "text").name(), 12, 600,
+              align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
+        y += 50
+        box = QRectF(0, y, w, 200)
+        qp.setBrush(c("surfaceContainer", "mantle"))
+        qp.drawRoundedRect(box, 18, 18)
+        field = QRectF(14, y + 14, w - 28, 34)
+        qp.setBrush(c("surfaceContainerHigh", "surface0"))
+        qp.drawRoundedRect(field, 17, 17)
+        _text(qp, field.adjusted(16, 0, 0, 0), "Search apps…", c("onSurfaceVariant", "subtext0").name(), 12,
+              align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        for i, name in enumerate(("Files", "Browser", "Terminal")):
+            r = QRectF(14, y + 60 + i * 44, w - 28, 38)
+            if i == 0:
+                qp.setBrush(c("primary"))
+                qp.drawRoundedRect(r, 12, 12)
+            _text(qp, r.adjusted(16, 0, 0, 0), name, (c("onPrimary") if i == 0 else c("onSurface", "text")).name(),
+                  12.5, 600 if i == 0 else 400, align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        y += 216
+        _text(qp, QRectF(0, y, w, 16), "LUMINESCENT", base.text_muted, 9.5, 600, True, spacing=0.12)
         h = min(w * 0.45, 170)
         paint_overlay(qp, QRectF(0, y + 22, w, h), base, h / 112.0)
 
@@ -770,6 +814,8 @@ class ThemeDialog(widgets.RoundedDialog):
         heading("THEME")
         for key, text in (("general", "General"), ("colours", "Colours"), ("applied", "When it is applied")):
             add(key, text)
+        if "caelestia" in launcher.modules and not IS_WIN:
+            add("caelestia_colours", "◐  Caelestia colours")
         heading("PARTS")
         for key, title, icon, _d in EXTRA_SECTIONS:
             add(key, f"{icon}  {title}")
@@ -839,6 +885,8 @@ class ThemeDialog(widgets.RoundedDialog):
         return theme.section_palette(self.base_palette(), theme.clean_section(self.t["modules"].get(key) or {}))
 
     def section_title(self, key: str) -> str:
+        if key == "caelestia_colours":
+            return "Caelestia colours"
         for k, title, _i, _d in EXTRA_SECTIONS:
             if k == key:
                 return title
@@ -864,7 +912,7 @@ class ThemeDialog(widgets.RoundedDialog):
             self._pages[key] = scroll
             self.stack.addWidget(scroll)
         self.stack.setCurrentWidget(self._pages[key])
-        self.reset_btn.setVisible(key not in ("general", "applied", "colours"))
+        self.reset_btn.setVisible(key not in ("general", "applied", "colours", "caelestia_colours"))
         self.preview.update()
 
     def _page(self, title: str, text: str) -> tuple[QWidget, QVBoxLayout]:
@@ -886,6 +934,8 @@ class ThemeDialog(widgets.RoundedDialog):
             return self._colours_page()
         if key == "applied":
             return self._applied_page()
+        if key == "caelestia_colours":
+            return self._caelestia_page()
         return self._section_page(key)
 
     def _general_page(self) -> QWidget:
@@ -973,22 +1023,124 @@ class ThemeDialog(widgets.RoundedDialog):
         self.profile.currentIndexChanged.connect(lambda _i: self.changed())
         c.addWidget(self.profile)
         v.addWidget(card)
-        cael = self.launcher.modules.get("caelestia")
-        if cael is not None and not IS_WIN:
-            n = len(((t.get("caelestia") or {}).get("colours")) or {})
-            card, c = _card("CAELESTIA", "Caelestia colours saved for this theme are written to Caelestia's scheme "
-                                          "whenever this theme is applied. Edit them in Caelestia & Glass → Colours "
-                                          "→ Save for a Luminescent theme.")
-            c.addWidget(widgets.label(f"{n} colour{'s' if n != 1 else ''} saved for this theme" if n else
-                                      "None saved for this theme.", 12, tone="secondary"))
-            if n:
-                drop = widgets.button("Forget them", "ghost")
-                drop.clicked.connect(lambda: (self.t.pop("caelestia", None), drop.setEnabled(False),
-                                              self.changed()))
-                c.addWidget(drop, 0, Qt.AlignmentFlag.AlignLeft)
+        if "caelestia" in self.launcher.modules and not IS_WIN:
+            card, c = _card("CAELESTIA", "The Caelestia shell's colours change with the theme too.")
+            go = widgets.button("Caelestia colours for this theme…", "ghost")
+            go.clicked.connect(lambda: self.show_section("caelestia_colours"))
+            c.addWidget(go, 0, Qt.AlignmentFlag.AlignLeft)
             v.addWidget(card)
         v.addStretch()
         return page
+
+    # ── caelestia ──────────────────────────────────────────────────────────
+    # luminescent's colour roles that each of caelestia's colours follows for "match caelestia to this theme"
+    CAELESTIA_MATCH = {
+        "primary": "primary", "surfaceTint": "primary", "onPrimary": "on_primary",
+        "primaryContainer": "primary_muted", "onPrimaryContainer": "primary_text",
+        "background": "bg_base", "surface": "bg_base", "surfaceDim": "bg_base", "base": "bg_base",
+        "surfaceContainerLowest": "bg_base", "crust": "bg_base", "mantle": "bg_frame",
+        "surfaceContainerLow": "bg_frame", "surfaceContainer": "bg_card", "surfaceVariant": "bg_card",
+        "surface0": "bg_card", "surfaceContainerHigh": "bg_card_hover", "surfaceBright": "bg_card_hover",
+        "surface1": "bg_card_hover", "surfaceContainerHighest": "bg_header", "surface2": "bg_header",
+        "onBackground": "text_primary", "onSurface": "text_primary", "text": "text_primary",
+        "onSurfaceVariant": "text_secondary", "subtext1": "text_secondary", "subtext0": "text_muted",
+        "outline": "text_muted", "overlay0": "text_muted", "outlineVariant": "border",
+    }
+
+    def _cael_colours(self) -> dict:
+        return self.t.setdefault("caelestia", {}).setdefault("colours", {})
+
+    def _caelestia_page(self) -> QWidget:
+        from modules import caelestia as cael
+        page, v = self._page("Caelestia colours",
+                             "The Caelestia shell's colours for this theme: its bar, launcher, dashboard and "
+                             "notifications. Whenever you switch to this theme they go into Caelestia's scheme, and "
+                             "a theme without any puts Caelestia's own colours back. Colours you leave alone follow "
+                             "Caelestia. They are plain colours, since Caelestia draws everything flat.")
+        self._cael_now = cael.scheme()
+        mod = self.launcher.modules.get("caelestia")
+        if mod is not None and not mod.running:
+            off = widgets.label("Caelestia & Glass is turned off, so these are only saved. Turn it on in Settings "
+                                "to have them applied.", 11.5, tone="muted")
+            off.setWordWrap(True)
+            v.addWidget(off)
+        if not self._cael_now:
+            v.addWidget(widgets.label("Caelestia's colour scheme was not found (is Caelestia installed and "
+                                      "running?).", 12, tone="secondary"))
+            v.addStretch()
+            return page
+        bar = QHBoxLayout()
+        bar.setSpacing(6)
+        self._cael_search = QLineEdit()
+        self._cael_search.setPlaceholderText("🔍  Find a colour…")
+        self._cael_search.setClearButtonEnabled(True)
+        self._cael_search.textChanged.connect(lambda _t: self._fill_caelestia())
+        bar.addWidget(self._cael_search, 1)
+        match = widgets.button("Match Caelestia to this theme", "ghost",
+                               "Caelestia's accent, backgrounds, text and outlines in this theme's colours")
+        match.clicked.connect(self._match_caelestia)
+        bar.addWidget(match)
+        forget = widgets.button("Use Caelestia's own", "ghost", "Forget every colour set for this theme")
+        forget.clicked.connect(self._forget_caelestia)
+        bar.addWidget(forget)
+        v.addLayout(bar)
+        self._cael_status = widgets.label("", 11, tone="muted")
+        v.addWidget(self._cael_status)
+        self._cael_grid = QGridLayout()
+        self._cael_grid.setHorizontalSpacing(8)
+        self._cael_grid.setVerticalSpacing(6)
+        v.addLayout(self._cael_grid)
+        v.addStretch()
+        self._fill_caelestia()
+        return page
+
+    def _fill_caelestia(self):
+        from modules.caelestia import nice
+        _clear(self._cael_grid)
+        own = self._cael_colours()
+        q = self._cael_search.text().strip().lower()
+        shown = [(k, c) for k, c in sorted(self._cael_now.items()) if not q or q in k.lower() or q in nice(k).lower()]
+        for i, (k, c) in enumerate(shown):
+            row, col = i // 2, (i % 2) * 3
+            sw = colourpick.ColourSwatch(own.get(k, c), f"Caelestia: {nice(k)}", width=118)
+            sw.changed.connect(lambda val, key=k: self._set_caelestia(key, val))
+            self._cael_grid.addWidget(sw, row, col)
+            name = widgets.label(f"{nice(k)}  ●" if k in own else nice(k), 11.5,
+                                 tone="primary" if k in own else "secondary")
+            name.setToolTip(f"Set for this theme. Caelestia's own: {c}" if k in own else "Follows Caelestia")
+            self._cael_grid.addWidget(name, row, col + 1)
+            if k in own:
+                back = widgets.icon_button("✕", "Back to Caelestia's own colour", 22, 10, ghost=True)
+                back.clicked.connect(lambda _c=False, key=k: self._set_caelestia(key, None))
+                self._cael_grid.addWidget(back, row, col + 2)
+        self._cael_grid.setColumnStretch(1, 1)
+        self._cael_grid.setColumnStretch(4, 1)
+        n = len(own)
+        self._cael_status.setText(f"{n} colour{'s' if n != 1 else ''} set for this theme." if n else
+                                  "None set yet: Caelestia keeps its own colours with this theme.")
+
+    def _set_caelestia(self, key: str, value):
+        own = self._cael_colours()
+        if isinstance(value, str) and value:
+            own[key] = value.upper()
+        else:
+            own.pop(key, None)
+        self._fill_caelestia()
+        self.changed()
+
+    def _match_caelestia(self):
+        own = self._cael_colours()
+        for k, role in self.CAELESTIA_MATCH.items():
+            if k in self._cael_now:
+                val = self._global_value(role)
+                own[k] = (theme.gradient_mid(val) if isinstance(val, dict) else val).upper()
+        self._fill_caelestia()
+        self.changed()
+
+    def _forget_caelestia(self):
+        self._cael_colours().clear()
+        self._fill_caelestia()
+        self.changed()
 
     def _section_page(self, key: str) -> QWidget:
         title = self.section_title(key)
@@ -1127,6 +1279,8 @@ class ThemeDialog(widgets.RoundedDialog):
             t.update({"wallpaper": self.wallpaper.text().strip(), "profile": self.profile.currentData() or ""})
         t["modules"] = {k: v for k, v in ((k, theme.clean_section(v)) for k, v in t["modules"].items()) if v}
         t["gradients"] = theme.clean_gradients(t.get("gradients"))
+        if not ((t.get("caelestia") or {}).get("colours")):
+            t.pop("caelestia", None)
         return t
 
     # ── helpers ────────────────────────────────────────────────────────────

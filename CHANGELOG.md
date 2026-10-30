@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+* **Caelestia colours in every theme**: the theme editor has a new Caelestia colours page with every colour of
+  Caelestia's scheme. Set any of them for that theme, or Match Caelestia to this theme in one click, and they go
+  into Caelestia whenever you switch to it, with a live preview of the bar and launcher. Switching to a theme
+  without any puts Caelestia's own colours back, and if Caelestia remakes its scheme (a new wallpaper) the
+  theme's colours go back on top.
+
 ## 1.5.1
 
 * **Panels and pop-ups open where you are**: a panel opened by its hotkey goes to the middle of the screen with

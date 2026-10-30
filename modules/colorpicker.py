@@ -40,6 +40,7 @@ class _PickScreen(QWidget):
         self.img = shot.toImage()
         self.dpr = shot.devicePixelRatio() or 1.0
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+        self.scr = screen
         self.setGeometry(screen.geometry())
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.CrossCursor)
@@ -91,7 +92,7 @@ class _PickScreen(QWidget):
         p = QPainter(self)
         p.drawPixmap(self.rect(), self.shot)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        if self.screen() is QApplication.primaryScreen() or self._pos is not None:
+        if self.scr is QApplication.primaryScreen() or self._pos is not None:
             self._paint_hint(p)
         if self._pos is None:
             p.end()
@@ -139,6 +140,18 @@ class _PickScreen(QWidget):
         self._pos = e.position().toPoint()
         self.update(old.united(self._loupe_rect(self._pos).adjusted(-4, -4, 4, 4)))
 
+    def enterEvent(self, e):
+        # keys go to the screen the mouse is on
+        self.activateWindow()
+        self.setFocus()
+
+    def leaveEvent(self, e):
+        # the mouse went to the other monitor: no magnifier left behind on this one
+        if self._pos is not None:
+            old = self._loupe_rect(self._pos).adjusted(-4, -4, 4, 4)
+            self._pos = None
+            self.update(old.united(self._hint_rect()))
+
     def mousePressEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton:
             self.m.picked(self.pixel(e.position().toPoint()))
@@ -155,7 +168,7 @@ class _PickScreen(QWidget):
             step = 10 if e.modifiers() & Qt.KeyboardModifier.ShiftModifier else 1
             hypr.move_cursor(hypr.cursor_pos() + QPoint(dx * step, dy * step))
         elif k in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
-            self.m.picked(self.pixel(self.mapFromGlobal(hypr.cursor_pos())))
+            self.m.pick_at_cursor()
 
 
 class ColorPickerModule(Module):
@@ -233,12 +246,15 @@ class ColorPickerModule(Module):
         if self._screens:
             return
         self._on_pick = on_pick
+        titles = {scr.name(): f"Luminescent colour picker {i + 1}" for i, scr in enumerate(QApplication.screens())}
+        hypr.cover_monitors(titles)              # each frozen picture opens on its own monitor, right at the top
         for scr in QApplication.screens():
             w = _PickScreen(self, scr, widgets.grab_screen(scr), parent)
             if parent is not None:
                 w.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint |
                                  Qt.WindowType.Tool)
                 w.setGeometry(scr.geometry())
+            w.setWindowTitle(titles[scr.name()])
             self._screens.append(w)
         for w in self._screens:
             w.show()
@@ -252,10 +268,19 @@ class ColorPickerModule(Module):
             front._pos = pos
             front.update()
 
+    def pick_at_cursor(self):
+        """Enter: the colour under the mouse, on whichever monitor it is."""
+        at = hypr.cursor_pos()
+        w = next((w for w in self._screens if w.geometry().contains(at)), None)
+        if w is not None:
+            self.picked(w.pixel(at - w.geometry().topLeft()))
+
     def cancel(self):
         for w in self._screens:
             w.close()
             w.deleteLater()
+        if self._screens:
+            hypr.clear_cover_rules()
         self._screens = []
         cb, self._on_pick = self._on_pick, None
         if cb is not None:

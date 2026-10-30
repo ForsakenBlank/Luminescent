@@ -22,6 +22,9 @@ import json
 import shutil
 import logging
 import subprocess
+import signal
+import time
+import threading
 
 from core import IS_WIN
 
@@ -403,12 +406,49 @@ def restart_shell() -> str:
     exe = shutil.which("caelestia")
     if not exe:
         return "The caelestia command was not found."
-    try:
-        subprocess.Popen([exe, "shell", "-r"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
-    except OSError as e:
-        return str(e)
+    # "caelestia shell -r" only stops the shells started from the folder "-c caelestia" points at now, and the
+    # mirror changes that folder: the old shell kept running next to the new one and every gap was doubled.
+    # so every caelestia shell is stopped here, whichever folder it runs from, before one is started again.
+    def go():
+        stop_all_shells()
+        try:
+            subprocess.Popen([exe, "shell", "-d"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+        except OSError as e:
+            log.warning("could not start Caelestia again: %s", e)
+    # stopping can take a few seconds, so not on the screen's thread
+    threading.Thread(target=go, daemon=True).start()
     return ""
+
+
+def shell_pids() -> list[int]:
+    """Every running Caelestia shell (quickshell instances whose config is a caelestia folder)."""
+    if not shutil.which("qs"):
+        return []
+    try:
+        out = subprocess.run(["qs", "list", "--all", "-j"], capture_output=True, text=True, timeout=5).stdout
+        items = json.loads(out) if out.strip().startswith("[") else []
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return []
+    return [int(i["pid"]) for i in items if isinstance(i, dict) and isinstance(i.get("pid"), int)
+            and os.path.basename(os.path.dirname(str(i.get("config_path", "")))) == "caelestia"]
+
+
+def stop_all_shells(wait: float = 5.0):
+    """Ask every Caelestia shell to quit and wait until they have (a stuck one is ended after `wait` seconds)."""
+    pids = shell_pids()
+    for pid in pids:
+        subprocess.run(["qs", "kill", "--pid", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=5)
+    end = time.monotonic() + wait
+    while pids and time.monotonic() < end:
+        time.sleep(0.1)
+        pids = [p for p in pids if os.path.exists(f"/proc/{p}")]
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
 
 
 def lock_now() -> str:

@@ -139,6 +139,14 @@ every panel, page and menu) and whether it opens on the page you were on last.
   picks and this theme's colours. Switch it to **Gradient** and any colour of a theme becomes a gradient: click the
   bar to add colours, drag them to move them (down off the bar to remove one), and pick Linear, Radial or Sweep,
   the angle or a preset. Backgrounds, cards, headers, buttons, sliders, borders and the page switcher draw them.
+  Every colour of the gradient is also listed with its hex code and place, with **＋ Colour**, one-click
+  directions and **Ideas** worked out from your colour; the ◐ next to any theme colour makes it a gradient at once.
+  **The desktop with the theme** (theme editor → DESKTOP): Caelestia's colours and its whole **look** (how
+  see-through its panels and sidebar are, fonts including the lock screen clock, sizes, the dashboard and power
+  menu pictures or GIFs, the logo, the lock screen, the desktop clock), **Glass** (how see-through every app is,
+  the blur, and frosted Luminescent panels and notifications) and the **Terminal** (its colours, how see-through
+  kitty is and the picture fastfetch shows when it opens). Anything a theme leaves alone stays as it is, or goes
+  back to what it was before another theme changed it.
   Group themes in colour-coded folders. Dark and Light are built in and can not be deleted.
   **Import… / Export to a file…** share a theme as a `.lumtheme` file; **From a colour…** makes a whole theme from one
   accent colour. A **Next theme** hotkey cycles through the active theme's folder.
@@ -255,7 +263,13 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   **Colours** lets you change and apply every colour of Caelestia's scheme (a backup is made first). Keep your
   colours for that Caelestia scheme (they come back whenever Caelestia uses or remakes it) or for a Luminescent
   theme (written into Caelestia whenever that theme is applied). Caelestia draws its colours flat, so gradients can
-  not go into its scheme.
+  not go into its scheme. **Every other app** sets how see-through all the apps without a row of their own are,
+  and **Add the app I click next** adds a window by clicking it. **Lock the screen** (a button on the dashboard,
+  the tray, the command palette or a hotkey) opens Caelestia's lock screen.
+  **Caelestia extras** (theme editor → Caelestia look) add a picture in place of the lyrics on the dashboard's media
+  page and a picture or GIF behind the lock screen. Caelestia has no setting for those, so Luminescent puts a copy
+  of the shell in `~/.config/quickshell/caelestia` made of links to Caelestia's own files plus two patched ones
+  (Caelestia's files are never changed; turning the extras off removes it).
 * **Calendar** page: Atlas's events and tasks next to your reminders, with notifications on the PC.
 * **Reminders** (Settings → Reminders): pop-ups, sounds, notifications, and **Switch theme**, so a 08:00 reminder can
   switch to Light and a 20:00 one to Dark. Also monthly and every-N-days schedules, and quick reminders from the

@@ -37,8 +37,9 @@ from PyQt6.QtWidgets import (
     QWidget, QFrame, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QDialog, QFormLayout, QLineEdit,
     QFileDialog, QPushButton, QCheckBox, QListWidget, QListWidgetItem, QAbstractItemView
 )
-from PyQt6.QtCore import Qt, QObject, QTimer, QPoint, QRect, QMimeData, QSize, QEasingCurve, pyqtSignal
-from PyQt6.QtGui import QDrag, QIcon
+from PyQt6.QtCore import (Qt, QObject, QTimer, QPoint, QRect, QRectF, QSizeF, QMimeData, QSize, QEasingCurve,
+                          pyqtSignal)
+from PyQt6.QtGui import QDrag, QIcon, QMovie, QPixmap, QPainter, QPainterPath, QColor
 
 from core import DATA_DIR, save_json, load_json, widgets, runner, desktop, usage, theme, events, anim
 from core.guard import alive
@@ -356,6 +357,15 @@ class DashboardStore(QObject):
         """A whole overlay page (Themes, Settings...) as a box on a board (the active one by default)."""
         t = {"id": _id(), "kind": "page", "page": page, "title": title, "x": x, "y": y, "w": w, "h": h,
              "collapsed": False, "screen": screen, "state": {}, "items": []}
+        self._tabs_of(board).append(t)
+        self._structural()
+        return t
+
+    def add_picture_tab(self, path: str, x: int, y: int, w: int, h: int, screen: str = "", board: str = "") -> dict:
+        """A picture or GIF as a box on a board (the active one by default)."""
+        t = {"id": _id(), "kind": "picture", "title": os.path.splitext(os.path.basename(path))[0] or "Picture",
+             "path": path, "x": x, "y": y, "w": w, "h": h, "frame": "panel", "fit": "fit", "radius": 12,
+             "opacity": 1.0, "title_bar": False, "collapsed": False, "screen": screen, "items": []}
         self._tabs_of(board).append(t)
         self._structural()
         return t
@@ -962,8 +972,11 @@ class _Box(QFrame):
     def fit(self):
         pass
 
+    def drag_height(self) -> int:
+        return HEADER_H
+
     def mousePressEvent(self, e):
-        if e.button() != Qt.MouseButton.LeftButton or e.position().y() > HEADER_H:
+        if e.button() != Qt.MouseButton.LeftButton or e.position().y() > self.drag_height():
             super().mousePressEvent(e)
             return
         if e.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier):
@@ -1367,6 +1380,146 @@ class PageBox(_Box):
         _fold(self, self.body, on)
 
 
+PICTURE_FILTER = "Pictures and GIFs (*.png *.jpg *.jpeg *.webp *.gif *.bmp *.svg);;All files (*)"
+FRAMES = (("panel", "Panel (a background and a border)"), ("border", "Just a border"), ("none", "Nothing (only the picture)"))
+FITS = (("fit", "Fit inside"), ("fill", "Fill the box (crop the edges)"), ("stretch", "Stretch to the box"))
+
+
+class _PictureView(QWidget):
+    """Draws the box's picture (a GIF plays) with its fit, rounded corners and opacity."""
+
+    def __init__(self, box: "PictureBox"):
+        super().__init__(box)
+        self.box = box
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.movie: QMovie | None = None
+        self.still = QPixmap()
+        self.load()
+
+    def load(self):
+        if self.movie is not None:
+            self.movie.stop()
+            self.movie.deleteLater()
+            self.movie = None
+        path = os.path.expanduser(str(self.box.tab.get("path") or ""))
+        self.still = QPixmap()
+        if path and os.path.isfile(path):
+            if path.lower().endswith((".gif", ".webp")):
+                mv = QMovie(path)
+                if mv.isValid() and mv.frameCount() != 1:
+                    mv.frameChanged.connect(lambda _i: self.update())
+                    mv.setCacheMode(QMovie.CacheMode.CacheAll)
+                    self.movie = mv
+                    if self.isVisible():
+                        mv.start()
+            if self.movie is None:
+                self.still = QPixmap(path)
+        self.update()
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if self.movie is not None:
+            self.movie.start()
+
+    def hideEvent(self, e):
+        super().hideEvent(e)
+        if self.movie is not None:
+            self.movie.setPaused(True)
+
+    def paintEvent(self, e):
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.RenderHint.Antialiasing)
+        qp.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        t = self.box.tab
+        pad = 8 if t.get("frame", "panel") == "panel" else 0
+        r = QRectF(self.rect()).adjusted(pad, pad, -pad, -pad)
+        px = self.movie.currentPixmap() if self.movie is not None else self.still
+        if px.isNull():
+            qp.setPen(QColor(theme.P.text_muted))
+            qp.drawText(r, Qt.AlignmentFlag.AlignCenter, "Right-click → Choose a picture…")
+            return
+        fit = t.get("fit", "fit")
+        if fit == "stretch":
+            target = r
+        else:
+            mode = Qt.AspectRatioMode.KeepAspectRatioByExpanding if fit == "fill" else Qt.AspectRatioMode.KeepAspectRatio
+            size = QSizeF(px.size()).scaled(r.size(), mode)
+            target = QRectF(r.center().x() - size.width() / 2, r.center().y() - size.height() / 2, size.width(),
+                            size.height())
+        rad = float(t.get("radius", 12))
+        clip = QPainterPath()
+        clip.addRoundedRect(r if fit == "fill" else target, rad, rad)
+        qp.setClipPath(clip)
+        qp.setOpacity(max(0.05, min(1.0, float(t.get("opacity", 1.0)))))
+        qp.drawPixmap(target, px, QRectF(px.rect()))
+
+
+class PictureBox(_Box):
+    """A picture or GIF on the dashboard. Right-click it to change the picture, its frame (a panel, a border or
+    nothing), how it fills the box, its corners, how solid it is and whether it has a title bar."""
+
+    def __init__(self, page: "DashboardPage", tab: dict, canvas: "Canvas"):
+        super().__init__(page, tab, canvas)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self.bar = bool(tab.get("title_bar", False))
+        if self.bar:
+            close = widgets.icon_button("✕", "Take it off the dashboard", 22, 11, ghost=True)
+            close.clicked.connect(lambda: self.page.remove_boxes([self]))
+            lay.addWidget(self._header(tab.get("title") or "Picture", [close]))
+            self.chevron.hide()
+        self.view = _PictureView(self)
+        lay.addWidget(self.view, 1)
+        if not self.bar:
+            self.header = self                        # no title bar: the whole picture is the handle
+            self.setCursor(Qt.CursorShape.PointingHandCursor if self.page.store.locked
+                           else Qt.CursorShape.OpenHandCursor)
+        self.setObjectName("picBox")
+        self._style()
+        self._grips = [_Grip(self, e) for e in ("r", "b", "rb")]
+        self.move(int(tab.get("x", ORIGIN[0])), int(tab.get("y", ORIGIN[1])))
+        self.setFixedWidth(max(80, int(tab.get("w", 260))))
+        self.fit()
+
+    def _style(self):
+        p = theme.P
+        frame = self.tab.get("frame", "panel")
+        rad = int(self.tab.get("radius", 12)) + (8 if frame == "panel" else 0)
+        bg = theme.fill("bg_card") if frame == "panel" else "transparent"
+        border = f"1px solid {p.border}" if frame in ("panel", "border") else "none"
+        if frame == "border" and self.tab.get("border_accent", True):
+            border = f"2px solid {p.primary}"
+        self.setStyleSheet(f"#picBox {{ background: {bg}; border: {border}; border-radius: {rad}px; }}"
+                           f"#picBox[selected=\"true\"] {{ border: 1px solid {p.primary}; }}")
+
+    def drag_height(self) -> int:
+        return HEADER_H if self.bar else self.height()
+
+    def clicked(self):
+        pass
+
+    def body_height(self) -> int:
+        return int(self.tab.get("h", 200))
+
+    def fit(self):
+        self.setFixedHeight(max(60, self.body_height() + (HEADER_H if self.bar else 0)))
+        for g in self._grips:
+            g.place()
+
+    def resize_to(self, w: int, h: int):
+        w = max(80, min(w, self.canvas.width() - self.x()))
+        self.tab["h"] = max(60, min(h, self.canvas.height() - self.y() - (HEADER_H if self.bar else 0)))
+        self.setFixedWidth(w)
+        self.fit()
+
+    def resize_done(self):
+        self.page.store.set_geometry(self.tab["id"], w=self.width(), h=self.tab["h"])
+
+    def contextMenuEvent(self, e):
+        self.page.tab_menu(self, e.globalPos())
+
+
 def _fold(box: "_Box", body: QWidget, on: bool):
     """Fold or unfold a box: its height glides, the body is hidden once it is folded away."""
     if not box.isVisible() or not anim.on("boxes"):
@@ -1572,6 +1725,14 @@ class DashboardPage(QWidget):
         self.lock_btn.setCheckable(True)
         self.lock_btn.clicked.connect(self._toggle_lock)
         dl.addWidget(self.lock_btn)
+        cael = launcher.modules.get("caelestia")
+        if cael is not None and hasattr(cael, "lock_screen") and not sys.platform.startswith("win"):
+            # caelestia's lock screen, the one it shows after a while away
+            lock_screen = dock_button("⏻ Lock screen", variant="ghost")
+            lock_screen.setToolTip("Lock the screen now (Caelestia's lock screen). Your password unlocks it.")
+            lock_screen.clicked.connect(lambda: (self.launcher.overlay.hide(),
+                                                 QTimer.singleShot(250, cael.lock_screen)))
+            dl.addWidget(lock_screen)
         sep = QFrame()
         sep.setObjectName("lumDockSep")
         sep.setFixedSize(1, 18)
@@ -1705,6 +1866,18 @@ class DashboardPage(QWidget):
                     b.title_lbl.setText((t.get("title") or page_name(t["page"])).upper())
                     if b.canvas is not canvas:
                         self._reparent(b, canvas, b.pos())
+                continue
+            if t.get("kind") == "picture":
+                sig = json.dumps({k: t.get(k) for k in ("path", "frame", "fit", "radius", "opacity", "title_bar",
+                                                       "title", "border_accent")}, sort_keys=True)
+                if b is not None and (force or not isinstance(b, PictureBox) or b.sig != sig
+                                      or b.canvas is not canvas):
+                    self._drop_box(cache.pop(t["id"]))
+                    b = None
+                if b is None:
+                    b = cache[t["id"]] = PictureBox(self, t, canvas)
+                    b.sig = sig
+                    b.fresh = True
                 continue
             sig = self._sig(t)
             if b is not None and (force or b.sig != sig or b.canvas is not canvas):
@@ -1975,7 +2148,9 @@ class DashboardPage(QWidget):
                 self._parent(), "Layout locked", "The layout is locked. Remove them anyway?", yes="Remove"):
             return
         n_items = sum(len(b.tab["items"]) for b in boxes)
-        if len(boxes) == 1 and isinstance(boxes[0], PageBox):
+        if len(boxes) == 1 and isinstance(boxes[0], PictureBox):
+            text = "Take this picture off the dashboard? (The picture file stays where it is.)"
+        elif len(boxes) == 1 and isinstance(boxes[0], PageBox):
             text = f'Take the {boxes[0].tab.get("title") or "page"} box off the dashboard?'
         else:
             text = f"Delete {len(boxes)} box(es)" + (f" with {n_items} item(s)" if n_items else "") + "?"
@@ -2112,6 +2287,80 @@ class DashboardPage(QWidget):
         g = self.snap()
         self.store.add_page_tab(key, page_name(key), snap_to(p.x(), g), snap_to(p.y(), g), w, h,
                                 "" if canvas is self.main else canvas.screen_name, self.board_of_canvas(canvas)["id"])
+
+    def add_picture(self, at: QPoint | None = None, canvas: QWidget | None = None):
+        canvas = canvas or self.main
+        path, _ = QFileDialog.getOpenFileName(self._parent(), "Choose a picture or GIF", os.path.expanduser("~"),
+                                              PICTURE_FILTER)
+        if not path:
+            return
+        p = at or self._free_spot(canvas)
+        px = QPixmap(path)
+        w = 260
+        h = int(w * px.height() / px.width()) if not px.isNull() and px.width() else 200
+        g = self.snap()
+        self.store.add_picture_tab(path, snap_to(p.x(), g), snap_to(p.y(), g), w, max(80, min(h, 520)),
+                                   "" if canvas is self.main else canvas.screen_name,
+                                   self.board_of_canvas(canvas)["id"])
+
+    def _picture_entries(self, m, box: "PictureBox"):
+        tab = box.tab
+        tid = tab["id"]
+
+        def set_(**kw):
+            self.store.set_geometry(tid, **kw)
+            self.refresh()
+
+        def choose():
+            path, _ = QFileDialog.getOpenFileName(self._parent(), "Choose a picture or GIF",
+                                                  os.path.dirname(os.path.expanduser(tab.get("path") or "~")),
+                                                  PICTURE_FILTER)
+            if path:
+                set_(path=path)
+        m.addAction("Choose a picture…", choose)
+        frame = m.addMenu("Frame")
+        for k, text in FRAMES:
+            a = frame.addAction(text, lambda k=k: set_(frame=k))
+            a.setCheckable(True)
+            a.setChecked(tab.get("frame", "panel") == k)
+        if tab.get("frame") == "border":
+            a = frame.addAction("Border in the accent colour", lambda: set_(border_accent=not tab.get(
+                "border_accent", True)))
+            a.setCheckable(True)
+            a.setChecked(bool(tab.get("border_accent", True)))
+        fit = m.addMenu("Fill the box")
+        for k, text in FITS:
+            a = fit.addAction(text, lambda k=k: set_(fit=k))
+            a.setCheckable(True)
+            a.setChecked(tab.get("fit", "fit") == k)
+        corners = m.addMenu("Corners")
+        for v, text in ((0, "Square"), (6, "A little round"), (12, "Round"), (24, "Very round"),
+                        (999, "As round as it goes")):
+            a = corners.addAction(text, lambda v=v: set_(radius=v))
+            a.setCheckable(True)
+            a.setChecked(int(tab.get("radius", 12)) == v)
+        solid = m.addMenu("How solid")
+        for v in (1.0, 0.85, 0.7, 0.5, 0.3):
+            a = solid.addAction(f"{int(v * 100)} %", lambda v=v: set_(opacity=v))
+            a.setCheckable(True)
+            a.setChecked(abs(float(tab.get("opacity", 1.0)) - v) < 0.01)
+        a = m.addAction("Title bar", lambda: set_(title_bar=not tab.get("title_bar", False)))
+        a.setCheckable(True)
+        a.setChecked(bool(tab.get("title_bar", False)))
+        m.addAction("Rename…", lambda: self._rename_tab(tab))
+        if not self.store.locked:
+            m.addAction("Size of the picture", lambda: self._picture_natural(box))
+
+    def _picture_natural(self, box: "PictureBox"):
+        """Make the box the picture's own shape (keeping its width)."""
+        px = box.view.movie.currentPixmap() if box.view.movie is not None else box.view.still
+        if px.isNull() or not px.width():
+            return
+        w = box.width()
+        pad = 16 if box.tab.get("frame", "panel") == "panel" else 0
+        h = int((w - pad) * px.height() / px.width()) + pad
+        box.resize_to(w, h)
+        box.resize_done()
 
     def add_item(self, tab: dict, kind: str = "item", index: int = -1):
         if kind in ("separator", "heading"):
@@ -2343,7 +2592,9 @@ class DashboardPage(QWidget):
         group = list(self.selected) if several else [box]
         self._ctx = box.canvas
         m = widgets.menu(box.canvas)
-        if isinstance(box, PageBox):
+        if isinstance(box, PictureBox):
+            self._picture_entries(m, box)
+        elif isinstance(box, PageBox):
             m.addAction(f"Open {page_name(tab['page'])} as the full page",
                         lambda: self.launcher.overlay.show_page(tab["page"]))
             m.addAction("Rename box…", lambda: self._rename_tab(tab))
@@ -2368,7 +2619,7 @@ class DashboardPage(QWidget):
         m.addSeparator()
         if several:
             m.addAction(f"Remove the {len(group)} selected boxes…", lambda: self.remove_boxes(group))
-        elif isinstance(box, PageBox):
+        elif isinstance(box, (PageBox, PictureBox)):
             m.addAction("Take it off the dashboard", lambda: self.remove_boxes([box]))
         else:
             m.addAction("Delete tab…", lambda: self.remove_boxes([box]))
@@ -2379,6 +2630,7 @@ class DashboardPage(QWidget):
             self._ctx = self.main
         m = into or widgets.menu(self)
         m.addAction("Tab of items…", lambda: self.new_tab(at, canvas))
+        m.addAction("Picture or GIF…", lambda: self.add_picture(at, canvas))
         sub = m.addMenu("Page") if into is not None else m
         if into is None:
             m.addSeparator()

@@ -23,12 +23,15 @@ from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPixmap, QFont, QPen
 
 from core import theme, widgets, colourpick, IS_WIN
 from core.themes import ThemeStore, new_theme
+from ui import theme_extras
 
 COLS, GAP = 5, 16
 PREV_W, PREV_H = 190, 112
 IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp);;All files (*)"
 BUILTIN_GROUP, MINE_GROUP = "builtin", "mine"
 MINE_COLOUR = "#3DBE96"
+DESKTOP_TITLES = {"caelestia_colours": "Caelestia colours", "caelestia_look": "Caelestia look", "glass": "Glass",
+                  "terminal": "Terminal"}
 
 
 def _pal(t: dict) -> theme.Palette:
@@ -417,10 +420,27 @@ class ThemesPage(QWidget):
             header.setCursor(Qt.CursorShape.PointingHandCursor)    # still a click to fold, so keep the hand
             self._order.append(key)
         v.addStretch()
+        # switching a theme rebuilds the cards: stay where you were instead of jumping to the top
+        keep = self.scroll.verticalScrollBar().value()
         old = self.scroll.takeWidget()
         self.scroll.setWidget(holder)
         if old is not None:
             old.deleteLater()
+        if keep:
+            self._scroll_to(keep)
+
+    def _scroll_to(self, y: int):
+        bar = self.scroll.verticalScrollBar()
+        bar.setValue(y)
+        if bar.value() != y:                     # the new cards are not laid out yet: once they are
+            QTimer.singleShot(0, lambda: bar.setValue(y))
+
+    def state(self) -> dict:
+        return {"scroll": self.scroll.verticalScrollBar().value()}
+
+    def restore_state(self, st: dict):
+        if isinstance(st, dict) and st.get("scroll"):
+            self._scroll_to(int(st["scroll"]))
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -639,8 +659,14 @@ class SectionPreview(QWidget):
             y += h + 16
             paint_panel(qp, QRectF(0, y, w, 250), base, "A PANEL")
             return
-        if key == "caelestia_colours":
+        if key in ("caelestia_colours", "caelestia_look"):
             self._paint_caelestia(qp, w, y)
+            return
+        if key == "terminal":
+            theme_extras.paint_terminal(qp, w, y, dlg)
+            return
+        if key == "glass":
+            theme_extras.paint_glass(qp, w, y, dlg)
             return
         p = dlg.section_palette(key)
         title = dlg.section_title(key)
@@ -676,15 +702,30 @@ class SectionPreview(QWidget):
     def _paint_caelestia(self, qp: QPainter, w: float, y: float):
         """a rough caelestia bar and launcher in the colours this theme gives it (caelestia's own for the rest)"""
         dlg = self.dlg
-        cols = {**(getattr(dlg, "_cael_now", None) or {}), **(((dlg.t.get("caelestia") or {}).get("colours")) or {})}
+        if not hasattr(dlg, "_cael_now"):
+            from modules import caelestia as cael
+            dlg._cael_now = cael.scheme()
+        cols = {**(dlg._cael_now or {}), **(((dlg.t.get("caelestia") or {}).get("colours")) or {})}
         base = dlg.base_palette()
+        # how see-through caelestia's panels are with this theme (or as it is now)
+        from modules import caelestia_look as look
+        shell = (dlg.t.get("caelestia") or {}).get("shell") or {}
+        now = look.read_shell()
 
-        def c(*names, fallback="#888888"):
-            return QColor(next((cols[n] for n in names if n in cols), fallback))
+        def opt(key, default):
+            return shell.get(key, look.get(now, key, default))
+        solid = float(opt("appearance.transparency.base", 0.85)) if opt("appearance.transparency.enabled", False) \
+            else 1.0
+
+        def c(*names, fallback="#888888", panel=False):
+            col = QColor(next((cols[n] for n in names if n in cols), fallback))
+            if panel:
+                col.setAlphaF(max(0.05, min(1.0, solid)))
+            return col
 
         qp.setPen(Qt.PenStyle.NoPen)
         bar = QRectF(0, y, w, 34)
-        qp.setBrush(c("surface", "background", "base"))
+        qp.setBrush(c("surface", "background", "base", panel=True))
         qp.drawRoundedRect(bar, 17, 17)
         for i in range(5):
             dot = QRectF(14 + i * 22, y + 10, 14, 14)
@@ -694,7 +735,7 @@ class SectionPreview(QWidget):
               align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
         y += 50
         box = QRectF(0, y, w, 200)
-        qp.setBrush(c("surfaceContainer", "mantle"))
+        qp.setBrush(c("surfaceContainer", "mantle", panel=True))
         qp.drawRoundedRect(box, 18, 18)
         field = QRectF(14, y + 14, w - 28, 34)
         qp.setBrush(c("surfaceContainerHigh", "surface0"))
@@ -735,6 +776,19 @@ class RoleRow(QWidget):
                                               live=True)
         self.swatch.changed.connect(lambda v: on_change(role, v))
         lay.addWidget(self.swatch)
+        grad = widgets.icon_button("◐", "Make it a gradient: adds a second colour that goes with it, then opens the "
+                                        "gradient editor", 26, 12, ghost=True)
+
+        def to_gradient():
+            v = self.swatch.value()
+            if not isinstance(v, dict):
+                first = v if isinstance(v, str) and v else theme.P.primary
+                g = {"type": "linear", "angle": 135, "stops": [[0.0, first], [1.0, colourpick.partner(first)]]}
+                self.swatch.set_value(g)
+                on_change(role, g)
+            self.swatch.open_picker()
+        grad.clicked.connect(to_gradient)
+        lay.addWidget(grad)
         self.clear = widgets.icon_button("✕", "Back to the theme's colour", 26, 11, ghost=True)
         self.clear.setVisible(bool(unset_text))
         self.clear.clicked.connect(lambda: (self.swatch.set_value(None), on_change(role, None)))
@@ -814,8 +868,12 @@ class ThemeDialog(widgets.RoundedDialog):
         heading("THEME")
         for key, text in (("general", "General"), ("colours", "Colours"), ("applied", "When it is applied")):
             add(key, text)
+        heading("DESKTOP")
         if "caelestia" in launcher.modules and not IS_WIN:
             add("caelestia_colours", "◐  Caelestia colours")
+            add("caelestia_look", "◐  Caelestia look")
+            add("glass", "▢  Glass")
+        add("terminal", "▣  Terminal")
         heading("PARTS")
         for key, title, icon, _d in EXTRA_SECTIONS:
             add(key, f"{icon}  {title}")
@@ -885,8 +943,8 @@ class ThemeDialog(widgets.RoundedDialog):
         return theme.section_palette(self.base_palette(), theme.clean_section(self.t["modules"].get(key) or {}))
 
     def section_title(self, key: str) -> str:
-        if key == "caelestia_colours":
-            return "Caelestia colours"
+        if key in DESKTOP_TITLES:
+            return DESKTOP_TITLES[key]
         for k, title, _i, _d in EXTRA_SECTIONS:
             if k == key:
                 return title
@@ -912,7 +970,7 @@ class ThemeDialog(widgets.RoundedDialog):
             self._pages[key] = scroll
             self.stack.addWidget(scroll)
         self.stack.setCurrentWidget(self._pages[key])
-        self.reset_btn.setVisible(key not in ("general", "applied", "colours", "caelestia_colours"))
+        self.reset_btn.setVisible(key not in ("general", "applied", "colours") and key not in DESKTOP_TITLES)
         self.preview.update()
 
     def _page(self, title: str, text: str) -> tuple[QWidget, QVBoxLayout]:
@@ -936,6 +994,12 @@ class ThemeDialog(widgets.RoundedDialog):
             return self._applied_page()
         if key == "caelestia_colours":
             return self._caelestia_page()
+        if key == "caelestia_look":
+            return theme_extras.caelestia_look_page(self)
+        if key == "glass":
+            return theme_extras.glass_page(self)
+        if key == "terminal":
+            return theme_extras.terminal_page(self)
         return self._section_page(key)
 
     def _general_page(self) -> QWidget:
@@ -1279,8 +1343,7 @@ class ThemeDialog(widgets.RoundedDialog):
             t.update({"wallpaper": self.wallpaper.text().strip(), "profile": self.profile.currentData() or ""})
         t["modules"] = {k: v for k, v in ((k, theme.clean_section(v)) for k, v in t["modules"].items()) if v}
         t["gradients"] = theme.clean_gradients(t.get("gradients"))
-        if not ((t.get("caelestia") or {}).get("colours")):
-            t.pop("caelestia", None)
+        theme_extras.tidy(t)
         return t
 
     # ── helpers ────────────────────────────────────────────────────────────

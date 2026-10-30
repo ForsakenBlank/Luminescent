@@ -107,6 +107,7 @@ class _Toast(QWidget):
         self.manager = manager
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setProperty("lum_glass", widgets.GLASS)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Luminescent toast")
         self.setCursor(Qt.CursorShape.PointingHandCursor)

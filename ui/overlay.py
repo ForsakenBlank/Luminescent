@@ -183,6 +183,13 @@ class _Backdrop(QWidget):
         return self._cache
 
     def paintEvent(self, e):
+        still = getattr(self, "still", None)
+        if still is not None:                      # frozen while the next look is built: just the picture
+            p = QPainter(self)
+            p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+            p.drawPixmap(self.rect(), still)
+            p.end()
+            return
         px = self._pixmap()
         p = QPainter(self)
         p.setClipRegion(e.region())
@@ -976,8 +983,8 @@ class MainOverlay:
             curtain.setGeometry(b.rect())
             curtain.show()
             curtain.raise_()
-            anim.fade(curtain, 1.0, 0.0, "theme", 280, then=curtain.deleteLater,
-                      curve=QEasingCurve.Type.InOutQuad)
+            anim.fade(curtain, 1.0, 0.0, "theme", 360, then=curtain.deleteLater,
+                      curve=QEasingCurve.Type.OutCubic)
 
     def rebuild(self, between=None):
         """Theme, text size or navigation changed: rebuild everything, keeping the current page if it is open.
@@ -985,7 +992,20 @@ class MainOverlay:
         cost time)."""
         was_open, cur = self.is_visible(), self._current
         snaps = self._snapshots() if was_open and anim.on("theme") else {}
+        state = self._page_state(cur) if was_open else None
+        # the old windows stay up as a still picture of themselves while the new ones are built, so the
+        # desktop never flashes through; they go once the new look is on screen
+        frozen = []
+        if snaps:
+            frozen = [b for b in self._backdrops if alive(b) and b.screen_name in snaps]
+            self._backdrops = [b for b in self._backdrops if b not in frozen]
         self._hard_reset()
+        for b in frozen:
+            for child in b.findChildren(QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
+                child.hide()
+                child.deleteLater()
+            b.still = snaps[b.screen_name]
+            b.update()
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         if between is not None:
             try:
@@ -994,10 +1014,33 @@ class MainOverlay:
                 log.exception("restyling failed")
         if was_open:
             self.open(cur, fade=False)
+            if state is not None:
+                QTimer.singleShot(0, lambda: self._restore_page_state(cur, state))
             if snaps:
                 self._crossfade(snaps)
         else:
             QTimer.singleShot(1500, self.prewarm)
+        for b in frozen:
+            QTimer.singleShot(90, lambda b=b: (b.close(), b.deleteLater()) if alive(b) else None)
+
+    def _page_state(self, key: str):
+        """What the open page wants to keep across a rebuild (where it is scrolled to...), None for nothing."""
+        page = self._pages.get(key)
+        fn = getattr(page, "state", None) if alive(page) else None
+        try:
+            return fn() if callable(fn) else None
+        except Exception:
+            log.exception("could not read the %s page's state", key)
+            return None
+
+    def _restore_page_state(self, key: str, state):
+        page = self._pages.get(key)
+        fn = getattr(page, "restore_state", None) if alive(page) else None
+        if callable(fn):
+            try:
+                fn(state)
+            except Exception:
+                log.exception("could not restore the %s page", key)
 
     def prewarm(self, keys: list | None = None):
         """Build the overlay and its pages ahead of time, one page per event-loop pass, so the first

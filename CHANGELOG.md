@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.8.1
+
+* **Keys for themes.** Give any theme a key of its own (theme editor → General → KEY) and press it anywhere to switch
+  straight to that theme. Next to the **Next theme** key there is now a **Previous theme** key too (Settings → Overlay
+  & Interface), and both are in the command palette and the automation Switch theme step.
+* **Theme wallpapers work with Caelestia.** Luminescent used to start its own wallpaper program (swaybg) under
+  Caelestia's, so which picture you saw was down to luck, and restarting Caelestia shuffled them again. Old copies
+  were also left running. Now, when Caelestia draws your wallpaper, the theme's picture goes to Caelestia itself and
+  the stray copies are stopped.
+* **Caelestia's colours follow the switch.** The wallpaper goes on first and the theme's colours after it, so a theme
+  with its own colours always ends up with them. A theme without colours of its own now gets the colours Caelestia
+  makes from its wallpaper, instead of old ones from before you changed wallpaper.
+* **Switching quickly is safe.** Press a theme key a few times in a row and the last theme you picked is the one you
+  end up with, wallpaper, colours and all.
+* A theme whose wallpaper file has gone missing now says so, instead of quietly leaving the old one up.
+
 ## 1.8.0
 
 * **Window borders with the theme.** A new **Window borders** page in the theme editor (under DESKTOP, with

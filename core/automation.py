@@ -1506,7 +1506,7 @@ class SwitchBoard(Node):
 
 
 def _themes(eng) -> list:
-    return [("next", "The next theme")] + [(t["id"], t["name"]) for t in eng.launcher.themes.themes()]
+    return [("next", "The next theme"), ("previous", "The previous theme")] + [(t["id"], t["name"]) for t in eng.launcher.themes.themes()]
 
 
 @node("theme", "Switch theme", "action", ins=["run"], outs=["done"], fields=[
@@ -1516,6 +1516,8 @@ class ThemeNode(Node):
         tid = str(self.raw("theme"))
         if tid == "next":
             self.eng.launcher.next_theme()
+        elif tid == "previous":
+            self.eng.launcher.next_theme(-1)
         else:
             self.eng.launcher.apply_theme(tid)
         self.fire("done", inp)

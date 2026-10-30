@@ -1094,6 +1094,20 @@ class ThemeDialog(widgets.RoundedDialog):
         c.addLayout(form)
         v.addWidget(card)
 
+        from settings_ui import HotkeyEdit
+        card, c = _card("KEY")
+        hint = widgets.label("Press it anywhere to switch to this theme. Next and previous theme keys are in "
+                             "Settings → Overlay & Interface.", 11, tone="muted")
+        hint.setWordWrap(True)
+        c.addWidget(hint)
+        self.hotkey = HotkeyEdit()
+        self.hotkey.set_value(t.get("hotkey", ""))
+        self.hotkey.recording_changed.connect(self.launcher.hotkeys.set_suspended)
+        self.hotkey.conflict_fn = self._key_conflict
+        self.hotkey.edit.textChanged.connect(lambda _t: self.changed())
+        c.addWidget(self.hotkey)
+        v.addWidget(card)
+
         card, c = _card("SHAPE")
         self.radius = _SliderRow(0, 30, int(t.get("radius", 10)), "px", self.changed)
         c.addWidget(widgets.label("Corner radius", 12.5))
@@ -1115,6 +1129,19 @@ class ThemeDialog(widgets.RoundedDialog):
         v.addWidget(card)
         v.addStretch()
         return page
+
+    def _key_conflict(self, combo: str) -> str:
+        """What else uses `combo` ('' when nothing, or only this theme)."""
+        from core import hotkeys as hk
+        combo = hk.normalize(combo)
+        if not combo:
+            return ""
+        other = next((o["name"] for o in self.store.themes()
+                      if o["id"] != self.t["id"] and hk.normalize(str(o.get("hotkey") or "")) == combo), "")
+        if other:
+            return f"Already used by the theme {other}"
+        owner = self.launcher.hotkeys.owner_of(combo)
+        return f"Already used by {owner}" if owner and owner != "themes" else ""
 
     def _colours_page(self) -> QWidget:
         page, v = self._page("Colours", "Every colour of the theme. Any of them can be a gradient: open one and "
@@ -1633,6 +1660,10 @@ class ThemeDialog(widgets.RoundedDialog):
             t.update({"font_family": self.font.currentFont().family(), "radius": self.radius.value(),
                       "glow": self.glow.isChecked(), "background_image": self.bg_image.text().strip(),
                       "image_opacity": self.opacity.value() / 100.0, "icon": self.icon.text().strip()})
+        if hasattr(self, "hotkey"):
+            t["hotkey"] = self.hotkey.value()
+            if not t["hotkey"] or self._key_conflict(t["hotkey"]):
+                t.pop("hotkey", None)
         if hasattr(self, "wallpaper"):
             t.update({"wallpaper": self.wallpaper.text().strip(), "profile": self.profile.currentData() or ""})
         t["modules"] = {k: v for k, v in ((k, theme.clean_section(v)) for k, v in t["modules"].items()) if v}

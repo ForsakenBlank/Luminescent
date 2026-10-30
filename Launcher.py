@@ -142,6 +142,8 @@ class Launcher:
         self.themes.applied.connect(self._theme_applied)
 
         self._register_global_hotkeys()
+        self._register_theme_hotkeys()
+        self.themes.changed.connect(self._register_theme_hotkeys)
         for key in self.modules:
             if self._enabled(key) and not self.safe_mode:
                 self._start_module(key)
@@ -254,23 +256,42 @@ class Launcher:
         self.icon = make_icon(theme.is_light(), theme.P.primary)
         self.app.setWindowIcon(self.icon)
         self.tray.setIcon(self.icon)
-        # the desktop around Luminescent follows once the new look is on screen, so switching feels instant
-        QTimer.singleShot(0, lambda: self._desktop_follows(t))
         if self._palette is not None:
             if alive(self._palette):
                 self._palette.close()
                 self._palette.deleteLater()
             self._palette = None
-        if t.get("wallpaper") and not self.settings.get("ui.performance_mode", False):
-            wallpaper.apply(t["wallpaper"], self.settings.get("ui.wallpaper_engine_exe", ""),
-                            on_error=lambda msg: log.warning("wallpaper: %s", msg))
+        # the desktop around Luminescent follows once the new look is on screen, so switching feels instant. With
+        # Caelestia drawing the wallpaper it goes first: Caelestia may make new colours from it, and the theme's
+        # own colours have to go on after those, not under them
+        if not self._theme_wallpaper(t, then=lambda: self._desktop_follows(t)):
+            QTimer.singleShot(0, lambda: self._desktop_follows(t))
         # a theme picks its settings profile; none picked = the default profile
         if self.settings.active_profile() != (t.get("profile") or "default"):
             self.settings.switch_profile(t.get("profile") or "default")
             self.notify(APP_NAME, f"Settings profile: {self.settings.profile_name(self.settings.active_profile())}", 2500)
 
+    def _theme_wallpaper(self, t: dict, then) -> bool:
+        """The theme's wallpaper. Returns True when Caelestia draws it and `then()` runs once it is on."""
+        path = os.path.expandvars(os.path.expanduser(str(t.get("wallpaper") or "").strip().strip('"')))
+        if not path or self.settings.get("ui.performance_mode", False):
+            return False
+        if not os.path.exists(path):
+            self.notify(APP_NAME, f"The wallpaper of {t.get('name', 'this theme')} was not found:\n{path}", 6000)
+            return False
+        cael = self.modules.get("caelestia")
+        if (not wallpaper.CUSTOM_COMMAND.strip() and wallpaper.is_image(path) and cael is not None
+                and hasattr(cael, "set_wallpaper") and cael.draws_wallpaper()):
+            cael.set_wallpaper(path, then=then)
+            return True
+        wallpaper.apply(path, self.settings.get("ui.wallpaper_engine_exe", ""),
+                        on_error=lambda msg: log.warning("wallpaper: %s", msg))
+        return False
+
     def _desktop_follows(self, t: dict):
         """The terminal, Caelestia (colours, shell settings, extras) glass and window borders in the new theme."""
+        if t.get("id") != self.themes.active().get("id"):
+            return                          # switched again meanwhile: the newer theme does this itself
         safely(self._apply_glass, "glass")
         safely(self._apply_borders, "window borders")
         safely(self._write_terminal_scheme, "terminal colours")
@@ -620,11 +641,29 @@ class Launcher:
         if text:
             widgets.message(None, f"What is new in {APP_NAME} {VERSION}", text)
 
-    def next_theme(self):
-        t = self.themes.next_theme()
+    def next_theme(self, step: int = 1):
+        t = self.themes.next_theme(step)
         if t is not None:
             self.apply_theme(t["id"])
             self.notify(APP_NAME, f"Theme: {t['name']}", 1500)
+
+    def _theme_key(self, tid: str):
+        t = self.themes.get(tid)
+        if t is None or t["id"] == self.themes.data["active"]:
+            return
+        self.apply_theme(tid)
+        self.notify(APP_NAME, f"Theme: {t['name']}", 1500)
+
+    def _register_theme_hotkeys(self):
+        """The keys themes have of their own (theme editor → General)."""
+        self.hotkeys.unregister_all("themes")
+        for t in self.themes.themes():
+            combo = str(t.get("hotkey") or "")
+            if combo:
+                err = self.hotkeys.register("themes", combo, lambda i=t["id"]: self._theme_key(i),
+                                            f"theme {t['name']}")
+                if err:
+                    self.notify(APP_NAME, f"The key for the theme {t['name']} is not registered: {err}")
 
     def _register_global_hotkeys(self):
         s = self.settings
@@ -636,6 +675,7 @@ class Launcher:
             (s.get("ui.cheatsheet_hotkey", ""), lambda: self.cheatsheet.trigger(s.get("ui.cheatsheet_hotkey", "")),
              "cheat sheet"),
             (s.get("ui.theme_cycle_hotkey", ""), self.next_theme, "next theme"),
+            (s.get("ui.theme_prev_hotkey", ""), lambda: self.next_theme(-1), "previous theme"),
             (s.get("general.keep_awake_hotkey", ""), self.toggle_keep_awake, "keep awake"),
         ]
         from core.settings import NAV_SECTIONS
@@ -690,7 +730,8 @@ class Launcher:
         for s in SCHEMA:
             out.append(Entry(f"settings:{s.key}", f"Settings › {s.title}", lambda k=s.key: self.open_settings(k),
                              "settings", "settings"))
-        for label, fn in (("Next theme", self.next_theme), ("Reset stuck keys", self.reset_keys),
+        for label, fn in (("Next theme", self.next_theme), ("Previous theme", lambda: self.next_theme(-1)),
+                          ("Reset stuck keys", self.reset_keys),
                           ("Check for updates", lambda: self._check_updates(force=True)),
                           ("Update Luminescent now", self.install_update),
                           ("Keep awake on / off", self.toggle_keep_awake),
@@ -1075,9 +1116,28 @@ def _smoke(launcher: "Launcher", app: QApplication):
             page._picture_natural(box)
         launcher.dashboard.delete_tab(pic["tab"]["id"])
 
+    def theme_keys():
+        # next and previous go opposite ways round, and a theme's own key is registered and switches to it
+        store = launcher.themes
+        ahead, back = store.next_theme(1), store.next_theme(-1)
+        act = store.data["active"]
+        if ahead is None or back is None or act in (ahead["id"], back["id"]):
+            raise RuntimeError("next and previous theme came out wrong")
+        t = dict(store.get("light"))
+        t["hotkey"] = "ctrl+alt+shift+f9"
+        store.update_theme(t)
+        if launcher.hotkeys.owner_of("ctrl+alt+shift+f9") != "themes":
+            raise RuntimeError("the theme's own key was not registered")
+        launcher._theme_key("light")
+        if store.data["active"] != "light":
+            raise RuntimeError("the theme's own key did not switch to it")
+        t.pop("hotkey")
+        store.update_theme(t)
+
     steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide, theme_editor, gradient_editor,
               picture_on_dashboard, picture_gone, launcher.overlay.hide,
-              lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark")]
+              lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark"), theme_keys,
+              lambda: launcher.apply_theme("dark")]
 
     def run(i=0):
         if i < len(steps):

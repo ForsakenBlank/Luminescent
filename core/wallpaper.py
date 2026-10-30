@@ -5,7 +5,8 @@ A theme's `wallpaper` can be a picture (.jpg/.png/.webp...) or a Wallpaper
 Engine project (project.json, its folder, or a .pkg/.mp4 inside it).
 
 Pictures go to whatever draws your wallpaper, the first one that answers:
-Noctalia (`noctalia msg wallpaper-set`), swww, hyprpaper, swaybg. A .gif plays when swww draws it;
+Caelestia (`caelestia wallpaper -f`, when its shell draws the background), Noctalia
+(`noctalia msg wallpaper-set`), swww, hyprpaper, swaybg. A .gif plays when swww draws it;
 videos (.mp4, .webm, .mkv, .mov) play with mpvpaper, one per screen, looped and silent.
 Settings → Overlay & Interface → "Wallpaper command" replaces all of that with your own command
 ({file} is the wallpaper), for a wallpaper tool or plugin of your own.
@@ -92,9 +93,52 @@ def _run(cmd: list[str], timeout: float = 10) -> bool:
         return False
 
 
+def caelestia_draws() -> bool:
+    """Caelestia's shell draws the wallpaper itself (its background is on screen)."""
+    from core import hypr
+    for mon in (hypr.query("layers") or {}).values():
+        for layer in ((mon or {}).get("levels") or {}).values():
+            if any(item.get("namespace") == "caelestia-background" for item in layer or []):
+                return True
+    return False
+
+
+def stop_swaybg():
+    """Stop every swaybg Luminescent started, also ones left by an earlier run. With Caelestia drawing the
+    wallpaper they only stack under or over it, so which picture shows would be down to luck."""
+    global _swaybg
+    if _swaybg and _swaybg.poll() is None:
+        _swaybg.terminate()
+    _swaybg = None
+    if IS_WIN or not os.path.isdir("/proc"):
+        return
+    me = os.getuid()
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit():
+            continue
+        try:
+            if os.stat(f"/proc/{pid}").st_uid != me:
+                continue
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                args = f.read().split(b"\0")
+        except OSError:
+            continue
+        # exactly the way _set_picture starts it, so a swaybg of your own is left alone
+        if args[:4] == [b"swaybg", b"-m", b"fill", b"-i"]:
+            try:
+                os.kill(int(pid), 15)
+                log.info("stopped a swaybg left drawing under Caelestia (%s)", pid)
+            except OSError:
+                pass
+
+
 def _set_picture(path: str):
     global _swaybg
     path = os.path.abspath(path)
+    if shutil.which("caelestia") and caelestia_draws():
+        if _run(["caelestia", "wallpaper", "-f", path], timeout=30):
+            stop_swaybg()
+            return "Caelestia"
     if shutil.which("noctalia") and _run(["noctalia", "msg", "wallpaper-set", path]):
         return "Noctalia"
     if shutil.which("swww") and _run(["swww", "img", path]):

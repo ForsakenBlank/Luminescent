@@ -36,6 +36,7 @@ from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher
 from PyQt6.QtGui import QPixmap
 
 from core import widgets, theme, hypr, colourpick, IS_WIN, DATA_DIR
+from core import wallpaper as wallpaper_tool
 from core.module import Module
 from core.guard import alive
 from modules import caelestia_look as look
@@ -1201,6 +1202,34 @@ class CaelestiaModule(Module):
                 then()
         proc.finished.connect(done)
         proc.start(py, ["-c", code, SCHEME_PATH])
+
+    def draws_wallpaper(self) -> bool:
+        return self.running and not IS_WIN and bool(shutil.which("caelestia")) and wallpaper_tool.caelestia_draws()
+
+    def set_wallpaper(self, path: str, then=None):
+        """Caelestia's own wallpaper (it may make a new scheme from it). `then()` runs once it is on, so a theme's
+        colours go on after the wallpaper's, never under them."""
+        from PyQt6.QtCore import QProcess
+        old = scheme()
+        proc = QProcess(self)
+
+        def done(*_a):
+            if proc.exitCode() != 0:
+                self.log.warning("Caelestia could not switch the wallpaper: %s",
+                                 bytes(proc.readAllStandardError()).decode(errors="replace")[-300:])
+            else:
+                self.log.info("wallpaper set to %s (Caelestia)", path)
+                wallpaper_tool.stop_swaybg()
+                if scheme() != old:
+                    # caelestia made new colours from the picture: those are now what a theme without colours of
+                    # its own shows, not the ones from the old wallpaper
+                    self.settings.set("caelestia.before_theme", {})
+                    self.settings.save(emit=False)
+            proc.deleteLater()
+            if then:
+                then()
+        proc.finished.connect(done)
+        proc.start("caelestia", ["wallpaper", "-f", path])
 
     def theme_applied(self, t: dict, then=None):
         """A Luminescent theme was applied: give Caelestia that theme's colours, shell settings and extras, and

@@ -222,6 +222,9 @@ SCHEMA = [
         Field("glass_amount", "", "hidden", 0.82),
         Field("theme_cycle_hotkey", "Next theme hotkey", "hotkey", "",
               "Switches to the next theme in the active theme's folder (or the next of all themes)."),
+        Field("theme_prev_hotkey", "Previous theme hotkey", "hotkey", "",
+              "Switches back to the theme before it, the same way round. A theme can also have a key of its own "
+              "(theme editor → General)."),
         Field("overlay_dim", "Dim the screen behind the overlay", "opacity", 0.64),
         Field("click_outside_closes", "Clicking the dimmed area closes the overlay", "bool", True,
               "Around the Themes, Clipboard and Settings panels. The Dashboard works like a desktop: clicking it "

@@ -1119,6 +1119,8 @@ class CaelestiaModule(Module):
                 self.log.warning("could not put the kept Caelestia colours back: %s", err)
             else:
                 self.log.info("put %d colours back into Caelestia's %s scheme", len(todo), scheme_id(d))
+                launcher = self.ctx.launcher
+                self.refresh_apps(getattr(launcher, "_push_terminal_colours", None))
         if self.panel is not None and self.panel.isVisible() and self.panel.pages.currentIndex() == 2 \
                 and not self.panel._edits:
             self.panel._fill_colours()
@@ -1162,9 +1164,45 @@ class CaelestiaModule(Module):
         if err:
             self.ctx.notify(self.title, f"Could not lock: {err}")
 
-    def theme_applied(self, t: dict):
+    def refresh_apps(self, then=None):
+        """Have Caelestia re-colour the apps it themes (terminal, btop, GTK, Qt...) from scheme.json, the way it
+        does when it switches scheme itself; Luminescent only writes scheme.json, which only the shell watches.
+        `then()` runs once it is done."""
+        exe = shutil.which("caelestia")
+        if not exe or not self.s("theme_apps", True) or os.environ.get("LUMINESCENT_HOME"):
+            if then:
+                then()
+            return
+        try:
+            with open(exe, "r", encoding="utf-8", errors="replace") as f:
+                first = f.readline().strip()
+        except OSError:
+            first = ""
+        py = first[2:].strip().split()[0] if first.startswith("#!") else "python3"
+        if py.endswith("/env"):
+            py = "python3"
+        code = ("import json, sys\n"
+                "from caelestia.utils.theme import apply_colours\n"
+                "d = json.load(open(sys.argv[1], encoding='utf-8'))\n"
+                "c = d.get('colours') or d.get('colors') or {}\n"
+                "apply_colours({k: str(v).lstrip('#') for k, v in c.items()}, d.get('mode') or 'dark')\n")
+        from PyQt6.QtCore import QProcess
+        proc = QProcess(self)
+
+        def done(*_a):
+            if proc.exitCode() != 0:
+                self.log.warning("Caelestia could not re-colour its apps: %s",
+                                 bytes(proc.readAllStandardError()).decode(errors="replace")[-300:])
+            proc.deleteLater()
+            if then:
+                then()
+        proc.finished.connect(done)
+        proc.start(py, ["-c", code, SCHEME_PATH])
+
+    def theme_applied(self, t: dict, then=None):
         """A Luminescent theme was applied: give Caelestia that theme's colours, shell settings and extras, and
-        put back what an earlier theme changed that this one leaves alone."""
+        put back what an earlier theme changed that this one leaves alone. `then()` runs after Caelestia's apps
+        have their new colours (at once when nothing changed)."""
         if IS_WIN:
             return
         err = self.apply_look(t)
@@ -1174,6 +1212,8 @@ class CaelestiaModule(Module):
         cols = {k: v for k, v in (((t.get("caelestia") or {}).get("colours")) or {}).items() if is_colour(v)}
         now = scheme()
         if not now:
+            if then:
+                then()
             return
         # what caelestia had before a theme changed it, so a theme without colours of its own can put it back
         before = {k: v for k, v in (self.s("before_theme", {}) or {}).items() if is_colour(v)}
@@ -1192,6 +1232,10 @@ class CaelestiaModule(Module):
                 self.ctx.notify(self.title, err)
             else:
                 self.log.info("gave Caelestia %d colours for the theme %s", len(todo), t.get("name", ""))
+                self.refresh_apps(then)
+                return
+        if then:
+            then()
 
     def theme_from_scheme(self):
         cols = scheme()

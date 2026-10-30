@@ -634,6 +634,10 @@ SCHEMA += [
         Field("keep_scheme_colours", "Put my colours back when Caelestia rewrites its scheme", "bool", True,
               "Colours you saved for a Caelestia scheme (Caelestia & Glass → Colours) come back whenever Caelestia "
               "switches to that scheme again or makes it anew (for example from a new wallpaper)."),
+        Field("theme_apps", "Re-theme Caelestia's apps when Luminescent changes its colours", "bool", True,
+              "After a theme gives Caelestia its colours, Caelestia also re-colours the apps it themes (terminals, "
+              "btop, GTK and Qt apps, Discord, Spotify...), the same as when it switches scheme itself. Off: only "
+              "the shell changes."),
     ]),
 ]
 

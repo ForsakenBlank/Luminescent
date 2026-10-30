@@ -1354,6 +1354,16 @@ class ThemeDialog(widgets.RoundedDialog):
                 else:
                     own.pop(k, None)
             base = {k: (self._cael_now or {}).get(k) for k in changes}
+        elif scope == "term":
+            own = self.t.setdefault("terminal", {}).setdefault("colours", {})
+            old = {k: own.get(k) for k in changes}
+            for k, v in changes.items():
+                if isinstance(v, str) and v:
+                    own[k] = v.upper()
+                else:
+                    own.pop(k, None)
+            base = theme_extras._term_base(self)
+            base = {k: base.get(k) for k in changes}
         else:
             old = {k: self._global_value(k) for k in changes}
             for k, v in changes.items():
@@ -1383,6 +1393,11 @@ class ThemeDialog(widgets.RoundedDialog):
             row.set_value(self._global_value(role))
         if hasattr(self, "_lum_recent"):
             self._lum_recent.fill()
+        if getattr(self, "_term_refresh", None) is not None:
+            try:
+                self._term_refresh()
+            except RuntimeError:                # the terminal page was built again since
+                self._term_refresh = None
         self._undo_buttons()
         self.preview.update()
 

@@ -839,6 +839,10 @@ class _Before(QWidget):
                 s = min(half / PREVIEW_W, (self.height() - 24) / 770)
                 qp.scale(s, s)
                 paint_caelestia(qp, {**self.bd.base, **cols}, self.bd.solid)
+            elif self.bd.scope == "term":
+                from ui import theme_extras
+                theme_extras.draw_terminal(qp, QRectF(0, 0, half, 300), {**self.bd.base, **cols},
+                                           self.bd.dlg.t.get("terminal") or {})
             else:
                 s = min(1.0, (self.height() - 24) / 520)
                 qp.scale(s, s)
@@ -860,14 +864,27 @@ class BulkDialog(widgets.RoundedDialog):
             self.base = dict(dlg.cael_values())          # every colour as it is now
             self.groups = [(gid, title_, keys) for gid, title_, _n, keys in cael_groups(self.base)]
             self.solid = dlg.cael_solid()
+        elif scope == "term":
+            from ui import theme_extras
+            self.base = dict(theme_extras.term_values(dlg))
+            self.groups = [(gid, t, list(keys)) for gid, t, keys in theme_extras.TERM_GROUPS]
+            self.solid = 1.0
         else:
             self.base = {k: _solid(v) for k, v in dlg.lum_values().items()}
             self.groups = [(gid, t, [r for r in roles if r in self.base]) for gid, t, roles in LUM_GROUPS]
             self.solid = 1.0
-        self.light = tones.tone(self.base.get("surface" if scope == "cael" else "bg_base", "#131317")) > 55
+        bg_key = {"cael": "surface", "term": "background"}.get(scope, "bg_base")
+        self.light = tones.tone(self.base.get(bg_key, "#131317")) > 55
         self.before = dict(self.base)
         self.after = dict(self.base)
-        self.main = (tones.main_from_scheme(self.base) if scope == "cael" else tones.main_from_roles(self.base))
+        if scope == "cael":
+            self.main = tones.main_from_scheme(self.base)
+        elif scope == "term":
+            self.main = {"accent": self.base.get("colour16"), "accent2": self.base.get("colour17"),
+                         "accent3": self.base.get("colour18"), "background": self.base.get("background"),
+                         "text": self.base.get("foreground")}
+        else:
+            self.main = tones.main_from_roles(self.base)
         self.vals = {"hue": 0, "brightness": 0, "contrast": 0, "saturation": 0, "warmth": 0, "step": 4}
         self.families = {"greens"}
         self.target = self.main.get("accent")
@@ -1009,7 +1026,8 @@ class BulkDialog(widgets.RoundedDialog):
                     row.addWidget(clr)
                 row.addStretch()
                 self._main_swatches[key] = sw
-                if self.scope == "lum" and key not in ("accent", "background", "text"):
+                if self.scope == "lum" and key not in ("accent", "background", "text") or \
+                        self.scope == "term" and key in ("success", "error"):
                     continue
                 self.controls.addLayout(row)
             hint = widgets.label("Only the accent, background and text are needed; the rest are worked out when "
@@ -1134,6 +1152,9 @@ class BulkDialog(widgets.RoundedDialog):
         main = {k: v for k, v in main.items() if v}
         if self.scope == "cael":
             return tones.caelestia_scheme(main, keys=self.base.keys())
+        if self.scope == "term":
+            from ui import theme_extras
+            return theme_extras.term_from_caelestia(tones.caelestia_scheme(main))
         return tones.lum_roles(main)
 
     def compute(self) -> dict:

@@ -270,7 +270,27 @@ class Launcher:
         safely(self._write_terminal_scheme, "terminal colours")
         cael = self.modules.get("caelestia")
         if cael is not None and cael.running and hasattr(cael, "theme_applied"):
-            safely(lambda: cael.theme_applied(t), "caelestia colours")
+            # caelestia re-themes its apps (and the terminal) once it has the colours: the theme's own terminal
+            # colours go on top again after that
+            safely(lambda: cael.theme_applied(t, then=self._push_terminal_colours), "caelestia colours")
+
+    def _push_terminal_colours(self):
+        """With "your own terminal follows the theme" on (Linux): the theme's terminal colours into the file
+        Caelestia's fish config loads in every new shell, and into every open terminal."""
+        if IS_WIN or os.environ.get("LUMINESCENT_HOME"):
+            return
+        backups = os.path.join(DATA_DIR, "terminal-backups")
+        if self.settings.get("ui.own_terminal", False):
+            err = terminal.push_colours(backups)
+            if err:
+                log.warning("terminal colours: %s", err)
+            elif not self.settings.get("ui.terminal_pushed", False):
+                self.settings.set("ui.terminal_pushed", True)
+                self.settings.save(emit=False)
+        elif self.settings.get("ui.terminal_pushed", False):
+            terminal.give_back_colours(backups)
+            self.settings.set("ui.terminal_pushed", False)
+            self.settings.save(emit=False)
 
     def _sync_own_terminal(self, asked: bool = False):
         """Settings → Overlay → "Your own terminal follows the theme": kitty.conf on Linux, a Windows Terminal
@@ -311,8 +331,14 @@ class Launcher:
         t = self.themes.active()
         terminal.set_theme(t.get("terminal"))
         safely(lambda: self._fastfetch_logo(t), "terminal start-up picture")
+        if not IS_WIN and not os.environ.get("LUMINESCENT_HOME"):
+            err = terminal.write_greeting(os.path.join(DATA_DIR, "terminal-backups"))
+            if err:
+                log.warning("start-up text: %s", err)
         if self.settings.get("ui.own_terminal", False):
             self._sync_own_terminal()
+        # kitty reloads its config first, then the colours go to the open terminals
+        QTimer.singleShot(400, lambda: safely(self._push_terminal_colours, "terminal colours"))
         if not self.settings.get("ui.terminal_scheme", True):
             return
         try:
@@ -336,8 +362,7 @@ class Launcher:
                 before = {"value": was}
                 self.settings.set("ui.fastfetch_before", before)
                 self.settings.save(emit=False)
-            value = json.dumps({"type": "auto", "source": os.path.expanduser(want),
-                                "width": terminal.theme_settings().get("logo_width", 30)})
+            value = terminal.logo_value()
             if terminal.fastfetch_logo() != value:
                 err = terminal.set_fastfetch_logo(value, os.path.join(DATA_DIR, "terminal-backups"))
                 if err:
@@ -946,6 +971,26 @@ def _smoke(launcher: "Launcher", app: QApplication):
                     dlg._match_caelestia()
                     dlg._forget_caelestia()
                     dlg.toggle_favourite("cael:primary", False)
+                if key == "terminal":
+                    for tool in ("main", "harmony", "adjust", "follow", "flip"):
+                        bd = colour_tools.BulkDialog(dlg, "term", tool)
+                        bd.grab()
+                        bd._apply()
+                    term = dlg.t.setdefault("terminal", {})
+                    term.update({"logo": os.path.join(APP_DIR, "assets", "luminescent-256.png"), "logo_width": 20,
+                                 "logo_position": "top", "narrow": {"below": 80, "then": "top"},
+                                 "greeting": {"on": True, "text": "hello\nthere", "info": "luminescent",
+                                              "style": "box", "lines": [{"type": "kernel", "label": "kernel",
+                                                                         "colour": "colour16"},
+                                                                        {"type": "colors", "label": "",
+                                                                         "colour": "red"}]}})
+                    dlg.preview.grab()
+                    terminal.set_theme(term)
+                    if "fish_greeting" not in terminal.greeting_script() or "kernel" not in \
+                            terminal._fastfetch_config(terminal.theme_settings()["greeting"]):
+                        raise RuntimeError("the start-up script came out wrong")
+                    terminal.set_theme(launcher.themes.active().get("terminal"))
+                    dlg.undo()
                 if key == "colours":
                     dlg._set_global_tracked("primary", "#33AA77")
                     dlg.toggle_favourite("lum:bg_base", True)

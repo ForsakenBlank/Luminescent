@@ -55,12 +55,35 @@ def _mix(a: str, b: str, t: float) -> str:
     return "#" + "".join(f"{round(x + (y - x) * t):02X}" for x, y in zip(ca, cb))
 
 
-# what the active theme sets for the terminal itself: {"colours": {name: "#hex"}, "opacity": 0..1,
-# "logo": picture path, "logo_width": columns}; set_theme() is called whenever a theme is applied
+# what the active theme sets for the terminal itself (see ui/theme_extras.py for every key); set_theme() is
+# called whenever a theme is applied
 _theme: dict = {}
 NAMES = ["background", "foreground", "cursorColor", "selectionBackground"] + \
     [n for c in ["black", "red", "green", "yellow", "blue", "purple", "cyan", "white"]
-     for n in (c, "bright" + c[0].upper() + c[1:])]
+     for n in (c, "bright" + c[0].upper() + c[1:])] + ["colour16", "colour17", "colour18"]
+# where the picture goes, and what happens in a narrow terminal
+LOGO_POSITIONS = ("auto", "left", "top", "right")
+NARROW = ("hide", "top", "text")
+# the info lines Luminescent's own info box can show: (fastfetch module, label)
+INFO_MODULES = [("os", "distro"), ("kernel", "kernel"), ("uptime", "uptime"), ("shell", "shell"),
+                ("packages", "pkgs"), ("memory", "memory"), ("cpu", "cpu"), ("gpu", "gpu"), ("wm", "wm"),
+                ("terminal", "terminal"), ("disk", "disk"), ("battery", "battery"), ("host", "host"),
+                ("title", "user"), ("localip", "ip"), ("datetime", "time"), ("colors", "")]
+DEFAULT_INFO = ["os", "kernel", "uptime", "shell", "packages", "memory"]
+# colour slots a line or the start-up text can use: the 16 terminal colours and Caelestia's extra three
+SLOTS = {"colour16": "38;5;16", "colour17": "38;5;17", "colour18": "38;5;18", "foreground": "39",
+         **{n: c for n, c in zip(["black", "red", "green", "yellow", "blue", "purple", "cyan", "white"],
+                                 ["30", "31", "32", "33", "34", "35", "36", "37"])},
+         **{"bright" + n[0].upper() + n[1:]: c for n, c in
+            zip(["black", "red", "green", "yellow", "blue", "purple", "cyan", "white"],
+                ["90", "91", "92", "93", "94", "95", "96", "97"])}}
+
+
+def _num(v, lo, hi, default):
+    try:
+        return max(lo, min(hi, int(v)))
+    except (TypeError, ValueError):
+        return default
 
 
 def set_theme(d: dict | None):
@@ -73,7 +96,29 @@ def set_theme(d: dict | None):
         out["opacity"] = max(0.1, min(1.0, float(d["opacity"])))
     if isinstance(d.get("logo"), str) and d["logo"].strip():
         out["logo"] = d["logo"].strip()
-        out["logo_width"] = int(d.get("logo_width") or 0) or 30
+        out["logo_width"] = _num(d.get("logo_width"), 4, 200, 30)
+        out["logo_height"] = _num(d.get("logo_height"), 0, 100, 0)
+        out["logo_padding"] = _num(d.get("logo_padding"), 0, 20, 2)
+        out["logo_padding_top"] = _num(d.get("logo_padding_top"), 0, 20, 0)
+        out["logo_position"] = d.get("logo_position") if d.get("logo_position") in LOGO_POSITIONS else "left"
+    if isinstance(d.get("narrow"), dict):
+        n = d["narrow"]
+        out["narrow"] = {"below": _num(n.get("below"), 20, 300, 90),
+                         "then": n.get("then") if n.get("then") in NARROW else "hide"}
+    g = d.get("greeting")
+    if isinstance(g, dict) and g.get("on"):
+        info = g.get("info") if g.get("info") in ("own", "luminescent", "none") else "own"
+        lines = []
+        for ln in g.get("lines") or []:
+            if isinstance(ln, dict) and ln.get("type") in dict(INFO_MODULES):
+                lines.append({"type": ln["type"], "label": str(ln.get("label", ""))[:24],
+                              "colour": ln.get("colour") if ln.get("colour") in SLOTS else "colour16"})
+        out["greeting"] = {"text": str(g.get("text") or "")[:4000],
+                           "colour": g.get("colour") if g.get("colour") in SLOTS else "colour16",
+                           "info": info, "style": "plain" if g.get("style") == "plain" else "box",
+                           "lines": lines or [{"type": t, "label": dict(INFO_MODULES)[t], "colour": "colour16"}
+                                              for t in DEFAULT_INFO],
+                           "args": str(g.get("args") or "")[:200]}
     _theme = out
 
 
@@ -102,6 +147,8 @@ def _palette_scheme() -> dict:
         s[n] = _mix(c, p.primary, 0.12)
         s["bright" + n[0].upper() + n[1:]] = _mix(c, "#000000" if light else "#FFFFFF", 0.18)
     s["purple"] = p.primary
+    # Caelestia's extra three (fish greetings and fastfetch boxes often use them)
+    s["colour16"], s["colour17"], s["colour18"] = p.primary, p.primary_text, s["cyan"]
     return s
 
 
@@ -199,11 +246,26 @@ def kitty_installed() -> bool:
 
 
 def kitty_linked() -> bool:
+    return kitty_include_state() == "ok"
+
+
+def _broken_include(line: str) -> bool:
+    """A line that was meant to include luminescent-theme.conf but does not (a typo like ".con")."""
+    parts = line.strip().split(None, 1)
+    return (len(parts) == 2 and parts[0] == "include" and parts[1].startswith("luminescent-theme")
+            and parts[1] != "luminescent-theme.conf")
+
+
+def kitty_include_state() -> str:
+    """"ok" (kitty loads Luminescent's colours), "broken" (an include line with a typo) or "missing"."""
     try:
         with open(KITTY_CONF, "r", encoding="utf-8") as f:
-            return any(line.strip() == _INCLUDE for line in f)
+            lines = f.read().split("\n")
     except OSError:
-        return False
+        return "missing"
+    if any(ln.strip() == _INCLUDE for ln in lines):
+        return "ok"
+    return "broken" if any(_broken_include(ln) for ln in lines) else "missing"
 
 
 def write_kitty_theme() -> str:
@@ -229,6 +291,101 @@ def write_kitty_theme() -> str:
     return ""
 
 
+# ── colours for terminals that are already open ───────────────────────────────
+# Caelestia's fish config prints this file at the start of every shell (`cat ~/.local/state/caelestia/
+# sequences.txt`), which sets the 16 colours, 16 to 18, the text, background, cursor and selection: whatever
+# kitty.conf says is painted over in every new shell. So with "your own terminal follows the theme" on,
+# Luminescent's colours go into that file too (and to every terminal that is open, the way Caelestia does it).
+CAEL_SEQUENCES = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"),
+                              "caelestia", "sequences.txt")
+
+
+def _osc(hex_colour: str, *idx: int) -> str:
+    h = hex_colour.lstrip("#")
+    return f"\x1b]{';'.join(map(str, idx))};rgb:{h[0:2]}/{h[2:4]}/{h[4:6]}\x1b\\"
+
+
+def sequences(s: dict | None = None) -> str:
+    """The escape codes that give a running terminal these colours."""
+    s = s or scheme()
+    out = _osc(s["foreground"], 10) + _osc(s["background"], 11) + _osc(s["cursorColor"], 12) + \
+        _osc(s["selectionBackground"], 17)
+    out += "".join(_osc(c, 4, i) for i, c in enumerate(_ansi(s)))
+    out += "".join(_osc(s[k], 4, i) for i, k in ((16, "colour16"), (17, "colour17"), (18, "colour18")) if k in s)
+    return out
+
+
+def fish_loads_caelestia() -> bool:
+    """Does fish print Caelestia's colours at the start of every shell?"""
+    conf = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "fish",
+                        "config.fish")
+    try:
+        with open(conf, "r", encoding="utf-8") as f:
+            return "caelestia/sequences.txt" in f.read()
+    except OSError:
+        return False
+
+
+def push_colours(backup_dir: str) -> str:
+    """The theme's terminal colours into Caelestia's sequences file (when it is used; a copy of Caelestia's own
+    is kept) and into every terminal that is open now. '' or an error."""
+    seq = sequences()
+    if os.path.isdir(os.path.dirname(CAEL_SEQUENCES)) and (os.path.isfile(CAEL_SEQUENCES) or fish_loads_caelestia()):
+        try:
+            keep = os.path.join(backup_dir, "caelestia-sequences.txt")
+            if os.path.isfile(CAEL_SEQUENCES):
+                with open(CAEL_SEQUENCES, "r", encoding="utf-8", errors="replace") as f:
+                    now = f.read()
+                if now != seq:
+                    # caelestia wrote it (a new scheme): that is the one to put back later
+                    os.makedirs(backup_dir, exist_ok=True)
+                    with open(keep, "w", encoding="utf-8") as f:
+                        f.write(now)
+            tmp = CAEL_SEQUENCES + ".lum-tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(seq)
+            os.replace(tmp, CAEL_SEQUENCES)
+        except OSError as e:
+            return str(e)
+    send_to_open_terminals(seq)
+    return ""
+
+
+def give_back_colours(backup_dir: str):
+    """Caelestia's own terminal colours back (when Luminescent had put the theme's there)."""
+    keep = os.path.join(backup_dir, "caelestia-sequences.txt")
+    try:
+        with open(keep, "r", encoding="utf-8") as f:
+            seq = f.read()
+        with open(CAEL_SEQUENCES, "w", encoding="utf-8") as f:
+            f.write(seq)
+        os.remove(keep)
+    except OSError:
+        return
+    send_to_open_terminals(seq)
+
+
+def send_to_open_terminals(seq: str):
+    """Write colour codes to every terminal of this user that is open (only colours, nothing is typed)."""
+    if IS_WIN or not os.path.isdir("/dev/pts"):
+        return
+    uid = os.getuid()
+    for name in os.listdir("/dev/pts"):
+        if not name.isdigit():
+            continue
+        path = os.path.join("/dev/pts", name)
+        try:
+            if os.stat(path).st_uid != uid:
+                continue
+            fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK | os.O_NOCTTY)
+            try:
+                os.write(fd, seq.encode())
+            finally:
+                os.close(fd)
+        except OSError:
+            continue
+
+
 def link_kitty(backup_dir: str) -> str:
     """Add the include line to kitty.conf (a copy of it goes to `backup_dir` first). '' or an error."""
     if kitty_linked():
@@ -242,8 +399,13 @@ def link_kitty(backup_dir: str) -> str:
                 text = f.read()
         else:
             text = ""
-        # at the end, so the theme wins over colours set earlier in the file
-        text = text.rstrip("\n") + ("\n\n" if text.strip() else "") + f"{_MARK}\n{_INCLUDE}\n"
+        lines = text.split("\n")
+        if any(_broken_include(ln) for ln in lines):
+            # the line is there with a typo: put it right where it is
+            text = "\n".join(_INCLUDE if _broken_include(ln) else ln for ln in lines)
+        else:
+            # at the end, so the theme wins over colours set earlier in the file
+            text = text.rstrip("\n") + ("\n\n" if text.strip() else "") + f"{_MARK}\n{_INCLUDE}\n"
         with open(KITTY_CONF, "w", encoding="utf-8") as f:
             f.write(text)
     except OSError as e:
@@ -478,6 +640,160 @@ def set_fastfetch_logo(value: str | None, backup_dir: str) -> str:
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(text)
         os.replace(tmp, FASTFETCH_CONF)
+    except OSError as e:
+        return str(e)
+    return ""
+
+
+def logo_value(t: dict | None = None) -> str | None:
+    """The theme's start-up picture as fastfetch's "logo" (JSON text), None when the theme has none."""
+    t = t if t is not None else _theme
+    if not t.get("logo"):
+        return None
+    import json
+    logo = {"type": "auto", "source": os.path.expanduser(t["logo"]), "width": t.get("logo_width", 30)}
+    if t.get("logo_height"):
+        logo["height"] = t["logo_height"]
+    pad = t.get("logo_padding", 2)
+    logo["padding"] = {"top": t.get("logo_padding_top", 0), "left": pad, "right": pad}
+    if t.get("logo_position", "left") != "left":
+        logo["position"] = t["logo_position"]
+    return json.dumps(logo)
+
+
+# ── the start-up text and info box (fish) ─────────────────────────────────────
+_CONF = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+FISH_DIR = os.path.join(_CONF, "fish")
+FISH_GREETING = os.path.join(FISH_DIR, "conf.d", "luminescent-greeting.fish")
+OWN_GREETING = os.path.join(FISH_DIR, "functions", "fish_greeting.fish")
+LUM_FASTFETCH = os.path.join(_CONF, "fastfetch", "luminescent.jsonc")
+
+
+def own_greeting() -> tuple[str, str]:
+    """(the text your own fish greeting prints, the options it gives fastfetch), read from
+    functions/fish_greeting.fish: echo lines only, so it is a starting point, not a copy of the script."""
+    import re
+    try:
+        with open(OWN_GREETING, "r", encoding="utf-8") as f:
+            src = f.read()
+    except OSError:
+        return "", ""
+    lines, args = [], ""
+    for ln in src.split("\n"):
+        s = ln.strip()
+        m = re.match(r"^echo\s+(-\w+\s+)?'(.*)'\s*(#.*)?$", s) or re.match(r'^echo\s+(-\w+\s+)?"(.*)"\s*(#.*)?$', s)
+        if m and not (m.group(1) and "e" in m.group(1) and m.group(2).startswith("\\x1b")):
+            lines.append(m.group(2).replace("\\'", "'"))
+        m = re.search(r"\bfastfetch\b([^;&|]*)$", s)
+        if m and not s.startswith("command -v") or (m and "&&" in s):
+            args = m.group(1).strip() if m else args
+    return "\n".join(lines), args
+
+
+def _fish_str(s: str) -> str:
+    return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def _fastfetch_config(g: dict) -> str:
+    """Luminescent's own info box for fastfetch (JSON with a comment on top)."""
+    import json
+    lines = g.get("lines") or []
+    width = max([len(ln["label"]) for ln in lines] + [4])
+    mods: list = ["break"]
+    box = g.get("style") == "box"
+    edge = SLOTS.get(g.get("colour", "colour16"), "38;5;16")
+    if box:
+        mods.append({"type": "custom", "key": "╭" + "─" * (width + 30), "keyColor": edge, "format": ""})
+    for ln in lines:
+        key = ln["label"].ljust(width)
+        m = {"type": ln["type"], "key": ("│ " if box else "") + key, "keyColor": SLOTS.get(ln["colour"], "38;5;16")}
+        if ln["type"] == "colors":
+            m = {"type": "colors", "key": ("│ " if box else "") + " " * width, "symbol": "circle"}
+        mods.append(m)
+    if box:
+        mods.append({"type": "custom", "key": "╰" + "─" * (width + 30), "keyColor": edge, "format": ""})
+    mods.append("break")
+    conf = {"$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+            "display": {"separator": "  "}, "modules": mods}
+    logo = logo_value()
+    if logo is None:
+        own = fastfetch_logo()
+        if own:
+            try:
+                conf["logo"] = json.loads(own)
+            except ValueError:
+                pass
+    else:
+        conf["logo"] = json.loads(logo)
+    return ("// Written by Luminescent from the theme's Terminal page (the info box). It is rewritten when the "
+            "theme changes;\n// your own config.jsonc is not used for it.\n" + json.dumps(conf, indent=4, ensure_ascii=False) + "\n")
+
+
+def greeting_script(t: dict | None = None) -> str:
+    """The fish greeting for the theme: its text, then fastfetch, with less (or no picture) when the terminal is
+    narrow so nothing wraps."""
+    t = t if t is not None else _theme
+    g = t.get("greeting") or {}
+    narrow = t.get("narrow") or {"below": 90, "then": "hide"}
+    text = g.get("text", "")
+    text_w = max((len(ln) for ln in text.split("\n")), default=0) if text else 0
+    out = ["# Written by Luminescent for the theme's start-up text (theme settings > Terminal). It takes the place",
+           "# of your own fish_greeting while it is here; delete this file, or untick the start-up text in the",
+           "# theme, to get yours back.",
+           "function fish_greeting",
+           "    set -l w $COLUMNS"]
+    if text:
+        out += [f"    if test $w -ge {text_w}",
+                f"        printf '\\e[{SLOTS.get(g.get('colour', 'colour16'), '38;5;16')}m'",
+                "        printf '%s\\n' " + " ".join(_fish_str(ln) for ln in text.split("\n")),
+                "        set_color normal",
+                "    end"]
+    info = g.get("info", "own")
+    if info != "none":
+        cfg = f" -c {_fish_str(LUM_FASTFETCH)}" if info == "luminescent" else ""
+        args = (" " + g["args"]) if g.get("args") else ""
+        run = f"fastfetch{cfg}{args}"
+        then = narrow.get("then", "hide")
+        out += ["    command -q fastfetch; or return"]
+        out += [f"    if test $w -lt {narrow.get('below', 90)}"]
+        if then == "hide":
+            out += [f"        {run} --logo-type none"]
+        elif then == "top":
+            lw = t.get("logo_width", 30)
+            out += [f"        {run} --logo-position top --logo-width (math \"min($w - 4, {lw})\")"]
+        else:
+            out += ["        return"]
+        out += ["    else", f"        {run}", "    end"]
+    out += ["end", ""]
+    return "\n".join(out)
+
+
+def write_greeting(backup_dir: str) -> str:
+    """Put the theme's start-up text in place, or take Luminescent's away when the theme has none. ''/error."""
+    g = _theme.get("greeting")
+    try:
+        if not g:
+            for p in (FISH_GREETING, LUM_FASTFETCH):
+                if os.path.isfile(p):
+                    with open(p, "r", encoding="utf-8") as f:
+                        if "Luminescent" in f.readline() + f.readline():
+                            os.remove(p)
+            return ""
+        if not os.path.isdir(FISH_DIR):
+            return "fish's config folder was not found, so the start-up text was not set."
+        if g.get("info") == "luminescent":
+            os.makedirs(os.path.dirname(LUM_FASTFETCH), exist_ok=True)
+            with open(LUM_FASTFETCH, "w", encoding="utf-8") as f:
+                f.write(_fastfetch_config(g))
+        os.makedirs(os.path.dirname(FISH_GREETING), exist_ok=True)
+        if os.path.isfile(FISH_GREETING):
+            with open(FISH_GREETING, "r", encoding="utf-8") as f:
+                if "Luminescent" not in f.readline():
+                    # somebody else's file by that name: keep a copy
+                    os.makedirs(backup_dir, exist_ok=True)
+                    shutil.copy2(FISH_GREETING, os.path.join(backup_dir, "luminescent-greeting.fish.yours"))
+        with open(FISH_GREETING, "w", encoding="utf-8") as f:
+            f.write(greeting_script())
     except OSError as e:
         return str(e)
     return ""

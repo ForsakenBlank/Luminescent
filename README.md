@@ -144,9 +144,20 @@ every panel, page and menu) and whether it opens on the page you were on last.
   **The desktop with the theme** (theme editor → DESKTOP): Caelestia's colours and its whole **look** (how
   see-through its panels and sidebar are, fonts including the lock screen clock, sizes, the dashboard and power
   menu pictures or GIFs, the logo, the lock screen, the desktop clock), **Glass** (how see-through every app is,
-  the blur, and frosted Luminescent panels and notifications) and the **Terminal** (its colours, how see-through
-  kitty is and the picture fastfetch shows when it opens). Anything a theme leaves alone stays as it is, or goes
-  back to what it was before another theme changed it.
+  which of Luminescent's own windows are frosted glass and how see-through, and the blur strength for the whole
+  desktop) and the **Terminal** (its colours, how see-through kitty is, the picture fastfetch shows and where, a
+  start-up text, the info lines, and what to leave out when a terminal is narrow). Anything a theme leaves alone
+  stays as it is, or goes back to what it was before another theme changed it.
+  **Caelestia colours** are sorted by what they do (accents, backgrounds, text, outlines, good and bad, terminal,
+  the colours other apps take), each with a plain name and where it shows. Search them (searching "green" finds
+  every colour that looks green), fold groups, star favourites, hover one to see it light up in the preview or
+  click the preview to find a colour.
+  **Quick tools** (Caelestia, the theme's own colours and the terminal): **Main colours** makes every colour from a
+  few, with real lighter and darker steps; **Harmony**, **From a picture** (your wallpaper or any picture),
+  **Surprise me**, **Adjust all** (hue, brightness, contrast, colourfulness, warmth), **Follow the accent** (make
+  every green take your accent's hue), **Add variance** and **Light ⇄ dark**. Each shows before and after and is
+  one step to undo. **↶ / ↷** (Ctrl+Z, Ctrl+Shift+Z) undo and redo anything, and **Recently changed** lists each
+  change, old → new, with a button to put just that one back.
   Group themes in colour-coded folders. Dark and Light are built in and can not be deleted.
   **Import… / Export to a file…** share a theme as a `.lumtheme` file; **From a colour…** makes a whole theme from one
   accent colour. A **Next theme** hotkey cycles through the active theme's folder.
@@ -245,7 +256,8 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   `0x1f`, `&`, `|`, `xor`, `<<` work. Pins go in folders with colours, the history is grouped by day, and
   `Ctrl+Enter` calculates, copies the result and closes (⧉ copies without closing).
 * **Colour picker**: the Recent colours in the tray (and palette) can become the theme's accent or a new theme.
-* **Colour picker**: freezes the screen, shows an 11×11 zoom. The last 10 colours are in the tray menu and palette.
+* **Colour picker**: freezes every screen (each monitor its own), shows an 11×11 zoom. The last 10 colours are in
+  the tray menu and palette.
 * **Screen text grab**: Windows uses its own text recognition. Linux uses Tesseract: `sudo pacman -S tesseract tesseract-data-eng` (plus `tesseract-data-<lang>`
   for other languages). Settings → Screen Text Grab can show the text in an edit box first (Ctrl+Enter copies).
 * **Prompt Log**: your fish (or bash / zsh) history plus everything the dashboard launched; search, copy, run again in
@@ -300,8 +312,14 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   Linux, mpvpaper for videos, and Windows' own setting on Windows. Settings → Overlay & Interface → **Wallpaper
   command** hands the file to your own tool instead (`mytool set {file}`).
 * **Your own terminal**: Settings → Overlay & Interface → "Your own terminal follows the theme too" adds one
-  include line to kitty.conf on Linux (it asks first and keeps a backup), or gives your Windows Terminal profiles the
-  Luminescent colours on Windows.
+  include line to kitty.conf on Linux (it asks first and keeps a backup; a line with a typo is put right instead),
+  or gives your Windows Terminal profiles the Luminescent colours on Windows. With Caelestia, fish loads Caelestia's
+  terminal colours in every new shell, so Luminescent puts the theme's colours in that file too and sends them to
+  the terminals that are open. The theme editor's Terminal page shows what decides your terminal's colours.
+* **Start-up text**: a theme can have fish show its own text and info box when a terminal opens (theme editor →
+  Terminal). Luminescent writes `~/.config/fish/conf.d/luminescent-greeting.fish` for it (and
+  `~/.config/fastfetch/luminescent.jsonc` for its info box); your own fish_greeting is left alone and comes back as
+  soon as the theme stops.
 
 ## Performance
 
@@ -357,13 +375,14 @@ Launcher.py        entry point: tray, modules, overlay, palette
 settings_ui.py     the Settings page (built from core/settings.py)
 build.py           builds a standalone binary (optional)
 start.sh           runs it from source (makes .venv on the first run)
-core/              settings + profiles, hotkeys, theme + theme profiles, widgets, runner, terminal, wallpaper, backup,
+core/              settings + profiles, hotkeys, theme + theme profiles, tones (colour steps and schemes), widgets,
+                   runner, terminal, wallpaper, backup,
                    hypr (Hyprland socket: binds, window placement), hyprbinds (reads/edits your Hyprland binds), clip,
                    convert (calculator units, currency, dates), usage (stats + today's log), desktop (launcher entry,
                    icons, Dolphin menu), timeparse
                    automation (the Automation engine and its node types), events (what happened, for automations)
-ui/                overlay, dashboard, automation (the node editor), themes page, command palette, cheat sheet,
-                   toasts, Today and Usage pages
+ui/                overlay, dashboard, automation (the node editor), themes page (+ colour_tools: the quick tools,
+                   colour rows, undo), command palette, cheat sheet, toasts, Today and Usage pages
 modules/           one file per tool (+ vault_store.py: vault crypto, no UI)
 data/              your notes, timers, dashboard, themes… (created on first start, never in git)
 ```

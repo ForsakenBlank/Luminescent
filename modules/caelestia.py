@@ -1121,6 +1121,9 @@ class CaelestiaModule(Module):
                 self.log.info("put %d colours back into Caelestia's %s scheme", len(todo), scheme_id(d))
                 launcher = self.ctx.launcher
                 self.refresh_apps(getattr(launcher, "_push_terminal_colours", None))
+        elif self.ctx.launcher is not None and hasattr(self.ctx.launcher, "_push_terminal_colours"):
+            # caelestia gave the terminals its colours again: the theme's go back on top (when that is on)
+            QTimer.singleShot(500, self.ctx.launcher._push_terminal_colours)
         if self.panel is not None and self.panel.isVisible() and self.panel.pages.currentIndex() == 2 \
                 and not self.panel._edits:
             self.panel._fill_colours()

@@ -255,6 +255,7 @@ SCHEMA = [
               "the theme changes. Windows: your PowerShell and Command Prompt profiles in Windows Terminal get the "
               "Luminescent colours. Turning it off undoes it."),
         Field("fastfetch_before", "", "hidden", None),
+        Field("terminal_pushed", "", "hidden", False),
     ]),
 
     Section("animations", "Animations", "〰",

@@ -5,7 +5,6 @@ redo, a list of recent changes, and the quick tools that change a whole set of c
 light/dark flip, adjust all, follow the accent, add variance, from a picture, harmonies, surprise me). Every quick
 tool shows the colours before and after and is one step to undo.
 """
-import copy
 import json
 import random
 

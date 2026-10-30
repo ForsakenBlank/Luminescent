@@ -154,7 +154,7 @@ def cursor_screen():
 
 
 # ── glass ─────────────────────────────────────────────────────────────────────
-# Which of Luminescent's own windows are glass (Hyprland blurs what is behind them) and how see-through their
+# which of Luminescent's own windows are glass (Hyprland blurs what is behind them) and how see-through their
 # background is then. Each window says what it is with the "lum_glass_kind" property (FloatingPanel: "panels"
 # unless it says otherwise, notes: "notes", notifications, dialogs, the big warnings).
 GLASS_PARTS = [("panels", "Panels (Timer, Calculator, Clipboard...)"), ("notes", "Notes and sticky notes"),

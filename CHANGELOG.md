@@ -1,5 +1,64 @@
 # Changelog
 
+## 1.7.0
+
+* **Caelestia's colours make sense now.** All 110 of them are sorted by what they do on screen (main accent,
+  second and third accent, backgrounds and surfaces, text and icons, outlines, good and bad, terminal, the colours
+  other apps take), each with a plain name and where it shows, for example "Button background: the background of
+  most buttons, toggled icon buttons and the slider tracks". Fold the groups you do not need, search by name, by
+  where it shows or by #hex, or search "green" to find every colour that *looks* green whatever it is called.
+  Hover a colour and it lights up in the preview; click anywhere in the preview to jump to the colour used there.
+  The preview is bigger too: the bar, a dashboard drawer, the launcher, notifications, a terminal and the colours
+  btop, cava, Zed and Qt apps get.
+* **Whole schemes in a few clicks.** Quick tools for Caelestia's colours, the theme's own colours and the terminal:
+  * **Main colours**: pick an accent, a background and text (and a second accent, a third, success and error if
+    you like) and every other colour is made from them, with real lighter and darker steps, so a white theme still
+    has cards, borders and quiet text a few shades apart instead of everything being #FFFFFF.
+  * **Harmony**: colours that go together around your accent (matching, opposites, three-way, split, one colour,
+    pastel, neon).
+  * **From a picture**: the colours of your wallpaper or any picture; click one of them to make it the accent.
+  * **Surprise me**: a random scheme that still works. Press Again until you like one.
+  * **Adjust all**: sliders for every colour at once: hue, brightness, contrast, colourfulness and warmth.
+  * **Follow the accent**: make every green (or any other hue, or every colourful colour) take your accent's hue.
+  * **Add variance**: colours that came out the same get a few steps between them.
+  * **Light ⇄ dark**: a light scheme from a dark one, or the other way round.
+  Every tool shows the colours before and after side by side, lets you choose which groups it may change, and is
+  one step to undo.
+* **Undo, redo, favourites and recent changes** in the theme editor. ↶ and ↷ at the bottom (Ctrl+Z, Ctrl+Shift+Z or
+  Ctrl+Y) step back through every change. **Recently changed** shows old → new for each change with a button to put
+  just that one back, and is kept with the theme. Star any colour to pin it at the top.
+* **Caelestia's apps follow too.** When a theme gives Caelestia its colours, Caelestia now also re-colours the apps
+  it themes (the terminal, btop, GTK and Qt apps, Discord, Spotify...), the same as when it switches scheme itself.
+  Before, only the shell changed. Settings → Caelestia & Glass can turn it off.
+* **The terminal really changes now.** Setting the terminal colours did nothing for three reasons, all fixed:
+  "your own terminal follows the theme" was off, kitty.conf had the include line with a typo
+  (`luminescent-theme.con`), and fish loads Caelestia's terminal colours at the start of every shell, painting over
+  whatever kitty.conf says. The Terminal page now has a **Where your terminal gets its colours** card that says
+  what is in the way and puts it right (the kitty.conf typo is fixed in place, with a copy kept first). With the
+  option on, the theme's colours also go into the file Caelestia's fish config loads, and to every terminal that
+  is already open, as soon as you save.
+* **More for the terminal**: colours in groups (basics, accents 16 to 18, normal, bright) with the quick tools,
+  "All from the theme" and "Same as Caelestia's"; the start-up picture's height, the space around it and where it
+  goes (left, above, right); a **start-up text** (or take your current fish greeting's), its colour, and an **info
+  box**: your own fastfetch setup, none, or Luminescent's, where you pick which lines show (distro, kernel, memory,
+  CPU, GPU, battery, colour dots...), their labels and colours, as a box or plain lines.
+* **Narrow terminals stay tidy.** Below a width you choose (90 columns to start with), the start-up leaves the
+  picture out, puts a smaller one above, or shows only the text, so four terminals side by side no longer wrap
+  into a mess. Luminescent does this with its own `conf.d/luminescent-greeting.fish`; your fish_greeting file is not
+  changed, and the file goes away when the theme turns the start-up off.
+* **Glass for any of Luminescent's windows**: tick which ones (panels, Notes and sticky notes, notifications,
+  dialogs, the big warnings) and how see-through they are, per theme, with **Make these the default for every
+  theme**. The blur strength is labelled as what it is: one setting for the whole desktop, since Hyprland can only
+  turn blur on or off per window.
+* **Fix: the colour picker works on both monitors.** The frozen picture of the second monitor opened on the first
+  one, a little way down, so the other screen could not be picked from and a strip of the wrong picture showed at
+  the top. Each monitor now gets its own, right in its corner. Enter picks the colour under the mouse on whichever
+  monitor it is, and no magnifier is left behind on the other one.
+* **Fix: doubled gaps after turning the Caelestia extras on or off.** Restarting Caelestia left the old shell
+  running next to the new one, so every gap and the space for the bar were reserved twice (windows and the
+  overlay's page switcher sat further in than they should). Now every Caelestia shell is stopped first, whichever
+  folder it runs from.
+
 ## 1.6.0
 
 * **Fix: panels open where they should.** Notes, the calculator and every other panel ignored Settings → Overlay &

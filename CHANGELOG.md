@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.1
 
 * **Panels and pop-ups open where you are**: a panel opened by its hotkey goes to the middle of the screen with
   the mouse (Settings → Overlay & Interface → Panels like Notes open; "Where I left them" still keeps your spot,

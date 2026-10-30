@@ -259,6 +259,81 @@ def bootstrap() -> str:
 def shutdown():
     if available():
         lua("if LUMI and LUMI.unbind_all then LUMI.unbind_all() end")
+        set_borders(None)
+
+
+# ── window borders ────────────────────────────────────────────────────────────
+# what the borders were before Luminescent changed them, so they can go back: {option: gradient text}
+_border_orig: dict[str, str] = {}
+BORDER_OPTIONS = ("col.active_border", "col.inactive_border")
+
+
+def _rgba(hex_colour: str) -> str:
+    """'#RRGGBB' as Hyprland's 'rgba(RRGGBBff)'."""
+    return f"rgba({hex_colour.lstrip('#')[:6].lower()}ff)"
+
+
+def _gradient(colours: list[str], angle: int = 0) -> str:
+    return "{ colors = { " + ", ".join(lstr(c) for c in colours) + f" }}, angle = {int(angle)} }}"
+
+
+def _from_gradient(text: str) -> str | None:
+    """Hyprland's own 'aarrggbb aarrggbb 45deg' back into a Lua gradient."""
+    cols, angle = [], 0
+    for part in text.split():
+        if part.endswith("deg"):
+            try:
+                angle = int(float(part[:-3]))
+            except ValueError:
+                pass
+        elif len(part) == 8:
+            cols.append(f"rgba({part[2:]}{part[:2]})")
+    return _gradient(cols, angle) if cols else None
+
+
+def border_now(option: str) -> str:
+    """The gradient text Hyprland has for a border option right now ('' when it can't be read)."""
+    try:
+        d = json.loads(request(f"j/getoption general:{option}") or "{}")
+    except ValueError:
+        return ""
+    return str(d.get("gradient") or "")
+
+
+def forget_borders():
+    """Hyprland reloaded its config, so the borders are the config's own again."""
+    _border_orig.clear()
+
+
+def set_borders(b: dict | None) -> str:
+    """A theme's window borders: {"active": "#hex", "active2": "#hex" (a gradient), "angle": degrees,
+    "inactive": "#hex"}. None or {} puts back what was there before. Returns '' or the error."""
+    if not available():
+        return ""
+    b = b or {}
+    want = {}
+    if b.get("active"):
+        cols = [_rgba(b["active"])] + ([_rgba(b["active2"])] if b.get("active2") else [])
+        want["col.active_border"] = _gradient(cols, int(b.get("angle", 45) or 0))
+    if b.get("inactive"):
+        want["col.inactive_border"] = _gradient([_rgba(b["inactive"])])
+    out = {}
+    for name in BORDER_OPTIONS:
+        if name in want:
+            if name not in _border_orig:
+                was = border_now(name)
+                if not was:
+                    continue
+                _border_orig[name] = was
+            out[name] = want[name]
+        elif name in _border_orig:
+            back = _from_gradient(_border_orig.pop(name))
+            if back:
+                out[name] = back
+    if not out:
+        return ""
+    col = ", ".join(f"{k.split('.', 1)[1]} = {v}" for k, v in out.items())
+    return lua(f"hl.config({{ general = {{ col = {{ {col} }} }} }})")
 
 
 def bind(bind_id: str, keys: str, release: bool = False, non_consuming: bool = False) -> str:

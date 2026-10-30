@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer
 from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPixmap, QFont, QPen, QShortcut, QKeySequence
 
-from core import theme, widgets, colourpick, IS_WIN
+from core import theme, widgets, colourpick, hypr, IS_WIN
 from core.guard import alive
 from core.themes import ThemeStore, new_theme
 from ui import theme_extras, colour_tools
@@ -32,7 +32,7 @@ IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp);;All files (*)"
 BUILTIN_GROUP, MINE_GROUP = "builtin", "mine"
 MINE_COLOUR = "#3DBE96"
 DESKTOP_TITLES = {"caelestia_colours": "Caelestia colours", "caelestia_look": "Caelestia look", "glass": "Glass",
-                  "terminal": "Terminal"}
+                  "borders": "Window borders", "terminal": "Terminal"}
 
 
 def _pal(t: dict) -> theme.Palette:
@@ -730,6 +730,9 @@ class SectionPreview(QWidget):
         if key == "glass":
             theme_extras.paint_glass(qp, w, y, dlg)
             return
+        if key == "borders":
+            theme_extras.paint_borders(qp, w, y, dlg)
+            return
         p = dlg.section_palette(key)
         title = dlg.section_title(key)
         if key == "toasts":
@@ -928,6 +931,8 @@ class ThemeDialog(widgets.RoundedDialog):
             add("caelestia_colours", "◐  Caelestia colours")
             add("caelestia_look", "◐  Caelestia look")
             add("glass", "▢  Glass")
+        if hypr.available():
+            add("borders", "▭  Window borders")
         add("terminal", "▣  Terminal")
         heading("PARTS")
         for key, title, icon, _d in EXTRA_SECTIONS:
@@ -1067,6 +1072,8 @@ class ThemeDialog(widgets.RoundedDialog):
             return theme_extras.caelestia_look_page(self)
         if key == "glass":
             return theme_extras.glass_page(self)
+        if key == "borders":
+            return theme_extras.borders_page(self)
         if key == "terminal":
             return theme_extras.terminal_page(self)
         return self._section_page(key)

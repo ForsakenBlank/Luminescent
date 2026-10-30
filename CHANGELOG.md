@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.2
 
 * **Caelestia colours in every theme**: the theme editor has a new Caelestia colours page with every colour of
   Caelestia's scheme. Set any of them for that theme, or Match Caelestia to this theme in one click, and they go

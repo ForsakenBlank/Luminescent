@@ -301,9 +301,9 @@ def _lock(dlg, mod):
 
 # ── glass ──────────────────────────────────────────────────────────────────
 def glass_page(dlg) -> QWidget:
-    page, v = dlg._page("Glass", "How see-through every app is with this theme (apps with a row of their own in "
-                                 "Caelestia & Glass keep it), and how strong the blur behind them is. Unticked "
-                                 "settings use the ones in Caelestia & Glass.")
+    page, v = dlg._page("Glass", "How see-through every app and Luminescent's own windows are with this theme, and "
+                                 "how strong the blur behind them is. Apps with a row of their own in Caelestia & "
+                                 "Glass keep it.")
     g = _sub(dlg.t, "glass")
     mod = dlg.launcher.modules.get("caelestia")
     card, c = _card("EVERY APP")
@@ -314,14 +314,72 @@ def glass_page(dlg) -> QWidget:
                                                 dlg.changed()))
         c.addWidget(row)
     v.addWidget(card)
-    card, c = _card("LUMINESCENT", "Notes, the other panels and notifications.")
-    row = SetRow("Glass: blur what is behind them", "bool", None, g.get("luminescent"),
-                 bool(dlg.launcher.settings.get("ui.panel_glass", False)))
+    settings = dlg.launcher.settings
+    card, c = _card("LUMINESCENT'S OWN WINDOWS", "Glass blurs what is behind a window and lets it show through. "
+                                               "Unticked settings use the default for every theme.")
+    row = SetRow("Glass on Luminescent's windows", "bool", None, g.get("luminescent"),
+                 bool(settings.get("ui.panel_glass", False)))
     row.changed.connect(lambda val: (g.pop("luminescent", None) if val is None else g.__setitem__("luminescent", val),
                                      dlg.changed()))
     c.addWidget(row)
+    default_parts = settings.get("ui.glass_parts", None)
+    default_parts = default_parts if isinstance(default_parts, list) else ["panels", "notes", "notifications"]
+    own_parts = QCheckBox("Which windows (for this theme)")
+    own_parts.setChecked(isinstance(g.get("parts"), list))
+    c.addWidget(own_parts)
+    ticks = {}
+    grid = QGridLayout()
+    grid.setContentsMargins(24, 0, 0, 0)
+    grid.setVerticalSpacing(2)
+    start = g.get("parts") if isinstance(g.get("parts"), list) else default_parts
+    for i, (kind, label) in enumerate(widgets.GLASS_PARTS):
+        cb = QCheckBox(label)
+        cb.setChecked(kind in start)
+        ticks[kind] = cb
+        grid.addWidget(cb, i, 0)
+    c.addLayout(grid)
+
+    def set_parts(*_a):
+        on = own_parts.isChecked()
+        for cb in ticks.values():
+            cb.setEnabled(on)
+        if on:
+            g["parts"] = [k for k, cb in ticks.items() if cb.isChecked()]
+        else:
+            g.pop("parts", None)
+        dlg.changed()
+    own_parts.toggled.connect(set_parts)
+    for cb in ticks.values():
+        cb.toggled.connect(set_parts)
+        cb.setEnabled(own_parts.isChecked())
+    amount = SetRow("How solid their background is", "percent", None, g.get("amount"),
+                    float(settings.get("ui.glass_amount", 0.82) or 0.82))
+    amount.changed.connect(lambda val: (g.pop("amount", None) if val is None else
+                                        g.__setitem__("amount", max(0.2, val)), dlg.changed()))
+    c.addWidget(amount)
+
+    def make_default():
+        on = g.get("luminescent")
+        if isinstance(on, bool):
+            settings.set("ui.panel_glass", on)
+        if isinstance(g.get("parts"), list):
+            settings.set("ui.glass_parts", list(g["parts"]))
+        if isinstance(g.get("amount"), (int, float)):
+            settings.set("ui.glass_amount", float(g["amount"]))
+        settings.save()
+        dlg.launcher.notify("Glass", "Saved as the default for every theme that does not pick its own.")
+    row2 = QHBoxLayout()
+    dflt = widgets.button("Make these the default for every theme", "ghost",
+                          "Themes that do not pick their own glass use these")
+    dflt.clicked.connect(make_default)
+    row2.addWidget(dflt)
+    row2.addStretch()
+    c.addLayout(row2)
     v.addWidget(card)
-    card, c = _card("BLUR")
+    card, c = _card("BLUR STRENGTH (THE WHOLE DESKTOP)",
+                    "Hyprland has one blur strength for everything it blurs (apps, Caelestia and Luminescent's glass "
+                    "windows alike); it can only turn blur on or off per window. So these change it everywhere "
+                    "while this theme is on.")
     for key, label, rng, cur in (("blur_size", "Size", (1, 30), mod.s("blur_size", 0) if mod else 0),
                                  ("blur_passes", "Passes", (1, 6), mod.s("blur_passes", 0) if mod else 0)):
         row = SetRow(label, "int", rng, g.get(key), cur or rng[0])
@@ -907,7 +965,10 @@ def paint_glass(qp: QPainter, w: float, y: float, dlg):
     for i in range(0, int(w) + 240, 28):
         qp.setBrush(QColor(base.primary))
         qp.drawRect(QRectF(i - 120, y, 10, 240))
-    for (rx, ry, op, label) in ((18, 28, ina, "not focused"), (w * 0.38, 70, act, "focused")):
+    lum = g.get("luminescent", dlg.launcher.settings.get("ui.panel_glass", False))
+    amount = float(g.get("amount", dlg.launcher.settings.get("ui.glass_amount", 0.82) or 0.82))
+    wins = [(18, 28, ina, "not focused"), (w * 0.38, 70, act, "focused")]
+    for (rx, ry, op, label) in wins:
         win = QRectF(rx, y + ry, w * 0.55, 140)
         c = QColor(base.bg_card)
         c.setAlphaF(op)
@@ -920,3 +981,23 @@ def paint_glass(qp: QPainter, w: float, y: float, dlg):
         qp.setFont(f)
         qp.drawText(win.adjusted(12, 10, -12, -10), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
                     f"{label} · {int(op * 100)} %")
+    # one of Luminescent's own panels on the same wallpaper
+    panel = QRectF(w * 0.12, y + 252, w * 0.76, 110)
+    wall = QRectF(0, y + 240, w, 134)
+    qp.fillRect(wall, QColor(base.primary_muted))
+    qp.setPen(Qt.PenStyle.NoPen)
+    qp.setBrush(QColor(base.primary))
+    for i in range(0, int(w) + 140, 28):
+        qp.drawRect(QRectF(i - 60, y + 240, 10, 134))
+    c = QColor(base.bg_base)
+    c.setAlphaF(amount if lum else 1.0)
+    qp.setBrush(c)
+    qp.setPen(QPen(QColor(base.border), 1))
+    qp.drawRoundedRect(panel, base.radius, base.radius)
+    qp.setPen(QColor(base.text_primary))
+    f = QFont(base.font_family)
+    f.setPixelSize(12)
+    qp.setFont(f)
+    qp.drawText(panel.adjusted(14, 12, -12, -10), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+                ("A Luminescent panel · glass, " + f"{int(amount * 100)} % solid") if lum else
+                "A Luminescent panel · no glass")

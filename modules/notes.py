@@ -349,6 +349,8 @@ class StickyNote(widgets.FloatingPanel):
         self.note = note
         super().__init__("Sticky", min_size=(180, 120), opacity=float(module.s("bg_opacity", 0.85)),
                          drag_needs_edit_mode=False, close_hides=False, header_height=32)
+        widgets.mark_glass(self, "notes")
+        self._apply_container_style()
         self.set_title(note.get("name", "Note"))
         if note.get("colour"):
             self._tick.setStyleSheet(f"background: {note['colour']}; border: none;")
@@ -418,6 +420,8 @@ class NotePanel(widgets.FloatingPanel):
                          min_size=(int(module.s("min_width", 250)), int(module.s("min_height", 180))),
                          opacity=float(module.s("bg_opacity", 0.85)),
                          drag_needs_edit_mode=False, close_hides=True)
+        widgets.mark_glass(self, "notes")
+        self._apply_container_style()
         self.data = self._load()
         self.current: int | None = None
         self._todo: TodoList | None = None

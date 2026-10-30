@@ -215,9 +215,11 @@ SCHEMA = [
               _os("Hyprland blurs what is behind the overlay. Off in performance mode.",
                   "Linux (Hyprland) only for now; on Windows the overlay is dimmed without blur.")),
         Field("panel_glass", "Glass panels and notifications (blur what is behind them)", "bool", False,
-              _os("Hyprland blurs what is behind Notes, the other panels and notifications, so with a panel opacity "
-                  "below 100 % they look like frosted glass. A theme can turn it on or off for itself (theme "
-                  "editor → Glass).", "Linux (Hyprland) only.")),
+              _os("Hyprland blurs what is behind Notes, the other panels and notifications, so they look like "
+                  "frosted glass. Which windows get it and how see-through they are: theme editor → Glass, where a "
+                  "theme can also have its own.", "Linux (Hyprland) only.")),
+        Field("glass_parts", "", "hidden", ["panels", "notes", "notifications"]),
+        Field("glass_amount", "", "hidden", 0.82),
         Field("theme_cycle_hotkey", "Next theme hotkey", "hotkey", "",
               "Switches to the next theme in the active theme's folder (or the next of all themes)."),
         Field("overlay_dim", "Dim the screen behind the overlay", "opacity", 0.64),

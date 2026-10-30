@@ -154,19 +154,58 @@ def cursor_screen():
 
 
 # ── glass ─────────────────────────────────────────────────────────────────────
-GLASS = False          # blur behind Luminescent's panels and notifications (set by the launcher)
+# Which of Luminescent's own windows are glass (Hyprland blurs what is behind them) and how see-through their
+# background is then. Each window says what it is with the "lum_glass_kind" property (FloatingPanel: "panels"
+# unless it says otherwise, notes: "notes", notifications, dialogs, the big warnings).
+GLASS_PARTS = [("panels", "Panels (Timer, Calculator, Clipboard...)"), ("notes", "Notes and sticky notes"),
+               ("notifications", "Notifications"), ("dialogs", "Dialogs (theme editor, colour picker, questions)"),
+               ("warnings", "Big warnings in the middle of the screen")]
+GLASS_KINDS: set[str] = set()
+GLASS_AMOUNT = 0.82            # how solid a glass window's background is (1 = not see-through)
+GLASS = False                  # any glass at all (kept for older callers)
 
 
-def set_glass(on: bool):
-    """Glass on or off for every panel and notification, the open ones included."""
-    global GLASS
-    GLASS = bool(on)
+def glass_on(kind: str) -> bool:
+    return kind in GLASS_KINDS
+
+
+def glass_alpha(kind: str, alpha: float) -> float:
+    """The background alpha for a window of this kind: no more solid than the glass amount when it is glass."""
+    return min(alpha, GLASS_AMOUNT) if kind in GLASS_KINDS else alpha
+
+
+def mark_glass(w: QWidget, kind: str):
+    w.setProperty("lum_glass_kind", kind)
+    w.setProperty("lum_glass", kind in GLASS_KINDS)
+
+
+def set_glass(on, amount: float | None = None):
+    """Glass for these kinds of window (a set of kinds; True = panels, notes and notifications as before), the
+    open ones included."""
+    global GLASS, GLASS_KINDS, GLASS_AMOUNT
+    if isinstance(on, bool):
+        kinds = {"panels", "notes", "notifications"} if on else set()
+    else:
+        kinds = set(on or ())
+    old = (set(GLASS_KINDS), GLASS_AMOUNT)
+    GLASS_KINDS = kinds
+    GLASS = bool(kinds)
+    if amount is not None:
+        GLASS_AMOUNT = max(0.2, min(1.0, float(amount)))
     if hypr.available():
         hypr.set_glass_rule(theme.P.radius)
     for w in QApplication.topLevelWidgets():
-        if w.property("lum_glass") is not None and bool(w.property("lum_glass")) != GLASS:
-            w.setProperty("lum_glass", GLASS)
+        kind = w.property("lum_glass_kind")
+        if kind is None and w.property("lum_glass") is not None:
+            kind = "panels"
+        if kind is None:
+            continue
+        want = kind in GLASS_KINDS
+        if bool(w.property("lum_glass")) != want:
+            w.setProperty("lum_glass", want)
             w.setWindowTitle(hypr._strip(w.windowTitle()))     # the title marker follows, so the rule does
+        if (set(GLASS_KINDS), GLASS_AMOUNT) != old and hasattr(w, "glass_changed"):
+            w.glass_changed()
 
 
 def cursor_screen_geometry() -> QRect:
@@ -471,6 +510,7 @@ class FloatingPanel(QWidget):
 
         self.setWindowFlags(_TOP_TOOL)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        mark_glass(self, "panels")
         if not activate_on_show:
             self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMinimumSize(*min_size)
@@ -553,11 +593,17 @@ class FloatingPanel(QWidget):
         border = theme.fill("primary", 1.0, p) if self._edit_mode else theme.fill("border", 1.0, p)
         self.container.setStyleSheet(f"""
             #panelContainer {{
-                background: {theme.fill("bg_base", self._opacity, p)};
+                background: {theme.fill("bg_base", self._bg_alpha(), p)};
                 border: 1px solid {border};
                 border-radius: {self._radius}px;
             }}
         """)
+
+    def _bg_alpha(self) -> float:
+        return glass_alpha(self.property("lum_glass_kind") or "panels", self._opacity)
+
+    def glass_changed(self):
+        self._apply_container_style()
 
     def set_opacity(self, opacity: float):
         self._opacity = opacity
@@ -590,7 +636,7 @@ class FloatingPanel(QWidget):
             on = state["n"] % 2 == 0
             self.container.setStyleSheet(f"""
                 #panelContainer {{
-                    background: {theme.fill("bg_base", self._opacity, p)};
+                    background: {theme.fill("bg_base", self._bg_alpha(), p)};
                     border: 2px solid {colour if on else p.border};
                     border-radius: {self._radius}px;
                 }}
@@ -625,7 +671,10 @@ class FloatingPanel(QWidget):
         anim.fade(self.container, 1.0, 0.0, "panels", 140, then=done, curve=QEasingCurve.Type.InCubic)
 
     def show_and_raise(self, activate: bool = True):
-        self.setProperty("lum_glass", GLASS)
+        kind = self.property("lum_glass_kind") or "panels"
+        if bool(self.property("lum_glass")) != glass_on(kind):
+            mark_glass(self, kind)
+            self._apply_container_style()
         if self.property("fading_out"):
             anim.stop(self.container)
             self.setProperty("fading_out", False)
@@ -776,9 +825,8 @@ class RoundedDialog(QDialog):
         self.frame = QFrame()
         self.frame.setObjectName("lumDialog")
         p = self._pal
-        rad = p.radius + 4
-        self.frame.setStyleSheet(f"#lumDialog {{ background: {theme.fill('bg_base', 1.0, p)};"
-                                 f" border: 1px solid {theme.fill('border', 1.0, p)}; border-radius: {rad}px; }}")
+        mark_glass(self, "dialogs")
+        self._frame_style()
         outer.addWidget(self.frame)
         root = QVBoxLayout(self.frame)
         root.setContentsMargins(0, 0, 0, 0)
@@ -810,6 +858,15 @@ class RoundedDialog(QDialog):
         root.addLayout(self.body, 1)
         self._handles = [_ResizeHandle(e, self) for e in ("l", "r", "t", "b", "tl", "tr", "bl", "br")] \
             if resizable else []
+
+    def _frame_style(self):
+        p = self._pal
+        rad = p.radius + 4
+        self.frame.setStyleSheet(f"#lumDialog {{ background: {theme.fill('bg_base', glass_alpha('dialogs', 1.0), p)};"
+                                 f" border: 1px solid {theme.fill('border', 1.0, p)}; border-radius: {rad}px; }}")
+
+    def glass_changed(self):
+        self._frame_style()
 
     def set_title(self, text: str):
         self.setWindowTitle(text)

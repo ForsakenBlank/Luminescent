@@ -419,11 +419,19 @@ class Launcher:
         self.notify(m.title, f"{m.title} has no action '{aid}' any more.")
 
     def _apply_glass(self):
-        """Glass on Luminescent's own panels and notifications: the theme's choice, else the setting."""
+        """Glass on Luminescent's own windows: which ones and how see-through, the theme's choice, else the
+        settings (the default for every theme)."""
         g = self.themes.active().get("glass")
-        own = g.get("luminescent") if isinstance(g, dict) else None
+        g = g if isinstance(g, dict) else {}
+        own = g.get("luminescent")
         on = own if isinstance(own, bool) else bool(self.settings.get("ui.panel_glass", False))
-        widgets.set_glass(on and not self.settings.get("ui.performance_mode", False))
+        parts = g.get("parts") if isinstance(g.get("parts"), list) else self.settings.get("ui.glass_parts", None)
+        if not isinstance(parts, list):
+            parts = ["panels", "notes", "notifications"]
+        amount = g.get("amount") if isinstance(g.get("amount"), (int, float)) else \
+            self.settings.get("ui.glass_amount", 0.82)
+        off = not on or self.settings.get("ui.performance_mode", False)
+        widgets.set_glass(set() if off else set(parts), float(amount or 0.82))
 
     def apply_settings(self):
         safely(self._apply_glass, "glass")

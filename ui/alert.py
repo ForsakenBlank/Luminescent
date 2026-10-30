@@ -28,6 +28,7 @@ class CenterAlert(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setWindowTitle("Luminescent warning")
+        widgets.mark_glass(self, "warnings")
         self.key = title
         self.on_close = on_close
         self._closed = False
@@ -40,7 +41,8 @@ class CenterAlert(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         box = QFrame()
         box.setObjectName("alertBox")
-        box.setStyleSheet(f"#alertBox {{ background: {theme.fill('bg_base', 1.0, p)}; border: 2px solid {c};"
+        box.setStyleSheet(f"#alertBox {{ background: {theme.fill('bg_base', widgets.glass_alpha('warnings', 1.0), p)};"
+                          f" border: 2px solid {c};"
                           f" border-radius: {p.radius + 4}px; }}")
         outer.addWidget(box)
         self.box = box

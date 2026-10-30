@@ -37,6 +37,7 @@ def _builtin(tid: str, name: str) -> dict:
 def new_theme(name: str, base: dict | None = None) -> dict:
     t = copy.deepcopy(base) if base else _builtin("dark", name)
     t.update({"id": uuid.uuid4().hex[:10], "name": name, "builtin": False})
+    t.pop("hotkey", None)                    # a copy does not take the key of the theme it came from
     return t
 
 
@@ -315,9 +316,9 @@ class ThemeStore(QObject):
         self.save()
         self.changed.emit()
 
-    def next_theme(self) -> dict | None:
-        """The theme after the active one: within the active theme's folder (or the built-in / loose themes
-        it sits with), wrapping round."""
+    def next_theme(self, step: int = 1) -> dict | None:
+        """The theme after the active one (step -1: before it): within the active theme's folder (or the
+        built-in / loose themes it sits with), wrapping round."""
         act = self.active()
         folder = act.get("folder") or ""
         folders = {f["id"] for f in self.folders()}
@@ -329,7 +330,7 @@ class ThemeStore(QObject):
             ring = self.themes()
         ids = [t["id"] for t in ring]
         i = ids.index(act["id"]) if act["id"] in ids else -1
-        return ring[(i + 1) % len(ring)] if ring else None
+        return ring[(i + step) % len(ring)] if ring else None
 
     # ── made from one colour ───────────────────────────────────────────────
     def from_accent(self, accent: str, light: bool, name: str = "") -> dict:
@@ -412,6 +413,7 @@ class ThemeStore(QObject):
                 t[key] = dst
             except (OSError, ValueError):
                 log.exception("could not unpack %s from %s", key, path)
+        t.pop("hotkey", None)                # a key from someone else's setup could clash with yours
         self.add(t)
         return t
 

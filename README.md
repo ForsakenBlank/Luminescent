@@ -161,7 +161,8 @@ every panel, page and menu) and whether it opens on the page you were on last.
   change, old → new, with a button to put just that one back.
   Group themes in colour-coded folders. Dark and Light are built in and can not be deleted.
   **Import… / Export to a file…** share a theme as a `.lumtheme` file; **From a colour…** makes a whole theme from one
-  accent colour. A **Next theme** hotkey cycles through the active theme's folder.
+  accent colour. **Next theme** and **Previous theme** hotkeys go round the active theme's folder, and any theme can
+  have a key of its own (theme editor → General) that switches straight to it.
 * **Clipboard**: your Snippets folder as cards; click to paste. `＋ Save clipboard here` stores whatever is on the
   clipboard (text, an image, copied files) into the folder you are in. Folders can be coloured (right-click).
   The search box looks through every folder. Drag a card onto another to reorder, onto a folder (or the breadcrumb)
@@ -309,7 +310,8 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   into Atlas → Sync. Atlas lists every change in both directions before anything is written. Notes go both ways and
   to-do lists travel as checklists. Timer time adds up: what your timers ran here and what Atlas timer trackers
   logged end up on both. Nothing goes through the internet and everything sent is locked with the code.
-* **Wallpapers**: themes and the Set wallpaper node use Noctalia, swww (which plays GIFs), hyprpaper or swaybg on
+* **Wallpapers**: themes and the Set wallpaper node use Caelestia (when its shell draws your wallpaper), Noctalia,
+  swww (which plays GIFs), hyprpaper or swaybg on
   Linux, mpvpaper for videos, and Windows' own setting on Windows. Settings → Overlay & Interface → **Wallpaper
   command** hands the file to your own tool instead (`mytool set {file}`).
 * **Your own terminal**: Settings → Overlay & Interface → "Your own terminal follows the theme too" adds one

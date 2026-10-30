@@ -55,7 +55,39 @@ def _mix(a: str, b: str, t: float) -> str:
     return "#" + "".join(f"{round(x + (y - x) * t):02X}" for x, y in zip(ca, cb))
 
 
+# what the active theme sets for the terminal itself: {"colours": {name: "#hex"}, "opacity": 0..1,
+# "logo": picture path, "logo_width": columns}; set_theme() is called whenever a theme is applied
+_theme: dict = {}
+NAMES = ["background", "foreground", "cursorColor", "selectionBackground"] + \
+    [n for c in ["black", "red", "green", "yellow", "blue", "purple", "cyan", "white"]
+     for n in (c, "bright" + c[0].upper() + c[1:])]
+
+
+def set_theme(d: dict | None):
+    global _theme
+    d = d if isinstance(d, dict) else {}
+    cols = {k: v for k, v in (d.get("colours") or {}).items() if k in NAMES and isinstance(v, str)
+            and v.startswith("#")}
+    out = {"colours": cols} if cols else {}
+    if isinstance(d.get("opacity"), (int, float)) and not isinstance(d.get("opacity"), bool):
+        out["opacity"] = max(0.1, min(1.0, float(d["opacity"])))
+    if isinstance(d.get("logo"), str) and d["logo"].strip():
+        out["logo"] = d["logo"].strip()
+        out["logo_width"] = int(d.get("logo_width") or 0) or 30
+    _theme = out
+
+
+def theme_settings() -> dict:
+    return dict(_theme)
+
+
 def scheme() -> dict:
+    s = _palette_scheme()
+    s.update(_theme.get("colours") or {})
+    return s
+
+
+def _palette_scheme() -> dict:
     p = theme.P
     light = theme.is_light()
     # readable ANSI colours for the background, tinted slightly towards the accent
@@ -184,6 +216,9 @@ def write_kitty_theme() -> str:
                  f"selection_foreground {s['foreground']}", f"active_border_color {theme.P.primary}",
                  f"inactive_border_color {theme.P.border}", f"url_color {theme.P.primary_text}"]
         lines += [f"color{i} {c}" for i, c in enumerate(_ansi(s))]
+        if "opacity" in _theme:
+            # kitty can only change it on a reload when this was on when it started
+            lines += ["dynamic_background_opacity yes", f"background_opacity {_theme['opacity']:.2f}"]
         os.makedirs(KITTY_DIR, exist_ok=True)
         with open(KITTY_THEME, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
@@ -331,3 +366,118 @@ else:
     own_installed, own_linked, link_own, unlink_own, write_own = (kitty_installed, kitty_linked, link_kitty,
                                                                   unlink_kitty, write_kitty_theme)
 OWN_NAME = "Windows Terminal" if IS_WIN else "kitty"
+
+
+# ── the picture fastfetch shows when a terminal opens ─────────────────────────
+FASTFETCH_CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "fastfetch",
+                              "config.jsonc")
+
+
+def _value_span(text: str, start: int) -> int:
+    """Where the JSON value starting at `start` ends (strings, nested {} and [] understood)."""
+    i, depth, n = start, 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                i += 2 if text[i] == "\\" else 1
+        elif c in "{[":
+            depth += 1
+        elif c in "}]":
+            if depth == 0:
+                return i
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        elif c in ",\n" and depth == 0:
+            return i
+        i += 1
+    return n
+
+
+def _top_level_key(text: str, key: str) -> tuple[int, int] | None:
+    """(start, end) of the value of a top-level key in a JSON(C) object, None when it is not there."""
+    i, depth, n = 0, 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "/" and text[i:i + 2] == "//":
+            i = text.find("\n", i)
+            i = n if i < 0 else i
+            continue
+        if c == "/" and text[i:i + 2] == "/*":
+            i = text.find("*/", i)
+            i = n if i < 0 else i + 2
+            continue
+        if c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            if depth == 1 and text[i + 1:j] == key:
+                k = j + 1
+                while k < n and text[k] in " \t\r\n":
+                    k += 1
+                if k < n and text[k] == ":":
+                    k += 1
+                    while k < n and text[k] in " \t\r\n":
+                        k += 1
+                    return k, _value_span(text, k)
+            i = j + 1
+            continue
+        if c in "{[":
+            depth += 1
+        elif c in "}]":
+            depth -= 1
+        i += 1
+    return None
+
+
+def fastfetch_logo() -> str | None:
+    """The logo value in fastfetch's config as JSON text, None when the file or the key is not there."""
+    try:
+        with open(FASTFETCH_CONF, "r", encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        return None
+    span = _top_level_key(text, "logo")
+    return None if span is None else text[span[0]:span[1]].strip()
+
+
+def set_fastfetch_logo(value: str | None, backup_dir: str) -> str:
+    """Put `value` (JSON text) in as fastfetch's logo, or take the key out with None. The rest of the file,
+    comments included, is left as it is; a copy goes to backup_dir first. '' or an error."""
+    try:
+        with open(FASTFETCH_CONF, "r", encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        return f"fastfetch's config was not found ({e})."
+    span = _top_level_key(text, "logo")
+    if span is not None:
+        if value is None:
+            # the key's line goes: from the line break before it to the comma after its value
+            k = text.rfind('"logo"', 0, span[0])
+            end = span[1]
+            if text[end:].lstrip(" \t").startswith(","):
+                end = text.index(",", end) + 1
+            if k >= 0:
+                line = text.rfind("\n", 0, k)
+                text = text[:line if line >= 0 else k] + text[end:]
+        else:
+            text = text[:span[0]] + value + text[span[1]:]
+    elif value is not None:
+        brace = text.find("{")
+        if brace < 0:
+            return "fastfetch's config is not a JSON object."
+        text = text[:brace + 1] + f'\n    "logo": {value},' + text[brace + 1:]
+    else:
+        return ""
+    try:
+        os.makedirs(backup_dir, exist_ok=True)
+        shutil.copy2(FASTFETCH_CONF, os.path.join(backup_dir, f"fastfetch.config.{datetime.now():%Y%m%d-%H%M%S}"))
+        tmp = FASTFETCH_CONF + ".lum-tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, FASTFETCH_CONF)
+    except OSError as e:
+        return str(e)
+    return ""

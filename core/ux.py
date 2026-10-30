@@ -9,7 +9,7 @@ App-wide behaviour fixes for Qt's standard controls, installed once at start-up.
   Qt puts the spin box's text field flush against the border whatever the padding says.
 """
 from PyQt6.QtWidgets import (QApplication, QProxyStyle, QStyle, QAbstractSpinBox, QComboBox, QAbstractSlider,
-                             QScrollBar, QAbstractScrollArea, QWidget, QDateTimeEdit)
+                             QScrollBar, QAbstractScrollArea, QWidget, QDateTimeEdit, QLineEdit)
 from PyQt6.QtCore import QObject, QEvent, Qt
 
 _installed = []
@@ -58,8 +58,13 @@ class WheelGuard(QObject):
             if obj.focusPolicy() == Qt.FocusPolicy.WheelFocus:
                 obj.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             popup = isinstance(obj, QDateTimeEdit) and obj.calendarPopup()       # that one is padded already
-            if isinstance(obj, QAbstractSpinBox) and not popup and obj.lineEdit() is not None:
-                obj.lineEdit().setTextMargins(7, 0, 0, 0)
+            if isinstance(obj, QAbstractSpinBox) and not popup:
+                try:
+                    edit = obj.lineEdit()
+                except RuntimeError:              # a spin box Qt made itself: lineEdit() is protected there
+                    edit = obj.findChild(QLineEdit)
+                if edit is not None:
+                    edit.setTextMargins(7, 0, 0, 0)
         elif t == QEvent.Type.MouseButtonPress:
             c = _control(obj)
             if c is not None:

@@ -153,6 +153,22 @@ def cursor_screen():
     return hypr.screen_at_cursor()
 
 
+# ── glass ─────────────────────────────────────────────────────────────────────
+GLASS = False          # blur behind Luminescent's panels and notifications (set by the launcher)
+
+
+def set_glass(on: bool):
+    """Glass on or off for every panel and notification, the open ones included."""
+    global GLASS
+    GLASS = bool(on)
+    if hypr.available():
+        hypr.set_glass_rule(theme.P.radius)
+    for w in QApplication.topLevelWidgets():
+        if w.property("lum_glass") is not None and bool(w.property("lum_glass")) != GLASS:
+            w.setProperty("lum_glass", GLASS)
+            w.setWindowTitle(hypr._strip(w.windowTitle()))     # the title marker follows, so the rule does
+
+
 def cursor_screen_geometry() -> QRect:
     return hypr.available_geometry(cursor_screen())
 
@@ -609,6 +625,7 @@ class FloatingPanel(QWidget):
         anim.fade(self.container, 1.0, 0.0, "panels", 140, then=done, curve=QEasingCurve.Type.InCubic)
 
     def show_and_raise(self, activate: bool = True):
+        self.setProperty("lum_glass", GLASS)
         if self.property("fading_out"):
             anim.stop(self.container)
             self.setProperty("fading_out", False)
@@ -634,7 +651,7 @@ class FloatingPanel(QWidget):
                 # rises a few pixels into place while it fades in (the window itself can not move smoothly
                 # on Wayland, so the panel moves inside it)
                 lay = self._outer
-                anim.value(14.0, 0.0, lambda v: lay.setContentsMargins(0, int(v), 0, 14 - int(v)), "panels", 260,
+                anim.value(14.0, 0.0, lambda v: lay.setContentsMargins(0, int(v), 0, 0), "panels", 260,
                            owner=self, tag="rise")
 
     # sticky notes and the like stay exactly where they were put

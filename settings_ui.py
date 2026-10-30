@@ -556,8 +556,25 @@ class UpdatesWidget(QWidget):
             self.status.setText(f"{latest} is out. Install it below; your notes and settings are kept.")
         else:
             self.status.setText("You have the newest version. Older ones are listed if you want to go back.")
-        for i, rel in enumerate(res[:12]):
+        # the newest few, the rest behind a button so a long history does not fill the page
+        shown = 5 if len(res) > 6 else len(res)
+        for i, rel in enumerate(res[:shown]):
             self.list.addWidget(self._row(rel, i == 0))
+        rest = res[shown:]
+        if rest:
+            more_box = QWidget()
+            ml = QVBoxLayout(more_box)
+            ml.setContentsMargins(0, 0, 0, 0)
+            ml.setSpacing(self.list.spacing())
+            for rel in rest:
+                ml.addWidget(self._row(rel, False))
+            more_box.hide()
+            more = widgets.button(f"Show {len(rest)} more", "ghost")
+            more.clicked.connect(lambda: (more_box.setVisible(not more_box.isVisible()),
+                                          more.setText("Show fewer" if more_box.isVisible() else
+                                                       f"Show {len(rest)} more")))
+            self.list.addWidget(more, 0, Qt.AlignmentFlag.AlignLeft)
+            self.list.addWidget(more_box)
 
     def _row(self, rel: dict, newest: bool) -> QWidget:
         from core.updates import newer

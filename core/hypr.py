@@ -43,6 +43,7 @@ NO_ACTIVATE = "\u200b"
 NO_FOCUS = "\u200c"
 NO_PIN = "\u2060"
 BLUR = "\u2061"                      # function application: Hyprland blurs what is behind the window
+GLASS = "\u2062"                     # invisible times: a glass panel, blurred behind with rounded corners
 RULES_VERSION = 3                    # bump when the rules below change: the old ones are switched off
 BIND_DESC = "Luminescent"
 
@@ -120,6 +121,18 @@ def query(name: str):
 def dispatch(expr: str) -> str:
     """Run a dispatcher, e.g. dispatch('hl.dsp.focus({ window = "address:0x1" })')."""
     return lua(f"hl.dispatch({expr})")
+
+
+def move_window(addr: str, x: int, y: int, pinned: bool = True) -> str:
+    """Move a window to (x, y) in layout coordinates. Hyprland answers "ok" to a move of a pinned window but
+    leaves it where it is, which kept every Luminescent panel and pop-up wherever Hyprland first put it: a
+    pinned window is unpinned for the move and pinned again, in one go so nothing shows in between."""
+    t = lstr("address:" + addr)
+    move = f"hl.dispatch(hl.dsp.window.move({{ x = {int(x)}, y = {int(y)}, window = {t} }}))"
+    if not pinned:
+        return lua(move)
+    return lua(f"hl.dispatch(hl.dsp.window.pin({{ action = \"disable\", window = {t} }})) {move} "
+               f"hl.dispatch(hl.dsp.window.pin({{ action = \"enable\", window = {t} }}))")
 
 
 # ── cursor, screens, keyboard ─────────────────────────────────────────────────
@@ -330,7 +343,8 @@ def _is_tracked(w) -> bool:
 
 
 def _marker(w: QWidget) -> str:
-    m = (NO_PIN if w.property("lum_no_pin") else "") + (BLUR if w.property("lum_blur") else "")
+    m = (NO_PIN if w.property("lum_no_pin") else "") + (BLUR if w.property("lum_blur") else "") + \
+        (GLASS if w.property("lum_glass") else "")
     if w.windowFlags() & Qt.WindowType.WindowDoesNotAcceptFocus:
         return m + NO_FOCUS
     if w.testAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating):
@@ -339,7 +353,19 @@ def _marker(w: QWidget) -> str:
 
 
 def _strip(title: str) -> str:
-    return title.rstrip(NO_ACTIVATE + NO_FOCUS + NO_PIN + BLUR)
+    return title.rstrip(NO_ACTIVATE + NO_FOCUS + NO_PIN + BLUR + GLASS)
+
+
+def set_glass_rule(rounding: int) -> str:
+    """The rule for Luminescent's own glass windows (panels and notifications with glass on): what is behind
+    them is blurred, inside corners as round as the panel's so the blur does not show past them."""
+    if not available():
+        return ""
+    title = lstr("^.*" + GLASS + ".*$")
+    return lua("LUMI = LUMI or {} "
+               "if LUMI.glass_rule then pcall(function() LUMI.glass_rule:set_enabled(false) end) end "
+               f"LUMI.glass_rule = hl.window_rule({{ match = {{ class = {lstr('^' + APP_ID + '$')}, title = {title} }}, "
+               f"no_blur = false, rounding = {max(0, int(rounding))} }})")
 
 
 class WindowSync(QObject):
@@ -445,7 +471,7 @@ class WindowSync(QObject):
 
     def _move(self, addr: str, w: QWidget):
         p = self._target(w)
-        dispatch(f"hl.dsp.window.move({{ x = {p.x()}, y = {p.y()}, window = {lstr('address:' + addr)} }})")
+        move_window(addr, p.x(), p.y(), pinned=not w.property("lum_no_pin"))
 
     def _set_qt_pos(self, w: QWidget, x: int, y: int):
         """Tell Qt where the window really is, without sending it back to Hyprland."""
@@ -501,7 +527,8 @@ class WindowSync(QObject):
             QTimer.singleShot(250, lambda d=w: self._dialog_on_top(d)
                               if alive(d) and d in self._addr and d.isVisible() else None)
         elif w.testAttribute(Qt.WidgetAttribute.WA_Moved):
-            self._move(addr, w)
+            p = self._target(w)
+            self._settle(addr, w, p.x(), p.y())
         else:
             self._read_back(w, addr)
         if w in self._want_focus:
@@ -521,7 +548,24 @@ class WindowSync(QObject):
         x = max(scr.left(), min(area.center().x() - dw // 2, scr.right() - dw))
         y = max(scr.top(), min(area.center().y() - dh // 2, scr.bottom() - dh))
         self._set_qt_pos(w, x, y)
-        dispatch(f"hl.dsp.window.move({{ x = {x}, y = {y}, window = {lstr('address:' + addr)} }})")
+        self._settle(addr, w, x, y)
+
+    def _settle(self, addr: str, w: QWidget, x: int, y: int, checks=(15, 60, 180, 420)):
+        """Move a window that has just opened to (x, y), and keep at it for a moment: Hyprland announces a new
+        window before it has finished placing it, and that first placement used to win over our move about half
+        the time (every panel then sat where Hyprland put it, whatever Panels like Notes open said)."""
+        pinned = not w.property("lum_no_pin")
+        move_window(addr, x, y, pinned)
+
+        def check(rest):
+            if not alive(w) or self._addr.get(w) != addr or not w.isVisible() or w in self._track:
+                return
+            c = self._client(addr)
+            if c and isinstance(c.get("at"), list) and c["at"] != [x, y]:
+                move_window(addr, x, y, pinned)
+            if rest:
+                QTimer.singleShot(rest[0], lambda: check(rest[1:]))
+        QTimer.singleShot(checks[0], lambda: check(list(checks[1:])))
 
     def _client(self, addr: str) -> dict | None:
         return next((c for c in query("clients") or [] if c.get("address") == addr), None)

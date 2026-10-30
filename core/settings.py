@@ -214,6 +214,10 @@ SCHEMA = [
         Field("blur", "Frosted (blurred) background", "bool", True,
               _os("Hyprland blurs what is behind the overlay. Off in performance mode.",
                   "Linux (Hyprland) only for now; on Windows the overlay is dimmed without blur.")),
+        Field("panel_glass", "Glass panels and notifications (blur what is behind them)", "bool", False,
+              _os("Hyprland blurs what is behind Notes, the other panels and notifications, so with a panel opacity "
+                  "below 100 % they look like frosted glass. A theme can turn it on or off for itself (theme "
+                  "editor → Glass).", "Linux (Hyprland) only.")),
         Field("theme_cycle_hotkey", "Next theme hotkey", "hotkey", "",
               "Switches to the next theme in the active theme's folder (or the next of all themes)."),
         Field("overlay_dim", "Dim the screen behind the overlay", "opacity", 0.64),
@@ -248,6 +252,7 @@ SCHEMA = [
               "data/terminal-backups) and writes luminescent-theme.conf next to it, rewritten and reloaded whenever "
               "the theme changes. Windows: your PowerShell and Command Prompt profiles in Windows Terminal get the "
               "Luminescent colours. Turning it off undoes it."),
+        Field("fastfetch_before", "", "hidden", None),
     ]),
 
     Section("animations", "Animations", "〰",
@@ -615,7 +620,13 @@ SCHEMA += [
             "and wallpaper, and see-through glass windows per app (focused and unfocused) with the blur strength.", [
         Field("enabled", "Enable Caelestia & Glass", "bool", True),
         Field("hotkey", "Open hotkey", "hotkey", ""),
+        Field("lock_hotkey", "Lock the screen hotkey (Caelestia's lock screen)", "hotkey", ""),
+        Field("extras", "Caelestia extras: pictures in place of the lyrics and behind the lock screen", "hidden",
+              False),
         Field("glass", "", "hidden", []),
+        Field("all_active", "", "hidden", 0),
+        Field("all_inactive", "", "hidden", 0),
+        Field("before_shell", "", "hidden", {}),
         Field("blur_size", "", "hidden", 0),
         Field("blur_passes", "", "hidden", 0),
         Field("scheme_colours", "", "hidden", {}),

@@ -18,7 +18,7 @@ import os
 import colorsys
 
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLineEdit, QComboBox,
-                             QSlider, QSizePolicy, QApplication, QGridLayout, QFrame)
+                             QSlider, QSizePolicy, QApplication, QGridLayout, QFrame, QSpinBox)
 from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QLinearGradient, QPainterPath, QPen, QBrush, QImage
 
@@ -504,8 +504,7 @@ class ColourDialog(widgets.RoundedDialog):
         self.start = g or (parse(start) if isinstance(start, str) else None) or "#000000"
         self.mode = "gradient" if g else "solid"
         self.solid = theme.gradient_at(g, 0.0) if g else self.start
-        self.grad = g or {"type": "linear", "angle": 90,
-                          "stops": [[0.0, self.solid], [1.0, theme.mix(self.solid, "#000000", 0.5)]]}
+        self.grad = g or {"type": "linear", "angle": 135, "stops": [[0.0, self.solid], [1.0, partner(self.solid)]]}
         self._eye = None
         self.body.setContentsMargins(16, 12, 16, 14)
         self.body.setSpacing(10)
@@ -574,8 +573,39 @@ class ColourDialog(widgets.RoundedDialog):
             b.setFixedHeight(26)
             b.clicked.connect(fn)
             tools.addWidget(b)
+        add = widgets.button("＋ Colour", "ghost", "Add a colour in the biggest gap")
+        add.setFixedHeight(26)
+        add.clicked.connect(self._add_stop)
+        tools.addWidget(add)
         tools.addStretch()
         gl.addLayout(tools)
+        # which way it runs, one click each
+        dirs = QHBoxLayout()
+        dirs.setSpacing(3)
+        dirs.addWidget(widgets.label("DIRECTION", 9.5, 600, mono=True, spacing=0.12, tone="muted"))
+        dirs.addSpacing(4)
+        for arrow, ang in (("↑", 0), ("↗", 45), ("→", 90), ("↘", 135), ("↓", 180), ("↙", 225), ("←", 270),
+                           ("↖", 315)):
+            b = widgets.icon_button(arrow, f"{ang}°", 24, 12, ghost=True)
+            b.clicked.connect(lambda _c=False, a=ang: self.angle.setValue(a))
+            dirs.addWidget(b)
+        dirs.addStretch()
+        gl.addLayout(dirs)
+        # every colour of the gradient as a row: exact hex and where it sits
+        self.stop_rows = QVBoxLayout()
+        self.stop_rows.setSpacing(3)
+        gl.addLayout(self.stop_rows)
+        ideas = QHBoxLayout()
+        ideas.setSpacing(4)
+        ideas.addWidget(widgets.label("IDEAS", 9.5, 600, mono=True, spacing=0.12, tone="muted"))
+        ideas.addSpacing(4)
+        self.idea_row = ideas
+        self.idea_chips: list = []
+        self._idea_timer = QTimer(self)
+        self._idea_timer.setSingleShot(True)
+        self._idea_timer.setInterval(300)
+        self._idea_timer.timeout.connect(self._fill_ideas)
+        gl.addLayout(ideas)
         pre = QHBoxLayout()
         pre.setSpacing(4)
         pre.addWidget(widgets.label("PRESETS", 9.5, 600, mono=True, spacing=0.12, tone="muted"))
@@ -684,6 +714,97 @@ class ColourDialog(widgets.RoundedDialog):
         self.angle_lbl.setText(f"{int(self.grad['angle']) % 360}°")
         self.angle.setEnabled(self.grad["type"] != "radial")
         self.gpreview.set_value(self.grad)
+        self._fill_stops()
+        self._fill_ideas()
+
+    def _fill_stops(self):
+        """One row per colour: a dot to select it, its hex code and its place along the gradient."""
+        if not hasattr(self, "stop_rows"):
+            return
+        while self.stop_rows.count():
+            lay = self.stop_rows.takeAt(0).layout()
+            while lay is not None and lay.count():
+                x = lay.takeAt(0).widget()
+                if x is not None:
+                    x.deleteLater()
+        self._stop_hex = []
+        order = sorted(range(len(self.bar.stops)), key=lambda i: self.bar.stops[i][0])
+        for i in order:
+            pos, col = self.bar.stops[i]
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            dot = Chip(col, "Edit this colour", 18)
+            dot.active = i == self.bar.current
+            dot.clicked.connect(lambda _c=False, k=i: self._select_stop(k))
+            row.addWidget(dot)
+            hx = QLineEdit(col)
+            hx.setProperty("mono", True)
+            hx.setFixedHeight(24)
+            hx.editingFinished.connect(lambda k=i, e=hx: self._stop_hex_typed(k, e.text()))
+            row.addWidget(hx, 1)
+            self._stop_hex.append((i, hx))
+            sp = QSpinBox()
+            sp.setRange(0, 100)
+            sp.setSuffix(" %")
+            sp.setFixedHeight(24)
+            sp.setValue(int(round(pos * 100)))
+            sp.valueChanged.connect(lambda v, k=i: self._stop_moved(k, v / 100))
+            row.addWidget(sp)
+            rm = widgets.icon_button("✕", "Remove this colour", 22, 10, ghost=True)
+            rm.setEnabled(len(self.bar.stops) > 2)
+            rm.clicked.connect(lambda _c=False, k=i: self.bar.remove(k))
+            row.addWidget(rm)
+            self.stop_rows.addLayout(row)
+
+    def _select_stop(self, i: int):
+        self.bar.current = i
+        self.bar.update()
+        self._stop_selected(i)
+        self._fill_stops()
+
+    def _stop_hex_typed(self, i: int, text: str):
+        c = parse(text)
+        if c and 0 <= i < len(self.bar.stops):
+            self.bar.current = i
+            self.set_colour(c)
+            self._fill_stops()
+
+    def _stop_moved(self, i: int, pos: float):
+        if 0 <= i < len(self.bar.stops):
+            self.bar.stops[i][0] = pos
+            self.bar.update()
+            self.grad["stops"] = [list(st) for st in self.bar.stops]
+            self.gpreview.set_value(self.grad)
+            self._emit()
+
+    def _add_stop(self):
+        stops = sorted(self.bar.stops, key=lambda st: st[0])
+        gaps = [(stops[i + 1][0] - stops[i][0], i) for i in range(len(stops) - 1)]
+        if not gaps:
+            return
+        _w, i = max(gaps)
+        pos = (stops[i][0] + stops[i + 1][0]) / 2
+        col = theme.mix(stops[i][1], stops[i + 1][1], 0.5)
+        self.bar.stops.append([pos, col])
+        self.bar.current = len(self.bar.stops) - 1
+        self.bar.update()
+        self._bar_changed()
+        self.set_colour(col, emit=False)
+
+    def _fill_ideas(self):
+        """A few gradients worked out from the first colour."""
+        if not hasattr(self, "idea_row"):
+            return
+        for c in self.idea_chips:
+            self.idea_row.removeWidget(c)
+            c.deleteLater()
+        self.idea_chips = []
+        first = sorted(self.bar.stops, key=lambda st: st[0])[0][1] if self.bar.stops else self.solid
+        for name, spec in ideas_for(first):
+            c = Chip(spec, name, 22)
+            c.clicked.connect(lambda _c=False, sp=spec: self._use_preset(sp))
+            self.idea_row.insertWidget(self.idea_row.count(), c)
+            self.idea_chips.append(c)
 
     def set_colour(self, hex_colour: str, emit: bool = True, from_hsv: tuple | None = None):
         """Make `hex_colour` the colour being edited (the solid colour, or the selected gradient stop)."""
@@ -710,6 +831,10 @@ class ColourDialog(widgets.RoundedDialog):
                 self.grad["stops"][self.bar.current][1] = hex_colour
                 self.bar.stops[self.bar.current][1] = hex_colour
                 self.bar.update()
+                for k, hx in getattr(self, "_stop_hex", []):
+                    if k == self.bar.current and not hx.hasFocus():
+                        hx.setText(hex_colour)
+                self._idea_timer.start()
             self.gpreview.set_value(self.grad)
         else:
             self.solid = hex_colour
@@ -749,11 +874,14 @@ class ColourDialog(widgets.RoundedDialog):
     def _bar_changed(self):
         self.grad["stops"] = [list(s) for s in self.bar.stops]
         self.gpreview.set_value(self.grad)
+        self._fill_stops()
         self._emit()
 
     def _stop_selected(self, i):
         if 0 <= i < len(self.bar.stops):
             self.set_colour(self.bar.stops[i][1], emit=False)
+            for k, hx in getattr(self, "_stop_hex", []):
+                hx.setProperty("current", k == i)
 
     def _type_changed(self, _i):
         self.grad["type"] = self.gtype.currentData()
@@ -813,6 +941,36 @@ class ColourDialog(widgets.RoundedDialog):
             self.accept()
             return
         super().keyPressEvent(e)
+
+
+def partner(hex_colour: str) -> str:
+    """A second colour that goes well with this one in a gradient: its hue turned a little, a touch lighter
+    (or darker when it is already light)."""
+    h, s, v = hsv_of(parse(hex_colour) or "#7B6CF6")
+    if s < 0.08:                                    # a grey: a lighter or darker grey
+        return hex_of(h, s, max(0.0, v - 0.35) if v > 0.5 else min(1.0, v + 0.35))
+    return hex_of((h + 0.09) % 1.0, min(1.0, s * 1.05), min(1.0, v * 1.15) if v < 0.75 else v * 0.8)
+
+
+def ideas_for(hex_colour: str) -> list[tuple[str, dict]]:
+    """Gradients worked out from one colour."""
+    c = parse(hex_colour) or "#7B6CF6"
+    h, s, v = hsv_of(c)
+    sat = max(s, 0.45)
+
+    def lin(name, *cols, angle=135):
+        n = len(cols) - 1
+        return name, {"type": "linear", "angle": angle, "stops": [[i / n, x] for i, x in enumerate(cols)]}
+    return [
+        lin("Next to it", c, partner(c)),
+        lin("Into the dark", c, theme.mix(c, "#000000", 0.7), angle=180),
+        lin("Into the light", theme.mix(c, "#FFFFFF", 0.55), c, angle=180),
+        lin("Opposite", c, hex_of((h + 0.5) % 1.0, sat, max(v, 0.6))),
+        lin("Three of a kind", c, hex_of((h + 0.33) % 1.0, sat, max(v, 0.6)), hex_of((h + 0.66) % 1.0, sat, max(v, 0.6)),
+            angle=90),
+        lin("There and back", c, partner(c), c, angle=90),
+        ("Glow", {"type": "radial", "angle": 0, "stops": [[0, theme.mix(c, "#FFFFFF", 0.35)], [1, c]]}),
+    ]
 
 
 def _launcher():

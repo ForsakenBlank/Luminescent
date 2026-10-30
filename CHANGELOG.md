@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.6.0
+
+* **Fix: panels open where they should.** Notes, the calculator and every other panel ignored Settings → Overlay &
+  Interface → Panels like Notes open and all sat in the same corner. Hyprland was quietly ignoring every move of a
+  pinned window, and the first move came before it had finished placing the window. Panels now open in the middle
+  of the screen with the mouse, next to the mouse or where you left them, as you choose, on every monitor, and
+  pop-ups (names, confirmations, the colour picker, the theme editor) open in the middle of the screen with the
+  mouse. Dragging a panel works the same way.
+* **Your whole desktop changes with the theme.** The theme editor has a new DESKTOP group:
+  * **Caelestia look**: how see-through Caelestia's panels and sidebar are, rounding, spacing, text size, the screen
+    border, fonts (the big one is the lock screen clock), the dashboard picture, the power menu picture (shut down,
+    reboot, log out) and how fast they play, the logo, the "no notifications" pictures, the lock screen (wallpaper or
+    a blur of the screen, logo colours, notifications), which dashboard pages show, and the desktop clock and
+    visualiser. Tick a setting to have the theme set it.
+  * **Caelestia extras**: a picture or GIF in place of the lyrics on the dashboard's media page, and a picture or
+    GIF behind the lock screen, with how much it is blurred.
+  * **Glass**: how see-through every app is (focused and not), the blur strength, and frosted glass for
+    Luminescent's own panels and notifications.
+  * **Terminal**: every terminal colour, how see-through kitty is, and the picture fastfetch shows when a terminal
+    opens.
+  Anything a theme leaves alone stays as it is, or goes back to what it was before another theme changed it.
+* **Glass for Luminescent's panels and notifications**: Settings → Overlay & Interface → Glass panels and
+  notifications blurs what is behind Notes, the other panels and notifications (or set it per theme).
+* **Every other app**: Caelestia & Glass → Glass can now make every app see-through, focused and not, besides the
+  apps with a row of their own, and **Add the app I click next** adds a window by clicking it.
+* **Lock the screen**: a button on the dashboard, a tray entry, a command palette action and a hotkey open
+  Caelestia's lock screen.
+* **A better gradient editor**: every colour of a gradient is listed with its hex code and place (type or nudge
+  them), **＋ Colour** adds one in the biggest gap, arrows set the direction in one click, and **Ideas** offers
+  gradients worked out from your colour. A solid colour turned into a gradient starts with a second colour that goes
+  with it, and the ◐ next to every theme colour makes it a gradient at once.
+* **Pictures and GIFs on the dashboard**: ＋ Add → Picture or GIF. Right-click it for its frame (a panel, just a
+  border or nothing), how it fills the box, its corners, how solid it is and a title bar. Drag it anywhere, resize
+  it from its edges.
+* **Smoother theme changes**: the old look fades into the new one without the screen flashing in between, open
+  panels fade too, and the Themes page stays where you scrolled to instead of jumping to the top.
+* **Updates in Settings**: with more than six releases, the newest five show and the rest are behind Show more.
+* **Fix**: panels no longer keep an empty strip along their bottom edge after opening.
+
 ## 1.5.2
 
 * **Caelestia colours in every theme**: the theme editor has a new Caelestia colours page with every colour of

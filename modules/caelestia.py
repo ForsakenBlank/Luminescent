@@ -37,6 +37,8 @@ from PyQt6.QtGui import QPixmap
 
 from core import widgets, theme, hypr, colourpick, IS_WIN, DATA_DIR
 from core.module import Module
+from core.guard import alive
+from modules import caelestia_look as look
 
 CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "caelestia")
 STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "caelestia")
@@ -69,6 +71,14 @@ def backup(path: str) -> str:
     dst = os.path.join(BACKUPS, f"{datetime.now():%Y%m%d-%H%M%S}-{os.path.basename(path)}")
     if os.path.exists(path):
         shutil.copy2(path, dst)
+    # every theme switch can write a file, so only the newest copies of each are kept
+    name = os.path.basename(path)
+    old = sorted(n for n in os.listdir(BACKUPS) if n.endswith("-" + name))[:-40]
+    for n in old:
+        try:
+            os.remove(os.path.join(BACKUPS, n))
+        except OSError:
+            pass
     return dst
 
 
@@ -539,6 +549,31 @@ class CaelestiaPanel(widgets.FloatingPanel):
             g.addWidget(s[0], row, 1)
             g.addWidget(s[1], row, 2)
         v.addWidget(blur)
+
+        every = QFrame()
+        every.setObjectName("lumCard")
+        eg = QGridLayout(every)
+        eg.setContentsMargins(14, 10, 14, 10)
+        eg.setHorizontalSpacing(12)
+        eg.addWidget(widgets.label("EVERY OTHER APP", 10.5, 600, mono=True, spacing=0.14, tone="accent"), 0, 0, 1, 3)
+        self.every_on = QCheckBox("Change how see-through every app without its own row below is")
+        a, i = float(self.m.s("all_active", 0) or 0), float(self.m.s("all_inactive", 0) or 0)
+        self.every_on.setChecked(bool(a or i))
+        eg.addWidget(self.every_on, 1, 0, 1, 3)
+        self.every_active = self._slider(20, 100, int(round((a or 1.0) * 100)), self._save_every)
+        self.every_inactive = self._slider(20, 100, int(round((i or 0.9) * 100)), self._save_every)
+        for row, (label, s) in enumerate((("Focused (the mouse is on it)", self.every_active),
+                                          ("Not focused", self.every_inactive)), 2):
+            eg.addWidget(widgets.label(label, 12.5), row, 0)
+            eg.addWidget(s[0], row, 1)
+            eg.addWidget(s[1], row, 2)
+            s[0].setEnabled(self.every_on.isChecked())
+        self.every_on.toggled.connect(lambda on: (self.every_active[0].setEnabled(on),
+                                                  self.every_inactive[0].setEnabled(on), self._save_every()))
+        self.theme_note = widgets.label("", 11, tone="muted")
+        self.theme_note.setWordWrap(True)
+        eg.addWidget(self.theme_note, 4, 0, 1, 3)
+        v.addWidget(every)
         self.glass_list = QVBoxLayout()
         self.glass_list.setSpacing(6)
         box = QWidget()
@@ -556,6 +591,10 @@ class CaelestiaPanel(widgets.FloatingPanel):
         add = widgets.button("＋  Add app", "primary")
         add.clicked.connect(self._add_glass)
         row.addWidget(add)
+        self.pick_btn = widgets.button("Add the app I click next", "",
+                                       "Click any window within 5 seconds and it is added to the list")
+        self.pick_btn.clicked.connect(self._pick_focused)
+        row.addWidget(self.pick_btn)
         apply = widgets.button("Apply now")
         apply.clicked.connect(self._apply_glass)
         row.addWidget(apply)
@@ -566,17 +605,58 @@ class CaelestiaPanel(widgets.FloatingPanel):
         self._fill_glass()
         return page
 
-    def _slider(self, lo: int, hi: int, val: int):
+    def _slider(self, lo: int, hi: int, val: int, on_release=None):
         s = QSlider(Qt.Orientation.Horizontal)
         s.setRange(lo, hi)
         s.setValue(val)
         lbl = widgets.label(str(val), 12, mono=True)
         lbl.setFixedWidth(30)
         s.valueChanged.connect(lambda x: lbl.setText(str(x)))
-        s.sliderReleased.connect(self._save_glass)
+        s.sliderReleased.connect(on_release or self._save_glass)
         return s, lbl
 
+    def _save_every(self):
+        on = self.every_on.isChecked()
+        self.m.settings.set("caelestia.all_active", self.every_active[0].value() / 100 if on else 0)
+        self.m.settings.set("caelestia.all_inactive", self.every_inactive[0].value() / 100 if on else 0)
+        self.m.settings.save(emit=False)
+        self._apply_glass()
+
+    def _pick_focused(self):
+        """Wait for the next window to get focus (5 s at most) and add its app."""
+        start = (hypr.query("activewindow") or {}).get("address")
+        self._pick_left = 10
+        self.pick_btn.setEnabled(False)
+
+        def tick():
+            if not alive(self):
+                return
+            w = hypr.query("activewindow") or {}
+            cls = str(w.get("class") or "")
+            if w.get("address") != start and cls and cls != hypr.APP_ID:
+                self.pick_btn.setEnabled(True)
+                self.pick_btn.setText("Add the app I click next")
+                self.app_pick.setEditText(cls)
+                self._add_glass()
+                self.glass_status.setText(f"Added {cls}.")
+                return
+            self._pick_left -= 1
+            if self._pick_left <= 0:
+                self.pick_btn.setEnabled(True)
+                self.pick_btn.setText("Add the app I click next")
+                self.glass_status.setText("No other window was clicked.")
+                return
+            self.pick_btn.setText(f"Click a window… {self._pick_left // 2 + 1}")
+            QTimer.singleShot(500, tick)
+        tick()
+
     def _fill_glass(self):
+        g = self.m.theme_glass()
+        launcher = self.m.ctx.launcher
+        name = launcher.themes.active().get("name", "") if launcher is not None else ""
+        self.theme_note.setText(
+            f"The theme {name} has its own every-app and blur settings (theme editor → Glass), so those are used "
+            "while it is on." if g else "A theme can have its own every-app and blur settings: theme editor → Glass.")
         widgets.clear_layout(self.glass_list)
         rules = self.m.glass()
         if not rules:
@@ -843,6 +923,16 @@ class CaelestiaModule(Module):
 
     def start(self):
         self.hotkey("hotkey", self.toggle, "Caelestia & Glass")
+        self.hotkey("lock_hotkey", self.lock_screen, "Lock the screen")
+        if look.available():
+            launcher = self.ctx.launcher
+            look.write_state(((launcher.themes.active().get("caelestia") or {}).get("extras"))
+                             if launcher is not None else {})
+            if self.s("extras", False) and look.mirror_outdated():
+                # caelestia was updated: link its new files in and patch them again
+                ok, msg = look.build_mirror()
+                self.log.info("caelestia extras rebuilt after an update: %s", msg or "ok") if ok else \
+                    self.log.warning("caelestia extras: %s", msg)
         sync = hypr.sync()
         if sync is not None and not self._hooked:
             sync.reloaded.connect(lambda: QTimer.singleShot(500, self.apply_glass))   # a reload drops the rules
@@ -872,10 +962,11 @@ class CaelestiaModule(Module):
             self.start()
 
     def actions(self):
-        return [("open", "Caelestia shell settings and glass", self.toggle)]
+        return [("open", "Caelestia shell settings and glass", self.toggle),
+                ("lock", "Lock the screen (Caelestia's lock screen)", self.lock_screen)]
 
     def tray_actions(self):
-        return [("Caelestia & Glass", self.toggle)]
+        return [("Caelestia & Glass", self.toggle), ("Lock the screen", self.lock_screen)]
 
     def toggle(self):
         if self.panel is None:
@@ -908,6 +999,60 @@ class CaelestiaModule(Module):
                 out.append(cls)
         return sorted(out, key=str.lower)
 
+    def theme_glass(self) -> dict:
+        """The active theme's own glass (every app's focused / unfocused opacity and the blur), {} for none."""
+        launcher = self.ctx.launcher
+        t = launcher.themes.active() if launcher is not None else {}
+        g = t.get("glass") if isinstance(t.get("glass"), dict) else {}
+        return {k: v for k, v in g.items() if k in ("active", "inactive", "blur_size", "blur_passes")
+                and isinstance(v, (int, float)) and not isinstance(v, bool)}
+
+    def every_app(self) -> tuple[float, float]:
+        """Focused and unfocused opacity for every app without a rule of its own; 0 = Hyprland's own."""
+        g = self.theme_glass()
+        if "active" in g or "inactive" in g:
+            return float(g.get("active", 1.0)), float(g.get("inactive", 1.0))
+        return float(self.s("all_active", 0) or 0), float(self.s("all_inactive", 0) or 0)
+
+    def _hypr_option(self, name: str):
+        out = hypr.request(f"j/getoption {name}")
+        try:
+            d = json.loads(out)
+        except ValueError:
+            return None
+        return d.get("float", d.get("int"))
+
+    def _set_decoration(self, values: dict) -> str:
+        """Change Hyprland decoration options for this session, remembering what they were so they can go
+        back. values: {option: number, or None for Hyprland's own}."""
+        if not hasattr(self, "_orig"):
+            self._orig = {}
+        out = {}
+        for name, v in values.items():
+            if v is None:
+                if name in self._orig:
+                    out[name] = self._orig.pop(name)
+                continue
+            if name not in self._orig:
+                was = self._hypr_option(f"decoration:{name.replace('.', ':')}")
+                if was is None:
+                    continue
+                self._orig[name] = was
+            out[name] = v
+        if not out:
+            return ""
+        groups: dict = {}
+        for name, v in out.items():
+            *path, leaf = name.split(".")
+            d = groups
+            for p in path:
+                d = d.setdefault(p, {})
+            d[leaf] = v
+
+        def lua_table(d):
+            return "{ " + ", ".join(f"{k} = {lua_table(v) if isinstance(v, dict) else v}" for k, v in d.items()) + " }"
+        return hypr.lua(f"hl.config({{ decoration = {lua_table(groups)} }})")
+
     def apply_glass(self, off: bool = False) -> str:
         """Replace Luminescent's glass window rules with the ones in settings. Returns '' or an error."""
         if IS_WIN or not hypr.available():
@@ -924,12 +1069,15 @@ class CaelestiaModule(Module):
         err = hypr.lua(" ".join(parts))
         if err:
             return f"Hyprland did not take the window rules: {err}"
-        size, passes = int(self.s("blur_size", 0) or 0), int(self.s("blur_passes", 0) or 0)
-        if not off and (size or passes):
-            blur = ", ".join(x for x in (f"size = {size}" if size else "", f"passes = {passes}" if passes else "") if x)
-            err = hypr.lua(f"hl.config({{ decoration = {{ blur = {{ {blur} }} }} }})")
-            if err:
-                return f"The window rules are on, but Hyprland did not take the blur strength: {err}"
+        g = self.theme_glass()
+        size = int(g.get("blur_size", self.s("blur_size", 0)) or 0)
+        passes = int(g.get("blur_passes", self.s("blur_passes", 0)) or 0)
+        active, inactive = (0.0, 0.0) if off else self.every_app()
+        err = self._set_decoration({
+            "blur.size": None if off else (size or None), "blur.passes": None if off else (passes or None),
+            "active_opacity": round(active, 2) or None, "inactive_opacity": round(inactive, 2) or None})
+        if err:
+            return f"The window rules are on, but Hyprland did not take the blur or every app's opacity: {err}"
         return ""
 
     # ── colours ────────────────────────────────────────────────────────────
@@ -975,11 +1123,54 @@ class CaelestiaModule(Module):
                 and not self.panel._edits:
             self.panel._fill_colours()
 
+    def apply_look(self, t: dict) -> str:
+        """The theme's Caelestia shell settings and extras (see caelestia_look). '' or an error."""
+        if not look.available():
+            return ""
+        cael = t.get("caelestia") or {}
+        changes, before = look.plan_shell(look.clean(cael.get("shell")), dict(self.s("before_shell", {}) or {}))
+        err = look.write_shell(changes, backup)
+        if not err:
+            self.settings.set("caelestia.before_shell", before)
+            self.settings.save(emit=False)
+            if changes:
+                self.log.info("gave Caelestia %d shell settings for the theme %s", len(changes), t.get("name", ""))
+        return err or look.write_state(cael.get("extras"))
+
+    def set_extras(self, on: bool) -> str:
+        """Turn the Caelestia extras (pictures for the lyrics and the lock screen) on or off. Caelestia restarts
+        once to pick it up. '' or an error."""
+        if on:
+            launcher = self.ctx.launcher
+            look.write_state(((launcher.themes.active().get("caelestia") or {}).get("extras"))
+                             if launcher is not None else {})
+            ok, msg = look.build_mirror()
+            if not ok:
+                return msg
+            if msg:
+                self.ctx.notify(self.title, msg)
+        else:
+            err = look.remove_mirror()
+            if err:
+                return err
+        self.settings.set("caelestia.extras", on)
+        self.settings.save(emit=False)
+        return look.restart_shell()
+
+    def lock_screen(self):
+        err = look.lock_now()
+        if err:
+            self.ctx.notify(self.title, f"Could not lock: {err}")
+
     def theme_applied(self, t: dict):
-        """A Luminescent theme was applied: give Caelestia that theme's colours, and put back the ones an earlier
-        theme changed that this one leaves alone."""
+        """A Luminescent theme was applied: give Caelestia that theme's colours, shell settings and extras, and
+        put back what an earlier theme changed that this one leaves alone."""
         if IS_WIN:
             return
+        err = self.apply_look(t)
+        if err:
+            self.ctx.notify(self.title, err)
+        self.apply_glass()
         cols = {k: v for k, v in (((t.get("caelestia") or {}).get("colours")) or {}).items() if is_colour(v)}
         now = scheme()
         if not now:

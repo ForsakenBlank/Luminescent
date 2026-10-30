@@ -13,6 +13,7 @@ drives it all.
 import os
 import sys
 import time
+import json
 import zlib
 import shutil
 import logging
@@ -23,7 +24,7 @@ from logging.handlers import RotatingFileHandler
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
-from PyQt6.QtCore import QTimer, QLockFile, QDir
+from PyQt6.QtCore import Qt, QTimer, QLockFile, QDir
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QFont
 
 from core import (APP_DIR, APP_NAME, DATA_DIR, HOME_DIR, FROZEN, IS_WIN, VERSION, theme, widgets, autostart, terminal,
@@ -153,6 +154,7 @@ class Launcher:
         self._sync_autostart()
         self._sync_desktop_entry()
         self._write_terminal_scheme()
+        safely(self._apply_glass, "glass")
         QTimer.singleShot(20_000, self._auto_backup)
         QTimer.singleShot(30_000, self._check_updates)
         self._backup_timer = QTimer()
@@ -208,17 +210,47 @@ class Launcher:
                 except Exception:
                     log.exception("retheme failed for %s", key)
 
+    def _window_snapshots(self) -> list:
+        """Pictures of the open panels (not the overlay) in the old look, to fade into the new one."""
+        from core import anim
+        if not anim.on("theme"):
+            return []
+        out = []
+        for w in self.app.topLevelWidgets():
+            try:
+                if w.isVisible() and not w.property("lum_no_pin") and w.width() > 20 and w.height() > 20 \
+                        and w.windowType() not in (Qt.WindowType.Popup, Qt.WindowType.ToolTip):
+                    out.append((w, w.grab()))
+            except RuntimeError:
+                pass
+        return out
+
+    def _fade_windows(self, snaps: list):
+        from core import anim
+        from PyQt6.QtWidgets import QLabel
+        for w, px in snaps:
+            if not alive(w) or not w.isVisible():
+                continue
+            curtain = QLabel(w)
+            curtain.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            curtain.setPixmap(px)
+            curtain.setScaledContents(True)
+            curtain.setGeometry(w.rect())
+            curtain.show()
+            curtain.raise_()
+            anim.fade(curtain, 1.0, 0.0, "theme", 340, then=curtain.deleteLater)
+
     def _theme_applied(self, t: dict):
         events.emit("theme.changed", t.get("name", ""))
-        # the old overlay goes first, then the new style sheet, so Qt does not restyle widgets about to vanish
-        QTimer.singleShot(0, lambda: self.overlay.rebuild(between=self._restyle_all))
+        snaps = self._window_snapshots()
+        # the old overlay goes first, then the new style sheet, so Qt does not restyle widgets about to vanish;
+        # open panels fade from their old look into the new one
+        QTimer.singleShot(0, lambda: (self.overlay.rebuild(between=self._restyle_all), self._fade_windows(snaps)))
         self.icon = make_icon(theme.is_light(), theme.P.primary)
         self.app.setWindowIcon(self.icon)
         self.tray.setIcon(self.icon)
-        safely(self._write_terminal_scheme, "terminal colours")
-        cael = self.modules.get("caelestia")
-        if cael is not None and cael.running and hasattr(cael, "theme_applied"):
-            safely(lambda: cael.theme_applied(t), "caelestia colours")
+        # the desktop around Luminescent follows once the new look is on screen, so switching feels instant
+        QTimer.singleShot(0, lambda: self._desktop_follows(t))
         if self._palette is not None:
             if alive(self._palette):
                 self._palette.close()
@@ -231,6 +263,14 @@ class Launcher:
         if self.settings.active_profile() != (t.get("profile") or "default"):
             self.settings.switch_profile(t.get("profile") or "default")
             self.notify(APP_NAME, f"Settings profile: {self.settings.profile_name(self.settings.active_profile())}", 2500)
+
+    def _desktop_follows(self, t: dict):
+        """The terminal, Caelestia (colours, shell settings, extras) and glass in the new theme."""
+        safely(self._apply_glass, "glass")
+        safely(self._write_terminal_scheme, "terminal colours")
+        cael = self.modules.get("caelestia")
+        if cael is not None and cael.running and hasattr(cael, "theme_applied"):
+            safely(lambda: cael.theme_applied(t), "caelestia colours")
 
     def _sync_own_terminal(self, asked: bool = False):
         """Settings → Overlay → "Your own terminal follows the theme": kitty.conf on Linux, a Windows Terminal
@@ -268,6 +308,9 @@ class Launcher:
                 self.notify(APP_NAME, f"Could not change {terminal.OWN_NAME}: {err}")
 
     def _write_terminal_scheme(self):
+        t = self.themes.active()
+        terminal.set_theme(t.get("terminal"))
+        safely(lambda: self._fastfetch_logo(t), "terminal start-up picture")
         if self.settings.get("ui.own_terminal", False):
             self._sync_own_terminal()
         if not self.settings.get("ui.terminal_scheme", True):
@@ -277,6 +320,34 @@ class Launcher:
         except Exception:
             pass
         terminal.write_fragment(ICON_PNG)
+
+    def _fastfetch_logo(self, t: dict):
+        """The theme's terminal start-up picture goes into fastfetch's config; a theme without one puts back
+        whatever was there before a theme changed it."""
+        if IS_WIN or os.environ.get("LUMINESCENT_HOME"):
+            return
+        want = terminal.theme_settings().get("logo")
+        before = self.settings.get("ui.fastfetch_before", None)
+        if want:
+            if before is None:
+                was = terminal.fastfetch_logo()
+                if was is None and not os.path.isfile(terminal.FASTFETCH_CONF):
+                    return
+                before = {"value": was}
+                self.settings.set("ui.fastfetch_before", before)
+                self.settings.save(emit=False)
+            value = json.dumps({"type": "auto", "source": os.path.expanduser(want),
+                                "width": terminal.theme_settings().get("logo_width", 30)})
+            if terminal.fastfetch_logo() != value:
+                err = terminal.set_fastfetch_logo(value, os.path.join(DATA_DIR, "terminal-backups"))
+                if err:
+                    log.warning("fastfetch logo: %s", err)
+        elif isinstance(before, dict):
+            err = terminal.set_fastfetch_logo(before.get("value"), os.path.join(DATA_DIR, "terminal-backups"))
+            if err:
+                log.warning("fastfetch logo: %s", err)
+            self.settings.set("ui.fastfetch_before", None)
+            self.settings.save(emit=False)
 
     def apply_theme(self, tid: str):
         self.themes.apply(tid)
@@ -322,7 +393,15 @@ class Launcher:
                 return
         self.notify(m.title, f"{m.title} has no action '{aid}' any more.")
 
+    def _apply_glass(self):
+        """Glass on Luminescent's own panels and notifications: the theme's choice, else the setting."""
+        g = self.themes.active().get("glass")
+        own = g.get("luminescent") if isinstance(g, dict) else None
+        on = own if isinstance(own, bool) else bool(self.settings.get("ui.panel_glass", False))
+        widgets.set_glass(on and not self.settings.get("ui.performance_mode", False))
+
     def apply_settings(self):
+        safely(self._apply_glass, "glass")
         hover = bool(self.settings.get("animations.hover", True)) and not self.settings.get("ui.performance_mode")
         if hover != theme.HOVER:
             QTimer.singleShot(0, self._restyle)
@@ -840,7 +919,38 @@ def _smoke(launcher: "Launcher", app: QApplication):
             dlg.preview.grab()
         dlg.deleteLater()
 
-    steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide, theme_editor,
+    def gradient_editor():
+        # the picker in gradient mode with its stop list, new colours and ideas
+        from core.colourpick import ColourDialog
+        d = ColourDialog(None, "#7B6CF6", "Smoke", gradient=True)
+        d.set_mode("gradient")
+        d._add_stop()
+        d._select_stop(0)
+        d._stop_hex_typed(0, "#112233")
+        d._stop_moved(0, 0.1)
+        d._fill_ideas()
+        d.grab()
+        d.deleteLater()
+
+    pic: dict = {}
+
+    def picture_on_dashboard():
+        pic["tab"] = launcher.dashboard.add_picture_tab(os.path.join(APP_DIR, "assets", "luminescent-256.png"),
+                                                       200, 200, 240, 240)
+        launcher.overlay.open("dashboard")
+
+    def picture_gone():
+        page = launcher.overlay.page("dashboard")
+        if page is not None:
+            box = next((b for b in page.boxes if b.tab.get("id") == pic.get("tab", {}).get("id")), None)
+            if box is None:
+                raise RuntimeError("the picture box was not built")
+            box.grab()
+            page._picture_natural(box)
+        launcher.dashboard.delete_tab(pic["tab"]["id"])
+
+    steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide, theme_editor, gradient_editor,
+              picture_on_dashboard, picture_gone, launcher.overlay.hide,
               lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark")]
 
     def run(i=0):

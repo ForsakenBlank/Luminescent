@@ -221,7 +221,7 @@ class ThemeCard(QFrame):
         row = QHBoxLayout()
         row.setContentsMargins(4, 0, 4, 2)
         row.setSpacing(8)
-        name = widgets.label(t["name"], 13, 500)
+        name = widgets.elided(t["name"], 13, 500)
         row.addWidget(name, 1)
         check = QLabel("✓" if active else "")
         check.setFixedSize(18, 18)
@@ -236,7 +236,7 @@ class ThemeCard(QFrame):
         tip = "Built-in theme" if t.get("builtin") else ""
         if t.get("profile"):
             tip += f"\nSettings profile: {page.launcher.settings.profile_name(t['profile'])}"
-        self.setToolTip((tip + "\nClick to use · right-click for settings").strip())
+        self.setToolTip((t["name"] + "\n" + tip + "\nClick to use · right-click for settings").replace("\n\n", "\n"))
 
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
@@ -292,17 +292,17 @@ class FolderHeader(QFrame):
         lay.addStretch()
 
     def mouseReleaseEvent(self, e):
-        if e.button() == Qt.MouseButton.LeftButton:
+        if e.button() == Qt.MouseButton.LeftButton and self.rect().contains(e.position().toPoint()):
             self.page.toggle_group(self.key, self.folder)
 
     def contextMenuEvent(self, e):
-        if self.folder:
-            self.page.folder_menu(self.folder, e.globalPos())
+        self.page.folder_menu(self.key, self.folder, e.globalPos())
 
 
 class ThemesPage(QWidget):
     def __init__(self, launcher):
         super().__init__()
+        self._order: list[str] = []
         self.launcher = launcher
         self.store: ThemeStore = launcher.themes
         lay = QVBoxLayout(self)
@@ -354,7 +354,15 @@ class ThemesPage(QWidget):
         QTimer.singleShot(0, self.refresh)
 
     def _groups(self):
-        """[(key, name, colour, folder or None, themes)]: BUILT-IN, MY THEMES, then the user's folders."""
+        """[(key, name, colour, folder or None, themes)]: BUILT-IN, MY THEMES, then the user's folders, in the
+        order they were dragged into."""
+        out = self._default_groups()
+        order = self.store.data.get("group_order") or []
+        rank = {k: i for i, k in enumerate(order)}
+        # a group that is not in the saved order yet (a new folder) goes where it would be by default
+        return sorted(out, key=lambda g: (rank.get(g[0], len(order) + out.index(g))))
+
+    def _default_groups(self):
         folders = {f["id"]: f for f in self.store.folders()}
         loose = [t for t in self.store.themes() if not t.get("folder") or t["folder"] not in folders]
         out = [(BUILTIN_GROUP, "Built-in", theme.PRESETS["dark"]["primary"], None,
@@ -373,16 +381,24 @@ class ThemesPage(QWidget):
         v.setContentsMargins(24, 4, 24, 24)
         v.setSpacing(22)
         avail = (self.width() if self.width() > 300 else 1178) - 48 - 10
-        card_w = max(150, (avail - GAP * (COLS - 1)) // COLS)
+        cols = max(1, min(COLS, (avail + GAP) // (170 + GAP)))     # fewer columns on a narrow page, never cut off
+        card_w = max(150, (avail - GAP * (cols - 1)) // cols)
         active = self.store.data["active"]
         act = self.store.get(active)
         self.active_lbl.setText(f"ACTIVE: {act['name'].upper()}" if act else "")
         closed = set(self.store.data.get("collapsed_groups") or [])
+        self._order = []
+        self._reorder = widgets.DragReorder(v, holder)
+        self._reorder.moved.connect(self._group_moved)
         for key, name, colour, folder, themes in self._groups():
             collapsed = bool(folder.get("collapsed")) if folder else key in closed
-            group = QVBoxLayout()
+            box = QWidget()
+            group = QVBoxLayout(box)
+            group.setContentsMargins(0, 0, 0, 0)
             group.setSpacing(14)
-            group.addWidget(FolderHeader(self, key, name, colour, len(themes), collapsed, folder))
+            header = FolderHeader(self, key, name, colour, len(themes), collapsed, folder)
+            header.setToolTip("Click to fold · drag to move the folder · right-click for options")
+            group.addWidget(header)
             if not collapsed:
                 grid = QGridLayout()
                 grid.setHorizontalSpacing(GAP)
@@ -390,12 +406,15 @@ class ThemesPage(QWidget):
                 grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
                 cards = [ThemeCard(self, t, t["id"] == active, card_w) for t in themes]
                 for i, c in enumerate(cards):
-                    grid.addWidget(c, i // COLS, i % COLS)
+                    grid.addWidget(c, i // cols, i % cols)
                 h = max((c.sizeHint().height() for c in cards), default=160)
                 n = len(cards)
-                grid.addWidget(AddCard(self, folder["id"] if folder else "", card_w, h), n // COLS, n % COLS)
+                grid.addWidget(AddCard(self, folder["id"] if folder else "", card_w, h), n // cols, n % cols)
                 group.addLayout(grid)
-            v.addLayout(group)
+            v.addWidget(box)
+            self._reorder.add(box, header)
+            header.setCursor(Qt.CursorShape.PointingHandCursor)    # still a click to fold, so keep the hand
+            self._order.append(key)
         v.addStretch()
         old = self.scroll.takeWidget()
         self.scroll.setWidget(holder)
@@ -490,6 +509,13 @@ class ThemesPage(QWidget):
         m.addAction("Rename…", lambda: self._rename(t))
         m.addAction("Duplicate", lambda: self.store.duplicate(t["id"]))
         m.addAction("Export to a file…", lambda: self.export_theme(t))
+        group = next((g[4] for g in self._groups() if any(x["id"] == t["id"] for x in g[4])), [])
+        ids = [x["id"] for x in group]
+        i = ids.index(t["id"]) if t["id"] in ids else -1
+        earlier = m.addAction("Move earlier", lambda: self.store.swap_themes(t["id"], ids[i - 1]))
+        earlier.setEnabled(i > 0)
+        later = m.addAction("Move later", lambda: self.store.swap_themes(t["id"], ids[i + 1]))
+        later.setEnabled(0 <= i < len(ids) - 1)
         sub = m.addMenu("Move to folder")
         sub.addAction("(no folder)", lambda: self.store.move_to_folder(t["id"], ""))
         for f in self.store.folders():
@@ -503,13 +529,34 @@ class ThemesPage(QWidget):
             d.setText("Delete… (built-in themes stay)")
         m.exec(pos)
 
-    def folder_menu(self, f: dict, pos):
+    def folder_menu(self, key: str, f: dict | None, pos):
         m = widgets.menu(self)
-        m.addAction("Rename…", lambda: self._rename_folder(f))
-        m.addAction("Colour…", lambda: self._folder_colour(f))
-        m.addSeparator()
-        m.addAction("Delete folder (keeps its themes)", lambda: self.store.delete_folder(f["id"]))
+        if f:
+            m.addAction("Rename…", lambda: self._rename_folder(f))
+            m.addAction("Colour…", lambda: self._folder_colour(f))
+            m.addSeparator()
+        i = self._order.index(key) if key in self._order else -1
+        up = m.addAction("Move up", lambda: self._group_moved(i, i - 1))
+        up.setEnabled(i > 0)
+        down = m.addAction("Move down", lambda: self._group_moved(i, i + 1))
+        down.setEnabled(0 <= i < len(self._order) - 1)
+        top = m.addAction("Move to the top", lambda: self._group_moved(i, 0))
+        top.setEnabled(i > 0)
+        bottom = m.addAction("Move to the bottom", lambda: self._group_moved(i, len(self._order) - 1))
+        bottom.setEnabled(0 <= i < len(self._order) - 1)
+        if f:
+            m.addSeparator()
+            m.addAction("Delete folder (keeps its themes)", lambda: self.store.delete_folder(f["id"]))
         m.exec(pos)
+
+    def _group_moved(self, old: int, new: int):
+        order = list(self._order)
+        if not (0 <= old < len(order)) or not (0 <= new < len(order)) or old == new:
+            return
+        order.insert(new, order.pop(old))
+        # keep groups that are hidden right now (an empty "My themes") where they were
+        saved = [k for k in (self.store.data.get("group_order") or []) if k not in order]
+        self.store.set_group_order(order + saved)
 
     def _rename(self, t):
         name, ok = widgets.ask_text(self, "Rename theme", "New name:", t["name"])

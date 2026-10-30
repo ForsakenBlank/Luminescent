@@ -822,19 +822,13 @@ def _launcher():
 
 def pick(parent, start="#7B6CF6", title: str = "Pick a colour", gradient: bool = False, on_change=None):
     """Open the picker and wait for it. Returns "#RRGGBB", a gradient spec (only with gradient=True) or None."""
-    dlg = ColourDialog(parent, start, title, gradient)
+    # parented to the window, not the widget: a widget's own style sheet would leak into the picker
+    owner = parent.window() if isinstance(parent, QWidget) else None
+    dlg = ColourDialog(owner, start, title, gradient)
     if on_change is not None:
         dlg.live.connect(on_change)
     dlg.adjustSize()
-    near = parent.window() if isinstance(parent, QWidget) else None
-    if near is not None and near.isVisible():
-        g = near.frameGeometry()
-        scr = widgets.cursor_screen_geometry()
-        x = min(max(scr.left() + 8, g.center().x() - dlg.width() // 2), scr.right() - dlg.width() - 8)
-        y = min(max(scr.top() + 8, g.center().y() - dlg.height() // 2), scr.bottom() - dlg.height() - 8)
-        dlg.move(x, y)
-    else:
-        dlg.fit_to_screen(dlg.width(), dlg.height())
+    dlg.fit_to_screen(dlg.width(), dlg.height(), owner)
     ok = dlg.exec() == 1
     result = dlg.value() if ok else None
     if not ok and on_change is not None:
@@ -865,8 +859,10 @@ class ColourSwatch(QPushButton):
         self.live = live
         self.setFixedSize(width, 30)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet(f"QPushButton {{ background: {theme.P.bg_frame}; padding: 0; }}"
-                           f"QPushButton:hover {{ border-color: {theme.P.text_muted}; }}")
+        # scoped by name: a bare QPushButton rule would also restyle the picker's own buttons (it is our child)
+        self.setObjectName("colourSwatch")
+        self.setStyleSheet(f"#colourSwatch {{ background: {theme.P.bg_frame}; padding: 0; }}"
+                           f"#colourSwatch:hover {{ border-color: {theme.P.text_muted}; }}")
         self.clicked.connect(self.open_picker)
 
     def value(self):

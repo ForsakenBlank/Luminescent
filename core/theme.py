@@ -606,7 +606,7 @@ def stylesheet() -> str:
 def _stylesheet() -> str:
     p = P
     r = p.radius
-    rs = max(0, r - 4)          # small controls: buttons, inputs
+    rs = min(r, max(6, r - 4))  # small controls: buttons, inputs, hovered rows (never sharp unless the theme is)
     rb = max(0, r - 2)          # boxes inside a panel
     mono = MONO_CSS
 
@@ -667,6 +667,13 @@ def _stylesheet() -> str:
     QPushButton[variant="pill"] {{ border-radius: 16px; padding: 7px 18px; font-size: 13px; }}
     QPushButton[variant="pill"][accent="true"] {{ background: {f('primary')}; color: {p.on_primary}; border-color: {p.primary}; }}
     QPushButton[variant="pill"][accent="true"]:hover {{ background: {f('primary_hover')}; }}
+    QPushButton[variant="primary"]:disabled, QPushButton[variant="pill"][accent="true"]:disabled {{
+        background: {rgba(p.primary, 0.28)}; color: {rgba(p.on_primary, 0.55)}; border-color: transparent;
+    }}
+    QPushButton[variant="ghost"]:disabled, QPushButton[variant="outline"]:disabled {{
+        background: transparent; color: {rgba(p.text_muted, 0.7)};
+    }}
+    QPushButton[variant="danger"]:disabled {{ background: transparent; color: {rgba(DANGER, 0.4)}; }}
 
     QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTimeEdit, QDateTimeEdit {{
         background: {f('bg_frame')}; color: {p.text_primary};
@@ -676,8 +683,12 @@ def _stylesheet() -> str:
     QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus,
     QComboBox:focus, QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {{ border-color: {p.primary}; }}
     QLineEdit[invalid="true"] {{ border-color: {DANGER}; }}
-    QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {{ color: {p.text_muted}; }}
-    QSpinBox, QDoubleSpinBox, QTimeEdit, QDateEdit, QDateTimeEdit {{ font-family: {mono}; font-size: 12px; padding-right: 26px; }}
+    QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled,
+    QComboBox:disabled, QDateEdit:disabled, QTimeEdit:disabled, QDateTimeEdit:disabled {{ color: {p.text_muted}; }}
+    QCheckBox:disabled, QRadioButton:disabled {{ color: {p.text_muted}; }}
+    QSpinBox, QDoubleSpinBox, QTimeEdit, QDateEdit, QDateTimeEdit {{
+        font-family: {mono}; font-size: 12px; padding-right: 26px;
+    }}
     QSpinBox::up-button, QDoubleSpinBox::up-button, QTimeEdit::up-button, QDateEdit::up-button, QDateTimeEdit::up-button {{
         subcontrol-origin: border; subcontrol-position: top right; width: 22px;
         border-left: 1px solid {p.border}; border-top-right-radius: {rs}px; background: transparent;
@@ -697,10 +708,18 @@ def _stylesheet() -> str:
     }}
     QComboBox {{ font-weight: 500; }}
     QComboBox::drop-down {{ border: none; width: 26px; }}
+    QDateEdit[calendarPopup="true"], QDateTimeEdit[calendarPopup="true"] {{ padding-right: 28px; }}
+    QDateEdit::drop-down, QDateTimeEdit::drop-down {{
+        subcontrol-origin: border; subcontrol-position: center right; width: 26px; border: none;
+    }}
     QComboBox::down-arrow {{ image: url({_arrow("down", p.text_muted)}); width: 8px; height: 5px; margin-right: 8px; }}
     QComboBox QAbstractItemView {{
         background: {f('bg_base')}; color: {p.text_primary}; border: 1px solid {p.border}; padding: 4px;
         selection-background-color: {p.bg_card_hover}; selection-color: {p.text_primary}; outline: none;
+    }}
+    QComboBox QAbstractItemView::item {{ min-height: 26px; padding: 0 8px; border-radius: {rs}px; }}
+    QComboBox QAbstractItemView::item:selected, QComboBox QAbstractItemView::item:hover {{
+        background: {p.bg_card_hover}; color: {p.text_primary};
     }}
 
     QCheckBox {{ spacing: 9px; background: transparent; font-size: 13px; }}
@@ -734,6 +753,7 @@ def _stylesheet() -> str:
     QListWidget, QTreeWidget, QTableWidget {{
         background: {f('bg_card')}; border: 1px solid {p.border}; border-radius: {rb}px; outline: none;
     }}
+    QListWidget {{ padding: 3px; }}
     QListWidget::item {{ padding: 6px 8px; border-radius: {rs}px; }}
     QListWidget::item:selected, QTableWidget::item:selected {{ background: {p.primary_muted}; color: {p.text_primary}; }}
     QListWidget::item:hover {{ background: {p.bg_card_hover}; }}
@@ -821,7 +841,7 @@ def _stylesheet() -> str:
     #tabHeader[collapsed="true"] {{ border-bottom: none; border-radius: {rb}px; }}
     #tabAccent {{ background: {f('primary')}; border-radius: 1px; }}
     #tabTitle {{ color: {p.text_primary}; font-family: {mono}; }}
-    #tabRow {{ background: transparent; border-radius: 0; }}
+    #tabRow {{ background: transparent; border-radius: {rs}px; }}
     #tabRow:hover {{ background: {p.bg_card_hover}; }}
     #tabRowText {{ color: {p.text_primary}; }}
     #typeBadge {{

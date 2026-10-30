@@ -196,13 +196,14 @@ SCHEMA = [
               "Off: the overlay always opens on the Dashboard."),
         Field("last_page", "", "hidden", "dashboard"),
         Field("settings_search_only", "", "hidden", False),
+        Field("panel_place_v", "", "hidden", 1),
         Field("settings_pinned", "", "hidden", []),
         Field("chrome_items", "", "hidden", []),
         Field("overlay_screen", "Open the overlay on", "choice", "cursor",
               choices=[("primary", "The primary screen"), ("cursor", "The screen with the mouse")],
               help="The page switcher, panels and the dashboard's toolbar go to that screen. Dashboard boxes you "
                    "put on a particular screen stay there."),
-        Field("panel_place", "Panels like Notes open", "choice", "kept",
+        Field("panel_place", "Panels like Notes open", "choice", "centre",
               choices=[("kept", "Where I left them"), ("centre", "In the middle of the screen"),
                        ("cursor", "Next to the mouse")],
               help="On the screen the overlay opens on. Sticky notes always stay where you put them."),
@@ -729,6 +730,12 @@ def _migrate(data: dict, saved: dict):
         tray = (saved.get("general") or {}).get("tray_items")
         if isinstance(tray, list) and "automation" not in tray:
             data["general"]["tray_items"] = list(tray) + ["automation"]
+    if not ui.get("panel_place_v"):
+        # panels used to reopen where they were last, which was often half off another monitor: they now
+        # open in the middle of the screen with the mouse (pick "Where I left them" to get the old way back)
+        if ui.get("panel_place", "kept") == "kept":
+            data["ui"]["panel_place"] = "centre"
+        data["ui"]["panel_place_v"] = 1
     auto = saved.get("automation") or {}
     if "animations" not in saved:
         if "animate" in auto:

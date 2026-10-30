@@ -28,7 +28,7 @@ from datetime import datetime, date, time as dtime, timedelta
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QListWidget, QListWidgetItem, QLineEdit,
     QTextEdit, QCheckBox, QComboBox, QSpinBox, QDateEdit, QTimeEdit, QFileDialog,
-    QFormLayout, QScrollArea
+    QFormLayout, QScrollArea, QGridLayout
 )
 from PyQt6.QtCore import Qt, QTimer, QDate, QTime, pyqtSignal
 
@@ -577,7 +577,7 @@ class RemindersEditor(QWidget):
         left = QVBoxLayout()
         left.setSpacing(6)
         self.list = QListWidget()
-        self.list.setMinimumWidth(220)
+        self.list.setMinimumWidth(180)
         self.list.currentRowChanged.connect(self._select)
         left.addWidget(self.list, 1)
         lb = QHBoxLayout()
@@ -597,6 +597,7 @@ class RemindersEditor(QWidget):
         self.editor = QScrollArea()
         self.editor.setWidgetResizable(True)
         self.editor.setFrameShape(QFrame.Shape.NoFrame)
+        self.editor.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)   # the fields shrink instead
         form_host = QWidget()
         widgets.style(form_host, "background: transparent;")
         form = QFormLayout(form_host)
@@ -640,15 +641,16 @@ class RemindersEditor(QWidget):
 
         days_w = QWidget()
         widgets.style(days_w, "background: transparent;")
-        dl = QHBoxLayout(days_w)
+        dl = QGridLayout(days_w)        # two rows, so a narrow settings page does not cut the week off
         dl.setContentsMargins(0, 0, 0, 0)
+        dl.setHorizontalSpacing(12)
         self.f_days = []
         for i, name in enumerate(DAY_NAMES):
             cb = QCheckBox(name)
             cb.stateChanged.connect(self._field_changed)
-            dl.addWidget(cb)
+            dl.addWidget(cb, i // 4, i % 4)
             self.f_days.append(cb)
-        dl.addStretch()
+        dl.setColumnStretch(4, 1)
         self.row_days = form.rowCount()
         form.addRow("Days", days_w)
 
@@ -755,6 +757,10 @@ class RemindersEditor(QWidget):
         for w in (self.f_time, self.f_from, self.f_to):
             w.timeChanged.connect(self._field_changed)
 
+        for combo in form_host.findChildren(QComboBox):
+            # long choices ("When the launcher starts…") used to make the form wider than the page
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(12)
         self.editor.setEnabled(False)
         self._type_changed()
 

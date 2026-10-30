@@ -1554,11 +1554,9 @@ class AutomationPage(QWidget):
 
     # ── variables ──────────────────────────────────────────────────────────
     def edit_vars(self):
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Variables")
-        dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        dlg = widgets.RoundedDialog(self, "Variables", resizable=True)
         dlg.setMinimumSize(520, 420)
-        lay = QVBoxLayout(dlg)
+        lay = dlg.body
         hint = QLabel("Kept between restarts. Use them with a Variable node, Set variable, or {var:name} in any field.")
         hint.setObjectName("lumHint")
         hint.setWordWrap(True)
@@ -1585,11 +1583,12 @@ class AutomationPage(QWidget):
         row.addStretch()
         save = widgets.button("Save", "primary")
         save.clicked.connect(dlg.accept)
-        cancel = widgets.button("Cancel")
+        cancel = widgets.button("Cancel", "ghost")
         cancel.clicked.connect(dlg.reject)
         row.addWidget(cancel)
         row.addWidget(save)
         lay.addLayout(row)
+        dlg.fit_to_screen(560, 460, self)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         new = {}

@@ -24,7 +24,7 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QScrollArea, QGridLayout, QVBoxLayout, QHBoxLayout, QFrame,
-    QLineEdit, QSizePolicy
+    QLineEdit, QSizePolicy, QFileDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QFile, QSize, QRect, QPoint, QMimeData, QUrl
 from PyQt6.QtGui import (QPixmap, QImage, QImageReader, QColor, QPainter, QPainterPath, QPen, QShortcut, QKeySequence,
@@ -1008,6 +1008,61 @@ def _unique(path: str) -> str:
     return path
 
 
+class _NoFolder(QWidget):
+    """The Clipboard page while its folder is missing: make it, or pick another, right here."""
+
+    def __init__(self, module: "SnippetsModule", base: str, embedded: bool, on_used):
+        super().__init__()
+        self.m, self.base, self.embedded, self.on_used = module, base, embedded, on_used
+        self.lay = QVBoxLayout(self)
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        box = QWidget()
+        v = QVBoxLayout(box)
+        v.setSpacing(10)
+        v.addStretch()
+        title = widgets.label("No snippets folder yet", 15, 600)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        v.addWidget(title)
+        text = widgets.label(f"Snippets keeps what you save from the clipboard in\n{base}", 12, tone="muted")
+        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        v.addWidget(text)
+        row = QHBoxLayout()
+        row.addStretch()
+        make = widgets.button("Make this folder", "primary")
+        make.clicked.connect(self._make)
+        other = widgets.button("Use another folder…", "ghost")
+        other.clicked.connect(self._other)
+        row.addWidget(other)
+        row.addWidget(make)
+        row.addStretch()
+        v.addSpacing(4)
+        v.addLayout(row)
+        v.addStretch()
+        self.lay.addWidget(box)
+
+    def _make(self):
+        try:
+            os.makedirs(self.base, exist_ok=True)
+        except OSError as e:
+            widgets.error(self, "Snippets", f"Could not make {self.base}:\n{e}")
+            return
+        self._swap()
+
+    def _other(self):
+        p = QFileDialog.getExistingDirectory(self, "Snippets folder", os.path.expanduser("~"))
+        if not p:
+            return
+        self.m.settings.set(f"{self.m.key}.base_path", p)
+        self.m.settings.save_quiet()
+        self._swap()
+
+    def _swap(self):
+        """Put the real Snippets view in place of this message."""
+        view = self.m.make_view(self.embedded, self.on_used)
+        widgets.clear_layout(self.lay)
+        self.lay.addWidget(view)
+
+
 class SnippetsModule(Module):
     key = "snippets"
     title = "Snippets"
@@ -1044,10 +1099,7 @@ class SnippetsModule(Module):
     def make_view(self, embedded: bool = True, on_used=None) -> QWidget:
         base = self.s("base_path", "")
         if not os.path.isdir(base):
-            w = QLabel(f"The snippets folder does not exist:\n{base}\n\nChange it in Settings → Clipboard (Snippets).")
-            w.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            w.setObjectName("lumHint")
-            return w
+            return _NoFolder(self, base, embedded, on_used)
         v = SnippetsView(self, base, embedded=embedded)
         if on_used:
             v.used.connect(on_used)
@@ -1063,8 +1115,14 @@ class SnippetsModule(Module):
                 self.window = None
         base = self.s("base_path", "")
         if not os.path.isdir(base):
-            self.ctx.notify(self.title, f"Snippets folder does not exist:\n{base}\nChange it in Settings → Snippets.")
-            return
+            if not widgets.confirm(None, self.title, f"The snippets folder does not exist yet:\n{base}\n\nMake it now? "
+                                   "(Settings → Clipboard (Snippets) picks another one.)", yes="Make it"):
+                return
+            try:
+                os.makedirs(base, exist_ok=True)
+            except OSError as e:
+                widgets.error(None, self.title, f"Could not make {base}:\n{e}")
+                return
         with self.themed():
             self.window = SnippetsWindow(self, path or base)
         self.window.show_and_raise()
@@ -1199,8 +1257,10 @@ class SnippetsModule(Module):
 
     def _save_and_tell(self):
         base = self.s("base_path", "")
-        if not os.path.isdir(base):
-            self.ctx.notify(self.title, f"Snippets folder does not exist:\n{base}")
+        try:
+            os.makedirs(base, exist_ok=True)         # the folder from Settings, made the first time it is used
+        except OSError as e:
+            self.ctx.notify(self.title, f"Could not make the snippets folder {base}:\n{e}")
             return
         err, saved = self.save_clipboard(base)
         self.ctx.notify(self.title, err or f"Saved {', '.join(os.path.basename(s) for s in saved)}")

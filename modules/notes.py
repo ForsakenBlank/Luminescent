@@ -557,6 +557,9 @@ class NotePanel(widgets.FloatingPanel):
         self._search.setClearButtonEnabled(True)
         self._search.textChanged.connect(self._search_changed)
         tl.addWidget(self._search)
+        new = widgets.icon_button("＋", "New note", 32, 15)
+        new.clicked.connect(self.add_note)
+        tl.addWidget(new)
         self.content.addWidget(top)
 
         scroll = QScrollArea()

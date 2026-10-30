@@ -5,9 +5,9 @@ import logging
 import subprocess
 
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QApplication, QWidget, QFrame, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSizePolicy,
     QMessageBox, QMenu, QDialog, QLineEdit,
-    QDateTimeEdit, QDialogButtonBox
+    QDateTimeEdit
 )
 from PyQt6.QtCore import (Qt, QRect, QPoint, QSize, QObject, QEvent, QDateTime, pyqtSignal, QTimer,
                           QEasingCurve)
@@ -157,9 +157,19 @@ def cursor_screen_geometry() -> QRect:
     return hypr.available_geometry(cursor_screen())
 
 
+def home_geometry() -> QRect:
+    """The screen new panels and pop-ups go to: the one with the mouse, or the primary screen when
+    Settings → Overlay & Interface → Open the overlay on says so."""
+    s = anim._settings
+    if s is not None and s.get("ui.overlay_screen", "cursor") == "primary":
+        return primary_geometry()
+    g = cursor_screen_geometry()
+    return g if not g.isEmpty() else primary_geometry()
+
+
 def anchor_position(w: int, h: int, key: str, padding: int, screen: QRect | None = None) -> QPoint:
     """Top-left point that places a w×h box at anchor `key` ('tl'..'br') on `screen`."""
-    s = screen or primary_geometry()
+    s = screen or home_geometry()
     v, hz = key[0], key[1]
     if v == "t":
         y = s.top() + padding
@@ -261,7 +271,7 @@ class AnchorBar(QWidget):
             layout.addWidget(btn)
 
         self.adjustSize()
-        s = primary_geometry()
+        s = home_geometry()
         self.move(s.center().x() - self.sizeHint().width() // 2, s.top() + 8)
 
     def paintEvent(self, event):
@@ -281,7 +291,8 @@ def icon_button(text: str, tooltip: str = "", size: int = 26, font_px: int = 13,
     b.setCursor(Qt.CursorShape.PointingHandCursor)
     if ghost:
         b.setProperty("variant", "ghost")
-    b.setStyleSheet(f"QPushButton {{ padding: 0; font-size: {font_px}px; }}")
+    # round, so the hover highlight is a circle and not a box poking into a rounded corner
+    b.setStyleSheet(f"QPushButton {{ padding: 0; font-size: {font_px}px; border-radius: {size // 2}px; }}")
     return b
 
 
@@ -289,6 +300,38 @@ def label(text: str = "", px: float = 13, weight: int = 400, mono: bool = False,
           tone: str = "primary") -> QLabel:
     """A QLabel in the design's type scale. `tone` (primary/secondary/muted/accent) picks a themed colour."""
     lbl = QLabel(text)
+    lbl.setFont(theme.qfont(px, weight, mono, spacing))
+    if mono:
+        lbl.setProperty("mono", True)
+    if tone:
+        lbl.setProperty("tone", tone)
+    return lbl
+
+
+class ElidedLabel(QLabel):
+    """A one-line label that ends in "…" when it does not fit, instead of being cut off mid-letter."""
+
+    def __init__(self, text: str = "", mode=Qt.TextElideMode.ElideRight):
+        super().__init__(text)
+        self._mode = mode
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
+    def minimumSizeHint(self):
+        return QSize(10, super().minimumSizeHint().height())
+
+    def paintEvent(self, e):
+        r = self.contentsRect()
+        text = self.fontMetrics().elidedText(self.text(), self._mode, r.width())
+        qp = QPainter(self)
+        self.style().drawItemText(qp, r, int(self.alignment()), self.palette(), self.isEnabled(), text,
+                                  self.foregroundRole())
+        qp.end()
+
+
+def elided(text: str = "", px: float = 13, weight: int = 400, mono: bool = False, spacing: float = 0.0,
+           tone: str = "primary", mode=Qt.TextElideMode.ElideRight) -> ElidedLabel:
+    """label(), but ending in "…" when there is no room."""
+    lbl = ElidedLabel(text, mode)
     lbl.setFont(theme.qfont(px, weight, mono, spacing))
     if mono:
         lbl.setProperty("mono", True)
@@ -600,15 +643,15 @@ class FloatingPanel(QWidget):
     def follow_cursor_screen(self):
         """Panels used to reopen wherever they were saved, often another screen than the overlay (which
         opens on the screen with the mouse). Now a panel goes to the overlay's screen, placed the way
-        Settings → Overlay & Interface → Panels like Notes open says."""
+        Settings → Overlay & Interface → Panels like Notes open says. "Where I left them" keeps the spot only
+        while the whole panel is on that screen; otherwise it goes to the middle of it."""
         s = anim._settings
         if self.stays_put or s is None:
             return
-        on_cursor = s.get("ui.overlay_screen", "cursor") == "cursor"
-        target = cursor_screen_geometry() if on_cursor else primary_geometry()
+        target = home_geometry()
         if target.isEmpty():
             return
-        how = s.get("ui.panel_place", "kept")
+        how = s.get("ui.panel_place", "centre")
         if how == "centre":
             self.center_on(target)
         elif how == "cursor":
@@ -616,24 +659,13 @@ class FloatingPanel(QWidget):
             x = min(max(c.x() + 16, target.left()), target.right() - self.width())
             y = min(max(c.y() + 16, target.top()), target.bottom() - self.height())
             self.move(max(target.left(), x), max(target.top(), y))
-        elif target.contains(self.geometry().center()):
-            return
-        else:
-            src = next((hypr.available_geometry(scr) for scr in QApplication.screens()
-                        if hypr.available_geometry(scr).contains(self.geometry().center())), None)
-            if src is None or src.isEmpty():
-                self.center_on(target)
-            else:
-                # keep the spot relative to the screen, so "top right" stays top right on a bigger or smaller one
-                fx = (self.x() - src.x()) / max(1, src.width() - self.width())
-                fy = (self.y() - src.y()) / max(1, src.height() - self.height())
-                fx, fy = min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))
-                self.move(target.x() + int(fx * max(0, target.width() - self.width())),
-                          target.y() + int(fy * max(0, target.height() - self.height())))
+        elif not target.contains(self.geometry()):
+            # "where I left them", but never on another monitor or hanging off the edge of this one
+            self.center_on(target)
         self.geometry_changed.emit()
 
     def center_on(self, screen: QRect | None = None):
-        s = screen or primary_geometry()
+        s = screen or home_geometry()
         self.move(s.center().x() - self.width() // 2, s.center().y() - self.height() // 2)
 
     def snap_to(self, key: str, padding: int, screen: QRect | None = None):
@@ -770,17 +802,25 @@ class RoundedDialog(QDialog):
         return self._resizable
 
     def fit_to_screen(self, w: int, h: int, near: QWidget | None = None):
-        """Size it to w×h (smaller on a small screen) and centre it on the screen it belongs on."""
-        scr = hypr.available_geometry(near.screen()) if near is not None and near.screen() else \
-            cursor_screen_geometry()
+        """Size it to w×h (smaller on a small screen) and centre it on the screen with the mouse (on the
+        window that opened it when the mouse is over that window)."""
+        area, scr = hypr.dialog_area(near)
         if scr.isEmpty():
-            scr = primary_geometry()
+            area = scr = primary_geometry()
         w = min(w, max(self.minimumWidth(), scr.width() - 60))
         h = min(h, max(self.minimumHeight(), scr.height() - 60))
         self.resize(w, h)
-        self.move(scr.center().x() - w // 2, scr.center().y() - h // 2)
+        self.move(max(scr.left(), min(area.center().x() - w // 2, scr.right() - w)),
+                  max(scr.top(), min(area.center().y() - h // 2, scr.bottom() - h)))
 
     def showEvent(self, e):
+        if not e.spontaneous() and not self.testAttribute(Qt.WidgetAttribute.WA_Moved):
+            # nobody placed it: the middle of the screen with the mouse (Qt would centre it on the parent,
+            # which can be a window on another monitor)
+            area, scr = hypr.dialog_area(self.parentWidget())
+            if not scr.isEmpty():
+                self.move(max(scr.left(), min(area.center().x() - self.width() // 2, scr.right() - self.width())),
+                          max(scr.top(), min(area.center().y() - self.height() // 2, scr.bottom() - self.height())))
         super().showEvent(e)
         if not e.spontaneous():
             anim.fade(self.frame, 0.0, 1.0, "panels", 150)
@@ -811,11 +851,6 @@ class RoundedDialog(QDialog):
             self.geometry_changed.emit()
             return
         super().mouseReleaseEvent(e)
-
-
-def _on_top(dlg: QDialog):
-    dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-    return dlg
 
 
 class _AskDialog(RoundedDialog):
@@ -959,22 +994,18 @@ def ask_choice(parent, title: str, label: str, items: list[str], current: int = 
 
 def ask_datetime(parent, title: str, label: str, default=None):
     """A date + time picker. Returns a datetime, or None when cancelled."""
-    dlg = QDialog(parent)
-    dlg.setWindowTitle(title)
-    lay = QVBoxLayout(dlg)
-    lay.addWidget(QLabel(label))
+    dlg = _AskDialog(parent, title, label)
     edit = QDateTimeEdit(QDateTime(default) if default is not None else QDateTime.currentDateTime().addSecs(3600))
     edit.setCalendarPopup(True)
     edit.setDisplayFormat("ddd d MMM yyyy  HH:mm")
-    lay.addWidget(edit)
-    box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-    box.accepted.connect(dlg.accept)
-    box.rejected.connect(dlg.reject)
-    lay.addWidget(box)
-    _on_top(dlg)
-    if dlg.exec() != QDialog.DialogCode.Accepted:
-        return None
-    return edit.dateTime().toPyDateTime().replace(second=0, microsecond=0)
+    edit.setFixedHeight(32)
+    dlg.extra.addWidget(edit)
+    dlg.add_button("Cancel", "ghost", accept=False)
+    dlg.add_button("OK", "primary", default=True)
+    ok = dlg.run()
+    when = edit.dateTime().toPyDateTime().replace(second=0, microsecond=0)
+    dlg.deleteLater()
+    return when if ok else None
 
 
 def menu(parent=None) -> QMenu:

@@ -368,6 +368,35 @@ def set_glass_rule(rounding: int) -> str:
                f"no_blur = false, rounding = {max(0, int(rounding))} }})")
 
 
+def cover_monitors(titles: dict[str, str]) -> str:
+    """Rules that open each window titled titles[monitor name] (it may carry markers after it) full size at the
+    top-left of that monitor. Asking Qt for a spot on another monitor is not enough on Hyprland: the window
+    opens on the focused monitor first and a move made while it is still being placed is lost, so the colour
+    picker's frozen picture of one screen used to sit a little way down the other one. clear_cover_rules()
+    takes the rules out again."""
+    if not available():
+        return ""
+    code = "LUMI = LUMI or {} LUMI.cover_rules = LUMI.cover_rules or {} "
+    screens = {s.name(): s for s in QApplication.screens()}
+    for mon, title in titles.items():
+        scr = screens.get(mon)
+        if scr is None:
+            continue
+        g = scr.geometry()
+        # move is measured from the monitor's own corner
+        code += (f"LUMI.cover_rules[#LUMI.cover_rules + 1] = hl.window_rule({{ match = {{ "
+                 f"class = {lstr('^' + APP_ID + '$')}, title = {lstr('^' + title + '.*$')} }}, "
+                 f"monitor = {lstr(mon)}, move = {lstr('0 0')}, size = {lstr(f'{g.width()} {g.height()}')} }}) ")
+    return lua(code)
+
+
+def clear_cover_rules() -> str:
+    if not available():
+        return ""
+    return lua("for _, r in pairs((LUMI or {}).cover_rules or {}) do pcall(function() r:set_enabled(false) end) "
+               "end if LUMI then LUMI.cover_rules = {} end")
+
+
 class WindowSync(QObject):
     """
     Watches every Luminescent top-level window. When Hyprland maps one (openwindow event) it is moved to

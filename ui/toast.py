@@ -107,7 +107,7 @@ class _Toast(QWidget):
         self.manager = manager
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setProperty("lum_glass", widgets.GLASS)
+        widgets.mark_glass(self, "notifications")
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowTitle("Luminescent toast")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -116,7 +116,8 @@ class _Toast(QWidget):
         self.setFixedWidth(self.width_px)
         self.level = level or level_of(title, message)
         self.style = card_style(s)
-        self.opacity = max(0.3, min(1.0, float(s.get("general.toast_opacity", 1.0) or 1.0)))
+        self.opacity = widgets.glass_alpha("notifications",
+                                           max(0.3, min(1.0, float(s.get("general.toast_opacity", 1.0) or 1.0))))
         scale = float(s.get("general.toast_text", 1.0) or 1.0)
         with theme.module_colours("toasts"):
             self.pal = theme.P

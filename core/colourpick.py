@@ -1015,6 +1015,7 @@ class ColourSwatch(QPushButton):
         self.gradient = gradient
         self.unset_text = unset_text
         self.live = live
+        self.fallback = None                    # unset: the colour it gets anyway, shown faintly
         self.setFixedSize(width, 30)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         # scoped by name: a bare QPushButton rule would also restyle the picker's own buttons (it is our child)
@@ -1055,7 +1056,8 @@ class ColourSwatch(QPushButton):
         v = self._value
         if v is None:
             qp.setPen(QPen(QColor(theme.P.text_muted), 1, Qt.PenStyle.DashLine))
-            qp.setBrush(Qt.BrushStyle.NoBrush)
+            fb = QColor(self.fallback) if isinstance(self.fallback, str) and self.fallback else None
+            qp.setBrush(fb if fb is not None and fb.isValid() else Qt.BrushStyle.NoBrush)
             qp.drawRoundedRect(chip, 5, 5)
             text = self.unset_text or "None"
         else:

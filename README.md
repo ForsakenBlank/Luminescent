@@ -145,7 +145,8 @@ every panel, page and menu) and whether it opens on the page you were on last.
   see-through its panels and sidebar are, fonts including the lock screen clock, sizes, the dashboard and power
   menu pictures or GIFs, the logo, the lock screen, the desktop clock), **Glass** (how see-through every app is,
   which of Luminescent's own windows are frosted glass and how see-through, and the blur strength for the whole
-  desktop) and the **Terminal** (its colours, how see-through kitty is, the picture fastfetch shows and where, a
+  desktop), **Window borders** (the colour, or a two-colour gradient, around the window you're using and the
+  colour around the rest) and the **Terminal** (its colours, how see-through kitty is, the picture fastfetch shows and where, a
   start-up text, the info lines, and what to leave out when a terminal is narrow). Anything a theme leaves alone
   stays as it is, or goes back to what it was before another theme changed it.
   **Caelestia colours** are sorted by what they do (accents, backgrounds, text, outlines, good and bad, terminal,

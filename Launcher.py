@@ -155,6 +155,11 @@ class Launcher:
         self._sync_desktop_entry()
         self._write_terminal_scheme()
         safely(self._apply_glass, "glass")
+        safely(self._apply_borders, "window borders")
+        sync = hypr.sync()
+        if sync is not None:
+            # a reload puts the config's own borders back
+            sync.reloaded.connect(lambda: (hypr.forget_borders(), safely(self._apply_borders, "window borders")))
         QTimer.singleShot(20_000, self._auto_backup)
         QTimer.singleShot(30_000, self._check_updates)
         self._backup_timer = QTimer()
@@ -265,8 +270,9 @@ class Launcher:
             self.notify(APP_NAME, f"Settings profile: {self.settings.profile_name(self.settings.active_profile())}", 2500)
 
     def _desktop_follows(self, t: dict):
-        """The terminal, Caelestia (colours, shell settings, extras) and glass in the new theme."""
+        """The terminal, Caelestia (colours, shell settings, extras) glass and window borders in the new theme."""
         safely(self._apply_glass, "glass")
+        safely(self._apply_borders, "window borders")
         safely(self._write_terminal_scheme, "terminal colours")
         cael = self.modules.get("caelestia")
         if cael is not None and cael.running and hasattr(cael, "theme_applied"):
@@ -432,6 +438,15 @@ class Launcher:
             self.settings.get("ui.glass_amount", 0.82)
         off = not on or self.settings.get("ui.performance_mode", False)
         widgets.set_glass(set() if off else set(parts), float(amount or 0.82))
+
+    def _apply_borders(self):
+        """The theme's window border colours in Hyprland; a theme without them puts back the config's own."""
+        if IS_WIN:
+            return
+        b = self.themes.active().get("borders")
+        err = hypr.set_borders(b if isinstance(b, dict) else None)
+        if err:
+            log.warning("window borders: %s", err)
 
     def apply_settings(self):
         safely(self._apply_glass, "glass")
@@ -1012,6 +1027,19 @@ def _smoke(launcher: "Launcher", app: QApplication):
                     dlg.undo()
                     dlg.toggle_favourite("lum:bg_base", False)
                 dlg.preview.grab()
+            # window borders: its page only shows with Hyprland, so it is built here by hand too
+            from ui import theme_extras
+            page = theme_extras.borders_page(dlg)
+            from PyQt6.QtWidgets import QPushButton
+            for b in page.findChildren(QPushButton):
+                if b.text() in ("Use this theme's colours", "Keep Hyprland's own"):
+                    b.click()
+            dlg.t["borders"] = {"active": "#FF0000", "active2": "#0000FF", "angle": 90, "inactive": "#222222"}
+            dlg.current = "borders"
+            dlg.preview.grab()
+            if hypr.set_borders(dlg.t["borders"]) and hypr.available():
+                raise RuntimeError("Hyprland did not take the window borders")
+            hypr.set_borders(None)
             dlg.deleteLater()
         finally:
             cael.scheme = real_scheme

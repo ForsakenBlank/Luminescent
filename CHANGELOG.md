@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0
+
+* **Window borders with the theme.** A new **Window borders** page in the theme editor (under DESKTOP, with
+  Hyprland) sets the line around every app's window: one colour for the window you're using, or two in a gradient
+  with an angle, and another colour for every other window. **Use this theme's colours** fills them in from the
+  theme's accent and border colour in one click. A theme that leaves them unticked keeps your Hyprland config's own
+  colours, and switching to it, or quitting Luminescent, puts those back. Editing your Hyprland config no longer
+  wipes them either: they go back on after Hyprland reloads.
+
 ## 1.7.0
 
 * **Caelestia's colours make sense now.** All 110 of them are sorted by what they do on screen (main accent,

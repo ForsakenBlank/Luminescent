@@ -7,6 +7,7 @@ setting the theme leaves alone stays as it is, or goes back to what it was befor
     theme["caelestia"]["shell"]   {dotted shell.json key: value}
     theme["caelestia"]["extras"]  {"lyrics_image", "lock_image", "lock_blur"}
     theme["glass"]                {"active", "inactive", "blur_size", "blur_passes"}
+    theme["borders"]              {"active", "active2", "angle", "inactive"}   window borders in Hyprland
     theme["terminal"]             {"colours": {name: hex}, "opacity", "logo", "logo_width", "logo_height",
                                    "logo_padding", "logo_padding_top", "logo_position",
                                    "narrow": {"below", "then"},
@@ -180,8 +181,11 @@ def tidy(t: dict):
             term.pop("narrow", None)
         if not term:
             t.pop("terminal", None)
-    if isinstance(t.get("glass"), dict) and not t["glass"]:
-        t.pop("glass", None)
+    for key in ("glass", "borders"):
+        if isinstance(t.get(key), dict) and not t[key]:
+            t.pop(key, None)
+    if isinstance(t.get("borders"), dict) and not t["borders"].get("active2"):
+        t["borders"].pop("angle", None)
 
 
 # ── Caelestia look ─────────────────────────────────────────────────────────
@@ -389,6 +393,141 @@ def glass_page(dlg) -> QWidget:
     v.addWidget(card)
     v.addStretch()
     return page
+
+
+# ── window borders ─────────────────────────────────────────────────────────
+def _hypr_border(option: str) -> list[str]:
+    """The colours Hyprland's own config gives a border, as '#RRGGBB' (empty when it can't be read)."""
+    from core import hypr
+    return ["#" + p[2:].upper() for p in hypr.border_now(option).split() if len(p) == 8]
+
+
+def borders_page(dlg) -> QWidget:
+    page, v = dlg._page("Window borders", "The line around every app's window: one colour (or two in a gradient) for "
+                                          "the window you're using, another for the rest. Left unticked, "
+                                          "Hyprland's own colours stay.")
+    b = _sub(dlg.t, "borders")
+    now_active, now_inactive = _hypr_border("col.active_border"), _hypr_border("col.inactive_border")
+    rows = {}
+
+    def colour_row(c, key: str, label: str, fallback: str | None):
+        lay = QHBoxLayout()
+        lay.setSpacing(10)
+        on = QCheckBox(label)
+        on.setChecked(bool(b.get(key)))
+        sw = colourpick.ColourSwatch(b.get(key) or fallback, f"Window borders: {label}", width=130, live=True)
+
+        def set_col(val):
+            if on.isChecked() and isinstance(val, str) and val:
+                b[key] = val.upper()
+            else:
+                b.pop(key, None)
+            dlg.changed()
+        sw.changed.connect(set_col)
+        on.toggled.connect(lambda _o: (sw.setEnabled(on.isChecked()), set_col(sw.value()), show_angle()))
+        sw.setEnabled(on.isChecked())
+        lay.addWidget(on, 1)
+        lay.addWidget(sw)
+        c.addLayout(lay)
+        rows[key] = (on, sw, fallback)
+
+    card, c = _card("THE WINDOW YOU'RE USING")
+    colour_row(c, "active", "Colour", now_active[0] if now_active else None)
+    colour_row(c, "active2", "Second colour (a gradient)", now_active[1] if len(now_active) > 1 else None)
+    angle = QWidget()
+    al = QHBoxLayout(angle)
+    al.setContentsMargins(0, 2, 0, 2)
+    al.setSpacing(10)
+    al.addWidget(widgets.label("Gradient angle", 12), 1)
+    slider = QSlider(Qt.Orientation.Horizontal)
+    slider.setRange(0, 359)
+    slider.setFixedWidth(170)
+    slider.setValue(int(b.get("angle", 45)))
+    deg = widgets.label(f"{slider.value()}°", 11.5, mono=True)
+    deg.setFixedWidth(46)
+    slider.valueChanged.connect(lambda val: (deg.setText(f"{val}°"), b.__setitem__("angle", val), dlg.changed()))
+    al.addWidget(slider)
+    al.addWidget(deg)
+
+    def show_angle():
+        angle.setVisible(bool(b.get("active") and b.get("active2")))
+    show_angle()
+    c.addWidget(angle)
+    v.addWidget(card)
+
+    card, c = _card("EVERY OTHER WINDOW")
+    colour_row(c, "inactive", "Colour", now_inactive[0] if now_inactive else None)
+    v.addWidget(card)
+
+    def fill(values: dict):
+        for key, (on, sw, fallback) in rows.items():
+            val = values.get(key)
+            on.blockSignals(True)
+            on.setChecked(bool(val))
+            on.blockSignals(False)
+            sw.setEnabled(bool(val))
+            sw.set_value(val or fallback)
+        b.clear()
+        b.update({k: val for k, val in values.items() if val})
+        if b.get("active2"):
+            b["angle"] = slider.value()
+        show_angle()
+        dlg.changed()
+
+    def from_theme():
+        p = dlg.base_palette()
+        fill({"active": p.primary.upper(), "active2": p.primary_text.upper(), "inactive": p.border.upper()})
+    btns = QHBoxLayout()
+    use = widgets.button("Use this theme's colours", "ghost", "The accent for the window you're using, the "
+                                                              "theme's border colour for the rest")
+    use.clicked.connect(from_theme)
+    keep = widgets.button("Keep Hyprland's own", "ghost", "Untick everything: your Hyprland config's colours stay")
+    keep.clicked.connect(lambda: fill({}))
+    btns.addWidget(use)
+    btns.addWidget(keep)
+    btns.addStretch()
+    v.addLayout(btns)
+    note = widgets.label("Changes show on your windows when you save the theme while it's the active one. "
+                         "Turning Luminescent off puts Hyprland's own colours back.", 11, tone="muted")
+    note.setWordWrap(True)
+    v.addWidget(note)
+    v.addStretch()
+    return page
+
+
+def paint_borders(qp: QPainter, w: float, y: float, dlg):
+    """Two windows on a plain desktop: the one you're using and another, with the theme's borders."""
+    from PyQt6.QtGui import QLinearGradient
+    import math
+    base = dlg.base_palette()
+    b = dlg.t.get("borders") or {}
+    act = _hypr_border("col.active_border")
+    ina = _hypr_border("col.inactive_border")
+    a1 = b.get("active") or (act[0] if act else base.primary)
+    a2 = b.get("active2") if b.get("active") else (act[1] if len(act) > 1 else None)
+    angle = int(b.get("angle", 45) or 0) if b.get("active") else 45
+    other = b.get("inactive") or (ina[0] if ina else base.border)
+    qp.fillRect(QRectF(0, y, w, 230), QColor(base.bg_frame))
+    f = QFont(base.font_family)
+    f.setPixelSize(12)
+    qp.setFont(f)
+    for rect, focused in ((QRectF(14, y + 16, w * 0.5, 196), False), (QRectF(w * 0.5 + 24, y + 16, w * 0.5 - 38, 196), True)):
+        if focused and a2:
+            rad = math.radians(angle)
+            c = rect.center()
+            dx, dy = math.cos(rad) * rect.width() / 2, -math.sin(rad) * rect.height() / 2
+            grad = QLinearGradient(c.x() - dx, c.y() - dy, c.x() + dx, c.y() + dy)
+            grad.setColorAt(0, QColor(a1))
+            grad.setColorAt(1, QColor(a2))
+            pen = QPen(grad, 3)
+        else:
+            pen = QPen(QColor(a1 if focused else other), 3)
+        qp.setPen(pen)
+        qp.setBrush(QColor(base.bg_card))
+        qp.drawRoundedRect(rect, 10, 10)
+        qp.setPen(QColor(base.text_primary if focused else base.text_muted))
+        qp.drawText(rect.adjusted(12, 10, -12, -10), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop |
+                    Qt.TextFlag.TextWordWrap, "The window you're using" if focused else "Another window")
 
 
 # ── terminal ───────────────────────────────────────────────────────────────

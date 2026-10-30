@@ -910,14 +910,59 @@ def _smoke(launcher: "Launcher", app: QApplication):
     def theme_editor():
         # every part of the theme editor once, with its preview drawn
         from ui.themes_page import ThemeDialog
-        dlg = ThemeDialog(launcher, launcher.themes.active())
-        for key in list(dlg.side_buttons):
-            dlg.show_section(key)
-            if key == "caelestia_colours" and hasattr(dlg, "_cael_grid"):
-                dlg._match_caelestia()
-                dlg._forget_caelestia()
-            dlg.preview.grab()
-        dlg.deleteLater()
+        from ui import colour_tools
+        from core import tones
+        from modules import caelestia as cael
+        real_scheme = cael.scheme
+        if not real_scheme():
+            # no Caelestia here (CI): a made-up scheme so its colour page and tools are built too
+            fake = tones.caelestia_scheme({"accent": "#7B6CF6", "background": "#131317"})
+            cael.scheme = lambda: dict(fake)
+        favs = list(launcher.themes.data.get("favourite_colours") or [])
+        try:
+            dlg = ThemeDialog(launcher, launcher.themes.active())
+            for key in list(dlg.side_buttons):
+                dlg.show_section(key)
+                if key == "caelestia_colours" and dlg.cael_page is not None:
+                    dlg.set_cael("primary", "#FF8800")
+                    dlg.set_highlight("primary")
+                    dlg.preview.grab()
+                    dlg.jump_to("surfaceContainer")
+                    dlg.toggle_favourite("cael:primary", True)
+                    dlg.cael_page.search.setText("button")
+                    dlg.cael_page.search.setText("")
+                    for tool, _t, _d in colour_tools.TOOLS:
+                        if tool != "picture":
+                            bd = colour_tools.BulkDialog(dlg, "cael", tool)
+                            bd.grab()
+                            bd._apply()
+                    bd = colour_tools.BulkDialog(dlg, "cael", "picture",
+                                                 picture=os.path.join(APP_DIR, "assets", "luminescent-256.png"))
+                    bd._again()
+                    bd._apply()
+                    dlg.reset_recent(0)
+                    dlg.undo()
+                    dlg.redo()
+                    dlg._match_caelestia()
+                    dlg._forget_caelestia()
+                    dlg.toggle_favourite("cael:primary", False)
+                if key == "colours":
+                    dlg._set_global_tracked("primary", "#33AA77")
+                    dlg.toggle_favourite("lum:bg_base", True)
+                    dlg.set_highlight("bg_card")
+                    dlg.preview.grab()
+                    for tool, _t, _d in colour_tools.TOOLS:
+                        if tool != "picture":
+                            bd = colour_tools.BulkDialog(dlg, "lum", tool)
+                            bd.grab()
+                            bd._apply()
+                    dlg.undo()
+                    dlg.toggle_favourite("lum:bg_base", False)
+                dlg.preview.grab()
+            dlg.deleteLater()
+        finally:
+            cael.scheme = real_scheme
+            launcher.themes.data["favourite_colours"] = favs
 
     def gradient_editor():
         # the picker in gradient mode with its stop list, new colours and ideas

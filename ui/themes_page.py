@@ -19,11 +19,12 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QButtonGroup, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer
-from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPixmap, QFont, QPen
+from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPixmap, QFont, QPen, QShortcut, QKeySequence
 
 from core import theme, widgets, colourpick, IS_WIN
+from core.guard import alive
 from core.themes import ThemeStore, new_theme
-from ui import theme_extras
+from ui import theme_extras, colour_tools
 
 COLS, GAP = 5, 16
 PREV_W, PREV_H = 190, 112
@@ -46,8 +47,11 @@ def _text(qp: QPainter, r: QRectF, text: str, colour: str, px: float, weight: in
     qp.drawText(r, align, text)
 
 
-def paint_overlay(qp: QPainter, r: QRectF, p: theme.Palette, s: float = 1.0):
-    """A small mock-up of the overlay in palette `p`: page switcher, a title, three cards."""
+def paint_overlay(qp: QPainter, r: QRectF, p: theme.Palette, s: float = 1.0, reg=None):
+    """A small mock-up of the overlay in palette `p`: page switcher, a title, three cards. `reg` (optional)
+    collects where each colour is drawn (see colour_tools)."""
+    add = reg.add if reg is not None else (lambda *_a: None)
+    add(r, "bg_base")
     rad = max(0.0, p.radius - 4) * s
     clip = QPainterPath()
     clip.addRoundedRect(r, rad, rad)
@@ -61,7 +65,9 @@ def paint_overlay(qp: QPainter, r: QRectF, p: theme.Palette, s: float = 1.0):
     nav = QRectF(r.left() + w * 0.28, r.top(), w * 0.44, 15 * s)
     qp.setBrush(theme.qbrush("bg_header", nav, 1.0, p))
     qp.drawRoundedRect(nav.adjusted(0, -8 * s, 0, 0), 8 * s, 8 * s)
+    add(nav, "bg_header")
     pill = QRectF(nav.left() + 4 * s, nav.top() + 3 * s, nav.width() * 0.3, 9 * s)
+    add(pill, "primary")
     qp.setBrush(theme.qbrush("primary", pill, 1.0, p))
     qp.drawRoundedRect(pill, 4.5 * s, 4.5 * s)
     line = QRectF(nav.left(), nav.top(), nav.width(), max(1.0, 1.5 * s))
@@ -71,11 +77,13 @@ def paint_overlay(qp: QPainter, r: QRectF, p: theme.Palette, s: float = 1.0):
         t.setAlphaF(0.6)
         qp.setBrush(t)
         qp.drawRoundedRect(QRectF(pill.right() + (8 + i * 26) * s, pill.top() + 3 * s, 18 * s, 3 * s), 1.5, 1.5)
+        add(QRectF(pill.right() + (8 + i * 26) * s, pill.top(), 18 * s, 9 * s), "text_secondary")
     # a title, an accent tick
     top = nav.bottom() + 9 * s
     tc = QColor(p.text_primary)
     qp.setBrush(tc)
     qp.drawRoundedRect(QRectF(r.left() + pad, top, 46 * s, 5 * s), 2.5 * s, 2.5 * s)
+    add(QRectF(r.left() + pad, top - 2 * s, 46 * s, 9 * s), "text_primary")
     tick = QRectF(r.left() + pad, top + 10 * s, 22 * s, max(1.0, 1.5 * s))
     qp.fillRect(tick, theme.qbrush("primary", tick, 1.0, p))
     # three cards, the last one shorter
@@ -87,8 +95,10 @@ def paint_overlay(qp: QPainter, r: QRectF, p: theme.Palette, s: float = 1.0):
         qp.setBrush(theme.qbrush("bg_card", c, 1.0, p))
         qp.setPen(QPen(theme.qbrush("border", c, 1.0, p), 1))
         qp.drawRoundedRect(c, 4 * s, 4 * s)
+        add(c, "bg_card", "border")
         qp.setPen(Qt.PenStyle.NoPen)
         dot = QRectF(c.left() + 6 * s, c.top() + 6 * s, 5 * s, 5 * s)
+        add(dot, "primary")
         qp.setBrush(theme.qbrush("primary", dot, 1.0, p))
         qp.drawEllipse(dot)
         for j in range(3):
@@ -100,9 +110,11 @@ def paint_overlay(qp: QPainter, r: QRectF, p: theme.Palette, s: float = 1.0):
     qp.restore()
 
 
-def paint_panel(qp: QPainter, r: QRectF, p: theme.Palette, title: str = "PANEL"):
+def paint_panel(qp: QPainter, r: QRectF, p: theme.Palette, title: str = "PANEL", reg=None):
     """A floating panel in palette `p`: header, accent tick, a card, a field, a button, a switch, a slider."""
+    add = reg.add if reg is not None else (lambda *_a: None)
     rad = float(p.radius)
+    add(r, "bg_base", "border")
     qp.save()
     qp.setPen(QPen(theme.qbrush("border", r, 1.0, p), 1))
     qp.setBrush(theme.qbrush("bg_base", r, 1.0, p))
@@ -115,10 +127,12 @@ def paint_panel(qp: QPainter, r: QRectF, p: theme.Palette, title: str = "PANEL")
     qp.setPen(Qt.PenStyle.NoPen)
     qp.setBrush(theme.qbrush("bg_header", head, 1.0, p))
     qp.drawPath(path.intersected(clip))
+    add(head, "bg_header")
     qp.setPen(QPen(QColor(p.border), 1))
     qp.drawLine(QPointF(head.left(), head.bottom()), QPointF(head.right(), head.bottom()))
     tick = QRectF(head.left(), head.bottom() - 1, 36, 2)
     qp.fillRect(tick, theme.qbrush("primary", tick, 1.0, p))
+    add(tick.adjusted(0, -2, 0, 2), "primary")
     _text(qp, head.adjusted(14, 0, -30, 0), title.upper(), p.text_primary, 10, 600, True, spacing=0.16)
     _text(qp, head.adjusted(0, 0, -12, 0), "✕", p.text_secondary, 11,
           align=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -127,6 +141,10 @@ def paint_panel(qp: QPainter, r: QRectF, p: theme.Palette, title: str = "PANEL")
     qp.setPen(QPen(theme.qbrush("border", card, 1.0, p), 1))
     qp.setBrush(theme.qbrush("bg_card", card, 1.0, p))
     qp.drawRoundedRect(card, max(0, rad - 2), max(0, rad - 2))
+    add(card, "bg_card", "border")
+    add(card.adjusted(12, 8, -80, -32), "text_primary")
+    add(card.adjusted(12, 26, -80, -16), "text_secondary")
+    add(card.adjusted(12, 40, -80, -2), "text_muted")
     _text(qp, card.adjusted(12, 8, -8, -32), "Heading text", p.text_primary, 12.5, 600)
     _text(qp, card.adjusted(12, 26, -8, -16), "Secondary text", p.text_secondary, 11)
     _text(qp, card.adjusted(12, 40, -8, -2), "Muted · hint", p.text_muted, 10.5)
@@ -134,17 +152,21 @@ def paint_panel(qp: QPainter, r: QRectF, p: theme.Palette, title: str = "PANEL")
     qp.setPen(Qt.PenStyle.NoPen)
     qp.setBrush(theme.qbrush("primary_muted", badge, 1.0, p))
     qp.drawRoundedRect(badge, 9, 9)
+    add(badge, "primary_muted", "primary_text")
     _text(qp, badge, "TAG", p.primary_text, 9, 600, True, Qt.AlignmentFlag.AlignCenter, 0.1)
     y = card.bottom() + 10
     field = QRectF(x, y, w * 0.62, 28)
     qp.setPen(QPen(QColor(p.primary), 1))
     qp.setBrush(theme.qbrush("bg_frame", field, 1.0, p))
     qp.drawRoundedRect(field, max(0, rad - 4), max(0, rad - 4))
+    add(field, "bg_frame")
     _text(qp, field.adjusted(10, 0, 0, 0), "A field", p.text_primary, 11.5)
     btn = QRectF(field.right() + 8, y, w - field.width() - 8, 28)
     qp.setPen(Qt.PenStyle.NoPen)
     qp.setBrush(theme.qbrush("primary", btn, 1.0, p))
     qp.drawRoundedRect(btn, max(0, rad - 4), max(0, rad - 4))
+    add(btn, "primary")
+    add(btn.adjusted(btn.width() * 0.25, 6, -btn.width() * 0.25, -6), "on_primary")
     _text(qp, btn, "Button", p.on_primary, 11.5, 600, align=Qt.AlignmentFlag.AlignCenter)
     y = btn.bottom() + 12
     box = QRectF(x, y + 2, 14, 14)
@@ -644,6 +666,32 @@ class SectionPreview(QWidget):
         self.dlg = dlg
         self.setMinimumWidth(260)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setMouseTracking(True)
+        self.reg = colour_tools._Reg()
+        self.scale, self.top = 1.0, 0.0
+
+    def _key_at(self, pos) -> str | None:
+        if self.dlg.current not in ("colours", "caelestia_colours"):
+            return None
+        return self.reg.at(QPointF((pos.x()) / self.scale, (pos.y() - self.top) / self.scale))
+
+    def mouseMoveEvent(self, e):
+        k = self._key_at(e.position())
+        if k is None:
+            self.setToolTip("")
+            self.unsetCursor()
+            return
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        if self.dlg.current == "caelestia_colours":
+            _g, name, where = colour_tools.cael_info(k)
+        else:
+            name, where = colour_tools.lum_name(k), ROLE_HELP.get(k, "")
+        self.setToolTip(f"{name}\n{where}\nClick to find it on the left")
+
+    def mousePressEvent(self, e):
+        k = self._key_at(e.position())
+        if k is not None:
+            self.dlg.jump_to(k)
 
     def paintEvent(self, e):
         qp = QPainter(self)
@@ -653,14 +701,28 @@ class SectionPreview(QWidget):
         base = dlg.base_palette()
         w = self.width()
         y = 4.0
-        if key in ("general", "colours", "applied"):
+        self.reg = colour_tools._Reg()
+        if key == "colours":
+            self.scale, self.top = 1.0, y
+            qp.translate(0, y)
+            colour_tools.paint_luminescent(qp, w, dlg.lum_values(), self.reg, dlg.highlight)
+            return
+        if key in ("general", "applied"):
             h = min(w * 0.6, 260)
             paint_overlay(qp, QRectF(0, y, w, h), base, h / 112.0)
             y += h + 16
             paint_panel(qp, QRectF(0, y, w, 250), base, "A PANEL")
             return
         if key in ("caelestia_colours", "caelestia_look"):
-            self._paint_caelestia(qp, w, y)
+            cols = dlg.cael_values()
+            if not cols:
+                _text(qp, QRectF(0, y, w, 20), "Caelestia's colours were not found.", base.text_muted, 11.5)
+                return
+            self.scale, self.top = w / colour_tools.PREVIEW_W, y
+            qp.translate(0, y)
+            qp.scale(self.scale, self.scale)
+            colour_tools.paint_caelestia(qp, cols, dlg.cael_solid(), self.reg,
+                                         dlg.highlight if key == "caelestia_colours" else None)
             return
         if key == "terminal":
             theme_extras.paint_terminal(qp, w, y, dlg)
@@ -699,71 +761,27 @@ class SectionPreview(QWidget):
         h = min(w * 0.45, 170)
         paint_overlay(qp, QRectF(0, y + 22, w, h), base, h / 112.0)
 
-    def _paint_caelestia(self, qp: QPainter, w: float, y: float):
-        """a rough caelestia bar and launcher in the colours this theme gives it (caelestia's own for the rest)"""
-        dlg = self.dlg
-        if not hasattr(dlg, "_cael_now"):
-            from modules import caelestia as cael
-            dlg._cael_now = cael.scheme()
-        cols = {**(dlg._cael_now or {}), **(((dlg.t.get("caelestia") or {}).get("colours")) or {})}
-        base = dlg.base_palette()
-        # how see-through caelestia's panels are with this theme (or as it is now)
-        from modules import caelestia_look as look
-        shell = (dlg.t.get("caelestia") or {}).get("shell") or {}
-        now = look.read_shell()
-
-        def opt(key, default):
-            return shell.get(key, look.get(now, key, default))
-        solid = float(opt("appearance.transparency.base", 0.85)) if opt("appearance.transparency.enabled", False) \
-            else 1.0
-
-        def c(*names, fallback="#888888", panel=False):
-            col = QColor(next((cols[n] for n in names if n in cols), fallback))
-            if panel:
-                col.setAlphaF(max(0.05, min(1.0, solid)))
-            return col
-
-        qp.setPen(Qt.PenStyle.NoPen)
-        bar = QRectF(0, y, w, 34)
-        qp.setBrush(c("surface", "background", "base", panel=True))
-        qp.drawRoundedRect(bar, 17, 17)
-        for i in range(5):
-            dot = QRectF(14 + i * 22, y + 10, 14, 14)
-            qp.setBrush(c("primary") if i == 1 else c("surfaceContainerHigh", "surface1"))
-            qp.drawEllipse(dot)
-        _text(qp, QRectF(w - 70, y, 60, 34), "12:45", c("onSurface", "text").name(), 12, 600,
-              align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
-        y += 50
-        box = QRectF(0, y, w, 200)
-        qp.setBrush(c("surfaceContainer", "mantle", panel=True))
-        qp.drawRoundedRect(box, 18, 18)
-        field = QRectF(14, y + 14, w - 28, 34)
-        qp.setBrush(c("surfaceContainerHigh", "surface0"))
-        qp.drawRoundedRect(field, 17, 17)
-        _text(qp, field.adjusted(16, 0, 0, 0), "Search apps…", c("onSurfaceVariant", "subtext0").name(), 12,
-              align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-        for i, name in enumerate(("Files", "Browser", "Terminal")):
-            r = QRectF(14, y + 60 + i * 44, w - 28, 38)
-            if i == 0:
-                qp.setBrush(c("primary"))
-                qp.drawRoundedRect(r, 12, 12)
-            _text(qp, r.adjusted(16, 0, 0, 0), name, (c("onPrimary") if i == 0 else c("onSurface", "text")).name(),
-                  12.5, 600 if i == 0 else 400, align=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-        y += 216
-        _text(qp, QRectF(0, y, w, 16), "LUMINESCENT", base.text_muted, 9.5, 600, True, spacing=0.12)
-        h = min(w * 0.45, 170)
-        paint_overlay(qp, QRectF(0, y + 22, w, h), base, h / 112.0)
-
 
 class RoleRow(QWidget):
     """One colour role: its name, what it colours, and a swatch (colour or gradient)."""
 
-    def __init__(self, role: str, label: str, value, on_change, unset_text: str = ""):
+    def __init__(self, role: str, label: str, value, on_change, unset_text: str = "", fav: bool | None = None,
+                 on_star=None, on_hover=None):
         super().__init__()
         self.role = role
+        self.on_hover = on_hover
+        self.setObjectName("roleRow")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
+        self.setStyleSheet(f"#roleRow {{ border-radius: 8px; }}"
+                           f"#roleRow[hl=\"true\"] {{ background: {theme.rgba(theme.P.primary, 0.12)}; }}")
         lay = QHBoxLayout(self)
         lay.setContentsMargins(0, 3, 0, 3)
         lay.setSpacing(10)
+        self.star = None
+        if fav is not None:
+            self.star = colour_tools.Star(fav)
+            self.star.toggled.connect(lambda on: on_star(role, on) if on_star else None)
+            lay.addWidget(self.star)
         col = QVBoxLayout()
         col.setSpacing(1)
         col.addWidget(widgets.label(label, 12.5))
@@ -795,7 +813,30 @@ class RoleRow(QWidget):
         lay.addWidget(self.clear)
 
     def set_value(self, v):
-        self.swatch.set_value(v)
+        if self.swatch.value() != v:
+            self.swatch.set_value(v)
+
+    def set_fav(self, on: bool):
+        if self.star is not None:
+            self.star.blockSignals(True)
+            self.star.setChecked(on)
+            self.star.blockSignals(False)
+            self.star._paint()
+
+    def set_highlight(self, on: bool):
+        self.setProperty("hl", on)
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+    def enterEvent(self, e):
+        if self.on_hover:
+            self.on_hover(self.role)
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        if self.on_hover:
+            self.on_hover(None)
+        super().leaveEvent(e)
 
 
 def _card(title: str, hint: str = "") -> tuple[QFrame, QVBoxLayout]:
@@ -833,6 +874,20 @@ class ThemeDialog(widgets.RoundedDialog):
         self._redraw.setSingleShot(True)
         self._redraw.setInterval(15)
         self._redraw.timeout.connect(lambda: self.preview.update())
+        self.highlight: str | None = None          # the colour the mouse is on: lit up in the preview
+        self.cael_page: colour_tools.CaelestiaPage | None = None
+        self._restoring = False
+        self.history: colour_tools.History | None = None
+        recent = (self.store_data().get("recent_colours") or {}).get(t.get("id", ""), [])
+        self.recents: list[dict] = [r for r in recent if isinstance(r, dict) and "new" in r][:30]
+        self._commit_timer = QTimer(self)
+        self._commit_timer.setSingleShot(True)
+        self._commit_timer.setInterval(700)        # a burst of edits (dragging in the picker) is one undo step
+        self._commit_timer.timeout.connect(lambda: self._commit())
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(60)
+        self._refresh_timer.timeout.connect(self._refresh_colour_pages)
         self.setMinimumSize(820, 540)
 
         self.body.setContentsMargins(0, 0, 0, 0)
@@ -917,6 +972,12 @@ class ThemeDialog(widgets.RoundedDialog):
                                         "Everything on this page back to the theme's own look")
         self.reset_btn.clicked.connect(self._reset_section)
         fl.addWidget(self.reset_btn)
+        self.undo_btn = widgets.icon_button("↶", "Undo (Ctrl+Z)", 30, 14, ghost=True)
+        self.undo_btn.clicked.connect(self.undo)
+        self.redo_btn = widgets.icon_button("↷", "Redo (Ctrl+Shift+Z or Ctrl+Y)", 30, 14, ghost=True)
+        self.redo_btn.clicked.connect(self.redo)
+        fl.addWidget(self.undo_btn)
+        fl.addWidget(self.redo_btn)
         fl.addStretch()
         self.status = widgets.label("", 10.5, mono=True, spacing=0.04, tone="muted")
         fl.addWidget(self.status)
@@ -934,6 +995,12 @@ class ThemeDialog(widgets.RoundedDialog):
         split.setSizes([210, max(420, self.width() - 210 - 380), 380])
         self.show_section("general")
         self._saved = json.dumps(self.result_theme(), sort_keys=True)
+        self.history = colour_tools.History(self.result_theme())
+        for seq in (QKeySequence.StandardKey.Undo,):
+            QShortcut(QKeySequence(seq), self, activated=self.undo)
+        for seq in ("Ctrl+Shift+Z", "Ctrl+Y"):
+            QShortcut(QKeySequence(seq), self, activated=self.redo)
+        self._undo_buttons()
 
     # ── palettes for the preview ───────────────────────────────────────────
     def base_palette(self) -> theme.Palette:
@@ -955,6 +1022,8 @@ class ThemeDialog(widgets.RoundedDialog):
         self._redraw.start()
         dirty = json.dumps(self.result_theme(), sort_keys=True) != self._saved
         self.status.setText("UNSAVED CHANGES" if dirty else "")
+        if self.history is not None and not self._restoring:
+            self._commit_timer.start()
 
     # ── pages ──────────────────────────────────────────────────────────────
     def show_section(self, key: str):
@@ -1043,12 +1112,16 @@ class ThemeDialog(widgets.RoundedDialog):
     def _colours_page(self) -> QWidget:
         page, v = self._page("Colours", "Every colour of the theme. Any of them can be a gradient: open one and "
                                         "switch to Gradient. Modules, notifications and warnings use these unless "
-                                        "you give them their own (left).")
-        gen = widgets.button("Match everything to the accent", "ghost",
-                             "Picks backgrounds, text and borders that go with the accent colour")
-        gen.clicked.connect(self._generate)
-        v.addWidget(gen, 0, Qt.AlignmentFlag.AlignLeft)
+                                        "you give them their own (left). Hover a colour to see it in the preview.")
+        v.addWidget(widgets.label("QUICK TOOLS", 9.5, 600, mono=True, spacing=0.14, tone="muted"))
+        v.addWidget(colour_tools.tool_bar(self, "lum"))
+        self._lum_recent = colour_tools.RecentCard(self, "lum")
+        v.addWidget(self._lum_recent)
+        self._lum_fav_card, self._lum_fav_box = _card("★ FAVOURITES")
+        v.addWidget(self._lum_fav_card)
+        self._lum_fav_rows: dict[str, RoleRow] = {}
         rows = {}
+        favs = self.favourites()
         for title, roles in (("ACCENT", ("primary", "primary_hover", "primary_muted", "primary_text", "on_primary")),
                              ("BACKGROUNDS", ("bg_base", "bg_card", "bg_card_hover", "bg_frame", "bg_header",
                                               "border")),
@@ -1056,13 +1129,36 @@ class ThemeDialog(widgets.RoundedDialog):
                              ("FOLDERS", ("folder_color", "folder_border"))):
             card, c = _card(title)
             for role in roles:
-                row = RoleRow(role, dict(theme.COLOUR_ROLES)[role], self._global_value(role), self._set_global)
+                row = self._lum_row(role, f"lum:{role}" in favs)
                 rows[role] = row
                 c.addWidget(row)
             v.addWidget(card)
         self._role_rows["colours"] = rows
+        self._fill_lum_favourites()
         v.addStretch()
         return page
+
+    def _lum_row(self, role: str, fav: bool) -> "RoleRow":
+        return RoleRow(role, dict(theme.COLOUR_ROLES)[role], self._global_value(role), self._set_global_tracked,
+                       fav=fav, on_star=lambda r, on: self.toggle_favourite(f"lum:{r}", on),
+                       on_hover=self.set_highlight)
+
+    def _fill_lum_favourites(self):
+        if not hasattr(self, "_lum_fav_box"):
+            return
+        box = self._lum_fav_box
+        while box.count() > 1:                      # keep the title
+            it = box.takeAt(1)
+            if it.widget() is not None:
+                it.widget().deleteLater()
+        self._lum_fav_rows = {}
+        roles = [f.split(":", 1)[1] for f in self.favourite_list() if f.startswith("lum:")]
+        roles = [r for r in roles if r in dict(theme.COLOUR_ROLES)]
+        for r in roles:
+            row = self._lum_row(r, True)
+            box.addWidget(row)
+            self._lum_fav_rows[r] = row
+        self._lum_fav_card.setVisible(bool(roles))
 
     def _applied_page(self) -> QWidget:
         page, v = self._page("When it is applied", "What else changes when you switch to this theme.")
@@ -1118,9 +1214,9 @@ class ThemeDialog(widgets.RoundedDialog):
         from modules import caelestia as cael
         page, v = self._page("Caelestia colours",
                              "The Caelestia shell's colours for this theme: its bar, launcher, dashboard and "
-                             "notifications. Whenever you switch to this theme they go into Caelestia's scheme, and "
-                             "a theme without any puts Caelestia's own colours back. Colours you leave alone follow "
-                             "Caelestia. They are plain colours, since Caelestia draws everything flat.")
+                             "notifications, and the apps Caelestia themes (terminal, btop, GTK and Qt apps...). "
+                             "They go in whenever you switch to this theme; colours you leave alone follow "
+                             "Caelestia. Quickest: Main colours, then fine-tune any colour below.")
         self._cael_now = cael.scheme()
         mod = self.launcher.modules.get("caelestia")
         if mod is not None and not mod.running:
@@ -1133,77 +1229,253 @@ class ThemeDialog(widgets.RoundedDialog):
                                       "running?).", 12, tone="secondary"))
             v.addStretch()
             return page
-        bar = QHBoxLayout()
-        bar.setSpacing(6)
-        self._cael_search = QLineEdit()
-        self._cael_search.setPlaceholderText("🔍  Find a colour…")
-        self._cael_search.setClearButtonEnabled(True)
-        self._cael_search.textChanged.connect(lambda _t: self._fill_caelestia())
-        bar.addWidget(self._cael_search, 1)
-        match = widgets.button("Match Caelestia to this theme", "ghost",
-                               "Caelestia's accent, backgrounds, text and outlines in this theme's colours")
-        match.clicked.connect(self._match_caelestia)
-        bar.addWidget(match)
-        forget = widgets.button("Use Caelestia's own", "ghost", "Forget every colour set for this theme")
-        forget.clicked.connect(self._forget_caelestia)
-        bar.addWidget(forget)
-        v.addLayout(bar)
-        self._cael_status = widgets.label("", 11, tone="muted")
-        v.addWidget(self._cael_status)
-        self._cael_grid = QGridLayout()
-        self._cael_grid.setHorizontalSpacing(8)
-        self._cael_grid.setVerticalSpacing(6)
-        v.addLayout(self._cael_grid)
+        self.cael_page = colour_tools.CaelestiaPage(self)
+        self.cael_page.build(v)
         v.addStretch()
-        self._fill_caelestia()
         return page
 
     def _fill_caelestia(self):
-        from modules.caelestia import nice
-        _clear(self._cael_grid)
-        own = self._cael_colours()
-        q = self._cael_search.text().strip().lower()
-        shown = [(k, c) for k, c in sorted(self._cael_now.items()) if not q or q in k.lower() or q in nice(k).lower()]
-        for i, (k, c) in enumerate(shown):
-            row, col = i // 2, (i % 2) * 3
-            sw = colourpick.ColourSwatch(own.get(k, c), f"Caelestia: {nice(k)}", width=118)
-            sw.changed.connect(lambda val, key=k: self._set_caelestia(key, val))
-            self._cael_grid.addWidget(sw, row, col)
-            name = widgets.label(f"{nice(k)}  ●" if k in own else nice(k), 11.5,
-                                 tone="primary" if k in own else "secondary")
-            name.setToolTip(f"Set for this theme. Caelestia's own: {c}" if k in own else "Follows Caelestia")
-            self._cael_grid.addWidget(name, row, col + 1)
-            if k in own:
-                back = widgets.icon_button("✕", "Back to Caelestia's own colour", 22, 10, ghost=True)
-                back.clicked.connect(lambda _c=False, key=k: self._set_caelestia(key, None))
-                self._cael_grid.addWidget(back, row, col + 2)
-        self._cael_grid.setColumnStretch(1, 1)
-        self._cael_grid.setColumnStretch(4, 1)
-        n = len(own)
-        self._cael_status.setText(f"{n} colour{'s' if n != 1 else ''} set for this theme." if n else
-                                  "None set yet: Caelestia keeps its own colours with this theme.")
+        if self.cael_page is not None:
+            self.cael_page.refresh()
+
+    def cael_values(self) -> dict:
+        """Every Caelestia colour as it would be with this theme: Caelestia's own with the theme's on top."""
+        if not hasattr(self, "_cael_now"):
+            from modules import caelestia as cael
+            self._cael_now = cael.scheme()
+        return {**(self._cael_now or {}), **(((self.t.get("caelestia") or {}).get("colours")) or {})}
+
+    def cael_solid(self) -> float:
+        """How solid Caelestia's panels are with this theme (1 = not see-through)."""
+        from modules import caelestia_look as look
+        shell = (self.t.get("caelestia") or {}).get("shell") or {}
+        if not hasattr(self, "_shell_now"):
+            self._shell_now = look.read_shell()
+
+        def opt(key, default):
+            return shell.get(key, look.get(self._shell_now, key, default))
+        try:
+            return float(opt("appearance.transparency.base", 0.85)) if opt("appearance.transparency.enabled",
+                                                                            False) else 1.0
+        except (TypeError, ValueError):
+            return 1.0
 
     def _set_caelestia(self, key: str, value):
+        self.set_cael(key, value)
+
+    def set_cael(self, key: str, value):
         own = self._cael_colours()
-        if isinstance(value, str) and value:
-            own[key] = value.upper()
+        before = own.get(key)
+        new = value.upper() if isinstance(value, str) and value else None
+        if (before or None) == new:
+            return
+        if new:
+            own[key] = new
         else:
             own.pop(key, None)
-        self._fill_caelestia()
+        self._note_change("cael", {key: before}, {key: new}, colour_tools.cael_info(key)[1],
+                          base={key: (self._cael_now or {}).get(key)})
+        self._refresh_timer.start()
         self.changed()
 
     def _match_caelestia(self):
-        own = self._cael_colours()
+        changes = {}
         for k, role in self.CAELESTIA_MATCH.items():
-            if k in self._cael_now:
+            if k in (self._cael_now or {}):
                 val = self._global_value(role)
-                own[k] = (theme.gradient_mid(val) if isinstance(val, dict) else val).upper()
-        self._fill_caelestia()
-        self.changed()
+                changes[k] = (theme.gradient_mid(val) if isinstance(val, dict) else val).upper()
+        self.apply_bulk("cael", changes, f"Matched to this theme ({len(changes)} colours)")
 
     def _forget_caelestia(self):
-        self._cael_colours().clear()
-        self._fill_caelestia()
+        own = self._cael_colours()
+        if own:
+            self.apply_bulk("cael", {k: None for k in own}, f"Caelestia's own colours ({len(own)})")
+
+    # ── favourites, recent changes, undo ───────────────────────────────────
+    def store_data(self) -> dict:
+        return self.launcher.themes.data
+
+    def store_save(self):
+        self.launcher.themes.save()
+
+    def favourite_list(self) -> list[str]:
+        return [f for f in (self.store_data().get("favourite_colours") or []) if isinstance(f, str)]
+
+    def favourites(self) -> set[str]:
+        return set(self.favourite_list())
+
+    def toggle_favourite(self, fid: str, on: bool):
+        favs = [f for f in self.favourite_list() if f != fid]
+        if on:
+            favs.append(fid)
+        self.store_data()["favourite_colours"] = favs
+        self.store_save()
+        if fid.startswith("cael:") and self.cael_page is not None:
+            self.cael_page.fill_favourites()
+            self.cael_page.refresh()
+        if fid.startswith("lum:"):
+            self._fill_lum_favourites()
+            for role, row in self._role_rows.get("colours", {}).items():
+                row.set_fav(f"lum:{role}" in self.favourites())
+
+    def lum_values(self) -> dict:
+        return {role: self._global_value(role) for role, _l in theme.COLOUR_ROLES}
+
+    def _set_global_tracked(self, role: str, value):
+        before = self._global_value(role)
+        if value is None or value == before:
+            return
+        self._set_global(role, value)
+        self._note_change("lum", {role: before}, {role: value}, colour_tools.lum_name(role))
+        self._refresh_timer.start()
+
+    def _note_change(self, scope: str, old: dict, new: dict, label: str, base: dict | None = None):
+        """Add to the recent changes. A run of changes to the same colour (dragging in the picker) is one entry
+        that keeps the colour from before the run."""
+        top = self.recents[0] if self.recents else None
+        if top and top["scope"] == scope and list(top["new"]) == list(new) and len(new) == 1 and top.get("live"):
+            top["new"] = dict(new)
+            return
+        self.recents.insert(0, {"scope": scope, "label": label, "old": dict(old), "new": dict(new),
+                                "base": dict(base or {}), "live": len(new) == 1})
+        del self.recents[30:]
+
+    def apply_bulk(self, scope: str, changes: dict, label: str):
+        """Many colours at once (a quick tool, a reset): one step to undo and one entry in recent changes."""
+        if not changes:
+            return
+        self._commit()
+        if scope == "cael":
+            own = self._cael_colours()
+            old = {k: own.get(k) for k in changes}
+            for k, v in changes.items():
+                if isinstance(v, str) and v:
+                    own[k] = v.upper()
+                else:
+                    own.pop(k, None)
+            base = {k: (self._cael_now or {}).get(k) for k in changes}
+        else:
+            old = {k: self._global_value(k) for k in changes}
+            for k, v in changes.items():
+                if v:
+                    self._set_global(k, v)
+            base = {}
+        if self.recents:
+            self.recents[0]["live"] = False
+        self._note_change(scope, old, changes, label, base)
+        self.recents[0]["live"] = False
+        self._refresh_colour_pages()
+        self.changed()
+        self._commit(label)
+
+    def reset_recent(self, i: int):
+        if not (0 <= i < len(self.recents)):
+            return
+        r = self.recents[i]
+        self.apply_bulk(r["scope"], dict(r["old"]), f"Back: {r['label']}")
+
+    def _refresh_colour_pages(self):
+        if self.cael_page is not None:
+            self.cael_page.refresh()
+        for role, row in self._role_rows.get("colours", {}).items():
+            row.set_value(self._global_value(role))
+        for role, row in getattr(self, "_lum_fav_rows", {}).items():
+            row.set_value(self._global_value(role))
+        if hasattr(self, "_lum_recent"):
+            self._lum_recent.fill()
+        self._undo_buttons()
+        self.preview.update()
+
+    def set_highlight(self, key):
+        if key != self.highlight:
+            self.highlight = key
+            self.preview.update()
+
+    def jump_to(self, key: str):
+        """The preview was clicked: show that colour's row."""
+        if self.current == "caelestia_colours" and self.cael_page is not None:
+            self.cael_page.jump_to(key)
+        elif self.current == "colours":
+            row = self._role_rows.get("colours", {}).get(key)
+            if row is not None:
+                self._pages["colours"].ensureWidgetVisible(row, 0, 120)
+                row.set_highlight(True)
+                QTimer.singleShot(1400, lambda: row.set_highlight(False) if alive(row) else None)
+        self.set_highlight(key)
+
+    def _commit(self, label: str = "Change"):
+        self._commit_timer.stop()
+        if self.history is not None and self.history.record(self.result_theme(), label):
+            self._undo_buttons()
+
+    def _undo_buttons(self):
+        if self.history is None:
+            return
+        self.undo_btn.setEnabled(bool(self.history.undo_stack))
+        self.redo_btn.setEnabled(bool(self.history.redo_stack))
+        self.undo_btn.setToolTip(f"Undo {self.history.undo_stack[-1][0].lower()} (Ctrl+Z)"
+                                 if self.history.undo_stack else "Nothing to undo")
+        self.redo_btn.setToolTip(f"Redo {self.history.redo_stack[-1][0].lower()} (Ctrl+Shift+Z)"
+                                 if self.history.redo_stack else "Nothing to redo")
+
+    def undo(self):
+        self._commit()
+        step = self.history.undo()
+        if step:
+            self._restore(step[1])
+            self.status.setText(f"UNDID: {step[0].upper()}")
+
+    def redo(self):
+        self._commit()
+        step = self.history.redo()
+        if step:
+            self._restore(step[1])
+            self.status.setText(f"REDID: {step[0].upper()}")
+
+    def _restore(self, t: dict):
+        """Put a snapshot back: the theme, the fields on the General and When pages, every colour row. Pages
+        that hold parts of the theme in their controls are built again."""
+        self._restoring = True
+        try:
+            self.t = copy.deepcopy(t)
+            self.t.setdefault("colours", {})
+            self.t["gradients"] = theme.clean_gradients(self.t.get("gradients"))
+            self.t.setdefault("modules", {})
+            if hasattr(self, "name"):
+                for w, setter, val in ((self.name, self.name.setText, t.get("name", "")),
+                                       (self.glow, self.glow.setChecked, bool(t.get("glow", True))),
+                                       (self.bg_image, self.bg_image.setText, t.get("background_image", "")),
+                                       (self.icon, self.icon.setText, t.get("icon", ""))):
+                    w.blockSignals(True)
+                    setter(val)
+                    w.blockSignals(False)
+                self.font.blockSignals(True)
+                self.font.setCurrentFont(QFont(t.get("font_family", "Geist")))
+                self.font.blockSignals(False)
+                for sl, val in ((self.radius, int(t.get("radius", 10))),
+                                (self.opacity, int(float(t.get("image_opacity", 0.35)) * 100))):
+                    sl.slider.blockSignals(True)
+                    sl.slider.setValue(val)
+                    sl.lbl.setText(f"{val} {sl.lbl.text().split()[-1]}")
+                    sl.slider.blockSignals(False)
+            if hasattr(self, "wallpaper"):
+                self.wallpaper.blockSignals(True)
+                self.wallpaper.setText(t.get("wallpaper", ""))
+                self.wallpaper.blockSignals(False)
+                self.profile.blockSignals(True)
+                self.profile.setCurrentIndex(max(0, self.profile.findData(t.get("profile", ""))))
+                self.profile.blockSignals(False)
+            keep = ("general", "applied", "colours", "caelestia_colours")
+            for key in [k for k in self._pages if k not in keep]:
+                old = self._pages.pop(key)
+                self.stack.removeWidget(old)
+                old.deleteLater()
+                self._role_rows.pop(key, None)
+            if self.current not in keep:
+                self.show_section(self.current)
+            self._refresh_colour_pages()
+        finally:
+            self._restoring = False
         self.changed()
 
     def _section_page(self, key: str) -> QWidget:
@@ -1418,6 +1690,17 @@ class ThemeDialog(widgets.RoundedDialog):
         self._role_rows.pop(key, None)
         self.show_section(key)
         self.changed()
+
+    def accept(self):
+        # the recent changes stay with the theme for next time
+        tid = self.t.get("id", "")
+        if tid:
+            keep = [{k: v for k, v in r.items() if k != "live"} for r in self.recents[:12]]
+            data = self.store_data()
+            rec = dict(data.get("recent_colours") or {})
+            rec[tid] = keep
+            data["recent_colours"] = rec
+        super().accept()
 
     def reject(self):
         if json.dumps(self.result_theme(), sort_keys=True) != self._saved and not widgets.confirm(

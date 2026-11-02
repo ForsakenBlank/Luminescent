@@ -13,7 +13,7 @@ GeForce-overlay style **hub** (Dashboard, Automation, Themes, Clipboard, Setting
 Calculator, Today and Usage pages), plus
 **Notes**, **Screen Doodle**, **Timers / Stopwatches**, **Calculator**, **Colour Picker**, **Screen Text Grab**,
 **Prompt Log**, **Reminders**, **Hearing Guard**, **Ghost Vault**, the **Metadata Stripper**, a **Window Snapper**, a
-**Screen Ruler**, **Media Controls**, a **QR Code** maker, a **System Monitor** and **Atlas Sync**. Everything runs in one process with
+**Screen Ruler**, **Media Controls**, a **QR Code** maker, a **System Monitor**, **System Settings** and **Atlas Sync**. Everything runs in one process with
 one keyboard hook.
 
 ## Download
@@ -305,6 +305,29 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   snapped). The undo hotkey puts it back into the tiling layout (Linux) or where it was (Windows).
 * **Screen Ruler**, **Media Controls** (any MPRIS player, needs `playerctl`), **QR Code** (the clipboard as a QR code;
   copy it as a picture or save PNG / SVG) and **System Monitor** (CPU, RAM, GPU, network with a minute of history).
+* **System Settings**: the computer's own settings in one panel (tray, command palette, or add it to the overlay's
+  navigation bar).
+  * **Displays**: every monitor drawn where it is. Drag one to move it and it snaps against the others; pick its
+    resolution, refresh rate, scale (Hyprland), rotation, main display (Windows, X11), variable refresh and
+    mirroring (Hyprland), or switch it off. **Identify** puts a big number on each screen. After **Apply** it asks
+    whether to keep the change and goes back by itself after 15 seconds, so a black screen fixes itself.
+    **Copy as config** gives you the lines for monitors.lua (or the xrandr command) to keep them for good.
+  * **Brightness** of every monitor that speaks DDC/CI (`ddcutil` on Linux, built in on Windows) and of laptop
+    screens, and **night light** (hyprsunset, gammastep or wlsunset on Linux, the colour ramp on Windows).
+  * **Mouse, touchpad and keyboard**: pointer speed, acceleration, natural scrolling, left-handed, scroll speed,
+    focus follows mouse, hiding the cursor, cursor style and size, key repeat speed and delay, keyboard layout.
+  * **Windows & desktop** (Hyprland): gaps, border thickness, rounded corners, opacity, dimming, blur, shadows,
+    animations, layout and VRR. **Explorer & taskbar** (Windows): file extensions, hidden files, taskbar alignment,
+    search box, seconds on the clock, End task, compact view.
+  * **Appearance**: dark mode for apps (and Windows' taskbar), text size, animations, fonts. **Power**: power
+    mode / plan, and on Windows when the screen turns off and the PC sleeps. **Sound**: the output and microphone
+    in use and the volume. **This computer**: system, processor, graphics, memory, disk, uptime, with Copy all.
+
+  On Linux it uses Hyprland's control socket, xrandr on X11 and gsettings on GNOME (and for GTK apps everywhere);
+  on Windows the system's own settings, so nothing needs administrator rights and Windows keeps every change.
+  Hyprland forgets changes made while it runs when its config reloads: with Settings → System Settings → **Keep my
+  changes** on, Luminescent puts them back after a reload and when it starts. **Back to my Hyprland config** undoes
+  them all.
 * **Atlas Sync**: swaps notes, timer time and themes with the [Atlas](https://github.com/ForsakenBlank/Atlas) app on
   your phone over Wi-Fi, and brings Atlas's calendar events and tasks to the PC. Press **Let Atlas connect** (tray, command palette or Settings), then type the address and code
   into Atlas → Sync. Atlas lists every change in both directions before anything is written. Notes go both ways and

@@ -85,7 +85,7 @@ NAV_SECTIONS = [("dashboard", "Dashboard"), ("automation", "Automation"), ("them
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
 EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
                ("stats", "Usage"), ("calendar", "Calendar"), ("hearing", "Hearing Guard"),
-               ("sysmon", "System Monitor"), ("media", "Media")]
+               ("sysmon", "System Monitor"), ("media", "Media"), ("syscontrol", "System Settings")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
@@ -603,6 +603,25 @@ SCHEMA += [
         Field("enabled", "Enable System Monitor", "bool", True),
         Field("hotkey", "Show / hide hotkey", "hotkey", ""),
         Field("bg_opacity", "Panel opacity", "opacity", 0.88),
+    ]),
+    Section("syscontrol", "System Settings", "🖥",
+            "The computer's own settings: where your monitors are (drag them), resolution, refresh rate, scale and "
+            "rotation, brightness and night light, the mouse, touchpad and keyboard, " +
+            _os("Hyprland's gaps, borders and blur, ", "File Explorer and the taskbar, ") +
+            "dark mode, power, sound devices and what the computer is.", [
+        Field("enabled", "Enable System Settings", "bool", True),
+        Field("hotkey", "Open hotkey", "hotkey", ""),
+        Field("displays_hotkey", "Open on Displays hotkey", "hotkey", ""),
+        Field("night_hotkey", "Night light on / off hotkey", "hotkey", ""),
+        Field("keep", "Keep my changes", "bool", True, _os(
+              "Hyprland forgets changes made while it runs when its config reloads. With this on, Luminescent puts "
+              "back what you changed in System Settings after a reload and when it starts.",
+              "Windows keeps every change by itself; this only matters on Linux.")),
+        Field("bg_opacity", "Panel opacity", "opacity", 0.96),
+        Field("saved", "", "hidden", {}),
+        Field("monitors", "", "hidden", []),
+        Field("night_kelvin", "", "hidden", 4000),
+        Field("night_on", "", "hidden", False),
     ]),
     Section("atlas_sync", "Atlas Sync", "⇄",
             "Swaps notes and timer time with the Atlas app on your phone over Wi-Fi. Press Let Atlas connect, then "

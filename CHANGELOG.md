@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.8.2
+
+* **System Settings, a new module.** The computer's own settings in one place, on Linux and Windows. Open it from
+  the tray or the command palette, give it a key, or add it to the overlay's navigation bar.
+  * **Displays with a picture of your monitors.** Every screen is drawn where it is; drag one to move it and it
+    snaps neatly against the others. Pick the resolution, refresh rate, scale, rotation, main display, variable
+    refresh or mirroring, or switch a screen off. **Identify** shows each screen's number on the screen itself.
+    Every change asks "keep these?" and goes back by itself after 15 seconds if you don't answer, so a screen that
+    goes black comes back. **Copy as config** gives you the lines to keep it for good.
+  * **Brightness for real monitors** over DDC/CI (no more digging through the monitor's own buttons) and laptop
+    screens, plus **night light** with presets.
+  * **Mouse, touchpad and keyboard**: pointer speed, acceleration on or off, natural scrolling, left-handed, scroll
+    speed, focus follows mouse, hide the cursor, cursor style and size, key repeat speed and delay, layout.
+  * **Windows & desktop** on Hyprland: gaps, borders, rounded corners, opacity, dimming, blur, shadows, animations,
+    tiling layout and VRR, all live as you drag the sliders.
+  * **Explorer & taskbar** on Windows: file extensions, hidden files, taskbar on the left or centre, the search
+    box, seconds on the clock, End task on right-click and more.
+  * **Appearance** (dark mode, text size, animations, font smoothing), **Power** (power mode or plan, screen off
+    and sleep times on Windows), **Sound** (pick the speakers and microphone, volume) and **This computer**
+    (processor, graphics, memory, disk, uptime) with Copy all.
+  * Hyprland forgets changes made while it runs when its config reloads. **Keep my changes** (on by default) puts
+    yours back after a reload and when Luminescent starts; **Back to my Hyprland config** undoes them all.
+  * In the command palette: System settings, Display settings, Identify monitors, Night light on / off and each
+    power mode.
+
 ## 1.8.1
 
 * **Keys for themes.** Give any theme a key of its own (theme editor → General → KEY) and press it anywhere to switch

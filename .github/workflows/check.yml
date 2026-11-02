@@ -30,7 +30,26 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Windows parts import
         if: runner.os == 'Windows'
-        run: python -c "import core.hotkeys_win, core.autostart_win, core.desktop_win, core.wallpaper_win, modules.hearing_win, modules.media_win; print('ok')"
+        run: python -c "import core.hotkeys_win, core.autostart_win, core.desktop_win, core.wallpaper_win, modules.hearing_win, modules.media_win, core.syscontrol, modules.syscontrol; print('ok')"
+      - name: System settings can be read (nothing is changed)
+        shell: bash
+        run: |
+          python - <<'EOF'
+          import sys
+          from core import IS_WIN, syscontrol as sc
+          print("backend:", sc.backend())
+          for m in sc.monitors():
+              print("monitor:", {k: v for k, v in m.items() if k != "modes"}, len(m["modes"]), "modes")
+          opts = sc.options()
+          for o in opts:
+              print("option:", o.group, o.key, repr(o.get()))
+          for k, v in sc.about():
+              print("about:", k, "=", v)
+          print("power:", sc.power_profiles(), sc.power_profile())
+          print("sound:", sc.sound_devices("sinks"))
+          if IS_WIN and len(opts) < 15:
+              sys.exit("Windows settings could not be read")
+          EOF
       - name: Smoke test
         shell: bash
         run: |

@@ -606,7 +606,7 @@ class MainOverlay:
             if key == "settings":
                 from settings_ui import SettingsPage
                 return SettingsPage(self.settings, self.launcher)
-            if key in ("notes", "timers", "calculator", "hearing", "sysmon", "media"):
+            if key in ("notes", "timers", "calculator", "hearing", "sysmon", "media", "syscontrol"):
                 mkey = {"timers": "timer"}.get(key, key)
                 m = self.launcher.modules.get(mkey)
                 if m is None or not m.running:

@@ -1220,6 +1220,7 @@ class CaelestiaModule(Module):
             else:
                 self.log.info("wallpaper set to %s (Caelestia)", path)
                 wallpaper_tool.stop_swaybg()
+                wallpaper_tool.stop_animated()   # a video or Wallpaper Engine project would stay on top of it
                 if scheme() != old:
                     # caelestia made new colours from the picture: those are now what a theme without colours of
                     # its own shows, not the ones from the old wallpaper

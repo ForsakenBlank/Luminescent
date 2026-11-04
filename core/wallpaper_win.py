@@ -63,6 +63,19 @@ def is_image(path: str) -> bool:
     return os.path.splitext(path)[1].lower() in IMAGE_EXT
 
 
+def stop_animated():
+    """Close what Wallpaper Engine is showing, it draws over the normal wallpaper. Only when it is running:
+    asking it anything starts it."""
+    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq wallpaper64.exe", "/FI", "IMAGENAME eq wallpaper32.exe"],
+                         capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW).stdout
+    if "wallpaper" not in out.lower():
+        return
+    exe = find_wallpaper_engine()
+    if exe:
+        subprocess.Popen([exe, "-control", "closeWallpaper"], creationflags=subprocess.CREATE_NO_WINDOW,
+                         close_fds=True)
+
+
 def apply(path: str, engine_exe: str = "", on_error=None):
     """Switch the desktop wallpaper in the background. `on_error(text)` is called from the worker thread."""
     path = os.path.expandvars((path or "").strip().strip('"'))
@@ -78,6 +91,7 @@ def apply(path: str, engine_exe: str = "", on_error=None):
                     SPI_SETDESKWALLPAPER, 0, os.path.abspath(path), SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)
                 if not ok:
                     raise OSError("Windows refused the wallpaper")
+                stop_animated()
                 log.info("wallpaper set to %s", path)
                 return
             exe = find_wallpaper_engine(engine_exe)

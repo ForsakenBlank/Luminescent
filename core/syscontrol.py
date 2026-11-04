@@ -441,7 +441,7 @@ def _win_apply(mons: list[dict]) -> str:
 # ══ settings as a list of options ══════════════════════════════════════════════
 GROUPS = [("mouse", "Mouse", "🖱"), ("touchpad", "Touchpad", "▭"), ("keyboard", "Keyboard", "⌨"),
           ("desktop", "Windows & desktop", "▣"), ("appearance", "Appearance", "◐"), ("explorer", "Explorer & taskbar", "🗂"),
-          ("power", "Power", "⚡")]
+          ("power", "Power & sleep", "⚡"), ("time", "Date & time", "🕒"), ("system", "Network & system", "📶")]
 
 
 @dataclass
@@ -515,6 +515,16 @@ HYPR_OPTIONS = [
     ("desktop", "misc:vrr", "Variable refresh rate (FreeSync / G-Sync)", "choice", 0, 0, 0, _VRR, "", ""),
     ("desktop", "misc:focus_on_activate", "Windows that ask for attention get focus", "bool", 0, 0, 0, None, "", ""),
     ("desktop", "misc:animate_manual_resizes", "Animate resizing with the mouse", "bool", 0, 0, 0, None, "", ""),
+    ("desktop", "general:resize_on_border", "Resize windows by dragging their border", "bool", 0, 0, 0, None, "", ""),
+    ("desktop", "dwindle:preserve_split", "Keep a window's split when others close", "bool", 0, 0, 0, None, "", ""),
+    ("desktop", "binds:workspace_back_and_forth", "Pressing the current workspace's key goes back", "bool",
+     0, 0, 0, None, "", ""),
+    ("desktop", "misc:disable_hyprland_logo", "Hide the Hyprland logo behind wallpapers", "bool", 0, 0, 0, None, "", ""),
+    ("desktop", "misc:disable_splash_rendering", "Hide the Hyprland splash text", "bool", 0, 0, 0, None, "", ""),
+    ("mouse", "misc:middle_click_paste", "Middle click pastes the selected text", "bool", 0, 0, 0, None, "", ""),
+    ("power", "misc:mouse_move_enables_dpms", "Moving the mouse wakes the screen", "bool", 0, 0, 0, None, "", ""),
+    ("power", "misc:key_press_enables_dpms", "Pressing a key wakes the screen", "bool", 0, 0, 0, None, "", ""),
+    ("power", "misc:vfr", "Lower the refresh rate when nothing moves (saves power)", "bool", 0, 0, 0, None, "", ""),
 ]
 
 
@@ -982,6 +992,284 @@ def _powercfg_set(name: str, minutes) -> str:
     return err
 
 
+# Idle: after how long the login screen shows, the screen goes off and the computer sleeps. Whatever watches for
+# idle decides these, so each has its own place: Caelestia's shell.json, hypridle.conf or GNOME's settings.
+_IDLE_LABELS = {"lock": "Show the login screen after", "screen": "Turn the screen off after",
+                "sleep": "Go to sleep after"}
+_CAEL_SHELL = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                           "caelestia", "shell.json")
+# what Caelestia does until shell.json says otherwise
+_CAEL_IDLE = [{"timeout": 180, "idleAction": "lock"},
+              {"timeout": 300, "idleAction": "dpms off", "returnAction": "dpms on"},
+              {"timeout": 600, "idleAction": ["systemctl", "suspend-then-hibernate"]}]
+_CAEL_NEW = {"lock": {"idleAction": "lock"}, "screen": {"idleAction": "dpms off", "returnAction": "dpms on"},
+             "sleep": {"idleAction": ["systemctl", "suspend"]}}
+
+
+def _idle_kind(action) -> str:
+    """Which of the three an idle command is: 'lock', 'screen', 'sleep', or '' for something else."""
+    text = " ".join(action) if isinstance(action, list) else str(action or "")
+    if "dpms" in text:
+        return "" if re.search(r"dpms\s+on|enable", text) else "screen"
+    if "lock" in text:
+        return "" if "unlock" in text else "lock"
+    return "sleep" if re.search(r"suspend|hibernate|sleep", text) else ""
+
+
+def _cael_read() -> dict:
+    try:
+        with open(_CAEL_SHELL, "r", encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+def _cael_idle() -> dict:
+    idle = (_cael_read().get("general") or {}).get("idle")
+    return idle if isinstance(idle, dict) else {}
+
+
+def _cael_write_idle(changes: dict) -> str:
+    """Into shell.json's general.idle, in one step. Caelestia sees the file change by itself."""
+    d = _cael_read()
+    if not d and not os.path.isfile(_CAEL_SHELL):
+        return "Caelestia's shell.json was not found."
+    d.setdefault("general", {}).setdefault("idle", {}).update(changes)
+    try:
+        tmp = _CAEL_SHELL + ".lum-tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, indent=4)
+            f.write("\n")
+        os.replace(tmp, _CAEL_SHELL)
+    except OSError as e:
+        return f"Could not write shell.json: {e}"
+    return ""
+
+
+def _cael_timeouts() -> list[dict]:
+    t = _cael_idle().get("timeouts")
+    return [dict(x) for x in t if isinstance(x, dict)] if isinstance(t, list) else [dict(x) for x in _CAEL_IDLE]
+
+
+def _cael_minutes(kind: str) -> int:
+    for t in _cael_timeouts():
+        if _idle_kind(t.get("idleAction")) == kind and t.get("enabled", True):
+            return round(int(t.get("timeout", 0)) / 60)
+    return 0
+
+
+def _cael_set_minutes(kind: str, minutes) -> str:
+    """0 takes that step out. Steps of your own in the list stay as they are."""
+    minutes = int(minutes)
+    out, found = [], False
+    for t in _cael_timeouts():
+        if _idle_kind(t.get("idleAction")) != kind:
+            out.append(t)
+        elif minutes and not found:
+            out.append({**t, "timeout": minutes * 60})
+            found = True
+    if minutes and not found:
+        out.append({"timeout": minutes * 60, **_CAEL_NEW[kind]})
+    return _cael_write_idle({"timeouts": sorted(out, key=lambda t: t.get("timeout", 0))})
+
+
+def _caelestia_idle_options() -> list[Option]:
+    out = [Option("power", f"idle:{k}", label, "choice", get=lambda k=k: _cael_minutes(k),
+                  set=lambda v, k=k: _cael_set_minutes(k, v), choices=_TIMEOUTS)
+           for k, label in _IDLE_LABELS.items()]
+    out[0].help = "These three come from Caelestia and take effect straight away."
+    for key, label, default, help_ in (
+            ("lockBeforeSleep", "Show the login screen when the computer sleeps", True, ""),
+            ("inhibitWhenAudio", "Stay awake while something is playing", True,
+             "Music or a video playing holds off the login screen, screen off and sleep."),
+            ("inhibitWhenCharging", "Stay awake while plugged in", False, "")):
+        out.append(Option("power", f"idle:{key}", label, "bool",
+                          get=lambda k=key, d=default: bool(_cael_idle().get(k, d)),
+                          set=lambda v, k=key: _cael_write_idle({k: bool(v)}), help=help_))
+    return out
+
+
+_HYPRIDLE_CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                              "hypr", "hypridle.conf")
+_HYPRIDLE_NEW = {"lock": "loginctl lock-session", "screen": "hyprctl dispatch dpms off",
+                 "sleep": "systemctl suspend"}
+_HYPRIDLE_BLOCK = re.compile(r"^[ \t]*listener\s*\{.*?^[ \t]*\}[ \t]*\n?", re.M | re.S)
+
+
+def _hypridle_text() -> str:
+    try:
+        with open(_HYPRIDLE_CONF, "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def _hypridle_kind(block: str) -> str:
+    m = re.search(r"on-timeout\s*=\s*(.+)", block)
+    return _idle_kind(m.group(1)) if m else ""
+
+
+def hypridle_minutes(text: str, kind: str) -> int:
+    for block in _HYPRIDLE_BLOCK.findall(text):
+        m = re.search(r"timeout\s*=\s*(\d+)", block)
+        if m and _hypridle_kind(block) == kind:
+            return round(int(m.group(1)) / 60)
+    return 0
+
+
+def hypridle_with(text: str, kind: str, minutes: int) -> str:
+    """hypridle.conf with that step changed, added, or (0) taken out. Everything else stays as you wrote it."""
+    found = False
+
+    def each(m):
+        nonlocal found
+        block = m.group(0)
+        if _hypridle_kind(block) != kind:
+            return block
+        if not minutes or found:
+            return ""
+        found = True
+        return re.sub(r"(^[ \t]*timeout\s*=\s*)\d+", rf"\g<1>{minutes * 60}", block, count=1, flags=re.M)
+    text = _HYPRIDLE_BLOCK.sub(each, text)
+    if minutes and not found:
+        resume = "\n    on-resume = hyprctl dispatch dpms on" if kind == "screen" else ""
+        text = text.rstrip("\n") + (f"\n\nlistener {{\n    timeout = {minutes * 60}\n"
+                                    f"    on-timeout = {_HYPRIDLE_NEW[kind]}{resume}\n}}\n")
+    return text
+
+
+def _hypridle_set(kind: str, minutes) -> str:
+    text = _hypridle_text()
+    try:
+        tmp = _HYPRIDLE_CONF + ".lum-tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(hypridle_with(text, kind, int(minutes)))
+        os.replace(tmp, _HYPRIDLE_CONF)
+    except OSError as e:
+        return f"Could not write hypridle.conf: {e}"
+    # hypridle only reads its config when it starts
+    if _run(["systemctl", "--user", "is-active", "hypridle"]):
+        return _run_err(["systemctl", "--user", "restart", "hypridle"])
+    _run(["pkill", "-x", "hypridle"])
+    subprocess.Popen(["hypridle"], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return ""
+
+
+def _hypridle_options() -> list[Option]:
+    out = [Option("power", f"idle:{k}", label, "choice", get=lambda k=k: hypridle_minutes(_hypridle_text(), k),
+                  set=lambda v, k=k: _hypridle_set(k, v), choices=_TIMEOUTS)
+           for k, label in _IDLE_LABELS.items()]
+    out[0].help = "These three are written to ~/.config/hypr/hypridle.conf and hypridle restarts to read them."
+    return out
+
+
+def _gnome_seconds(schema: str, key: str, minutes) -> str:
+    return _gs_set(schema, key, int(minutes) * 60)
+
+
+def _gnome_power_options() -> list[Option]:
+    out = []
+    session, saver = "org.gnome.desktop.session", "org.gnome.desktop.screensaver"
+    power = "org.gnome.settings-daemon.plugins.power"
+    if _gs_has(session):
+        out.append(Option("power", "idle:screen", _IDLE_LABELS["screen"], "choice",
+                          get=lambda: round((_gs_get(session, "idle-delay") or 0) / 60),
+                          set=lambda v: _gnome_seconds(session, "idle-delay", v), choices=_TIMEOUTS))
+    if _gs_has(power):
+        def set_sleep(v):
+            return _gs_set(power, "sleep-inactive-ac-type", "suspend" if int(v) else "nothing") \
+                or _gnome_seconds(power, "sleep-inactive-ac-timeout", v)
+        out.append(Option("power", "idle:sleep", _IDLE_LABELS["sleep"], "choice",
+                          get=lambda: 0 if _gs_get(power, "sleep-inactive-ac-type") == "nothing"
+                          else round((_gs_get(power, "sleep-inactive-ac-timeout") or 0) / 60),
+                          set=set_sleep, choices=_TIMEOUTS))
+    if _gs_has(saver):
+        out += [Option("power", "idle:lock_on", "Show the login screen when the screen goes off", "bool",
+                       get=lambda: _gs_get(saver, "lock-enabled"), set=lambda v: _gs_set(saver, "lock-enabled", bool(v))),
+                Option("power", "idle:lock", "Wait this long before asking for the password", "choice",
+                       get=lambda: round((_gs_get(saver, "lock-delay") or 0) / 60),
+                       set=lambda v: _gnome_seconds(saver, "lock-delay", v),
+                       choices=[(0, "No wait"), *_TIMEOUTS[1:]])]
+    return out
+
+
+def _linux_idle_options() -> list[Option]:
+    from core import wallpaper
+    if hypr.available() and wallpaper.caelestia_draws():
+        return _caelestia_idle_options()
+    if shutil.which("hypridle"):
+        return _hypridle_options()
+    return _gnome_power_options() if backend() == "gnome" else []
+
+
+_DESKTOP_REG = r"Control Panel\Desktop"
+_BUTTONS = [(0, "Do nothing"), (1, "Sleep"), (2, "Hibernate"), (3, "Shut down")]
+
+
+def _powercfg_value(sub: str, setting: str):
+    out = _run(["powercfg", "/query", "SCHEME_CURRENT", sub, setting]) or ""
+    vals = re.findall(r":\s*0x([0-9a-fA-F]+)\s*$", out, re.M)
+    return int(vals[-2], 16) if len(vals) >= 2 else None
+
+
+def _powercfg_put(sub: str, setting: str, value) -> str:
+    v = str(int(value))
+    err = _run_err(["powercfg", "/setacvalueindex", "SCHEME_CURRENT", sub, setting, v])
+    _run_err(["powercfg", "/setdcvalueindex", "SCHEME_CURRENT", sub, setting, v])     # no battery: harmless error
+    return err or _run_err(["powercfg", "/setactive", "SCHEME_CURRENT"])
+
+
+def _win_login_minutes() -> int:
+    """The login screen on Windows after being idle is a screen saver with "on resume, display logon screen"."""
+    if str(_reg_get(_DESKTOP_REG, "ScreenSaveActive", "0")) != "1" or str(
+            _reg_get(_DESKTOP_REG, "ScreenSaverIsSecure", "0")) != "1":
+        return 0
+    try:
+        return round(int(_reg_get(_DESKTOP_REG, "ScreenSaveTimeOut", "0")) / 60)
+    except ValueError:
+        return 0
+
+
+def _win_set_login_minutes(minutes) -> str:
+    minutes = int(minutes)
+    err = _reg_set(_DESKTOP_REG, "ScreenSaveActive", "1" if minutes else "0", "sz")
+    err = err or _reg_set(_DESKTOP_REG, "ScreenSaverIsSecure", "1" if minutes else "0", "sz")
+    if minutes:
+        err = err or _reg_set(_DESKTOP_REG, "ScreenSaveTimeOut", str(minutes * 60), "sz")
+        if not _reg_get(_DESKTOP_REG, "SCRNSAVE.EXE", ""):
+            err = err or _reg_set(_DESKTOP_REG, "SCRNSAVE.EXE", r"C:\Windows\System32\scrnsave.scr", "sz")
+    return err
+
+
+def _win_power_options() -> list[Option]:
+    out = [
+        Option("power", "power:login", _IDLE_LABELS["lock"], "choice", get=_win_login_minutes,
+               set=_win_set_login_minutes, choices=_TIMEOUTS,
+               help="Takes effect the next time you sign in. If you have no screen saver, a blank one is used."),
+        Option("power", "power:screen", _IDLE_LABELS["screen"], "choice",
+               get=lambda: _powercfg_minutes("SUB_VIDEO", "VIDEOIDLE"),
+               set=lambda v: _powercfg_set("monitor-timeout", v), choices=_TIMEOUTS),
+        Option("power", "power:sleep", _IDLE_LABELS["sleep"], "choice",
+               get=lambda: _powercfg_minutes("SUB_SLEEP", "STANDBYIDLE"),
+               set=lambda v: _powercfg_set("standby-timeout", v), choices=_TIMEOUTS),
+        Option("power", "power:hibernate", "Hibernate after", "choice",
+               get=lambda: _powercfg_minutes("SUB_SLEEP", "HIBERNATEIDLE"),
+               set=lambda v: _powercfg_set("hibernate-timeout", v), choices=_TIMEOUTS),
+        Option("power", "power:wake_login", "Ask for the password after sleep", "bool",
+               get=lambda: bool(_powercfg_value("SUB_NONE", "CONSOLELOCK")),
+               set=lambda v: _powercfg_put("SUB_NONE", "CONSOLELOCK", int(bool(v)))),
+    ]
+    for key, setting, label in (("lid", "LIDACTION", "When the lid closes"),
+                                ("button", "PBUTTONACTION", "When the power button is pressed"),
+                                ("sleep_button", "SBUTTONACTION", "When the sleep button is pressed")):
+        if _powercfg_value("SUB_BUTTONS", setting) is not None:           # a desktop has no lid
+            out.append(Option("power", f"power:{key}", label, "choice", choices=_BUTTONS,
+                              get=lambda s=setting: _powercfg_value("SUB_BUTTONS", s),
+                              set=lambda v, s=setting: _powercfg_put("SUB_BUTTONS", s, v)))
+    return out
+
+
 def _power_options() -> list[Option]:
     out = []
     profiles = power_profiles()
@@ -989,16 +1277,108 @@ def _power_options() -> list[Option]:
         out.append(Option("power", "power:profile", "Power mode" if not IS_WIN else "Power plan", "choice",
                           get=power_profile, set=lambda v: set_power_profile(str(v)), choices=profiles,
                           help="Performance runs the processor faster and warmer, power saver the other way."))
+    return out + (_win_power_options() if IS_WIN else _linux_idle_options())
+
+
+# ── date & time, network, the rest ────────────────────────────────────────────────────
+_INTL_REG = r"Control Panel\International"
+
+
+def _timedate(prop: str) -> str:
+    return (_run(["timedatectl", "show", "-p", prop, "--value"]) or "").strip()
+
+
+def _time_options() -> list[Option]:
     if IS_WIN:
-        out += [
-            Option("power", "power:screen", "Turn the screen off after", "choice",
-                   get=lambda: _powercfg_minutes("SUB_VIDEO", "VIDEOIDLE"),
-                   set=lambda v: _powercfg_set("monitor-timeout", v), choices=_TIMEOUTS),
-            Option("power", "power:sleep", "Go to sleep after", "choice",
-                   get=lambda: _powercfg_minutes("SUB_SLEEP", "STANDBYIDLE"),
-                   set=lambda v: _powercfg_set("standby-timeout", v), choices=_TIMEOUTS),
-        ]
+        def intl(name, value):
+            err = _reg_set(_INTL_REG, name, value, "sz")
+            if not err:
+                _broadcast("intl")
+            return err
+
+        zones = re.findall(r"^\(UTC.*\)\s.*\n(.+)$", _run(["tzutil", "/l"]) or "", re.M)
+        out = [Option("time", "time:24h", "Clock", "choice",
+                      get=lambda: "24" if "H" in str(_reg_get(_INTL_REG, "sShortTime", "HH:mm")) else "12",
+                      set=lambda v: intl("sShortTime", "HH:mm" if v == "24" else "h:mm tt")
+                      or intl("sTimeFormat", "HH:mm:ss" if v == "24" else "h:mm:ss tt"),
+                      choices=[("24", "24 hour (17:30)"), ("12", "12 hour (5:30 PM)")]),
+               Option("time", "time:first_day", "First day of the week", "choice",
+                      get=lambda: str(_reg_get(_INTL_REG, "iFirstDayOfWeek", "0")),
+                      set=lambda v: intl("iFirstDayOfWeek", str(v)),
+                      choices=[(str(i), d) for i, d in enumerate(("Monday", "Tuesday", "Wednesday", "Thursday",
+                                                                  "Friday", "Saturday", "Sunday"))])]
+        if zones:
+            out.insert(0, Option("time", "time:zone", "Time zone", "choice",
+                                 get=lambda: (_run(["tzutil", "/g"]) or "").strip() or None,
+                                 set=lambda v: _run_err(["tzutil", "/s", str(v)]),
+                                 choices=[(z.strip(), z.strip()) for z in zones]))
+        return out
+    if not shutil.which("timedatectl") or not _timedate("Timezone"):
+        return []
+    zones = (_run(["timedatectl", "list-timezones"]) or "").split()
+    # both can ask for your password, so they get longer than a usual command
+    return [Option("time", "time:zone", "Time zone", "choice", get=lambda: _timedate("Timezone") or None,
+                   set=lambda v: _run_err(["timedatectl", "set-timezone", str(v)], timeout=60),
+                   choices=[(z, z.replace("_", " ")) for z in zones]),
+            Option("time", "time:ntp", "Set the time automatically", "bool", get=lambda: _timedate("NTP") == "yes",
+                   set=lambda v: _run_err(["timedatectl", "set-ntp", "true" if v else "false"], timeout=60))]
+
+
+def _nmcli_radio() -> str:
+    return (_run(["nmcli", "-t", "-f", "WIFI-HW,WIFI", "radio"]) or "").strip()
+
+
+def _bluetooth_powered():
+    out = _run(["bluetoothctl", "show"], timeout=3)
+    if out is None:
+        return None
+    m = re.search(r"Powered:\s*(yes|no)", out)
+    return m.group(1) == "yes" if m else None
+
+
+def _hostname_get():
+    return (_run(["hostnamectl", "hostname"]) or "").strip() or None
+
+
+def _linux_system_options() -> list[Option]:
+    out = []
+    if shutil.which("nmcli") and _nmcli_radio().split(":")[0] == "enabled":
+        out.append(Option("system", "net:wifi", "Wi-Fi", "bool", get=lambda: _nmcli_radio().endswith(":enabled"),
+                          set=lambda v: _run_err(["nmcli", "radio", "wifi", "on" if v else "off"])))
+    # bluetoothctl waits forever with no adapter, so it is only asked when there is one
+    if shutil.which("bluetoothctl") and os.path.isdir("/sys/class/bluetooth") and os.listdir("/sys/class/bluetooth"):
+        if _bluetooth_powered() is not None:
+            out.append(Option("system", "net:bluetooth", "Bluetooth", "bool", get=_bluetooth_powered,
+                              set=lambda v: _run_err(["bluetoothctl", "power", "on" if v else "off"])))
+    if shutil.which("hostnamectl") and _hostname_get():
+        out.append(Option("system", "net:hostname", "Computer name", "text", get=_hostname_get,
+                          set=lambda v: "The name can't be empty." if not str(v).strip()
+                          else _run_err(["hostnamectl", "set-hostname", str(v).strip()], timeout=60),
+                          help="How this computer shows up on your network. Can ask for your password."))
     return out
+
+
+def _win_system_options() -> list[Option]:
+    sticky = r"Control Panel\Accessibility\StickyKeys"
+    return [
+        _reg_option("system", "win:notifications", "Notification banners",
+                    r"Software\Microsoft\Windows\CurrentVersion\PushNotifications", "ToastEnabled", default=1),
+        _reg_option("system", "win:clip_history", "Clipboard history (Win+V)", r"Software\Microsoft\Clipboard",
+                    "EnableClipboardHistory", default=0),
+        _reg_option("system", "win:game_mode", "Game Mode", r"Software\Microsoft\GameBar", "AutoGameModeEnabled",
+                    default=1, help="Windows puts the game you're playing first."),
+        _reg_option("system", "win:game_capture", "Game Bar recording in the background",
+                    r"Software\Microsoft\Windows\CurrentVersion\GameDVR", "AppCaptureEnabled", default=1),
+        _reg_option("system", "win:recent", "Recent files in File Explorer",
+                    r"Software\Microsoft\Windows\CurrentVersion\Explorer", "ShowRecent", default=1,
+                    after=_explorer_refresh),
+        Option("system", "win:sticky", "Ask about Sticky Keys when Shift is pressed five times", "bool",
+               get=lambda: str(_reg_get(sticky, "Flags", "510")) != "506",
+               set=lambda v: _reg_set(sticky, "Flags", "510" if v else "506", "sz")),
+        Option("system", "win:snap_windows", "Snap windows to the edges of the screen", "bool",
+               get=lambda: str(_reg_get(_DESKTOP_REG, "WindowArrangementActive", "1")) == "1",
+               set=lambda v: _reg_set(_DESKTOP_REG, "WindowArrangementActive", "1" if v else "0", "sz")),
+    ]
 
 
 def options() -> list[Option]:
@@ -1016,6 +1396,8 @@ def options() -> list[Option]:
             out += _cursor_options()
             out += _gtk_appearance_options()
         out += _power_options()
+        out += _time_options()
+        out += _win_system_options() if IS_WIN else _linux_system_options()
     except Exception:
         log.exception("could not list the system settings")
     return out

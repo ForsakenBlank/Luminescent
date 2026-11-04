@@ -103,13 +103,8 @@ def caelestia_draws() -> bool:
     return False
 
 
-def stop_swaybg():
-    """Stop every swaybg Luminescent started, also ones left by an earlier run. With Caelestia drawing the
-    wallpaper they only stack under or over it, so which picture shows would be down to luck."""
-    global _swaybg
-    if _swaybg and _swaybg.poll() is None:
-        _swaybg.terminate()
-    _swaybg = None
+def _my_processes():
+    """(pid, command line) of every process of this user."""
     if IS_WIN or not os.path.isdir("/proc"):
         return
     me = os.getuid()
@@ -120,14 +115,54 @@ def stop_swaybg():
             if os.stat(f"/proc/{pid}").st_uid != me:
                 continue
             with open(f"/proc/{pid}/cmdline", "rb") as f:
-                args = f.read().split(b"\0")
+                yield int(pid), f.read().split(b"\0")
         except OSError:
             continue
+
+
+def stop_swaybg():
+    """Stop every swaybg Luminescent started, also ones left by an earlier run. With Caelestia drawing the
+    wallpaper they only stack under or over it, so which picture shows would be down to luck."""
+    global _swaybg
+    if _swaybg and _swaybg.poll() is None:
+        _swaybg.terminate()
+    _swaybg = None
+    for pid, args in _my_processes():
         # exactly the way _set_picture starts it, so a swaybg of your own is left alone
         if args[:4] == [b"swaybg", b"-m", b"fill", b"-i"]:
             try:
-                os.kill(int(pid), 15)
+                os.kill(pid, 15)
                 log.info("stopped a swaybg left drawing under Caelestia (%s)", pid)
+            except OSError:
+                pass
+
+
+def _is_animated(args: list[bytes]) -> bool:
+    """A video or Wallpaper Engine wallpaper started the way _set_video and _open_engine start them."""
+    name = os.path.basename(args[0]) if args else b""
+    if name == b"mpvpaper":
+        return args[1:3] == [b"-o", b"no-audio --loop"]
+    return name == b"linux-wallpaperengine" and b"--bg" in args and b"--screen-root" in args
+
+
+def stop_animated(leftovers: bool = True):
+    """Stop the moving wallpaper, which would otherwise stay on top of whatever picture goes on next. Copies
+    from an earlier run are invisible to the lists above (they keep running when Luminescent restarts), so
+    `leftovers` also finds those. A theme with no wallpaper of its own passes False: nothing replaces the
+    wallpaper there, so only what this run started goes."""
+    if IS_WIN:
+        from core import wallpaper_win
+        wallpaper_win.stop_animated()
+        return
+    _stop(_video_procs)
+    _stop(_engine_procs)
+    if not leftovers:
+        return
+    for pid, args in _my_processes():
+        if _is_animated(args):
+            try:
+                os.kill(pid, 15)
+                log.info("stopped a moving wallpaper left over from an earlier run (%s)", pid)
             except OSError:
                 pass
 
@@ -200,6 +235,8 @@ def _custom(path: str, on_error=None):
     import shlex
 
     def work():
+        if is_image(path):
+            stop_animated()
         q = f'"{path}"' if IS_WIN else shlex.quote(path)
         cmd = CUSTOM_COMMAND.replace("{file}", q) if "{file}" in CUSTOM_COMMAND else f"{CUSTOM_COMMAND} {q}"
         try:
@@ -233,15 +270,14 @@ def apply(path: str, engine_exe: str = "", on_error=None):
             if not os.path.exists(path):
                 raise FileNotFoundError(f"{path} does not exist")
             if is_image(path):
-                _stop(_engine_procs)              # a picture replaces a running Wallpaper Engine project
-                _stop(_video_procs)
+                stop_animated()                   # a picture replaces a running video or Wallpaper Engine project
                 log.info("wallpaper set to %s (%s)", path, _set_picture(path))
                 return
             if os.path.splitext(path)[1].lower() in VIDEO_EXT:
-                _stop(_engine_procs)
+                stop_animated()
                 _set_video(path)
                 return
-            _stop(_video_procs)
+            stop_animated()
             exe = find_wallpaper_engine(engine_exe)
             if not exe:
                 raise FileNotFoundError("linux-wallpaperengine was not found. Install it (AUR) or set its path in "

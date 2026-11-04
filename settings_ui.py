@@ -1222,6 +1222,8 @@ class SettingsPage(QWidget):
         lbl.setFixedWidth(LABEL_W)
         lbl.setWordWrap(True)
         lbl.setContentsMargins(0, 0, 16, 0)
+        if f.key == "items":              # the reminders editor has its own list and labels: it gets the whole width
+            lbl.hide()
         top = f.type == "custom" or bool(f.help and f.type != "bool")
         rl.addWidget(lbl, 0, Qt.AlignmentFlag.AlignLeft |
                      (Qt.AlignmentFlag.AlignTop if top else Qt.AlignmentFlag.AlignVCenter))

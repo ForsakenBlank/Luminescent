@@ -17,6 +17,7 @@ import json
 import zlib
 import shutil
 import logging
+import threading
 import subprocess
 import traceback
 from logging.handlers import RotatingFileHandler
@@ -274,7 +275,10 @@ class Launcher:
     def _theme_wallpaper(self, t: dict, then) -> bool:
         """The theme's wallpaper. Returns True when Caelestia draws it and `then()` runs once it is on."""
         path = os.path.expandvars(os.path.expanduser(str(t.get("wallpaper") or "").strip().strip('"')))
-        if not path or self.settings.get("ui.performance_mode", False):
+        if self.settings.get("ui.performance_mode", False):
+            return False
+        if not path:
+            threading.Thread(target=wallpaper.stop_animated, args=(False,), name="wallpaper", daemon=True).start()
             return False
         if not os.path.exists(path):
             self.notify(APP_NAME, f"The wallpaper of {t.get('name', 'this theme')} was not found:\n{path}", 6000)

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.8.3
+
+* **Sleep and login times in System Settings.** Power is now **Power & sleep**: how long until the login screen shows,
+  the screen goes off and the computer sleeps. With Caelestia these go in its own idle settings and work straight
+  away, along with showing the login screen on sleep and staying awake while something plays or while plugged in. They
+  also work with hypridle and GNOME. On Windows there is also hibernate, asking for the password after sleep, and what
+  the lid, power and sleep buttons do. On Hyprland you can pick whether the mouse and keyboard wake the screen.
+* **New pages.** **Date & time** has the time zone, setting the time automatically and, on Windows, the 12 or 24 hour
+  clock and first day of the week. **Network & system** has Wi-Fi, Bluetooth and the computer's name on Linux, and on
+  Windows notification banners, clipboard history, Game Mode, Game Bar recording, recent files, the Sticky Keys prompt
+  and snapping windows. There are a few more Hyprland switches under Windows & desktop too.
+* **Going back from a moving wallpaper works.** Switching from a theme with a video or Wallpaper Engine wallpaper to one
+  with a picture changed everything but the wallpaper when Caelestia draws it, because the video kept playing on top.
+  It now stops, also if it was started before Luminescent last restarted. A theme with no wallpaper of its own stops
+  it as well, and on Windows a picture now closes what Wallpaper Engine is showing.
+* **Reminders look right.** The big gaps between lines are gone (they grew with the window). The editor is now three
+  tidy cards (Reminder, When, How it tells you), uses the whole width of the page and says so when there are no
+  reminders yet.
+
 ## 1.8.2
 
 * **System Settings, a new module.** The computer's own settings in one place, on Linux and Windows. Open it from

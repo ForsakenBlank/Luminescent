@@ -577,10 +577,16 @@ class RemindersEditor(QWidget):
         left = QVBoxLayout()
         left.setSpacing(6)
         self.list = QListWidget()
-        self.list.setMinimumWidth(180)
+        self.list.setFixedWidth(250)
+        self.list.setWordWrap(True)
+        self.empty = widgets.label("No reminders yet. Press Add to make one.", 12, tone="muted")
+        self.empty.setWordWrap(True)
+        left.addWidget(self.empty)
         self.list.currentRowChanged.connect(self._select)
         left.addWidget(self.list, 1)
+        left.addStretch(0)
         lb = QHBoxLayout()
+        lb.setSpacing(6)
         add = widgets.button("＋ Add", "primary")
         add.clicked.connect(self._add)
         dup = widgets.button("Duplicate")
@@ -593,32 +599,49 @@ class RemindersEditor(QWidget):
         left.addLayout(lb)
         root.addLayout(left, 0)
 
-        # right: editor
+        # right: editor. One small form per card, with a stretch under the last one: a single form spreads any spare
+        # height over its rows, which pushed the lines far apart in a tall window
         self.editor = QScrollArea()
         self.editor.setWidgetResizable(True)
         self.editor.setFrameShape(QFrame.Shape.NoFrame)
         self.editor.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)   # the fields shrink instead
+        self.editor.setMinimumHeight(520)
         form_host = QWidget()
         widgets.style(form_host, "background: transparent;")
-        form = QFormLayout(form_host)
-        form.setContentsMargins(4, 0, 8, 0)
-        form.setSpacing(8)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        cards = QVBoxLayout(form_host)
+        cards.setContentsMargins(0, 0, 6, 0)
+        cards.setSpacing(10)
         self.editor.setWidget(form_host)
         root.addWidget(self.editor, 1)
 
+        def card(title: str) -> QFormLayout:
+            box = QFrame()
+            box.setObjectName("lumCard")
+            lay = QVBoxLayout(box)
+            lay.setContentsMargins(14, 10, 14, 12)
+            lay.setSpacing(8)
+            lay.addWidget(widgets.label(title, 9.5, 600, mono=True, spacing=0.12, tone="muted"))
+            f = QFormLayout()
+            f.setContentsMargins(0, 0, 0, 0)
+            f.setHorizontalSpacing(12)
+            f.setVerticalSpacing(6)
+            f.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            f.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+            lay.addLayout(f)
+            cards.addWidget(box)
+            return f
+
+        form = card("REMINDER")
         self.f_enabled = QCheckBox("Enabled")
         self.f_title = QLineEdit()
         self.f_message = QTextEdit()
-        self.f_message.setFixedHeight(70)
+        self.f_message.setFixedHeight(56)
         self.f_message.setPlaceholderText("Optional longer text shown in the pop-up")
         form.addRow("", self.f_enabled)
         form.addRow("Title", self.f_title)
         form.addRow("Message", self.f_message)
 
-        sep = QLabel("Schedule")
-        sep.setStyleSheet(f"color: {p.text_secondary}; font-weight: bold; padding-top: 6px;")
-        form.addRow(sep)
+        form = self.when_form = card("WHEN")
         self.f_type = QComboBox()
         for v, l in (("once", "Once (a specific day)"), ("daily", "Every day"), ("weekly", "Certain weekdays"),
                      ("monthly", "Every month"), ("every_days", "Every N days"),
@@ -694,9 +717,7 @@ class RemindersEditor(QWidget):
         self.row_delay = form.rowCount()
         form.addRow("Show", self.f_delay)
 
-        sep2 = QLabel("What happens")
-        sep2.setStyleSheet(f"color: {p.text_secondary}; font-weight: bold; padding-top: 6px;")
-        form.addRow(sep2)
+        form = self.how_form = card("HOW IT TELLS YOU")
         self.f_popup = QCheckBox("Show a pop-up window")
         form.addRow("", self.f_popup)
         self.f_position = QComboBox()
@@ -733,16 +754,19 @@ class RemindersEditor(QWidget):
         for tid, name in self._themes():
             self.f_theme.addItem(f"Switch to: {name}", tid)
         form.addRow("Theme", self.f_theme)
-        tip = QLabel("e.g. a daily 08:00 reminder that switches to Light and a 20:00 one that switches to Dark. "
-                     "Untick the pop-up and notification for a silent switch.")
+        tip = QLabel("Untick the pop-up and notification for a silent theme switch, for example to Light at 08:00 "
+                     "and Dark at 20:00.")
         tip.setWordWrap(True)
         tip.setStyleSheet(f"color: {p.text_muted}; font-size: {theme.fs(11)}px;")
         form.addRow("", tip)
 
         test = widgets.button("▶ Test this reminder now")
         test.clicked.connect(self._test)
-        form.addRow("", test)
-        self.form = form
+        testrow = QHBoxLayout()
+        testrow.addWidget(test)
+        testrow.addStretch()
+        cards.addLayout(testrow)
+        cards.addStretch(1)
 
         for w in (self.f_enabled, self.f_popup, self.f_toast, self.f_window):
             w.stateChanged.connect(self._field_changed)
@@ -781,11 +805,16 @@ class RemindersEditor(QWidget):
         cur = self.list.currentRow()
         self.list.clear()
         for r in self._items:
-            it = QListWidgetItem(f"{'●' if r.get('enabled', True) else '○'}  {r.get('title') or '(untitled)'}\n      {describe(r)}")
-            self.list.addItem(it)
+            self.list.addItem(QListWidgetItem(self._line(r)))
         self._loading = False
+        self.list.setVisible(bool(self._items))
+        self.empty.setVisible(not self._items)
         if 0 <= cur < len(self._items):
             self.list.setCurrentRow(cur)
+
+    @staticmethod
+    def _line(r: dict) -> str:
+        return f"{'●' if r.get('enabled', True) else '○'}  {r.get('title') or '(untitled)'}\n{describe(r)}"
 
     def _select(self, row: int):
         if self._loading:
@@ -873,23 +902,23 @@ class RemindersEditor(QWidget):
         item = self.list.item(self._current)
         if item:
             r = self._items[self._current]
-            item.setText(f"{'●' if r.get('enabled', True) else '○'}  {r.get('title') or '(untitled)'}\n      {describe(r)}")
+            item.setText(self._line(r))
         self.changed.emit()
 
     def _type_changed(self, *_):
         kind = self.f_type.currentData()
-        self.form.setRowVisible(self.row_date, kind in ("once", "every_days"))
-        self.form.setRowVisible(self.row_time, kind in ("once", "daily", "weekly", "monthly", "every_days"))
-        self.form.setRowVisible(self.row_monthday, kind == "monthly")
-        self.form.setRowVisible(self.row_every_days, kind == "every_days")
-        self.form.setRowVisible(self.row_days, kind == "weekly")
-        self.form.setRowVisible(self.row_every, kind == "interval")
-        self.form.setRowVisible(self.row_window, kind == "interval")
-        self.form.setRowVisible(self.row_delay, kind == "startup")
+        self.when_form.setRowVisible(self.row_date, kind in ("once", "every_days"))
+        self.when_form.setRowVisible(self.row_time, kind in ("once", "daily", "weekly", "monthly", "every_days"))
+        self.when_form.setRowVisible(self.row_monthday, kind == "monthly")
+        self.when_form.setRowVisible(self.row_every_days, kind == "every_days")
+        self.when_form.setRowVisible(self.row_days, kind == "weekly")
+        self.when_form.setRowVisible(self.row_every, kind == "interval")
+        self.when_form.setRowVisible(self.row_window, kind == "interval")
+        self.when_form.setRowVisible(self.row_delay, kind == "startup")
         self._field_changed()
 
     def _sound_changed(self, *_):
-        self.form.setRowVisible(self.row_sound_file, self.f_sound.currentData() == "custom")
+        self.how_form.setRowVisible(self.row_sound_file, self.f_sound.currentData() == "custom")
 
     def _browse_sound(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choose a sound", "", AUDIO_FILTER)

@@ -6,7 +6,8 @@ System Settings: the computer's own settings in one panel, on Linux and Windows.
     number on each screen. Changes ask "keep these?" and go back by themselves after 15 seconds, in case a
     screen goes black.
   * Brightness (DDC/CI for monitors, the backlight for laptops) and night light.
-  * Mouse, touchpad, keyboard, windows & desktop (Hyprland), appearance, Explorer & taskbar (Windows), power.
+  * Mouse, touchpad, keyboard, windows & desktop (Hyprland), appearance, Explorer & taskbar (Windows), power & sleep,
+    date & time, network & system.
   * Sound devices and volume, and what this computer is.
 
 The talking to the system is in core/syscontrol.py. Hyprland forgets runtime changes when its config reloads,
@@ -640,7 +641,10 @@ class OptionsPage(_Page):
     def __init__(self, m: "SystemModule", title: str, opts: list):
         sub = {"desktop": "Gaps, borders, corners, see-through windows and blur, as Hyprland draws them.",
                "explorer": "File Explorer and the taskbar. Explorer may take a moment to catch up.",
-               "power": "How the computer balances speed against heat, noise and battery."}.get(opts[0].group, "")
+               "power": "When the login screen shows, the screen goes off and the computer sleeps, and how it "
+                        "balances speed against heat, noise and battery.",
+               "time": "The clock and calendar of this computer.",
+               "system": "Wi-Fi, Bluetooth and the other things you'd otherwise dig for."}.get(opts[0].group, "")
         super().__init__(title, sub)
         self.m = m
         self.rows = {}

@@ -114,6 +114,12 @@ def canonical(value) -> str:
 
 def fingerprint(record: dict) -> str:
     fields = {k: v for k, v in record["fields"].items() if k not in IGNORED_IN_FINGERPRINT}
+    # newer fields count only once they are used, so rows from before they existed keep their fingerprint
+    if fields.get("skippedDays", "") is None:
+        del fields["skippedDays"]
+    note = fields.get("note")
+    if isinstance(note, dict) and note.get("markdown") is False:
+        fields["note"] = {k: v for k, v in note.items() if k != "markdown"}
     digest = hashlib.sha256(record["kind"].encode() + canonical(fields).encode()).digest()
     return base64.urlsafe_b64encode(digest).decode().rstrip("=")[:22]
 
@@ -398,6 +404,8 @@ def occurrences(event: dict, start_ms: int, end_ms: int) -> list[int]:
     rule = str(event.get("repeatRule") or "NONE").upper()
     until = event.get("repeatUntil")
     until = int(until) if until else None
+    # days taken out of a repeat in Atlas, as days since 1970
+    skipped = {d.strip() for d in str(event.get("skippedDays") or "").split(",") if d.strip()}
     out = []
     t = datetime.fromtimestamp(first / 1000)
     step = {"DAILY": timedelta(days=1), "WEEKDAYS": timedelta(days=1), "WEEKLY": timedelta(weeks=1),
@@ -406,7 +414,8 @@ def occurrences(event: dict, start_ms: int, end_ms: int) -> list[int]:
         ms = int(t.timestamp() * 1000)
         if ms > end_ms or (until is not None and ms > until):
             break
-        if ms >= start_ms and not (rule == "WEEKDAYS" and t.weekday() >= 5):
+        if ms >= start_ms and not (rule == "WEEKDAYS" and t.weekday() >= 5) \
+                and str(t.date().toordinal() - 719163) not in skipped:
             out.append(ms)
         if rule == "NONE":
             break

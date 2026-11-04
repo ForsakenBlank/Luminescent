@@ -18,6 +18,7 @@
 * **Reminders look right.** The big gaps between lines are gone (they grew with the window). The editor is now three
   tidy cards (Reminder, When, How it tells you), uses the whole width of the page and says so when there are no
   reminders yet.
+* **Calendar**: a repeating event's date removed in Atlas (1.0.3 or newer) no longer shows here.
 
 ## 1.8.2
 

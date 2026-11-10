@@ -10,8 +10,10 @@ data/hypr-backups and is undone if Hyprland reports a config error.
 The parsing and editing live in core/hyprbinds.py.
 
 My keybinds: keys or mouse buttons (the side buttons of a Logitech mouse...) that Luminescent itself binds
-while it runs, to open an app, run a command, use a Luminescent tool, change the volume or press other keys.
-They are kept in settings keybinds.custom: [{"id", "keys", "does", "value", "name"}].
+while it runs, to open an app, run a command, use a Luminescent tool, a media shortcut (play / pause, next
+song, next YouTube Short...) or press other keys. "Always" ones also fire while other keys are held (W to
+walk and Ctrl to sprint in a game, then a side button for a hotbar slot).
+They are kept in settings keybinds.custom: [{"id", "keys", "does", "value", "name", "always"}].
 """
 import os
 import uuid
@@ -19,7 +21,7 @@ import subprocess
 
 from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QHBoxLayout, QComboBox, QDialog,
-    QFormLayout, QAbstractItemView, QHeaderView, QWidget, QStackedWidget, QFrame, QCompleter
+    QFormLayout, QAbstractItemView, QHeaderView, QWidget, QStackedWidget, QFrame, QCompleter, QCheckBox
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QBrush
@@ -31,8 +33,15 @@ from core.module import Module
 FILTERS = [("all", "All keybinds"), ("mine", "My keybinds"), ("hyprland", "Hyprland (your config)"),
            ("luminescent", "Luminescent"), ("conflicts", "Clashes only")]
 DOES = [("app", "Open an app"), ("command", "Run a command"), ("tool", "Use a Luminescent tool"),
-        ("keys", "Press other keys"), ("volume", "Change the volume")]
-VOLUME = [("up", "Volume up 5 %"), ("down", "Volume down 5 %"), ("mute", "Mute on / off")]
+        ("shortcut", "Media & shortcuts"), ("keys", "Press other keys")]
+SHORTCUTS = [("play_pause", "Play / pause"), ("next", "Next song"), ("previous", "Previous song"),
+             ("stop", "Stop playing"), ("forward", "Skip forward 10 s"), ("back", "Skip back 10 s"),
+             ("short_next", "Next video (YouTube Shorts, TikTok, Reels)"),
+             ("short_prev", "Previous video (YouTube Shorts, TikTok, Reels)"),
+             ("fullscreen", "Video full screen on / off"),
+             ("vol_up", "Volume up 5 %"), ("vol_down", "Volume down 5 %"), ("mute", "Mute on / off"),
+             ("mic", "Microphone mute on / off")]
+_OLD_VOLUME = {"up": "vol_up", "down": "vol_down", "mute": "mute"}      # "Change the volume" before 1.8.4
 MINE = "mykeys"                      # the owner Luminescent registers your own keybinds under
 
 
@@ -46,9 +55,10 @@ class MousePad(QFrame):
     """'Click here with the mouse button you want': side and extra buttons become mouse:275, mouse:276…"""
     picked = None
 
-    _BUTTONS = {Qt.MouseButton.MiddleButton: 274, Qt.MouseButton.BackButton: 275, Qt.MouseButton.ForwardButton: 276,
-                Qt.MouseButton.ExtraButton3: 277, Qt.MouseButton.ExtraButton4: 278, Qt.MouseButton.ExtraButton5: 279,
-                Qt.MouseButton.ExtraButton6: 280}
+    # Qt's ExtraButton n is Linux button 274 + n (BackButton = ExtraButton1 = 275, the side buttons): every
+    # button a gaming mouse has, not only the first few
+    _BUTTONS = {Qt.MouseButton.MiddleButton: 274,
+                **{getattr(Qt.MouseButton, f"ExtraButton{n}"): 274 + n for n in range(1, 25)}}
 
     def __init__(self, on_pick):
         super().__init__()
@@ -59,11 +69,18 @@ class MousePad(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(10, 0, 10, 0)
         lay.addWidget(widgets.label("Click here with a side, middle or extra mouse button", 12, tone="muted"))
+        self._seen = QLabel("")
+        self._seen.setObjectName("lumHint")
+        lay.addStretch()
+        lay.addWidget(self._seen)
 
     def mousePressEvent(self, e):
         n = self._BUTTONS.get(e.button())
         if n is not None:
             self.on_pick(f"mouse:{n}")
+            self._seen.setText(f"got {hk.pretty(f'mouse:{n}')}")
+        elif e.button() not in (Qt.MouseButton.LeftButton, Qt.MouseButton.RightButton):
+            self._seen.setText("that button is not one Qt can see: press Record and try it as a key")
         e.accept()
 
 
@@ -71,7 +88,8 @@ class _KeysDialog(widgets.RoundedDialog):
     """Ask for a key combination or mouse button (and, for a new bind, what it does)."""
 
     def __init__(self, parent, launcher, title: str, combo: str = "", with_command: bool = False,
-                 mine: dict | None = None, tools: list | None = None):
+                 mine: dict | None = None, tools: list | None = None, command: str = "",
+                 command_hint: str = ""):
         super().__init__(parent, title)
         from settings_ui import HotkeyEdit
         self.launcher = launcher
@@ -95,19 +113,26 @@ class _KeysDialog(widgets.RoundedDialog):
             pick.activated.connect(lambda i: self._mouse(pick.itemData(i)) if pick.itemData(i) else None)
             form.addRow("", pick)
         self.command = QLineEdit()
-        self.command.setPlaceholderText("e.g. kitty, or uwsm app -- zen-browser")
+        self.command.setPlaceholderText(command_hint or "e.g. kitty, or uwsm app -- zen-browser")
+        self.command.setText(command)
         if with_command:
             form.addRow("Runs", self.command)
+        self.always = QCheckBox("Works while other keys are held")
+        self.always.setToolTip("Also fires while you hold other keys or Ctrl / Shift: walking (W) and sprinting "
+                               "(Ctrl) in a game and pressing a side button for a hotbar slot.")
         self.name = QLineEdit()
         self.does = QComboBox()
         self.stack = QStackedWidget()
         self._values: dict[str, QWidget] = {}
         if self.mine:
-            m = mine or {}
+            m = dict(mine or {})
+            if m.get("does") == "volume":
+                m["does"], m["value"] = "shortcut", _OLD_VOLUME.get(m.get("value"), "vol_up")
+            self.always.setChecked(bool(m.get("always")))
             self.name.setPlaceholderText("A name for the list (optional)")
             self.name.setText(str(m.get("name", "")))
             for key, label in DOES:
-                if IS_WIN and key in ("keys", "volume"):
+                if IS_WIN and key == "keys":
                     continue
                 self.does.addItem(label, key)
                 self._values[key] = w = self._value_widget(key, tools or [])
@@ -121,9 +146,11 @@ class _KeysDialog(widgets.RoundedDialog):
             form.addRow("Does", self.does)
             form.addRow("", self.stack)
             form.addRow("Name", self.name)
+            form.addRow("", self.always)
         lay.addLayout(form)
         hint = QLabel("Click the keys to type a combo (super+shift+g), press Record, or click the box above with a "
-                      "mouse button. Record can not see combos Hyprland already uses, so type those.")
+                      "mouse button. A button or key with no name is recorded by its number (Key 191). Record can "
+                      "not see combos Hyprland already uses, so type those.")
         hint.setObjectName("lumHint")
         hint.setWordWrap(True)
         lay.addWidget(hint)
@@ -174,7 +201,9 @@ class _KeysDialog(widgets.RoundedDialog):
                 e.recording_changed.connect(self.launcher.hotkeys.set_suspended)
             return e
         box = QComboBox()
-        for v, label in VOLUME:
+        for v, label in SHORTCUTS:
+            if IS_WIN and v == "mic":
+                continue
             box.addItem(label, v)
         return box
 
@@ -214,8 +243,9 @@ class _KeysDialog(widgets.RoundedDialog):
             w = self._values.get(does)
             label = w.currentText() if isinstance(w, QComboBox) else self.value()
             name = {"app": "Open {}", "command": "Run {}", "tool": "{}", "keys": "Press {}",
-                    "volume": "{}"}[does].format(hk.pretty(label) if does == "keys" else label)
-        return {"keys": self.combo(), "does": does, "value": self.value(), "name": name}
+                    "shortcut": "{}"}[does].format(hk.pretty(label) if does == "keys" else label)
+        return {"keys": self.combo(), "does": does, "value": self.value(), "name": name,
+                "always": self.always.isChecked()}
 
     def combo(self) -> str:
         return self.keys.value()
@@ -274,20 +304,21 @@ class KeybindsPanel(widgets.FloatingPanel):
         mine.setToolTip("Keys or a mouse button that open an app, run a command, use a Luminescent tool…")
         mine.clicked.connect(self._add_mine)
         btns.addWidget(mine)
-        for text, fn, variant in (("Add to Hyprland config…", self._add, ""), ("Change keys…", self._change, ""),
+        for text, fn, variant in (("Add to Hyprland config…", self._add, ""), ("Edit…", self._change, ""),
                                   ("Open in editor", self._open, ""), ("Remove…", self._delete, "danger")):
-            if not editable and text not in ("Change keys…", "Remove…"):
+            if not editable and text not in ("Edit…", "Remove…"):
                 continue
             b = widgets.button(text, variant)
             b.clicked.connect(fn)
             btns.addWidget(b)
         btns.addStretch()
         lay.addLayout(btns)
-        hint = QLabel("✎ changes a bind's keys, ✕ removes it. New keybind works while Luminescent runs and can use "
-                      "mouse side buttons; Add to Hyprland config writes the bind into your config file. Red rows "
-                      "share their keys with another bind. Double-click opens a bind's line in your config."
+        hint = QLabel("✎ edits a bind (its keys, and what it does or runs), ✕ removes it. New keybind works while "
+                      "Luminescent runs and can use any mouse button; Add to Hyprland config writes the bind into "
+                      "your config file. Red rows share their keys with another bind. Double-click opens a bind's "
+                      "line in your config."
                       if editable else
-                      "Every Luminescent hotkey. ✎ changes the keys, ✕ turns it off; red rows share their keys.")
+                      "Every Luminescent hotkey. ✎ edits it, ✕ turns it off; red rows share their keys.")
         hint.setObjectName("lumHint")
         hint.setWordWrap(True)
         lay.addWidget(hint)
@@ -360,7 +391,7 @@ class KeybindsPanel(widgets.FloatingPanel):
         lay = QHBoxLayout(w)
         lay.setContentsMargins(0, 0, 4, 0)
         lay.setSpacing(2)
-        for glyph, tip, fn in (("✎", "Change the keys", self._change), ("✕", "Remove", self._delete)):
+        for glyph, tip, fn in (("✎", "Edit", self._change), ("✕", "Remove", self._delete)):
             b = widgets.icon_button(glyph, tip, 24, 11, ghost=True)
             b.clicked.connect(lambda _c=False, f=fn, item=it: (self.tree.setCurrentItem(item), f()))
             lay.addWidget(b)
@@ -483,16 +514,22 @@ class KeybindsPanel(widgets.FloatingPanel):
             self._open()
             return
         current = "+".join([{"SUPER": "windows"}.get(m, m.lower()) for m in r.mods] + [r.key.lower()])
-        dlg = _KeysDialog(self, self.m.ctx.launcher, f"Keys for: {r.action} {r.detail}".strip(), current)
+        cmd = hyprbinds.runs_command(r)
+        hint = "" if cmd else f"Empty keeps what it does now ({r.action} {r.detail}".strip() + "), or type a command"
+        dlg = _KeysDialog(self, self.m.ctx.launcher, f"Edit: {r.action} {r.detail}".strip(), current,
+                          with_command=True, command=cmd or "", command_hint=hint)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         keys = _hypr_keys(dlg.combo())
         if not keys:
             return
-        clash = self._clash(keys, r.release, ignore=r)
+        new_cmd = dlg.command.text().strip()
+        clash = self._clash(keys, r.release, ignore=r) if keys != r.keys else ""
         if clash and not widgets.confirm(self, "Keybinds", clash + "\n\nUse these keys anyway?"):
             return
-        self._done(hyprbinds.change_keys(r, keys), f"{r.action} is now on {keys}")
+        changed = new_cmd if new_cmd and new_cmd != cmd else None
+        self._done(hyprbinds.edit(r, keys, changed),
+                   f"{keys} now runs {new_cmd}" if changed else f"{r.action} is now on {keys}")
 
     def _delete(self):
         r = self._selected()
@@ -542,7 +579,10 @@ class KeybindsModule(Module):
     def start(self):
         self.hotkey("hotkey", self.toggle, "keybinds")
         for e in self.custom():
-            err = self.hotkeys.register(MINE, e.get("keys", ""), lambda e=e: self.run_custom(e), e.get("name", ""))
+            always = bool(e.get("always"))
+            label = e.get("name", "") + ("  (works while other keys are held)" if always else "")
+            err = self.hotkeys.register(MINE, e.get("keys", ""), lambda e=e: self.run_custom(e), label,
+                                        always=always)
             if err and e.get("keys"):
                 self.ctx.notify(self.title, f"{hk.pretty(e['keys'])} ({e.get('name', '')}) not bound: {err}")
 
@@ -586,15 +626,49 @@ class KeybindsModule(Module):
             elif does == "keys":
                 mods, key = hk._split(value)
                 hypr.send_shortcut(" ".join(hk.MODIFIERS[m] for m in mods), hk.keysym(key))
-            elif does == "volume":
-                arg = {"up": ["set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", "5%+"],
-                       "down": ["set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"],
-                       "mute": ["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]}.get(value)
-                if arg:
-                    subprocess.Popen(["wpctl", *arg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            elif does in ("shortcut", "volume"):
+                self.run_shortcut(_OLD_VOLUME.get(value, value) if does == "volume" else value)
         except Exception as ex:
             self.log.exception("keybind %s failed", e.get("keys"))
             self.ctx.notify(self.title, f"{e.get('name', '')}: {ex}")
+
+    def run_shortcut(self, what: str):
+        """A media shortcut: the player through playerctl (Windows: its media keys), the volume through
+        wpctl, and the video ones as the key the site listens to (↓ / ↑ for the next / previous Short)."""
+        keys = {"short_next": "down", "short_prev": "up", "fullscreen": "f"}
+        if what in keys:
+            if IS_WIN:
+                import keyboard
+                keyboard.send(keys[what])
+            else:
+                hk.HotkeyManager.send(keys[what])
+            return
+        if IS_WIN:
+            import ctypes
+            vk = {"play_pause": 0xB3, "next": 0xB0, "previous": 0xB1, "stop": 0xB2, "vol_up": 0xAF,
+                  "vol_down": 0xAE, "mute": 0xAD}.get(what)
+            if vk is None:                     # skipping: the arrow keys most players use for it
+                import keyboard
+                keyboard.send({"forward": "right", "back": "left"}.get(what, ""))
+                return
+            ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+            return
+        player = {"play_pause": ["play-pause"], "next": ["next"], "previous": ["previous"], "stop": ["stop"],
+                  "forward": ["position", "10+"], "back": ["position", "10-"]}.get(what)
+        if player:
+            import shutil
+            if not shutil.which("playerctl"):
+                self.ctx.notify(self.title, "Media shortcuts need playerctl: sudo pacman -S playerctl")
+                return
+            subprocess.Popen(["playerctl", *player], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        arg = {"vol_up": ["set-volume", "-l", "1.5", "@DEFAULT_AUDIO_SINK@", "5%+"],
+               "vol_down": ["set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"],
+               "mute": ["set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"],
+               "mic": ["set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"]}.get(what)
+        if arg:
+            subprocess.Popen(["wpctl", *arg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def tools(self) -> list[tuple[str, str]]:
         launcher = self.ctx.launcher

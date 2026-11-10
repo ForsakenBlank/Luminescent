@@ -19,9 +19,13 @@ class ModuleContext:
         """Tray balloon message (respects the 'tray_messages' setting)."""
         self._notify(title, message, ms)
 
-    def toast(self, title: str, message: str, ms: int = 8000):
-        """Tray balloon message that always shows (used by reminders)."""
-        self._toast(title, message, ms)
+    def toast(self, title: str, message: str, ms: int = 8000, card: bool = True):
+        """Tray balloon message that always shows (used by reminders). card=False: only the desktop
+        notification, not a Luminescent card as well."""
+        if card:
+            self._toast(title, message, ms)
+        else:
+            self._toast(title, message, ms, card=False)
 
     def open_settings(self, section: str = ""):
         self._open_settings(section)

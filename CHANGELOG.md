@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.8.4
+
+* **Edit any keybind.** ✎ (or **Edit…**) on a Hyprland bind now changes what it runs as well as its keys, both
+  saved in one go. Your own keybinds already opened the full editor; Luminescent's hotkeys still change their keys.
+* **"Works while other keys are held".** A new switch on your own keybinds: the bind also fires while you hold
+  other keys, Ctrl or Shift. Walking (W) and sprinting (Ctrl) in Minecraft and pressing a side button for a
+  hotbar slot now works. On Hyprland this uses its ignore-modifiers bind; on Windows only the bind's own keys are
+  checked.
+* **Every mouse button.** Clicking the mouse box picks up any button Qt can see (up to 24 extra buttons, not only
+  the first four), and the list goes up to Extra button 12, for gaming mice like Logitech's with thumb and DPI
+  buttons. A key with no name (some mice send their extra button as a key) is recorded by its number,
+  e.g. Key 191, and media keys like XF86AudioPlay can be typed.
+* **Media & shortcuts** is a new "Does" choice: play / pause, next and previous song, stop, skip 10 s forward or
+  back, next and previous video (YouTube Shorts, TikTok, Reels), video full screen, volume up / down / mute and
+  microphone mute. "Change the volume" keybinds you already have keep working and open as these.
+* **New reminder pop-up.** A rounded card in your theme with the reminder, when it repeats, Snooze with a choice of
+  5 minutes to an hour, Done and ✕, and a line that runs out when it closes by itself. It rises into place
+  instead of just appearing. With the pop-up on, a reminder no longer also stacks a second Luminescent card in
+  the same corner (the desktop notification for your history still comes).
+* **Round corners in Settings.** The square corners of the top and bottom bars stuck out past the rounded border
+  of the overlay's panel. Every page in the panel is now cut to its rounded shape, System Settings too.
+* **Windows open where they should with two monitors.** Hyprland sometimes holds on to a new window for most of
+  a second and ignores moves meanwhile, so panels like Keybinds always ended up at the same spot on the other
+  monitor whatever "Panels like Notes open" said. A new window is now checked for 2.5 s and put back each time
+  it is not where it should be.
+
 ## 1.8.3
 
 * **Sleep and login times in System Settings.** Power is now **Power & sleep**: how long until the login screen shows,

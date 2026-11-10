@@ -861,8 +861,10 @@ def _stylesheet() -> str:
                     border-top-left-radius: {r}px; border-top-right-radius: {r}px; }}
 
     #setProfileBar, #setFooter {{ background: {f('bg_header')}; border: none; }}
-    #setProfileBar {{ border-bottom: 1px solid {p.border}; }}
-    #setFooter {{ border-top: 1px solid {p.border}; }}
+    #setProfileBar {{ border-bottom: 1px solid {p.border};
+        border-top-left-radius: {max(0, r - 1)}px; border-top-right-radius: {max(0, r - 1)}px; }}
+    #setFooter {{ border-top: 1px solid {p.border};
+        border-bottom-left-radius: {max(0, r - 1)}px; border-bottom-right-radius: {max(0, r - 1)}px; }}
     #setSidebar {{ background: {f('bg_frame')}; border: none; border-right: 1px solid {p.border}; }}
     QPushButton[side="true"] {{
         background: transparent; border: none; border-radius: {rs}px; padding: 0 12px; text-align: left;

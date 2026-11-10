@@ -950,8 +950,21 @@ def to_hypr_keys(mods: list[str], key: str) -> str:
     return " + ".join(mods + [key])
 
 
-def change_keys(bind: Bind, new_keys: str) -> str:
-    """Give an hl.bind(...) other keys ('SUPER + SHIFT + G'). Returns '' or an error."""
+def runs_command(bind: Bind) -> str | None:
+    """The command an exec bind runs ('kitty'), '' for any other kind of bind, None if it can't be read."""
+    if bind.call is None or len(bind.call.args) < 2:
+        return None
+    kind, inner = _dispatcher(bind.call)
+    if kind not in ("exec_cmd", "exec_raw"):
+        return ""
+    parts, _names = evaluate(inner, bind.call.local_vars)
+    cmd = _join(parts)
+    return cmd if isinstance(cmd, str) else None
+
+
+def edit(bind: Bind, new_keys: str, command: str | None = None) -> str:
+    """Change an hl.bind(...)'s keys and, if `command` is given, make it run that command. Returns '' or an
+    error. Both go into the file in one write, so one reload checks them together."""
     call = bind.call
     if call is None:
         return "This bind was not found in your config files."
@@ -959,8 +972,18 @@ def change_keys(bind: Bind, new_keys: str) -> str:
         return "This bind is made in a loop; edit that loop in the file instead."
     if _fresh(call) is None:
         return "The file changed since the list was loaded. Refresh and try again."
+    src = call.src
+    if command is not None and len(call.args) > 1:
+        q = '"' + command.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        a_start, a_end = call.arg_span(1)
+        src = src[:a_start] + f"hl.dsp.exec_cmd({q})" + src[a_end:]
     start, end = call.arg_span(0)
     old_expr = call.src[start:end]
+    new_expr = _keys_expr(call, old_expr, new_keys)
+    return _write_and_reload(call.file, src[:start] + new_expr + src[end:])
+
+
+def _keys_expr(call: Call, old_expr: str, new_keys: str) -> str:
     # keep `mainMod .. " + G"` style: reuse the leading variable if it still fits
     m = re.fullmatch(r"\s*([A-Za-z_]\w*)\s*\.\.\s*([\"'])(.*)\2\s*", old_expr, re.S)
     new_expr = '"' + new_keys.replace('"', '\\"') + '"'
@@ -969,7 +992,12 @@ def change_keys(bind: Bind, new_keys: str) -> str:
         if isinstance(var_val, str) and new_keys.startswith(var_val + " "):
             rest = new_keys[len(var_val):]
             new_expr = f'{m.group(1)} .. "{rest}"'
-    return _write_and_reload(call.file, call.src[:start] + new_expr + call.src[end:])
+    return new_expr
+
+
+def change_keys(bind: Bind, new_keys: str) -> str:
+    """Give an hl.bind(...) other keys ('SUPER + SHIFT + G'). Returns '' or an error."""
+    return edit(bind, new_keys)
 
 
 def delete(bind: Bind) -> str:

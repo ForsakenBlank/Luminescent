@@ -267,9 +267,13 @@ class HotkeyManager(QObject):
             log.exception("hotkey callback failed")
 
     # ── registration ───────────────────────────────────────────────────────
-    def register(self, owner: str, combo: str, callback, label: str = "", non_consuming: bool = False) -> str:
+    def register(self, owner: str, combo: str, callback, label: str = "", non_consuming: bool = False,
+                 always: bool = False) -> str:
         """Register a press hotkey. Returns '' on success or an error message. (Keys always reach the focused
-        app as well, so `non_consuming` changes nothing here.)"""
+        app as well, so `non_consuming` changes nothing here.)
+
+        always: it also fires while other keys are held (W to walk in a game...): only its own keys are checked,
+        not that nothing else is down."""
         combo = normalize(combo)
         if not combo:
             return ""
@@ -301,12 +305,22 @@ class HotkeyManager(QObject):
                 return                                  # holding the keys down: fire once
             self._invoke.emit(counted)
 
+        parts = combo.split("+")
+        mods, main = [p for p in parts[:-1]], parts[-1]
+
+        def fire_always(_event=None):
+            if all(keyboard.is_pressed(m) for m in mods):
+                fire()
+
         try:
-            handle = keyboard.add_hotkey(combo, fire, suppress=False, trigger_on_release=False)
+            if always:
+                handle = keyboard.on_press_key(main, fire_always, suppress=False)
+            else:
+                handle = keyboard.add_hotkey(combo, fire, suppress=False, trigger_on_release=False)
         except Exception as e:
             log.warning("%s: could not hook %r: %s", owner, combo, e)
             return str(e)
-        self._owned.setdefault(owner, []).append(("hotkey", handle))
+        self._owned.setdefault(owner, []).append(("key" if always else "hotkey", handle))
         self._in_use[combo] = owner
         log.info("%s: %s -> %s", owner, pretty(combo), label or callback.__name__)
         return ""

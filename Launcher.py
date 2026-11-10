@@ -887,10 +887,10 @@ class Launcher:
                 log.exception("toast failed")
         self._desktop_notify(title, message, ms)
 
-    def toast(self, title: str, message: str, ms: int = 8000):
+    def toast(self, title: str, message: str, ms: int = 8000, card: bool = True):
         """Always shows (reminders, dose warnings): a desktop notification, so it stays in your notification
-        history, and a Luminescent card as well when that is the notification style."""
-        if self.settings.get("general.notify_style", "luminescent") == "luminescent":
+        history, and a Luminescent card as well when that is the notification style (and `card`)."""
+        if card and self.settings.get("general.notify_style", "luminescent") == "luminescent":
             try:
                 self.toasts.show(title, message, ms)
             except Exception:

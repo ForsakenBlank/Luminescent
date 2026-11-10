@@ -218,77 +218,173 @@ def parse_quick(text: str, now: datetime | None = None) -> tuple[datetime, str] 
 
 
 # ── pop-up window ──────────────────────────────────────────────────────────────
+SNOOZE_CHOICES = (5, 10, 15, 30, 60)
+
+
+class _ReminderCard(QWidget):
+    """The painted card (rounded, with the accent glow clipped inside it, so no square corners show through), and
+    the line along the bottom that runs out when the pop-up closes by itself."""
+
+    def __init__(self, popup: "ReminderPopup"):
+        super().__init__(popup)
+        self.popup = popup
+        self.left = 1.0                     # how much of the auto-close time is left (1 = all of it)
+
+    def paintEvent(self, e):
+        from PyQt6.QtGui import QPainter, QPainterPath, QColor
+        from PyQt6.QtCore import QRectF
+        from ui.toast import paint_card
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p = self.popup.pal
+        r = QRectF(self.rect())
+        paint_card(qp, r, p, "glow", p.primary, self.popup.opacity)
+        if self.popup.timeout_s > 0:
+            rad = float(p.radius)
+            shape = QPainterPath()
+            shape.addRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), rad, rad)
+            qp.setClipPath(shape)
+            track = QColor(p.primary)
+            track.setAlphaF(0.15)
+            qp.fillRect(QRectF(r.left(), r.bottom() - 3, r.width(), 3), track)
+            qp.fillRect(QRectF(r.left(), r.bottom() - 3, r.width() * self.left, 3), QColor(p.primary))
+        qp.end()
+
+
 class ReminderPopup(QWidget):
+    """A reminder going off: a card in the theme's colours with the reminder, when it repeats, and Snooze
+    (pick how long) / Done. It slides up into place and never takes the keyboard from what you are doing."""
     dismissed = pyqtSignal(object)
     snoozed = pyqtSignal(object)
+
+    WIDTH = 380
 
     def __init__(self, rem: dict, snooze_minutes: int, timeout_s: int = 0):
         super().__init__()
         self.rem = rem
+        self.snooze_for = int(snooze_minutes)
+        self.timeout_s = int(timeout_s)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setFixedWidth(320)
-        p = theme.P
+        self.setWindowTitle("Luminescent reminder")
+        widgets.mark_glass(self, "notifications")
+        self.setFixedWidth(self.WIDTH)
+        with theme.module_colours("toasts"):
+            self.pal = theme.P
+        p = self.pal
+        self.opacity = widgets.glass_alpha("notifications", 1.0)
 
         outer = QVBoxLayout(self)
+        self._outer = outer
         outer.setContentsMargins(0, 0, 0, 0)
-        box = QFrame()
-        box.setObjectName("reminderBox")
-        box.setStyleSheet(f"#reminderBox {{ background: {p.bg_base}; border: 1px solid {p.border};"
-                          f" border-radius: {p.radius}px; }}")
-        outer.addWidget(box)
-        lay = QVBoxLayout(box)
-        lay.setContentsMargins(1, 1, 1, 1)
-        lay.setSpacing(0)
-        line = QFrame()
-        line.setFixedHeight(2)
-        line.setStyleSheet(f"background: {p.primary}; border-top-left-radius: {p.radius - 1}px;"
-                           f" border-top-right-radius: {p.radius - 1}px;")
-        lay.addWidget(line)
+        self.card = _ReminderCard(self)
+        outer.addWidget(self.card)
+        lay = QVBoxLayout(self.card)
+        lay.setContentsMargins(16, 14, 12, 16)
+        lay.setSpacing(12)
 
-        text = QVBoxLayout()
-        text.setContentsMargins(15, 13, 15, 12)
-        text.setSpacing(6)
-        head = QHBoxLayout()
-        head.setSpacing(8)
-        head.addWidget(widgets.label("REMINDER", 9.5, 600, mono=True, spacing=0.14, tone="accent"))
-        head.addStretch()
-        when = widgets.label(datetime.now().strftime("%H:%M"), 10, mono=True, tone="muted")
-        when.setToolTip(describe(rem))
-        head.addWidget(when)
-        text.addLayout(head)
-        title = widgets.label(rem.get("title") or "Reminder", 14, 500)
+        # badge · title and when · ✕
+        top = QHBoxLayout()
+        top.setSpacing(12)
+        badge = QLabel()
+        badge.setFixedSize(38, 38)
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        badge.setPixmap(theme.sparkle_pixmap(18, p.primary))
+        badge.setStyleSheet(f"background: {theme.fill('primary', 0.16, p)}; border: 1px solid "
+                            f"{theme.fill('primary', 0.35, p)}; border-radius: 19px;")
+        top.addWidget(badge, 0, Qt.AlignmentFlag.AlignTop)
+        head = QVBoxLayout()
+        head.setSpacing(3)
+        head.setContentsMargins(0, 1, 0, 0)
+        meta = QLabel(f"REMINDER  ·  {datetime.now().strftime('%H:%M')}")
+        meta.setFont(theme.qfont(9.5, 600, mono=True, spacing=0.14))
+        meta.setStyleSheet(f"color: {p.primary_text}; background: transparent;")
+        head.addWidget(meta)
+        title = QLabel(rem.get("title") or "Reminder")
+        title.setFont(theme.qfont(15.5, 600))
+        title.setStyleSheet(f"color: {p.text_primary}; background: transparent;")
         title.setWordWrap(True)
-        text.addWidget(title)
+        head.addWidget(title)
+        top.addLayout(head, 1)
+        close = widgets.icon_button("✕", "Close (Esc)", 24, 10, ghost=True)
+        close.clicked.connect(self._dismiss)
+        top.addWidget(close, 0, Qt.AlignmentFlag.AlignTop)
+        lay.addLayout(top)
+
         msg = (rem.get("message") or "").strip()
         if msg:
-            body = widgets.label(msg, 12.5, tone="muted")
+            body = QLabel(msg)
+            body.setFont(theme.qfont(13, 400))
+            body.setStyleSheet(f"color: {p.text_secondary}; background: transparent;")
             body.setWordWrap(True)
+            body.setTextFormat(Qt.TextFormat.PlainText)
             body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-            text.addWidget(body)
-        lay.addLayout(text)
+            body.setContentsMargins(50, 0, 4, 0)
+            lay.addWidget(body)
+        repeat = describe(rem)
+        if rem.get("schedule", {}).get("type") != "once" and repeat:
+            rep = QLabel("↻  " + repeat)
+            rep.setFont(theme.qfont(11, 500))
+            rep.setStyleSheet(f"color: {p.text_muted}; background: transparent;")
+            rep.setContentsMargins(50, 0, 4, 0)
+            lay.addWidget(rep)
 
         btns = QHBoxLayout()
-        btns.setContentsMargins(15, 0, 15, 14)
+        btns.setContentsMargins(50, 2, 4, 0)
         btns.setSpacing(8)
-        snooze = widgets.button(f"Snooze {snooze_minutes} min", "outline")
-        snooze.clicked.connect(self._snooze)
-        ok = widgets.button("Dismiss", "primary")
+        self.snooze_btn = widgets.button(f"Snooze {self.snooze_for} min", "outline")
+        self.snooze_btn.clicked.connect(self._snooze)
+        more = widgets.button("▾", "outline", "Snooze for…")
+        more.setFixedWidth(34)
+        more.clicked.connect(lambda: self._snooze_menu(more))
+        ok = widgets.button("Done", "primary")
         ok.clicked.connect(self._dismiss)
-        for b_ in (snooze, ok):
-            b_.setFixedHeight(30)
-            btns.addWidget(b_, 1)
+        for b_ in (self.snooze_btn, more, ok):
+            b_.setFixedHeight(32)
+        btns.addWidget(self.snooze_btn, 1)
+        btns.addWidget(more)
+        btns.addSpacing(2)
+        btns.addWidget(ok, 1)
         lay.addLayout(btns)
 
         self.adjustSize()
         self._done = False
-        if timeout_s > 0:
+        if self.timeout_s > 0:
             t = QTimer(self)                # owned by the popup, so it dies with it
             t.setSingleShot(True)
             t.timeout.connect(self._dismiss)
-            t.start(timeout_s * 1000)
+            t.start(self.timeout_s * 1000)
+            self._started = datetime.now()
+            tick = QTimer(self)
+            tick.timeout.connect(self._tick)
+            tick.start(100)
+
+    def _tick(self):
+        gone = (datetime.now() - self._started).total_seconds()
+        self.card.left = max(0.0, 1.0 - gone / max(1, self.timeout_s))
+        self.card.update()
+
+    def _snooze_menu(self, anchor):
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        for n in SNOOZE_CHOICES:
+            label = f"{n} minutes" if n < 60 else "1 hour"
+            menu.addAction(label, lambda n=n: self._snooze(n))
+        menu.exec(anchor.mapToGlobal(anchor.rect().bottomLeft()))
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if not e.spontaneous():
+            # rises into place while it fades in (the window itself can not glide on Wayland, so the card does)
+            from core import anim
+            anim.fade(self.card, 0.0, 1.0, "panels", 200)
+            lay = self._outer
+            up = self.property("anchor") is None or str(self.property("anchor"))[0] == "b"
+            anim.value(16.0, 0.0, lambda v: lay.setContentsMargins(0, int(v) if up else 0, 0,
+                                                                  0 if up else int(v)), "panels", 280,
+                       owner=self, tag="rise")
 
     def _dismiss(self):
         if self._done:
@@ -297,9 +393,11 @@ class ReminderPopup(QWidget):
         self.dismissed.emit(self)
         self.close()
 
-    def _snooze(self):
+    def _snooze(self, minutes: int | None = None):
         if self._done:
             return
+        if minutes:
+            self.snooze_for = int(minutes)
         self._done = True
         self.snoozed.emit(self)
         self.close()
@@ -515,7 +613,10 @@ class RemindersModule(Module):
             QTimer.singleShot(i * 3000, lambda k=kind, f=file: sounds.play(k, f))
         # toast
         if acts.get("toast", True) and not preview:
-            self.ctx.toast(rem.get("title") or "Reminder", rem.get("message") or describe(rem))
+            # with the pop-up on, only the desktop notification (for its history): a Luminescent card as well
+            # stacked a second, smaller copy of the same reminder in the corner
+            self.ctx.toast(rem.get("title") or "Reminder", rem.get("message") or describe(rem),
+                           card=not acts.get("popup", True))
         # popup
         if acts.get("popup", True):
             self.show_popup(rem)
@@ -550,7 +651,8 @@ class RemindersModule(Module):
         self._popup_closed(popup)
         rid = popup.rem.get("id")
         if rid:
-            until = datetime.now() + timedelta(minutes=int(self.s("snooze_minutes", 10)))
+            until = datetime.now() + timedelta(minutes=int(getattr(popup, "snooze_for", 0)
+                                                            or self.s("snooze_minutes", 10)))
             self._state.setdefault(rid, {})["snoozed_until"] = until.isoformat(timespec="seconds")
             self._save_state()
 

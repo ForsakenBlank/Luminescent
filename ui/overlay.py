@@ -46,6 +46,23 @@ _KEYPRESS = QEvent.Type.KeyPress
 _ACTIVATING = frozenset((QEvent.Type.WindowActivate, QEvent.Type.MouseButtonPress))
 
 
+class _RoundClip(QObject):
+    """Keeps a widget masked to a rounded rectangle (the theme's corner radius) whenever it is resized."""
+
+    def __init__(self, w: QWidget):
+        super().__init__(w)
+        self.w = w
+
+    def eventFilter(self, obj, e):
+        if e.type() == QEvent.Type.Resize and obj is self.w:
+            from PyQt6.QtGui import QPainterPath, QRegion
+            rad = max(0, theme.P.radius - 1)
+            path = QPainterPath()
+            path.addRoundedRect(QRectF(self.w.rect()), rad, rad)
+            self.w.setMask(QRegion(path.toFillPolygon().toPolygon()))
+        return False
+
+
 class _Backdrop(QWidget):
     """A full-screen dim with the dot grid (+ background image, glow and chrome on the primary screen)."""
     clicked_outside = pyqtSignal()
@@ -425,6 +442,9 @@ class MainOverlay:
         lay.setSpacing(0)
         self.stack = QStackedWidget()
         lay.addWidget(self.stack, 1)
+        # pages paint their own bars and sidebars edge to edge: cut them to the panel's rounded corners, or
+        # their square corners stick out past the rounded border
+        self.stack.installEventFilter(_RoundClip(self.stack))
         panel.hide()
         host.panel = panel
         self.panel = panel

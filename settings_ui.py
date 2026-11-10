@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QEvent, pyqtSignal
 from PyQt6.QtGui import QKeySequence, QShortcut
 
-from core import theme, widgets, backup, anim, APP_NAME
+from core import theme, widgets, backup, anim, APP_NAME, IS_WIN
 from core.guard import alive
 from core import hotkeys as hk
 from core.settings import (SCHEMA, Field, defaults, ALL_PAGES, REQUIRED_PAGES, START_PANELS, TRAY_ITEMS,
@@ -237,6 +237,8 @@ class HotkeyEdit(QWidget):
         text = QKeySequence(key).toString().lower()
         if text and hk.validate(text) == "":
             return text
+        if not IS_WIN and e.nativeScanCode() > 0:
+            return f"code:{e.nativeScanCode()}"      # a key with no name (a mouse's extra key...): its number
         return ""
 
     def hideEvent(self, e):

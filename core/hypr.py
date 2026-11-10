@@ -336,14 +336,18 @@ def set_borders(b: dict | None) -> str:
     return lua(f"hl.config({{ general = {{ col = {{ {col} }} }} }})")
 
 
-def bind(bind_id: str, keys: str, release: bool = False, non_consuming: bool = False) -> str:
-    """Bind `keys` ('CTRL + SHIFT + space') so that pressing it writes `bind_id` into the FIFO."""
+def bind(bind_id: str, keys: str, release: bool = False, non_consuming: bool = False,
+         ignore_mods: bool = False) -> str:
+    """Bind `keys` ('CTRL + SHIFT + space') so that pressing it writes `bind_id` into the FIFO.
+    ignore_mods: it also fires while Ctrl, Shift... are held (sprinting in a game and clicking a side button)."""
     opts = [f"description = {lstr(BIND_DESC)}"]
     if release:
         opts.append("release = true")
     if non_consuming:
         opts.append("non_consuming = true")
-    slot = f"{keys}|{int(release)}|{int(non_consuming)}"
+    if ignore_mods:
+        opts.append("ignore_mods = true")
+    slot = f"{keys}|{int(release)}|{int(non_consuming)}" + ("|i" if ignore_mods else "")
     return lua(f"LUMI.bind({lstr(slot)}, {lstr(bind_id)}, {lstr(keys)}, {{ {', '.join(opts)} }})")
 
 
@@ -654,21 +658,37 @@ class WindowSync(QObject):
         self._set_qt_pos(w, x, y)
         self._settle(addr, w, x, y)
 
-    def _settle(self, addr: str, w: QWidget, x: int, y: int, checks=(15, 60, 180, 420)):
+    def _settle(self, addr: str, w: QWidget, x: int, y: int,
+                checks=(15, 45, 90, 150, 250, 400, 600, 900, 1300, 1800, 2500)):
         """Move a window that has just opened to (x, y), and keep at it for a moment: Hyprland announces a new
         window before it has finished placing it, and that first placement used to win over our move about half
-        the time (every panel then sat where Hyprland put it, whatever Panels like Notes open said)."""
+        the time (every panel then sat where Hyprland put it, whatever Panels like Notes open said).
+
+        With two monitors Hyprland can take most of a second to let go of a new window: until then it answers
+        "ok" to a move and leaves the window at its own spot (the top-left of the other monitor, the same place
+        every time). So it is checked for 2.5 s and moved back each time it is not where it should be, and only
+        trusted once it has stayed put for two checks in a row."""
         pinned = not w.property("lum_no_pin")
         move_window(addr, x, y, pinned)
+        state = {"good": 0}
 
         def check(rest):
             if not alive(w) or self._addr.get(w) != addr or not w.isVisible() or w in self._track:
                 return
             c = self._client(addr)
-            if c and isinstance(c.get("at"), list) and c["at"] != [x, y]:
+            if c is None or not isinstance(c.get("at"), list):
+                return
+            if c["at"] != [x, y]:
+                state["good"] = 0
                 move_window(addr, x, y, pinned)
+            else:
+                state["good"] += 1
+                if state["good"] >= 2 and len(rest) < len(checks) - 4:
+                    return                       # it has stayed put long enough
             if rest:
                 QTimer.singleShot(rest[0], lambda: check(rest[1:]))
+            elif c["at"] != [x, y]:
+                log.info("Hyprland kept %s at %s instead of %s", _strip(w.windowTitle()), c["at"], [x, y])
         QTimer.singleShot(checks[0], lambda: check(list(checks[1:])))
 
     def _client(self, addr: str) -> dict | None:

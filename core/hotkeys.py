@@ -57,6 +57,12 @@ _KEYSYMS = {
 }
 _KEYSYMS.update({f"f{i}": f"F{i}" for i in range(1, 25)})
 _KEYSYMS.update({f"num {i}": f"KP_{i}" for i in range(10)})
+# media and other special keys (some mice send these from their extra buttons)
+_KEYSYMS.update({"xf86" + k.lower(): "XF86" + k for k in (
+    "AudioPlay", "AudioPause", "AudioStop", "AudioNext", "AudioPrev", "AudioMute", "AudioRaiseVolume",
+    "AudioLowerVolume", "AudioMicMute", "Back", "Forward", "Search", "HomePage", "Tools", "Launch5", "Launch6",
+    "Launch7", "Launch8", "Launch9", "Calculator", "Mail", "Explorer", "Favorites", "Refresh", "Copy", "Cut",
+    "Paste")})
 _KEYSYMS.update({"num +": "KP_Add", "num -": "KP_Subtract", "num *": "KP_Multiply", "num /": "KP_Divide",
                  "num enter": "KP_Enter", "num .": "KP_Decimal"})
 
@@ -84,7 +90,16 @@ def pretty(combo: str) -> str:
              "page up": "PgUp", "page down": "PgDn", "up": "↑", "down": "↓", "left": "←", "right": "→"}
     names.update({k: v.replace("Side button (", "Mouse ").replace(")", "").replace("Extra button", "Mouse extra")
                   for k, v in MOUSE_BUTTONS})
-    return "+".join(names.get(p, p.upper() if len(p) == 1 else p.title()) for p in normalize(combo).split("+"))
+
+    def name(p: str) -> str:
+        if p in names:
+            return names[p]
+        if is_code(p):
+            return f"Key {p[5:]}"
+        if p.startswith("xf86"):
+            return p[4:].title()
+        return p.upper() if len(p) == 1 else p.title()
+    return "+".join(name(p) for p in normalize(combo).split("+"))
 
 
 def is_modifier(key: str) -> bool:
@@ -98,18 +113,25 @@ def keysym(key: str) -> str:
         return _KEYSYMS[key]
     if len(key) == 1 and key.isalnum():
         return key
-    if not IS_WIN and is_mouse(key):
+    if not IS_WIN and (is_mouse(key) or is_code(key)):
         return key                      # Hyprland binds mouse buttons by number (mouse:275 = side back)
     return ""
 
 
+# every button a mouse can report (Linux BTN_MIDDLE … BTN_TASK and the eight after it): gaming mice like
+# Logitech's put their extra thumb and DPI buttons up there
 MOUSE_BUTTONS = [("mouse:274", "Middle button"), ("mouse:275", "Side button (back)"),
-                 ("mouse:276", "Side button (forward)"), ("mouse:277", "Extra button 1"),
-                 ("mouse:278", "Extra button 2"), ("mouse:279", "Extra button 3"), ("mouse:280", "Extra button 4")]
+                 ("mouse:276", "Side button (forward)")] + \
+                [(f"mouse:{n}", f"Extra button {n - 276}") for n in range(277, 289)]
 
 
 def is_mouse(key: str) -> bool:
     return key.startswith("mouse:") and key[6:].isdigit()
+
+
+def is_code(key: str) -> bool:
+    """A raw key code ('code:191'): keys with no name, like the extra keys some mice and keyboards send."""
+    return key.startswith("code:") and key[5:].isdigit()
 
 
 def keysyms_of(key: str) -> list[str]:
@@ -214,12 +236,14 @@ class HotkeyManager(QObject):
         self._watch.timeout.connect(self._watchdog)
 
     # ── Hyprland side ──────────────────────────────────────────────────────
-    def _add(self, keys: str, fire, release: bool = False, non_consuming: bool = False) -> str:
+    def _add(self, keys: str, fire, release: bool = False, non_consuming: bool = False,
+             ignore_mods: bool = False) -> str:
         self._seq += 1
         bind_id = f"k{self._seq}"
-        self._binds[bind_id] = {"keys": keys, "release": release, "non_consuming": non_consuming, "fire": fire}
+        self._binds[bind_id] = {"keys": keys, "release": release, "non_consuming": non_consuming, "fire": fire,
+                                "ignore_mods": ignore_mods}
         if not self._suspended:
-            err = hypr.bind(bind_id, keys, release, non_consuming)
+            err = hypr.bind(bind_id, keys, release, non_consuming, ignore_mods)
             if err:
                 self._binds.pop(bind_id)
                 raise RuntimeError(err)
@@ -228,7 +252,7 @@ class HotkeyManager(QObject):
     def _reinstall(self):
         """After a config reload (Hyprland forgot every runtime bind) or when un-suspending."""
         for bind_id, b in self._binds.items():
-            hypr.bind(bind_id, b["keys"], b["release"], b["non_consuming"])
+            hypr.bind(bind_id, b["keys"], b["release"], b["non_consuming"], b.get("ignore_mods", False))
 
     def _on_message(self, msg: str):
         b = self._binds.get(msg)
@@ -308,10 +332,13 @@ class HotkeyManager(QObject):
             log.exception("hotkey callback failed")
 
     # ── registration ───────────────────────────────────────────────────────
-    def register(self, owner: str, combo: str, callback, label: str = "", non_consuming: bool = False) -> str:
+    def register(self, owner: str, combo: str, callback, label: str = "", non_consuming: bool = False,
+                 always: bool = False) -> str:
         """Register a press hotkey. Returns '' on success or an error message.
 
-        non_consuming: the key press also reaches the focused app (like Esc for Doodle)."""
+        non_consuming: the key press also reaches the focused app (like Esc for Doodle).
+        always: it also fires while other keys are held (W to walk, Ctrl to sprint...); the combo's own
+        modifiers still have to be down."""
         combo = normalize(combo)
         if not combo:
             return ""
@@ -329,13 +356,19 @@ class HotkeyManager(QObject):
             self._in_use[combo] = owner
             return ""
         keys_list = to_hyprland(combo)
-        for keys in keys_list if not non_consuming else []:
+        mods, _key = _split(combo)
+        if always and mods:
+            # Hyprland's ignore_mods drops the combo's own modifiers too: check those by hand
+            keys_list = [keysym(_key)] if keysym(_key) else keys_list
+        for keys in keys_list if not (non_consuming or always) else []:
             clash = self._conflict(keys)
             if clash:
                 log.warning("%s: %s", owner, clash)
                 return clash
 
         def fire():
+            if always and mods and not all(key_state(m) is not False for m in mods):
+                return
             for h in self._holds.values():
                 if h["down"] and h["owner"] != owner and h["on_interrupt"]:
                     self._run(lambda f=h["on_interrupt"]: f(combo.split("+")[-1]))
@@ -349,7 +382,8 @@ class HotkeyManager(QObject):
             bare_mod = combo in MODIFIERS
             for keys in keys_list:
                 ids.append(self._add(keys, fire, release=bare_mod,
-                                     non_consuming=bare_mod or non_consuming or self.pass_keys))
+                                     non_consuming=bare_mod or non_consuming or self.pass_keys or always,
+                                     ignore_mods=always and not bare_mod))
         except RuntimeError as e:
             for bind_id in ids:
                 self._drop(bind_id)

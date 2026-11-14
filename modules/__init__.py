@@ -30,6 +30,7 @@ REGISTRY = [
     ("atlas_sync", "modules.atlas_sync:AtlasSyncModule"),
     ("caelestia", "modules.caelestia:CaelestiaModule"),
     ("syscontrol", "modules.syscontrol:SystemModule"),
+    ("performance", "modules.performance:PerformanceModule"),
 ]
 # The File Launcher was retired on 2026-10-25: its shortcuts moved into the Dashboard (ui/dashboard.py).
 

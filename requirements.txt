@@ -6,6 +6,8 @@ numpy
 segno
 # optional: image previews for .txt files that contain a URL
 requests
+# Performance (processes, CPU, disks, network, sensors) and the System Monitor on Windows
+psutil
 # optional: video thumbnails in Snippets
 opencv-python
 
@@ -17,7 +19,6 @@ pulsectl; sys_platform == "linux"
 keyboard; sys_platform == "win32"
 pycaw; sys_platform == "win32"
 comtypes; sys_platform == "win32"
-psutil; sys_platform == "win32"
 winrt-runtime; sys_platform == "win32"
 winrt-Windows.Foundation; sys_platform == "win32"
 winrt-Windows.Foundation.Collections; sys_platform == "win32"

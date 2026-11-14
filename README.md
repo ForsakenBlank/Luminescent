@@ -13,7 +13,7 @@ GeForce-overlay style **hub** (Dashboard, Automation, Themes, Clipboard, Setting
 Calculator, Today and Usage pages), plus
 **Notes**, **Screen Doodle**, **Timers / Stopwatches**, **Calculator**, **Colour Picker**, **Screen Text Grab**,
 **Prompt Log**, **Reminders**, **Hearing Guard**, **Ghost Vault**, the **Metadata Stripper**, a **Window Snapper**, a
-**Screen Ruler**, **Media Controls**, a **QR Code** maker, a **System Monitor**, **System Settings** and **Atlas Sync**. Everything runs in one process with
+**Screen Ruler**, **Media Controls**, a **QR Code** maker, a **System Monitor**, **Performance**, **System Settings** and **Atlas Sync**. Everything runs in one process with
 one keyboard hook.
 
 ## Download
@@ -328,6 +328,38 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   Hyprland forgets changes made while it runs when its config reloads: with Settings → System Settings → **Keep my
   changes** on, Luminescent puts them back after a reload and when it starts. **Back to my Hyprland config** undoes
   them all.
+* **Performance**: a window full of widgets for everything the computer is doing (tray, command palette, its own
+  key, or add it to the overlay's navigation bar).
+  * **Overview**: widgets for the processor (every core, clock, temperature), memory and swap, each GPU (load, VRAM,
+    temperature, power, clocks, fan), VRAM with the apps using the most, the apps using the most CPU / RAM / GPU /
+    VRAM, disks, network, every temperature sensor, the battery and the system. **+ Add widget**, then ⋯ (or
+    double-click) on any widget to pick exactly what it shows, which GPU, how many apps and sorted by what, the graph
+    style, colour, history (30 s to 15 min), graph size and width. Move, widen, duplicate or remove them; 1 to 4
+    columns.
+  * **Processes**: every app and script (a Python or Node script shows as `python · bot.py`) with its icon, CPU,
+    memory, GPU, VRAM, disk, threads, priority and user, grouped by app, searchable and sortable. Right-click to end
+    it, force quit, change its priority or the CPU cores it may use, give it a priority every time it starts, or add
+    it to Game mode.
+  * **Boost**: power mode / plan, CPU governor, energy preference, boost clocks, top speed, swappiness, file cache
+    pressure, transparent huge pages, NVIDIA power limit and persistence, AMD performance level, Hyprland's
+    animations, blur, shadows and direct scanout; freeing cached memory and emptying temporary files. On Linux the
+    ones that need root ask for your password (pkexec).
+  * **Game mode**: one switch (or key) for the fastest power mode, no desktop effects, do not disturb and the gaming
+    HUD; lowers the priority of apps you pick and can close others. It can start by itself when a game runs, and puts
+    everything back when it stops.
+  * **Alerts & rules**: a notification when the CPU, memory, VRAM or a temperature stays too high, an app runs away,
+    a drive fills up or the battery runs low; priority (and core) rules applied to an app every time it starts.
+  * **Startup apps** (enable or disable what starts when you log in) and a **gaming HUD**: a small readout of CPU,
+    GPU, VRAM, RAM, temperatures and more that stays on top of games, clicks go through it.
+
+  GPUs: NVIDIA through `nvidia-smi` (each app's GPU and VRAM through `nvidia-smi pmon`), AMD and Intel from `/sys` and
+  each app's DRM fdinfo, every GPU on Windows through Windows' own GPU counters. It only measures while it is on
+  screen, or while alerts, rules or automatic Game mode need it.
+* **Workspace sets** (System Settings → Workspaces, Hyprland): split workspaces into sets, e.g. 1-4 and 5-8.
+  Ctrl+Super+Left / Right go through the set you're in and Ctrl+Super+Up / Down jump to the same spot in the next
+  set. Going round from the last workspace to the first can fade, slide vertically, skip the animation, stop or carry
+  on into the next set, instead of Hyprland sliding the wrong way. Optionally Ctrl+Super+Shift takes the window along
+  and Super + scroll cycles too; every workspace can be kept, and Caelestia's bar shows the set you're in.
 * **Atlas Sync**: swaps notes, timer time and themes with the [Atlas](https://github.com/ForsakenBlank/Atlas) app on
   your phone over Wi-Fi, and brings Atlas's calendar events and tasks to the PC. Press **Let Atlas connect** (tray, command palette or Settings), then type the address and code
   into Atlas → Sync. Atlas lists every change in both directions before anything is written. Notes go both ways and

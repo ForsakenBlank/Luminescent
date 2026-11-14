@@ -1138,6 +1138,39 @@ def _smoke(launcher: "Launcher", app: QApplication):
         t.pop("hotkey")
         store.update_theme(t)
 
+    def performance_pages():
+        # every Performance page, a widget of every kind, the widget editor and the HUD, with real numbers
+        m = launcher.modules.get("performance")
+        if m is None or not m.running:
+            raise RuntimeError("the Performance module is not running")
+        from ui.performance_ui import PerformancePanel, WidgetEditor, TYPES
+        panel = PerformancePanel(m)
+        m.views.append(panel)
+        panel.show()
+        m._refresh_wants()
+        from core import perfstats
+        d = perfstats.Sampler().sample(procs=True)
+        m._got(d)
+        for key in list(panel.makers):
+            panel.show_page(key)
+            panel.update_from(d)
+        ov = panel.pages["overview"]
+        before = len(m.data["widgets"])
+        for kind in TYPES:
+            ov.add(kind, "main" if kind in ("gpu", "vram") else "")
+        ov.update_from(d)
+        dlg = WidgetEditor(ov, m, ov.cards[-1].cfg)
+        dlg.result_cfg()
+        dlg.deleteLater()
+        del m.data["widgets"][before:]
+        ov.build()
+        m.toggle_hud(True)
+        m.hud.update_from(d)
+        m.toggle_hud(False)
+        panel.hide()
+        panel.deleteLater()
+
+    steps += [performance_pages]
     steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide, theme_editor, gradient_editor,
               picture_on_dashboard, picture_gone, launcher.overlay.hide,
               lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark"), theme_keys,

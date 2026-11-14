@@ -917,6 +917,109 @@ class SoundPage(_Page):
                       lambda err: self.m.ctx.notify("Sound", err) if err else None)
 
 
+class WorkspacesPage(_Page):
+    """Workspace sets on Hyprland: how many, how wrapping round looks, Up / Down between sets."""
+
+    def __init__(self, m: "SystemModule"):
+        super().__init__("Workspaces", "Split your workspaces into sets. Ctrl+Super+Left / Right go through the set "
+                                       "you are in, Ctrl+Super+Up / Down jump to the same spot in another set.")
+        from core import workspaces as wsp
+        self.m, self.wsp = m, wsp
+        self.cfg = wsp.config(m.s("workspaces", {}))
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(450)
+        self._timer.timeout.connect(self._apply)
+        if not wsp.available():
+            self.lay.addWidget(_hint("This needs Hyprland 0.55 or newer with a Lua config (hyprland.lua)."))
+            self.finish()
+            return
+        self.on = QCheckBox("Use workspace sets (takes over Ctrl+Super+arrow keys)")
+        self.on.setChecked(self.cfg["on"])
+        self.on.toggled.connect(lambda v: self._put("on", bool(v)))
+        self.lay.addWidget(self.on)
+        box = QFrame()
+        box.setObjectName("lumCard")
+        grid = QGridLayout(box)
+        grid.setContentsMargins(14, 12, 14, 12)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(10)
+        from PyQt6.QtWidgets import QSpinBox
+        self.per = QSpinBox()
+        self.per.setRange(1, 10)
+        self.per.setValue(self.cfg["per"])
+        self.per.valueChanged.connect(lambda v: self._put("per", v))
+        self.sets = QSpinBox()
+        self.sets.setRange(1, 10)
+        self.sets.setValue(self.cfg["sets"])
+        self.sets.valueChanged.connect(lambda v: self._put("sets", v))
+        self.wrap = QComboBox()
+        for v, t in wsp.WRAPS:
+            self.wrap.addItem(t, v)
+        self.wrap.setCurrentIndex(max(0, self.wrap.findData(self.cfg["wrap"])))
+        self.wrap.activated.connect(lambda _i: self._put("wrap", self.wrap.currentData()))
+        self.vert = QComboBox()
+        for v, t in wsp.VERTICALS:
+            self.vert.addItem(t, v)
+        self.vert.setCurrentIndex(max(0, self.vert.findData(self.cfg["vertical"])))
+        self.vert.activated.connect(lambda _i: self._put("vertical", self.vert.currentData()))
+        calm(self.per, self.sets, self.wrap, self.vert)
+        for i, (text, w) in enumerate((("Workspaces in a set", self.per), ("Sets (Up / Down)", self.sets),
+                                       ("Going round from the last to the first", self.wrap),
+                                       ("Switching sets looks like", self.vert))):
+            grid.addWidget(widgets.label(text, 13), i, 0)
+            grid.addWidget(w, i, 1)
+        grid.setColumnStretch(2, 1)
+        self.lay.addWidget(box)
+        self.map = _hint("")
+        self.map.setProperty("mono", True)
+        self.map.setFont(theme.qfont(11.5, 500, True))
+        self.lay.addWidget(self.map)
+        for key, text, tip in (
+                ("move_keys", "Ctrl+Super+Shift+arrows take the active window along", ""),
+                ("scroll", "Super + scroll wheel goes through the set too", ""),
+                ("scroll_invert", "Scroll the other way", "Scrolling down goes right instead of left"),
+                ("persistent", "Keep every workspace of every set (they exist before anything opens on them)",
+                 "Adds a workspace rule for each one your config doesn't have yet"),
+                ("bar", "Caelestia's bar shows the set you are in", "Sets bar.workspaces.shown in shell.json")):
+            cb = QCheckBox(text)
+            cb.setChecked(bool(self.cfg[key]))
+            cb.setToolTip(tip)
+            cb.toggled.connect(lambda v, k=key: self._put(k, bool(v)))
+            self.lay.addWidget(cb)
+        self.lay.addWidget(_hint("Hyprland forgets these binds when its config reloads; Luminescent puts them back "
+                                 "by itself. Switching sets off reloads your config so your own Ctrl+Super+arrow "
+                                 "binds come back."))
+        self._draw_map()
+        self.finish()
+
+    def _draw_map(self):
+        per, sets = self.cfg["per"], self.cfg["sets"]
+        rows = []
+        for s in range(min(sets, 10)):
+            nums = "  ".join(f"{s * per + i + 1:>2}" for i in range(per))
+            rows.append(f"Set {s + 1}:  {nums}")
+        self.map.setText("\n".join(rows) + "\n←/→ along a row,  ↑/↓ between rows")
+
+    def _put(self, key, value):
+        was_on = self.cfg["on"]
+        self.cfg[key] = value
+        self.m.settings.set(f"{self.m.key}.workspaces", dict(self.cfg))
+        self.m.settings.save_quiet()
+        self._draw_map()
+        if key == "on" and was_on and not value:
+            in_thread(self.wsp.turn_off, None)
+            return
+        self._timer.start()
+
+    def _apply(self):
+        def done(err):
+            if err and alive(self):
+                self.m.ctx.notify("Workspaces", err)
+        if self.cfg["on"]:
+            in_thread(lambda: self.wsp.apply(self.cfg), done)
+
+
 class AboutPage(_Page):
     def __init__(self, m: "SystemModule"):
         super().__init__("This computer")
@@ -973,6 +1076,8 @@ class SystemPanel(widgets.FloatingPanel):
         self._add("displays", "▭  Displays", lambda: DisplaysPage(m))
         self._add("screen", "☀  Brightness & night", lambda: ScreenPage(m))
         self._add("sound", "♪  Sound", lambda: SoundPage(m))
+        if not IS_WIN and hypr.available():
+            self._add("workspaces", "▦  Workspaces", lambda: WorkspacesPage(m))
         self._opt_at = self.side.count()
         self.side.addStretch()
         self._add("about", "ⓘ  This computer", lambda: AboutPage(m))
@@ -1049,6 +1154,7 @@ class SystemModule(Module):
         self.views: list = []
         self.night = sc.NightLight()
         self._reload_hooked = False
+        self._ws_hooked = False
         self._profiles: list | None = None          # power modes, read once (powerprofilesctl takes a moment)
 
     def start(self):
@@ -1062,6 +1168,12 @@ class SystemModule(Module):
                 self._reload_hooked = True
                 sync.reloaded.connect(lambda: QTimer.singleShot(400, self.restore)
                                       if self.running and self.s("keep", True) else None)
+        if not IS_WIN:
+            QTimer.singleShot(1800, self.apply_workspaces)
+            sync = hypr.sync()
+            if sync is not None and not self._ws_hooked:
+                self._ws_hooked = True
+                sync.reloaded.connect(lambda: QTimer.singleShot(600, self.apply_workspaces) if self.running else None)
         k = int(self.s("night_kelvin", 6500) or 6500)
         if self.s("night_on", False) and k < 6500:
             QTimer.singleShot(2000, lambda: self.night.set(k))
@@ -1177,6 +1289,13 @@ class SystemModule(Module):
         in_thread(work, lambda errs: [log.warning("restoring a system setting: %s", e) for e in errs or []])
 
     # ── night light, power ────────────────────────────────────────────────────────
+    def apply_workspaces(self):
+        """Workspace sets (System Settings → Workspaces) back into Hyprland after a start or a config reload."""
+        from core import workspaces as wsp
+        cfg = self.s("workspaces", {}) or {}
+        if cfg.get("on") and hypr.available():
+            in_thread(lambda: wsp.apply(cfg), lambda err: self.ctx.notify("Workspaces", err) if err else None)
+
     def set_night(self, kelvin: int) -> str:
         err = self.night.set(kelvin)
         if not err:

@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.9.0
+
+* **Performance, a new module.** A window full of widgets for everything your computer is doing. Open it from the
+  tray or the command palette, give it a key, or add it to the overlay's navigation bar.
+  * **Overview**: widgets for the processor (usage, every core, clock, temperature), memory and swap, every GPU (load,
+    VRAM, temperature, power, clocks, fan, video engine), VRAM with the apps using the most of it, the top apps by
+    CPU / RAM / GPU / VRAM / disk, disks with the space left on each drive, network, every temperature sensor,
+    battery and system. **Every widget can be edited**: pick which numbers, bars, rings and graphs it shows, which
+    GPU, how many apps and what they're sorted by, filled / line / bar graphs, how much history (30 s to 15 min),
+    graph size, colour and width. Add as many as you like, move, widen, duplicate and remove them, 1 to 4 columns.
+  * **Processes**: every app and script with its icon and how much CPU, memory, **GPU and VRAM** it uses, plus disk,
+    threads, priority and user. Grouped by app, searchable, sortable, with the busiest cells tinted. Scripts show what
+    they run (`python · bot.py`) and Windows programs under Wine show their real name. Right-click to end it, force
+    quit, set its priority or the CPU cores it may use, open its folder or copy its command line.
+  * **Boost**: power mode or plan, CPU governor, energy preference, boost clocks, top speed, swappiness, file cache
+    pressure, transparent huge pages, NVIDIA power limit and persistence mode, AMD performance level, Hyprland
+    animations, blur, shadows and direct scanout. On Windows: the processor's top and lowest speed, Game Mode,
+    transparency, animations, background apps, Game Bar recording and adding the Ultimate Performance plan. Also
+    free cached memory and empty the thumbnail cache / temporary files.
+  * **Game mode**: one switch or key for the fastest power mode, no desktop effects, do not disturb and the gaming HUD.
+    It can lower the priority of apps you pick (browsers, Discord…), close others, and **start by itself** when a game
+    from your list runs. Everything goes back when it stops, even after a crash.
+  * **Alerts & rules**: a notification when the CPU, memory, VRAM or a temperature stays too high, one app runs
+    away, a drive is nearly full or the battery is low. Rules give an app the same priority and cores every time it
+    starts.
+  * **Startup apps**: switch off what starts when you log in (autostart entries on Linux, Run and the Startup folder
+    on Windows).
+  * **Gaming HUD**: a small readout of CPU, GPU, temperatures, VRAM, RAM, power, network, the time or the battery in a
+    corner of the screen, on top of games. Clicks go through it.
+* **The GPU in the System Monitor shows real numbers.** With a Ryzen that has graphics built in (like the 7600X's
+  Radeon 610M) next to a graphics card, it read the built-in GPU, which sat at 0 % with 0 / 0 GiB of VRAM. It now
+  reads the graphics card (an NVIDIA card through nvidia-smi, or the AMD / Intel GPU with the most VRAM), and small
+  VRAM sizes show a decimal.
+* **Workspace sets** (System Settings → Workspaces, Hyprland). Split your workspaces into sets of any size:
+  Ctrl+Super+Left / Right go through the set you're in, **Ctrl+Super+Up / Down jump to the same workspace in the
+  next or previous set**. Going round from 4 to 1 no longer slides left while you pressed right: pick a fade, a
+  vertical slide, no animation, stopping at the ends or carrying on into the next set. Optionally Ctrl+Super+Shift
+  takes the active window along and Super + scroll goes through the set too. Every workspace of every set can be
+  kept so it's there before anything opens on it, and Caelestia's bar is set to show the set you're in. It all runs
+  inside Hyprland, so the keys answer instantly, and it comes back after a config reload.
+
 ## 1.8.4
 
 * **Edit any keybind.** ✎ (or **Edit…**) on a Hyprland bind now changes what it runs as well as its keys, both

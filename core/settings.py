@@ -85,12 +85,14 @@ NAV_SECTIONS = [("dashboard", "Dashboard"), ("automation", "Automation"), ("them
 # pages you can add to the overlay's navigation bar (Settings → Overlay → Navigation bar)
 EXTRA_PAGES = [("notes", "Notes"), ("timers", "Timers"), ("calculator", "Calculator"), ("today", "Today"),
                ("stats", "Usage"), ("calendar", "Calendar"), ("hearing", "Hearing Guard"),
-               ("sysmon", "System Monitor"), ("media", "Media"), ("syscontrol", "System Settings")]
+               ("sysmon", "System Monitor"), ("media", "Media"), ("syscontrol", "System Settings"),
+               ("performance", "Performance")]
 ALL_PAGES = NAV_SECTIONS + EXTRA_PAGES
 REQUIRED_PAGES = ("dashboard", "settings")
 
 # panels that can open by themselves when Luminescent starts (Settings → General → Show on start)
 START_PANELS = [("notes", "Notes"), ("hearing", "Hearing Guard"), ("sysmon", "System Monitor"),
+                ("performance", "Performance"),
                 ("media", "Media controls")]
 
 # what the tray menu can list (Settings → General → Tray menu)
@@ -622,6 +624,17 @@ SCHEMA += [
         Field("monitors", "", "hidden", []),
         Field("night_kelvin", "", "hidden", 4000),
         Field("night_on", "", "hidden", False),
+        Field("workspaces", "", "hidden", {}),
+    ]),
+    Section("performance", "Performance", "📊",
+            "Widgets for the CPU, GPU, VRAM, memory, disks, network and temperatures; every app with its CPU, "
+            "memory, GPU and VRAM; speed settings, Game mode, alerts, startup apps and a gaming HUD. Only measures "
+            "while it is on screen (or while alerts, rules or automatic Game mode need it).", [
+        Field("enabled", "Enable Performance", "bool", True),
+        Field("hotkey", "Open Performance", "hotkey", ""),
+        Field("game_hotkey", "Game mode on / off", "hotkey", ""),
+        Field("hud_hotkey", "Gaming HUD on / off", "hotkey", ""),
+        Field("bg_opacity", "Panel opacity", "opacity", 0.95),
     ]),
     Section("atlas_sync", "Atlas Sync", "⇄",
             "Swaps notes and timer time with the Atlas app on your phone over Wi-Fi. Press Let Atlas connect, then "

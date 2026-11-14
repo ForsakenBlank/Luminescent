@@ -94,10 +94,17 @@ def cpu_temp() -> float | None:
 
 
 def sysfs_gpu() -> dict | None:
-    """Load (and VRAM, temperature) of an AMD or Intel GPU from /sys, None without one."""
+    """Load (and VRAM, temperature) of an AMD or Intel GPU from /sys, None without one.
+
+    With more than one, the one with the most VRAM: a Ryzen's built-in Radeon (512 MB, card1) used to be picked
+    over the graphics card, so the row said 0 % and 0 / 0 GiB. "integrated" says when the best one found is only
+    the built-in GPU, so a NVIDIA card (asked through nvidia-smi) goes first."""
     if IS_WIN:
         return None
-    for dev in sorted(glob.glob("/sys/class/drm/card[0-9]/device")):
+    best = None
+    for dev in sorted(glob.glob("/sys/class/drm/card[0-9]*/device")):
+        if "-" in os.path.basename(os.path.dirname(dev)):
+            continue
         busy = _read(os.path.join(dev, "gpu_busy_percent")).strip()
         if not busy.isdigit():
             continue
@@ -111,8 +118,10 @@ def sysfs_gpu() -> dict | None:
             if raw.isdigit():
                 out["temp"] = int(raw) / 1000
                 break
-        return out
-    return None
+        out["integrated"] = out.get("vram", (0, 0))[1] < 1.5
+        if best is None or out.get("vram", (0, 0))[1] > best.get("vram", (0, 0))[1]:
+            best = out
+    return best
 
 
 def _win_cpu_times() -> tuple[int, int]:
@@ -352,13 +361,16 @@ class SysmonModule(Module):
         _All.set_row("cpu", f"{cpu:.0f} %" + (f"  ·  {temp:.0f}°C" if temp is not None else ""), cpu)
         used, tot = memory()
         _All.set_row("mem", f"{used:.1f} / {tot:.1f} GiB", 100.0 * used / tot if tot else 0.0)
-        gpu = sysfs_gpu() or self._nvidia_reading()
+        own, nv = sysfs_gpu(), self._nvidia_reading()
+        gpu = nv if nv and (own is None or own.get("integrated")) else (own or nv)
         if gpu is None:
             _All.set_row("gpu", "", None)
         else:
             parts = [f"{gpu['load']:.0f} %"]
             if gpu.get("vram"):
-                parts.append(f"{gpu['vram'][0]:.1f} / {gpu['vram'][1]:.0f} GiB")
+                total = gpu['vram'][1]
+                parts.append(f"{gpu['vram'][0]:.1f} / {total:.0f} GiB" if total >= 10 else
+                             f"{gpu['vram'][0]:.1f} / {total:.1f} GiB")
             if gpu.get("temp") is not None:
                 parts.append(f"{gpu['temp']:.0f}°C")
             _All.set_row("gpu", "  ·  ".join(parts), gpu["load"])

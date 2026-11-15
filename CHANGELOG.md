@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.9.21
+
+Workspaces only (System Settings → Workspaces).
+
+* **The screen slides the way you pressed. Always.** On workspace 1, Ctrl+Super+Left goes round to 4 and now comes
+  in from the left; Right on 4 comes in from the right. Hyprland picks the side from the workspace numbers alone,
+  which is why going round looked backwards. Luminescent now tells it the direction for every key press.
+* **Up and Down slide up and down, no fade.** Going round from the first set to the last used to fade. It now
+  slides from the top for Up and from the bottom for Down, every time.
+* **Named workspaces (like "gaming") are part of the round.** With sets on, the arrow keys skipped them, so a
+  window on "gaming" could not be reached without switching sets off. They now come after the last workspace of
+  the set: 1 2 3 4 gaming, then round. A new switch turns this off.
+* **Switching sets on leaves your windows where they are.** A workspace whose number now belongs to the other
+  monitor used to be moved over there with its windows. It now stays on its screen and gets that monitor's number
+  for the same spot (workspace 4 on the second monitor becomes 12).
+* **The page is rewritten.** Sections for your workspaces and the keys, how many, what happens at the end of a
+  set, the animation, more keys and extras, each with a line saying what it does. Everything is greyed out while
+  sets are off. The six "going round looks like" choices became two plain ones: what happens at the end (go
+  round, carry on into the next set, stop) and how switching looks (slide the way you pressed, fade, no
+  animation, leave it to Hyprland). Old settings are carried over.
+
 ## 1.9.2
 
 * **Workspace sets** (System Settings → Workspaces):

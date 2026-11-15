@@ -6,11 +6,11 @@ With more than one monitor every monitor has its own sets ("split"): with 2 sets
 the second 9-16, so the keys never throw you onto the other screen. The first monitor is the one your own config
 gives workspace 1 to, else the leftmost. Switched off, all monitors share 1-8 as before.
 
-  * Ctrl+Super+Left / Right go through the workspaces of the current set. Hyprland slides by workspace number, so
-    going round from 4 back to 1 used to slide *left* although you pressed right. How the wrap looks is now a
-    choice: a fade, a vertical slide, no animation, stop at the ends, carry on into the next set, or Hyprland's
-    own slide.
-  * Ctrl+Super+Up / Down go to the same spot in the previous / next set (2 → 6 → 10), sliding vertically.
+  * Ctrl+Super+Left / Right go through the workspaces of the current set, then the monitor's named workspaces
+    ("gaming"), then round to the other end (or stop, or carry on into the next set).
+  * Ctrl+Super+Up / Down go to the same spot in the set above / below (2 → 6 → 10).
+  * Every switch slides the way you pressed. Hyprland alone slides by workspace number, so going round from 1 to
+    4 with Left came in from the wrong side; see the note above _LUA.
   * Optionally the same keys with Shift move the active window along, Super + the scroll wheel cycles too, and
     Ctrl+Super+1…9 go straight to that workspace of the set you are in.
   * More workspaces: every workspace of every set can be kept (persistent) so it is there before anything opens on
@@ -27,15 +27,15 @@ from core import hypr
 
 log = logging.getLogger("workspaces")
 
-DEFAULTS = {"on": False, "per": 4, "sets": 2, "wrap": "fade", "vertical": "slidevert", "move_keys": True,
+DEFAULTS = {"on": False, "per": 4, "sets": 2, "wrap": "round", "anim": "slide", "named": True, "move_keys": True,
             "scroll": False, "scroll_invert": False, "persistent": True, "bar": True, "split": True, "first": "",
             "digits": False}
 
-WRAPS = [("fade", "Fade (no direction)"), ("vertical", "Slide up / down"), ("instant", "No animation"),
-         ("next_set", "Carry on into the next set (Right on 4 goes to 5)"), ("stop", "Stop at the first and last"),
-         ("slide", "Slide like Hyprland does (backwards when it wraps)")]
-VERTICALS = [("slidevert", "Slide up / down"), ("fade", "Fade"), ("slide", "Slide sideways"),
-             ("none", "No animation")]
+WRAPS = [("round", "Goes round to the other end of the set"),
+         ("next_set", "Carries on into the next set (Right on 4 goes to 5)"),
+         ("stop", "Stops")]
+ANIMS = [("slide", "Slide the way you pressed"), ("fade", "Fade"), ("none", "No animation"),
+         ("hypr", "Leave it to Hyprland (can slide the wrong way)")]
 
 MODS = ["SUPER + CONTROL", "CONTROL + SUPER", "SUPER + CTRL", "CTRL + SUPER"]
 MODS_SHIFT = ["SUPER + CONTROL + SHIFT", "SUPER + SHIFT + CONTROL", "CONTROL + SHIFT + SUPER", "SHIFT + SUPER + CONTROL",
@@ -49,6 +49,10 @@ def config(saved: dict | None) -> dict:
     out["per"] = max(1, min(10, int(out["per"])))
     out["sets"] = max(1, min(10, int(out["sets"])))
     out["first"] = str(out["first"] or "")
+    if out["wrap"] not in dict(WRAPS):                # 1.9.0's fade / vertical / instant / slide all went round
+        out["wrap"] = "round"
+    if out["anim"] not in dict(ANIMS):
+        out["anim"] = "slide"
     return out
 
 
@@ -58,7 +62,7 @@ def available() -> bool:
 
 
 def _anim() -> dict:
-    """How Hyprland animates workspaces now, so it can be put back after a one-off fade."""
+    """How Hyprland animates workspaces now, so it can be put back after a key press."""
     for a in hypr.query("animations") or []:
         items = a if isinstance(a, list) else [a]
         for x in items:
@@ -68,6 +72,19 @@ def _anim() -> dict:
     return {"enabled": True, "speed": 5.0, "bezier": "default", "style": "slide"}
 
 
+def _slide_parts(style: str) -> tuple[str, str]:
+    """Your own workspace animation as (kind, how far): 'slidefade 20%' stays a slidefade of 20 %, anything else
+    is a plain slide. The direction goes in between: 'slide left', 'slidefade top 20%'."""
+    words = (style or "").split()
+    kind = "slidefade" if words and words[0].startswith("slidefade") else "slide"
+    perc = " " + words[-1] if words and words[-1].endswith("%") else ""
+    return kind, perc
+
+
+# Hyprland picks the direction of a workspace slide from the workspace numbers alone (a higher number comes in
+# from the right), so going round from 1 to 4 with Left slid the wrong way, and so did anything to or from a named
+# workspace. Its animation style takes the direction as a second word though ("slide left", "slide top"): every
+# key press sets the style for the way that was pressed, switches, and puts your own style back.
 _LUA = r"""
 LUMI = LUMI or {}
 LUMI.ws = LUMI.ws or {}
@@ -80,7 +97,8 @@ W.binds, W.rules = {}, {}
 W.slots = W.slots or {}
 W.fns = {}
 for _, s in pairs(W.slots) do pcall(function() s:set_enabled(false) end) end
-W.per, W.sets, W.wrap, W.vert, W.split = __PER__, __SETS__, __WRAP__, __VERT__, __SPLIT__
+W.per, W.sets, W.wrap, W.mode, W.split, W.extras = __PER__, __SETS__, __WRAP__, __MODE__, __SPLIT__, __NAMED__
+W.kind, W.perc = __KIND__, __PERC__
 W.order = { __ORDER__ }
 if type(W.last) ~= "table" then W.last = {} end
 W.anim = { leaf = "workspaces", enabled = __AEN__, speed = __ASPEED__, bezier = __ABEZ__, style = __ASTYLE__ }
@@ -98,23 +116,49 @@ function W.base()
   W.order[#W.order + 1] = name                 -- a monitor plugged in later gets the next block
   return (#W.order - 1) * W.per * W.sets, name, m
 end
--- where you are in this monitor's block (1 .. per * sets), the block's base, and whether the workspace on screen
--- really is one of the block's (false on a named workspace like "gaming" or one that belongs to another monitor)
+-- where you are in this monitor's block (1 .. per * sets), the block's base, whether the workspace on screen
+-- really is one of the block's, and its name when it is a named one ("gaming")
 function W.cur()
   local base, name, m = W.base()
   local total = W.per * W.sets
   local w = m and m.active_workspace or hl.get_active_workspace()
   local id = w and not w.special and w.id
   if id and id > base and id <= base + total then W.last[name] = id return id - base, base, true end
+  local named = w and not w.special and not w.id and w.name or nil
   local l = W.last[name]
-  if l and l > base and l <= base + total then return l - base, base, false end
-  return 1, base, false
+  if l and l > base and l <= base + total then return l - base, base, false, named end
+  return 1, base, false, named
 end
-function W.go(target, style, move)
+-- the named workspaces on the focused monitor, in name order: they sit after the last workspace of a set, so
+-- the arrow keys reach them too
+function W.named()
+  local out = {}
+  if not W.extras then return out end
+  local m = hl.get_active_monitor()
+  for _, w in ipairs(hl.get_workspaces()) do
+    if not w.special and not w.id and w.name and w.monitor and m and w.monitor.name == m.name then
+      out[#out + 1] = w.name
+    end
+  end
+  table.sort(out)
+  return out
+end
+-- dir: "left" / "right" / "top" / "bottom", the way the new workspace should come in from
+function W.style(dir)
+  if W.mode == "hypr" or not dir then return nil end
+  if W.mode == "fade" then return "fade" end
+  if W.mode == "none" then return "none" end
+  return W.kind .. " " .. dir .. W.perc
+end
+function W.go(target, dir, move)
   local m = hl.get_active_monitor()
   local cur = m and m.active_workspace
-  if not move and cur and cur.id == target then return end
-  if W.split and m then                        -- one of this monitor's workspaces sits on another screen: bring it back
+  local num = type(target) == "number"
+  if not move and cur then
+    if num and cur.id == target then return end
+    if not num and not cur.id and "name:" .. tostring(cur.name) == target then return end
+  end
+  if num and W.split and m then                -- one of this monitor's workspaces sits on another screen: bring it back
     local ok, t = pcall(hl.get_workspace, target)
     if ok and t and t.monitor and t.monitor.name ~= m.name then
       pcall(function() hl.dispatch(hl.dsp.workspace.move({ workspace = target, monitor = m.name })) end)
@@ -122,7 +166,7 @@ function W.go(target, style, move)
   end
   local d
   if move then d = hl.dsp.window.move({ workspace = target }) else d = hl.dsp.focus({ workspace = target }) end
-  local want = style or W.anim.style
+  local want = W.style(dir) or W.anim.style
   if W.timer then pcall(function() W.timer:set_enabled(false) end) W.timer = nil end
   if want ~= W.anim.style then
     local a = {}
@@ -130,50 +174,63 @@ function W.go(target, style, move)
     if want == "none" then a.enabled = false else a.style = want a.enabled = true end
     pcall(hl.animation, a)
     W.temp = true
-  elseif W.temp then                           -- a fade from a moment ago is still set: your own animation first
+  elseif W.temp then
     pcall(hl.animation, W.anim)
     W.temp = false
   end
   hl.dispatch(d)
-  W.last[W.split and m and m.name or ""] = target
-  if W.temp then
+  if num then W.last[W.split and m and m.name or ""] = target end
+  if W.temp then                               -- your own animation again once this one has played
     W.timer = hl.timer(function() pcall(hl.animation, W.anim) W.temp = false W.timer = nil end,
                        { timeout = W.ms, type = "oneshot" })
   end
 end
+-- Left / Right: along the set (or all sets with "next_set"), then the monitor's named workspaces, then round
 function W.step(dx, move)
-  local n, base, here = W.cur()
-  if not here then return W.go(base + n, nil, move) end      -- from "gaming" and the like: back to where you were
+  local n, base, here, named = W.cur()
+  local dir = dx > 0 and "right" or "left"
+  local names = W.named()
+  if not here and not named then return W.go(base + n, dir, move) end   -- a workspace of another block: back home
   local per, total = W.per, W.per * W.sets
-  local set, pos = math.floor((n - 1) / per), (n - 1) % per
-  local np = pos + dx
-  if np >= 0 and np < per then return W.go(base + set * per + np + 1, nil, move) end
-  if W.wrap == "stop" then return end
-  if W.wrap == "next_set" then
-    local t = n + dx
-    if t >= 1 and t <= total then return W.go(base + t, nil, move) end
-    return W.go(base + ((t - 1) % total) + 1, "fade", move)
+  local lo, hi = 1, total
+  if W.wrap ~= "next_set" then
+    lo = math.floor((n - 1) / per) * per + 1
+    hi = lo + per - 1
   end
-  local styles = { fade = "fade", vertical = "slidevert", instant = "none" }
-  W.go(base + set * per + (np % per) + 1, styles[W.wrap], move)
+  local ring, at = {}, nil
+  for i = lo, hi do
+    ring[#ring + 1] = base + i
+    if here and i == n then at = #ring end
+  end
+  for _, nm in ipairs(names) do
+    ring[#ring + 1] = "name:" .. nm
+    if named == nm then at = #ring end
+  end
+  if not at then return W.go(base + n, dir, move) end
+  local to = at + dx
+  if to < 1 or to > #ring then
+    if W.wrap == "stop" then return end
+    to = (to - 1) % #ring + 1
+  end
+  W.go(ring[to], dir, move)
 end
+-- Up / Down: the same spot in the set above / below, always sliding the way you pressed
 function W.set(dy, move)
   if W.sets < 2 then return end
-  local n, base, here = W.cur()
-  if not here then return W.go(base + n, nil, move) end
+  local n, base = W.cur()
   local set, pos = math.floor((n - 1) / W.per), (n - 1) % W.per
   local ns = set + dy
-  local style = W.vert
-  if ns < 0 or ns >= W.sets then               -- round from the last set to the first: the slide would go the wrong way
+  if ns < 0 or ns >= W.sets then
+    if W.wrap == "stop" then return end
     ns = ns % W.sets
-    if style == "slidevert" or style == "slide" then style = "fade" end
   end
-  W.go(base + ns * W.per + pos + 1, style, move)
+  W.go(base + ns * W.per + pos + 1, dy > 0 and "bottom" or "top", move)
 end
 function W.pick(i, move)                       -- the i-th workspace of the set you are in
   if i > W.per then return end
-  local n, base = W.cur()
-  W.go(base + math.floor((n - 1) / W.per) * W.per + i, nil, move)
+  local n, base, here = W.cur()
+  local pos = (n - 1) % W.per + 1
+  W.go(base + math.floor((n - 1) / W.per) * W.per + i, (i < pos and here) and "left" or "right", move)
 end
 function W.key(keys, others, fn)
   W.fns[keys] = fn
@@ -215,17 +272,20 @@ def layout(cfg: dict, order: list[str]) -> list[tuple[str, list[list[int]]]]:
             for k, name in enumerate(names)]
 
 
-def _lua_code(cfg: dict, anim: dict, order: list[str], own_rules: set, stray: list[tuple[int, str]]) -> str:
+def _lua_code(cfg: dict, anim: dict, order: list[str], own_rules: set, stray: list[str]) -> str:
     q = hypr.lstr
     split = cfg["split"] and len(order) > 1
+    kind, perc = _slide_parts(anim["style"])
     code = (_LUA.replace("__PER__", str(cfg["per"])).replace("__SETS__", str(cfg["sets"]))
-            .replace("__WRAP__", q(cfg["wrap"])).replace("__VERT__", q(cfg["vertical"]))
+            .replace("__WRAP__", q(cfg["wrap"])).replace("__MODE__", q(cfg["anim"]))
+            .replace("__NAMED__", "true" if cfg["named"] else "false")
+            .replace("__KIND__", q(kind)).replace("__PERC__", q(perc))
             .replace("__SPLIT__", "true" if split else "false")
             .replace("__ORDER__", ", ".join(q(n) for n in order))
             .replace("__AEN__", "true" if anim["enabled"] else "false").replace("__ASPEED__", repr(anim["speed"]))
             .replace("__ABEZ__", q(anim["bezier"])).replace("__ASTYLE__", q(anim["style"]))
             .replace("__DESC__", q(hypr.BIND_DESC)))
-    lines = [code]
+    lines = [code] + list(stray)                      # before the rules: a rule would pull the workspace over
     keys = [("Right", "W.step(1)"), ("Left", "W.step(-1)")]
     if cfg["sets"] > 1:
         keys += [("Down", "W.set(1)"), ("Up", "W.set(-1)")]
@@ -259,25 +319,37 @@ def _lua_code(cfg: dict, anim: dict, order: list[str], own_rules: set, stray: li
                 mon = f", monitor = {q(name)}" if name else ""
                 lines.append(f"W.rules[#W.rules + 1] = hl.workspace_rule({{ workspace = {q(str(i))}{mon}, "
                              f"persistent = true }})")
-    for wid, name in stray:                           # a workspace that is on the wrong screen for its block
-        lines.append(f"pcall(function() hl.dispatch(hl.dsp.workspace.move({{ workspace = {wid}, "
-                     f"monitor = {q(name)} }})) end)")
     return "\n".join(lines)
 
 
-def _stray(cfg: dict, order: list[str], workspaces: list | None) -> list[tuple[int, str]]:
-    """Open workspaces that sit on another monitor than the one their number belongs to."""
+def _stray(cfg: dict, order: list[str], workspaces: list | None, clients: list | None = None) -> list[str]:
+    """Lua for open workspaces whose number belongs to another monitor's block (workspace 4 open on the second
+    monitor, which now has 9-16). They stay on the screen they are on and get the number of the same spot in
+    that monitor's block (4 becomes 12), so no window jumps to another monitor when sets are switched on. If
+    that number is taken, the windows move over to it instead."""
     if not cfg["split"] or len(order) < 2:
         return []
+    q = hypr.lstr
     block = cfg["per"] * cfg["sets"]
+    taken = {w.get("id") for w in workspaces or [] if isinstance(w, dict)}
     out = []
     for w in workspaces or []:
-        wid = w.get("id") if isinstance(w, dict) else None
-        if not isinstance(wid, int) or wid < 1 or wid > block * len(order):
+        wid, mon = (w.get("id"), w.get("monitor")) if isinstance(w, dict) else (None, None)
+        if not isinstance(wid, int) or wid < 1 or wid > block * len(order) or mon not in order:
             continue
-        owner = order[(wid - 1) // block]
-        if w.get("monitor") != owner:
-            out.append((wid, owner))
+        if order[(wid - 1) // block] == mon:
+            continue
+        new = order.index(mon) * block + (wid - 1) % block + 1
+        if new not in taken:
+            taken.discard(wid)
+            taken.add(new)
+            out.append(f"pcall(function() hl.dispatch(hl.dsp.workspace.change_id({{ workspace = {wid}, "
+                       f"id = {new} }})) end)")
+            continue
+        for c in clients or []:
+            if isinstance(c, dict) and (c.get("workspace") or {}).get("id") == wid and c.get("address"):
+                out.append(f"pcall(function() hl.dispatch(hl.dsp.window.move({{ workspace = {new}, "
+                           f"window = {q('address:' + c['address'])}, follow = false }})) end)")
     return out
 
 
@@ -293,7 +365,8 @@ def apply(saved: dict | None) -> str:
     rules = [r for r in (hypr.query("workspacerules") or []) if isinstance(r, dict)]
     order = monitor_order(None, rules, str(cfg["first"] or ""))
     own = {r.get("workspaceString") for r in rules}
-    err = hypr.lua(_lua_code(cfg, _anim(), order, own, _stray(cfg, order, hypr.query("workspaces"))))
+    stray = _stray(cfg, order, hypr.query("workspaces"), hypr.query("clients"))
+    err = hypr.lua(_lua_code(cfg, _anim(), order, own, stray))
     if not err and cfg["bar"]:
         err = set_caelestia_shown(cfg["per"])
     return err

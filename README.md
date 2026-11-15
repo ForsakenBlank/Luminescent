@@ -360,8 +360,8 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   throw you onto the other screen; switch that off to share one pool. Optionally Ctrl+Super+1…9 pick a workspace
   of the current set, and you can choose which monitor comes first.
   Ctrl+Super+Left / Right go through the set you're in and Ctrl+Super+Up / Down jump to the same spot in the next
-  set. Going round from the last workspace to the first can fade, slide vertically, skip the animation, stop or carry
-  on into the next set, instead of Hyprland sliding the wrong way. Optionally Ctrl+Super+Shift takes the window along
+  set. The screen always slides the way you pressed, also when it goes round from the last workspace to the first
+  (or it stops there, or carries on into the next set), and named workspaces like "gaming" are part of the round. Optionally Ctrl+Super+Shift takes the window along
   and Super + scroll cycles too; every workspace can be kept, and Caelestia's bar shows the set you're in.
 * **Atlas Sync**: swaps notes, timer time and themes with the [Atlas](https://github.com/ForsakenBlank/Atlas) app on
   your phone over Wi-Fi, and brings Atlas's calendar events and tasks to the PC. Press **Let Atlas connect** (tray, command palette or Settings), then type the address and code

@@ -918,12 +918,13 @@ class SoundPage(_Page):
 
 
 class WorkspacesPage(_Page):
-    """Workspace sets on Hyprland: how many, how wrapping round looks, Up / Down between sets."""
+    """Workspace sets on Hyprland, said plainly: what the keys do, how many workspaces, what happens at the end."""
 
     def __init__(self, m: "SystemModule"):
-        super().__init__("Workspaces", "Split your workspaces into sets. Ctrl+Super+Left / Right go through the set "
-                                       "you are in, Ctrl+Super+Up / Down jump to the same spot in another set.")
+        super().__init__("Workspaces", "Group your workspaces into sets (rows). The arrow keys move along a row and "
+                                       "between rows, and the screen always slides the way you pressed.")
         from core import workspaces as wsp
+        from PyQt6.QtWidgets import QSpinBox
         self.m, self.wsp = m, wsp
         self.cfg = wsp.config(m.s("workspaces", {}))
         self.order = wsp.monitor_order(first=self.cfg["first"]) if hypr.available() else []
@@ -931,21 +932,31 @@ class WorkspacesPage(_Page):
         self._timer.setSingleShot(True)
         self._timer.setInterval(450)
         self._timer.timeout.connect(self._apply)
+        self._needs_on: list[QWidget] = []
         if not wsp.available():
             self.lay.addWidget(_hint("This needs Hyprland 0.55 or newer with a Lua config (hyprland.lua)."))
             self.finish()
             return
-        self.on = QCheckBox("Use workspace sets (takes over Ctrl+Super+arrow keys)")
+        many = len(self.order) > 1
+
+        self.on = QCheckBox("Use workspace sets")
+        self.on.setFont(theme.qfont(14, 600))
         self.on.setChecked(self.cfg["on"])
         self.on.toggled.connect(lambda v: self._put("on", bool(v)))
         self.lay.addWidget(self.on)
-        box = QFrame()
-        box.setObjectName("lumCard")
-        grid = QGridLayout(box)
-        grid.setContentsMargins(14, 12, 14, 12)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(10)
-        from PyQt6.QtWidgets import QSpinBox
+        self.lay.addWidget(_hint("On: Luminescent takes over Ctrl+Super+arrow keys. Off: your own Hyprland keys "
+                                 "come back (its config is reloaded). Nothing below does anything while this is off."))
+
+        # ── your workspaces ──
+        lay = self._card("Your workspaces")
+        self.map = widgets.label("", 12)
+        self.map.setFont(theme.qfont(12, 500, True))
+        lay.addWidget(self.map)
+        self.keys = _hint("")
+        lay.addWidget(self.keys)
+
+        # ── how many ──
+        lay = self._card("How many")
         self.per = QSpinBox()
         self.per.setRange(1, 10)
         self.per.setValue(self.cfg["per"])
@@ -954,63 +965,102 @@ class WorkspacesPage(_Page):
         self.sets.setRange(1, 10)
         self.sets.setValue(self.cfg["sets"])
         self.sets.valueChanged.connect(lambda v: self._put("sets", v))
+        self._row(lay, "Workspaces in a set", self.per, "How many workspaces Left / Right go through (one row).")
+        self._row(lay, "Number of sets", self.sets, "How many rows Up / Down go through. 1 = no Up / Down.")
+        if many:
+            self._check(lay, "split", "Every monitor has its own sets",
+                        "Each monitor gets its own rows, so the keys never move you to the other screen. "
+                        "Off: all monitors share the same workspaces.")
+            self.first = QComboBox()
+            self.first.addItem("Automatic", "")
+            for name in sorted(self.order):
+                self.first.addItem(name, name)
+            self.first.setCurrentIndex(max(0, self.first.findData(self.cfg["first"])))
+            self.first.activated.connect(lambda _i: self._put("first", self.first.currentData()))
+            self._row(lay, "Monitor that gets workspace 1", self.first,
+                      "Automatic: the monitor your Hyprland config gives workspace 1 to, else the leftmost. "
+                      "The other monitor carries on after it.")
+
+        # ── at the end of a set ──
+        lay = self._card("At the end of a set")
         self.wrap = QComboBox()
         for v, t in wsp.WRAPS:
             self.wrap.addItem(t, v)
         self.wrap.setCurrentIndex(max(0, self.wrap.findData(self.cfg["wrap"])))
         self.wrap.activated.connect(lambda _i: self._put("wrap", self.wrap.currentData()))
-        self.vert = QComboBox()
-        for v, t in wsp.VERTICALS:
-            self.vert.addItem(t, v)
-        self.vert.setCurrentIndex(max(0, self.vert.findData(self.cfg["vertical"])))
-        self.vert.activated.connect(lambda _i: self._put("vertical", self.vert.currentData()))
-        self.first = QComboBox()
-        self.first.addItem("Automatic (the one with workspace 1, else the leftmost)", "")
-        for name in sorted(self.order):
-            self.first.addItem(name, name)
-        self.first.setCurrentIndex(max(0, self.first.findData(self.cfg["first"])))
-        self.first.setToolTip("Which monitor gets workspace 1 and up; the next one carries on after it. Workspace "
-                              "rules in your own Hyprland config that put a workspace on a monitor still win.")
-        self.first.activated.connect(lambda _i: self._put("first", self.first.currentData()))
-        calm(self.per, self.sets, self.wrap, self.vert, self.first)
-        rows = [("Workspaces in a set", self.per), ("Sets (Up / Down)", self.sets),
-                ("Going round from the last to the first", self.wrap), ("Switching sets looks like", self.vert)]
-        if len(self.order) > 1:
-            rows.append(("First monitor (gets workspace 1)", self.first))
-        for i, (text, w) in enumerate(rows):
-            grid.addWidget(widgets.label(text, 13), i, 0)
-            grid.addWidget(w, i, 1)
-        grid.setColumnStretch(2, 1)
-        self.lay.addWidget(box)
-        self.map = _hint("")
-        self.map.setProperty("mono", True)
-        self.map.setFont(theme.qfont(11.5, 500, True))
-        self.lay.addWidget(self.map)
-        for key, text, tip in (
-                ("split", "Every monitor has its own sets",
-                 "With 2 sets of 4 the first monitor has workspaces 1-8 and the second 9-16, so the keys never "
-                 "throw you onto the other screen. Off: all monitors share the same workspaces."),
-                ("move_keys", "Ctrl+Super+Shift+arrows take the active window along", ""),
-                ("digits", "Ctrl+Super+1…9 go to that workspace of the set you are in",
-                 "On the second monitor's second set Ctrl+Super+2 is workspace 14. With Shift (when the option "
-                 "above is on) the active window goes along. Takes over your own Ctrl+Super+number binds."),
-                ("scroll", "Super + scroll wheel goes through the set too", ""),
-                ("scroll_invert", "Scroll the other way", "Scrolling down goes right instead of left"),
-                ("persistent", "Keep every workspace of every set (they exist before anything opens on them)",
-                 "Adds a workspace rule for each one your config doesn't have yet"),
-                ("bar", "Caelestia's bar shows the set you are in", "Sets bar.workspaces.shown in shell.json")):
-            cb = QCheckBox(text)
-            cb.setChecked(bool(self.cfg[key]))
-            cb.setToolTip(tip)
-            cb.toggled.connect(lambda v, k=key: self._put(k, bool(v)))
-            if key == "split":
-                cb.setVisible(len(self.order) > 1)
-            self.lay.addWidget(cb)
-        self.lay.addWidget(_hint("Hyprland forgets these binds when its config reloads; Luminescent puts them back "
-                                 "by itself. Switching sets off reloads your config so your own Ctrl+Super+arrow "
-                                 "binds come back."))
+        self._row(lay, "Right on the last workspace (or Left on the first)", self.wrap,
+                  "The same goes for Up on the first set and Down on the last.")
+        self._check(lay, "named", "Include named workspaces (like \"gaming\")",
+                    "A workspace with a name instead of a number comes after the last workspace of the set, so the "
+                    "arrow keys reach the windows on it. Off: the arrow keys skip it.")
+
+        # ── animation ──
+        lay = self._card("Animation")
+        self.anim = QComboBox()
+        for v, t in wsp.ANIMS:
+            self.anim.addItem(t, v)
+        self.anim.setCurrentIndex(max(0, self.anim.findData(self.cfg["anim"])))
+        self.anim.activated.connect(lambda _i: self._put("anim", self.anim.currentData()))
+        self._row(lay, "Switching workspaces looks like", self.anim,
+                  "Slide: Right brings the next workspace in from the right, Left from the left, Up from the top "
+                  "and Down from the bottom, also when it goes round from the last to the first.")
+
+        # ── more keys ──
+        lay = self._card("More keys")
+        self._check(lay, "move_keys", "Hold Shift as well to take the window along",
+                    "Ctrl+Super+Shift+arrow moves the window you are using to that workspace and follows it.")
+        self._check(lay, "digits", "Ctrl+Super+1…9 jump to that workspace of the set you are in",
+                    "On the second set, Ctrl+Super+2 is its second workspace. Takes over your own "
+                    "Ctrl+Super+number keys.")
+        self._check(lay, "scroll", "Super + scroll wheel goes left / right too", "")
+        self._check(lay, "scroll_invert", "Scroll the other way", "Scrolling down goes right instead of left.")
+
+        # ── extras ──
+        lay = self._card("Extras")
+        self._check(lay, "persistent", "Keep every workspace even when it is empty",
+                    "All workspaces of all sets exist from the start, so the bar shows them and they stay on "
+                    "their monitor.")
+        self._check(lay, "bar", "Caelestia's bar shows the set you are in",
+                    "The bar shows one set at a time (sets bar.workspaces.shown in Caelestia's shell.json).")
+
+        calm(self.per, self.sets, self.wrap, self.anim, *([self.first] if many else []))
         self._draw_map()
+        self._enable()
         self.finish()
+
+    # ── building blocks ──
+    def _card(self, title: str) -> QVBoxLayout:
+        self.lay.addSpacing(4)
+        self.lay.addWidget(_heading(title))
+        box = QFrame()
+        box.setObjectName("lumCard")
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(14, 12, 14, 12)
+        lay.setSpacing(8)
+        self.lay.addWidget(box)
+        self._needs_on.append(box)
+        return lay
+
+    def _row(self, lay: QVBoxLayout, text: str, ctl: QWidget, help_text: str = ""):
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        row.addWidget(widgets.label(text, 13), 1)
+        row.addWidget(ctl)
+        lay.addLayout(row)
+        if help_text:
+            lay.addWidget(_hint(help_text))
+
+    def _check(self, lay: QVBoxLayout, key: str, text: str, help_text: str = ""):
+        cb = QCheckBox(text)
+        cb.setChecked(bool(self.cfg[key]))
+        cb.toggled.connect(lambda v, k=key: self._put(k, bool(v)))
+        lay.addWidget(cb)
+        if help_text:
+            lay.addWidget(_hint(help_text))
+
+    def _enable(self):
+        for w in self._needs_on:
+            w.setEnabled(bool(self.cfg["on"]))
 
     def _draw_map(self):
         rows = []
@@ -1019,7 +1069,15 @@ class WorkspacesPage(_Page):
                 rows.append(f"{name}")
             for n, nums in enumerate(sets):
                 rows.append(f"{'  ' if name else ''}Set {n + 1}:  " + "  ".join(f"{i:>2}" for i in nums))
-        self.map.setText("\n".join(rows) + "\n←/→ along a row,  ↑/↓ between rows")
+        self.map.setText("\n".join(rows))
+        keys = ["Ctrl+Super+← / →   the workspace before / after, along a row"]
+        if self.cfg["sets"] > 1:
+            keys.append("Ctrl+Super+↑ / ↓   the same spot in the row above / below")
+        if self.cfg["move_keys"]:
+            keys.append("…with Shift   the window comes along")
+        if self.cfg["digits"]:
+            keys.append(f"Ctrl+Super+1…{min(self.cfg['per'], 9)}   straight to that workspace of the row")
+        self.keys.setText("\n".join(keys))
 
     def _put(self, key, value):
         was_on = self.cfg["on"]
@@ -1029,6 +1087,7 @@ class WorkspacesPage(_Page):
         self.m.settings.set(f"{self.m.key}.workspaces", dict(self.cfg))
         self.m.settings.save_quiet()
         self._draw_map()
+        self._enable()
         if key == "on" and was_on and not value:
             in_thread(self.wsp.turn_off, None)
             return

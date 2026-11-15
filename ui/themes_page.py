@@ -1205,6 +1205,11 @@ class ThemeDialog(widgets.RoundedDialog):
             "A picture becomes the desktop wallpaper (through Noctalia, swww, hyprpaper or swaybg). A Wallpaper "
             "Engine project.json (or a file in its folder) is played with linux-wallpaperengine. Empty: the "
             "wallpaper is left alone.")
+        self.wallpaper_missing = widgets.label("", 11.5, tone="danger")
+        self.wallpaper_missing.setWordWrap(True)
+        c.addWidget(self.wallpaper_missing)
+        self.wallpaper.textChanged.connect(lambda _t: self._check_wallpaper())
+        self._check_wallpaper()
         v.addWidget(card)
         card, c = _card("SETTINGS PROFILE", "Profiles are made in Settings (top of the page). Each holds its own "
                                              "hotkeys, sizes, sounds…")
@@ -1600,6 +1605,14 @@ class ThemeDialog(widgets.RoundedDialog):
         h.setWordWrap(True)
         layout.addWidget(h)
         return edit
+
+    def _check_wallpaper(self):
+        """A red line under the wallpaper box when the file is gone (moved, renamed, deleted)."""
+        path = os.path.expandvars(os.path.expanduser(self.wallpaper.text().strip().strip('"')))
+        gone = bool(path) and not os.path.exists(path)
+        self.wallpaper_missing.setText("This file was not found, so switching to the theme leaves the wallpaper "
+                                       "as it is." if gone else "")
+        self.wallpaper_missing.setVisible(gone)
 
     def _browse(self, edit: QLineEdit, flt: str):
         p, _ = QFileDialog.getOpenFileName(self, "Choose a file", edit.text(), flt)

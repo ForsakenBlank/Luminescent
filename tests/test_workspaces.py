@@ -158,3 +158,21 @@ def test_changing_a_setting_reuses_the_binds():
     res = subprocess.run([LUA, "-"], input=MOCK + first + "\n" + second + script, capture_output=True, text=True)
     assert res.returncode == 0, res.stderr
     assert res.stdout.split() == ["anim:fade", "1@A", "0"]       # 2 per set now: Right on 2 goes round to 1
+
+
+@needs_lua
+def test_number_keys_pick_inside_the_set():
+    lines = run({"per": 4, "sets": 2, "digits": True}, """
+    at("B", 14) press("SUPER + CONTROL + code:10") out()             -- the 1 key in B's second set
+    at("A", 1) press("SUPER + CONTROL + SHIFT + code:13") out()      -- the 4 key, with the window
+    print(binds["SUPER + CONTROL + code:14"] == nil)                 -- 5 is not in a set of 4
+    """)
+    assert lines == ["13@B", "win>4@A", "true"]
+
+
+def test_first_monitor_choice():
+    mons = [{"name": "L", "x": 0}, {"name": "R", "x": 1920}]
+    rules = [{"workspaceString": "1", "monitor": "R"}]
+    assert wsp.monitor_order(mons, rules) == ["R", "L"]
+    assert wsp.monitor_order(mons, rules, "L") == ["L", "R"]
+    assert wsp.monitor_order(mons, rules, "gone") == ["R", "L"]

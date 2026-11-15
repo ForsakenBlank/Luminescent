@@ -13,6 +13,7 @@ Markdown formatting that the 👁 button shows rendered.  To-do items can be dra
 a due date (right-click), which adds a Luminescent reminder.
 """
 import os
+import time
 import uuid
 from datetime import datetime
 
@@ -24,9 +25,11 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIcon, QColor
 
 from core import DATA_DIR, theme, widgets, save_json, load_json
+from core.guard import alive
 from core.module import Module
 
 SAVE_PATH = os.path.join(DATA_DIR, "notes.json")
+UNDO_SECONDS = 12                  # how long "Undo" stays on the list after a note is deleted
 NOTE_COLOURS = [("Red", "#E5484D"), ("Orange", "#F76B15"), ("Yellow", "#FFC53D"), ("Green", "#30A46C"),
                 ("Teal", "#12A594"), ("Blue", "#3E63DD"), ("Purple", "#8E4EC6"), ("Pink", "#D6409F")]
 
@@ -565,6 +568,12 @@ class NotePanel(widgets.FloatingPanel):
         new.clicked.connect(self.add_note)
         tl.addWidget(new)
         self.content.addWidget(top)
+        bar = self._undo_bar()
+        if bar is not None:
+            wrap = QVBoxLayout()
+            wrap.setContentsMargins(14, 8, 14, 0)
+            wrap.addWidget(bar)
+            self.content.addLayout(wrap)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -683,7 +692,7 @@ class NotePanel(widgets.FloatingPanel):
         if idx < len(self.data["notes"]) - 1:
             m.addAction("Move down", lambda: self._move_note(idx, 1))
         m.addSeparator()
-        m.addAction("Delete…", lambda: self.delete_note(idx))
+        m.addAction("Delete", lambda: self.delete_note(idx))
         m.exec(pos)
 
     def _decorate_menu(self, m, idx: int):
@@ -865,7 +874,7 @@ class NotePanel(widgets.FloatingPanel):
             m.addAction("Unpin" if pinned else "Pin (shown first, opened first)", lambda: self._pin(idx, not pinned))
             self._decorate_menu(m, idx)
             m.addSeparator()
-            m.addAction("Delete…", lambda: self.delete_note(idx))
+            m.addAction("Delete", lambda: self.delete_note(idx))
         m.addSeparator()
         m.addAction("Exit edit mode" if self.edit_mode else "Edit mode (move, resize, anchor)",
                     lambda: self.set_edit(not self.edit_mode))
@@ -913,17 +922,57 @@ class NotePanel(widgets.FloatingPanel):
             self.m.note_edited(self.data["notes"][idx], self, rebuild=True)
             self.schedule_save()
 
-    def delete_note(self, idx: int):
+    def delete_note(self, idx: int, ask: bool = False):
+        """Delete without asking: the list shows "Undo" for a few seconds. ask=True where that list is not on
+        screen (a sticky note's menu)."""
         if idx is None:
             return
         note = self.data["notes"][idx]
-        if not widgets.confirm(self, "Delete note", f'Delete "{note["name"]}"? This cannot be undone.',
-                               yes="Delete", danger=True):
+        if ask and not widgets.confirm(self, "Delete note", f'Delete "{note["name"]}"?', yes="Delete", danger=True):
             return
+        self._capture_current()                      # what was typed a moment ago is part of what comes back
         self.current = None
         self.data["notes"].pop(idx)
         self.m.note_deleted(note)
+        self.m.trash = (note, idx, time.monotonic())  # no question asked: "Undo" on the list brings it back
         self.show_home()
+
+    def restore_note(self):
+        """Undo of the last delete: the note goes back where it was, with its to-do reminders."""
+        got = self.m.trash
+        self.m.trash = None
+        if not got:
+            return
+        note, idx = got[0], got[1]
+        if any(n.get("id") == note.get("id") for n in self.data["notes"]):
+            return
+        self.data["notes"].insert(min(idx, len(self.data["notes"])), note)
+        for it in note.get("items", []):
+            if it.get("due"):
+                self.m.sync_todo(note, it)
+        self.show_home()
+
+    def _undo_bar(self):
+        """A line above the list for UNDO_SECONDS after a delete."""
+        got = self.m.trash
+        if not got or time.monotonic() - got[2] > UNDO_SECONDS:
+            self.m.trash = None
+            return None
+        bar = QFrame()
+        bar.setObjectName("noteUndo")
+        p = theme.P
+        bar.setStyleSheet(f"#noteUndo {{ background: {p.bg_card}; border: 1px solid {p.border}; "
+                          f"border-radius: {p.radius}px; }}")
+        bl = QHBoxLayout(bar)
+        bl.setContentsMargins(12, 6, 8, 6)
+        text = widgets.label(f'Deleted "{got[0].get("name", "")}"', 12.5, tone="muted")
+        bl.addWidget(text, 1)
+        undo = widgets.button("Undo")
+        undo.clicked.connect(self.restore_note)
+        bl.addWidget(undo)
+        left = int((UNDO_SECONDS - (time.monotonic() - got[2])) * 1000) + 50
+        QTimer.singleShot(left, lambda: alive(bar) and bar.hide())
+        return bar
 
     def _move_note(self, idx: int, delta: int):
         notes = self.data["notes"]
@@ -1116,7 +1165,7 @@ class NotesPage(QWidget):
         mm.addAction("Unpin" if pinned else "📌  Pin (shown first)", lambda: self.m.panel._pin(idx, not pinned))
         self.m.panel._decorate_menu(mm, idx)
         mm.addSeparator()
-        mm.addAction("Delete…", lambda: self.m.panel.delete_note(idx))
+        mm.addAction("Delete…", lambda: self.m.panel.delete_note(idx, ask=not self.m.panel.isVisible()))
         mm.exec(pos)
         self._after_menu()
 
@@ -1218,6 +1267,7 @@ class NotesModule(Module):
         super().__init__(ctx)
         self.panel: NotePanel | None = None
         self.stickies: dict[str, StickyNote] = {}
+        self.trash: tuple | None = None            # (the note deleted last, where it was, when): Notes' Undo
 
     def start(self):
         with self.themed():

@@ -327,6 +327,9 @@ SCHEMA = [
               "Sub-folders become folder cards. .txt/.md/.py files paste as text; other files are pasted as files."),
         Field("auto_paste", "Paste automatically after clicking", "bool", True,
               "When off, the item is only copied to the clipboard."),
+        Field("placeholders", "Fill in {date}, {time} and {clipboard} in text snippets", "bool", False,
+              "When a text snippet is used, {date} becomes today (2026-11-15), {time} the time (14:05), "
+              "{datetime} both, {weekday} the day and {clipboard} what was on the clipboard before."),
         Field("window_width", "Window width", "int", 960, min=400, max=3000),
         Field("window_height", "Window height", "int", 560, min=300, max=2000),
         Field("card_cols", "Columns in the pop-up", "int", 4, min=1, max=12,

@@ -1063,6 +1063,19 @@ class _NoFolder(QWidget):
         self.lay.addWidget(view)
 
 
+def fill_placeholders(text: str, clipboard: str = "", now: datetime | None = None) -> str:
+    """{date}, {time}, {datetime}, {weekday} and {clipboard} in a text snippet (Settings → Clipboard).
+    Anything else in braces is left alone, so code snippets survive."""
+    now = now or datetime.now()
+    values = {"{date}": now.strftime("%Y-%m-%d"), "{time}": now.strftime("%H:%M"),
+              "{datetime}": now.strftime("%Y-%m-%d %H:%M"), "{weekday}": now.strftime("%A"),
+              "{clipboard}": clipboard or ""}
+    for key, value in values.items():
+        if key in text:
+            text = text.replace(key, value)
+    return text
+
+
 class SnippetsModule(Module):
     key = "snippets"
     title = "Snippets"
@@ -1271,7 +1284,10 @@ class SnippetsModule(Module):
         if ext in TEXT_EXT:
             try:
                 with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                    clip.set_text(f.read().strip())
+                    text = f.read().strip()
+                if self.s("placeholders", False):
+                    text = fill_placeholders(text, clip.mime_data().text())
+                clip.set_text(text)
             except Exception as e:
                 self.ctx.notify(self.title, f"Could not read {os.path.basename(path)}: {e}")
                 return False

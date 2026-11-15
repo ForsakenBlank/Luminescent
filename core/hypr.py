@@ -488,6 +488,7 @@ class WindowSync(QObject):
     """
     reloaded = pyqtSignal()
     foreign_opened = pyqtSignal(str, str)      # address, class of another program's new window
+    monitors_changed = pyqtSignal()            # a monitor was plugged in or pulled out
 
     def __init__(self, app: QApplication):
         super().__init__()
@@ -615,6 +616,8 @@ class WindowSync(QObject):
             w = self._by_addr.pop("0x" + data.strip(), None)
             if w is not None:
                 self._addr.pop(w, None)
+        elif name in ("monitoraddedv2", "monitorremovedv2"):
+            self.monitors_changed.emit()
         elif name == "configreloaded":
             log.info("Hyprland config reloaded: reinstalling binds and window rules")
             bootstrap()

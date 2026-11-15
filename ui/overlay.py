@@ -225,7 +225,9 @@ class _Backdrop(QWidget):
         self.invalidate()
 
     def _outside(self, pos) -> bool:
-        return self.panel is None or not self.panel.isVisible() or not self.panel.geometry().contains(pos)
+        if not alive(self.panel):                  # the panel is gone while the overlay is being rebuilt
+            return True
+        return not self.panel.isVisible() or not self.panel.geometry().contains(pos)
 
     def mousePressEvent(self, e):
         self._pressed_outside = e.button() == Qt.MouseButton.LeftButton and self._outside(e.position().toPoint())

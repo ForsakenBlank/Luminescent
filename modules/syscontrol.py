@@ -926,6 +926,7 @@ class WorkspacesPage(_Page):
         from core import workspaces as wsp
         self.m, self.wsp = m, wsp
         self.cfg = wsp.config(m.s("workspaces", {}))
+        self.order = wsp.monitor_order() if hypr.available() else []
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(450)
@@ -976,6 +977,9 @@ class WorkspacesPage(_Page):
         self.map.setFont(theme.qfont(11.5, 500, True))
         self.lay.addWidget(self.map)
         for key, text, tip in (
+                ("split", "Every monitor has its own sets",
+                 "With 2 sets of 4 the first monitor has workspaces 1-8 and the second 9-16, so the keys never "
+                 "throw you onto the other screen. Off: all monitors share the same workspaces."),
                 ("move_keys", "Ctrl+Super+Shift+arrows take the active window along", ""),
                 ("scroll", "Super + scroll wheel goes through the set too", ""),
                 ("scroll_invert", "Scroll the other way", "Scrolling down goes right instead of left"),
@@ -986,6 +990,8 @@ class WorkspacesPage(_Page):
             cb.setChecked(bool(self.cfg[key]))
             cb.setToolTip(tip)
             cb.toggled.connect(lambda v, k=key: self._put(k, bool(v)))
+            if key == "split":
+                cb.setVisible(len(self.order) > 1)
             self.lay.addWidget(cb)
         self.lay.addWidget(_hint("Hyprland forgets these binds when its config reloads; Luminescent puts them back "
                                  "by itself. Switching sets off reloads your config so your own Ctrl+Super+arrow "
@@ -994,11 +1000,12 @@ class WorkspacesPage(_Page):
         self.finish()
 
     def _draw_map(self):
-        per, sets = self.cfg["per"], self.cfg["sets"]
         rows = []
-        for s in range(min(sets, 10)):
-            nums = "  ".join(f"{s * per + i + 1:>2}" for i in range(per))
-            rows.append(f"Set {s + 1}:  {nums}")
+        for name, sets in self.wsp.layout(self.cfg, self.order):
+            if name:
+                rows.append(f"{name}")
+            for n, nums in enumerate(sets):
+                rows.append(f"{'  ' if name else ''}Set {n + 1}:  " + "  ".join(f"{i:>2}" for i in nums))
         self.map.setText("\n".join(rows) + "\n←/→ along a row,  ↑/↓ between rows")
 
     def _put(self, key, value):

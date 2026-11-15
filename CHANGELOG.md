@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.9.1
+
+* **Workspace sets work with more than one monitor.** Every monitor now has its own sets (System Settings →
+  Workspaces → "Every monitor has its own sets", on by default): with 2 sets of 4 the first monitor has workspaces
+  1-8 and the second 9-16. Before, both screens shared 1-8, so Ctrl+Super+Right could throw you onto the other
+  monitor, which also looked like the screen sliding the wrong way. The first monitor is the one your Hyprland
+  config already gives workspace 1 to, else the leftmost, and the page shows which numbers each monitor gets.
+  * A workspace that sits on the wrong screen is brought back to its own monitor instead of pulling you over.
+  * "Keep every workspace" puts each one on its own monitor (before, all of them on whichever screen had the focus).
+  * On a named workspace like `gaming`, the keys take you back to the workspace you were on.
+  * Going round from the last set to the first with Up / Down fades instead of sliding backwards.
+  * A fade from going round no longer sticks to the next key press when you press quickly.
+  * Changing a setting reuses the keys it already has instead of removing and adding them again.
+* **Fixed:** a click on the overlay just as it closed or rebuilt showed "Luminescent error" and rebuilt the overlay.
+* **Fixed:** hotkeys could fail to come back when Hyprland reloaded its config twice in a row.
+
 ## 1.9.0
 
 * **Performance, a new module.** A window full of widgets for everything your computer is doing. Open it from the

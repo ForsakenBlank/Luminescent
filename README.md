@@ -356,6 +356,8 @@ Alt-only shortcuts belong to Doodle (Alt is its draw key); Ctrl+Alt combos never
   each app's DRM fdinfo, every GPU on Windows through Windows' own GPU counters. It only measures while it is on
   screen, or while alerts, rules or automatic Game mode need it.
 * **Workspace sets** (System Settings → Workspaces, Hyprland): split workspaces into sets, e.g. 1-4 and 5-8.
+  With several monitors each one has its own sets (the first monitor 1-8, the second 9-16), so the keys never
+  throw you onto the other screen; switch that off to share one pool.
   Ctrl+Super+Left / Right go through the set you're in and Ctrl+Super+Up / Down jump to the same spot in the next
   set. Going round from the last workspace to the first can fade, slide vertically, skip the animation, stop or carry
   on into the next set, instead of Hyprland sliding the wrong way. Optionally Ctrl+Super+Shift takes the window along

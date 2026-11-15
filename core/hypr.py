@@ -348,7 +348,11 @@ def bind(bind_id: str, keys: str, release: bool = False, non_consuming: bool = F
     if ignore_mods:
         opts.append("ignore_mods = true")
     slot = f"{keys}|{int(release)}|{int(non_consuming)}" + ("|i" if ignore_mods else "")
-    return lua(f"LUMI.bind({lstr(slot)}, {lstr(bind_id)}, {lstr(keys)}, {{ {', '.join(opts)} }})")
+    code = f"LUMI.bind({lstr(slot)}, {lstr(bind_id)}, {lstr(keys)}, {{ {', '.join(opts)} }})"
+    err = lua(code)
+    if err and "LUMI" in err and not bootstrap():   # a second config reload wiped LUMI while binds were going back
+        err = lua(code)
+    return err
 
 
 def unbind(bind_id: str):

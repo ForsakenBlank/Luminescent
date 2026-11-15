@@ -6,7 +6,7 @@ game mode, quiet hours, activation key, a built-in auto clicker) are not in here
 
 ## Overlay & navigation
 - [x] Type anywhere on the overlay to start searching (the command palette opens with what you typed)
-- [ ] Remember the last page instead of always opening on Dashboard (as a setting)
+- [x] Remember the last page instead of always opening on Dashboard (as a setting)
 - [x] Ctrl+1…4 switches overlay pages while it's open
 - [x] Small clock + date in the overlay's top-left corner
 - [x] Status strip in the overlay: running timers, Hearing Guard level, next reminder
@@ -53,7 +53,7 @@ game mode, quiet hours, activation key, a built-in auto clicker) are not in here
 - [x] Per-module colour overrides inside a theme (e.g. Notes in a different accent)
 - [ ] A few more built-in themes (e.g. Midnight Blue, Forest, Rose, High Contrast)
 - [x] Theme switch hotkey (cycles through a folder of themes)
-- [ ] Undo the last theme change
+- [x] Undo the last theme change
 
 ## Clipboard (Snippets)
 - [x] Search box across all snippet folders
@@ -63,7 +63,7 @@ game mode, quiet hours, activation key, a built-in auto clicker) are not in here
 - [ ] Paste as plain text option for rich content
 - [x] Preview a card on hover (bigger image / full text)
 - [ ] Card size slider right in the page (instead of only in Settings)
-- [ ] Text snippets with placeholders (e.g. `{date}`, `{clipboard}`) filled in when pasted
+- [x] Text snippets with placeholders (e.g. `{date}`, `{clipboard}`) filled in when pasted
 
 ## Notes
 - [x] Markdown-style formatting (bold, headings, lists) with a preview toggle
@@ -71,7 +71,7 @@ game mode, quiet hours, activation key, a built-in auto clicker) are not in here
 - [x] Drag to reorder notes and to-do items
 - [x] To-do due dates that create a reminder
 - [ ] Quick-add hotkey: type a line, it goes into a chosen note without opening the panel
-- [ ] Undo after deleting a note (a few seconds to bring it back)
+- [x] Undo after deleting a note (a few seconds to bring it back)
 - [x] Export a note to a .txt / .md file
 - [x] Multiple Notes panels on screen at once (pin a note as its own sticky)
 

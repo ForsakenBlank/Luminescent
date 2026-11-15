@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.9.2
+
+* **Workspace sets** (System Settings → Workspaces):
+  * **Ctrl+Super+1…9** go straight to that workspace of the set you are in (a new switch, off until you tick it).
+    On the second monitor's second set Ctrl+Super+2 is workspace 14. With Shift the active window goes along.
+  * **First monitor**: pick which monitor gets workspace 1 instead of leaving it to Luminescent.
+  * Plugging a monitor in or pulling one out works the sets out again by itself.
+* **Notes: Undo after deleting.** Deleting a note no longer asks "This cannot be undone": it goes at once and the
+  list shows **Undo** for 12 seconds, which puts it back where it was with its to-do reminders. Deleting from a
+  sticky note's menu while the Notes panel is closed still asks first.
+* **Back to the theme before.** A new command in the command palette that switches to the theme you had before
+  this one. Run it again to swap back.
+* **Placeholders in text snippets** (Settings → Clipboard, off until you tick it): `{date}`, `{time}`,
+  `{datetime}`, `{weekday}` and `{clipboard}` (what was copied before) are filled in when a text snippet is used.
+  Other braces are left alone, so code snippets are safe.
+* **Themes:** the theme editor shows a red line under Desktop wallpaper when the file is gone.
+
 ## 1.9.1
 
 * **Workspace sets work with more than one monitor.** Every monitor now has its own sets (System Settings →

@@ -651,6 +651,15 @@ class Launcher:
             self.apply_theme(t["id"])
             self.notify(APP_NAME, f"Theme: {t['name']}", 1500)
 
+    def last_theme(self):
+        """Back to the theme that was on before this one (press again to swap back)."""
+        t = self.themes.get(str(self.themes.data.get("previous") or ""))
+        if t is None or t["id"] == self.themes.data["active"]:
+            self.notify(APP_NAME, "There is no theme to go back to yet.", 2500)
+            return
+        self.apply_theme(t["id"])
+        self.notify(APP_NAME, f"Theme: {t['name']}", 1500)
+
     def _theme_key(self, tid: str):
         t = self.themes.get(tid)
         if t is None or t["id"] == self.themes.data["active"]:
@@ -735,6 +744,7 @@ class Launcher:
             out.append(Entry(f"settings:{s.key}", f"Settings › {s.title}", lambda k=s.key: self.open_settings(k),
                              "settings", "settings"))
         for label, fn in (("Next theme", self.next_theme), ("Previous theme", lambda: self.next_theme(-1)),
+                          ("Back to the theme before (undo a theme switch)", self.last_theme),
                           ("Reset stuck keys", self.reset_keys),
                           ("Check for updates", lambda: self._check_updates(force=True)),
                           ("Update Luminescent now", self.install_update),
@@ -1170,7 +1180,31 @@ def _smoke(launcher: "Launcher", app: QApplication):
         panel.hide()
         panel.deleteLater()
 
-    steps += [performance_pages]
+    def small_things():
+        # a deleted note comes back with Undo, and "Back to the theme before" swaps two themes
+        notes = launcher.modules.get("notes")
+        panel = getattr(notes, "panel", None)
+        if panel is not None:
+            panel.data["notes"].append({"id": "smoke-undo", "name": "Smoke", "type": "note", "content": "x",
+                                        "items": [], "pinned": False, "colour": "", "tags": []})
+            panel.delete_note(panel.index_of("smoke-undo"))
+            assert panel.index_of("smoke-undo") is None and notes.trash, "the note was not deleted"
+            panel.restore_note()
+            assert panel.index_of("smoke-undo") is not None, "Undo did not bring the note back"
+            panel.delete_note(panel.index_of("smoke-undo"))
+            notes.trash = None
+            panel.show_home()
+        store = launcher.themes
+        first = store.data["active"]
+        other = next((t["id"] for t in store.themes() if t["id"] != first), None)
+        if other:
+            store.apply(other)
+            launcher.last_theme()
+            assert store.data["active"] == first, "Back to the theme before did not go back"
+            launcher.last_theme()
+            assert store.data["active"] == other
+            store.apply(first)
+    steps += [performance_pages, small_things]
     steps += [launcher.open_palette, launcher.open_palette, launcher.overlay.hide, theme_editor, gradient_editor,
               picture_on_dashboard, picture_gone, launcher.overlay.hide,
               lambda: launcher.apply_theme("light"), lambda: launcher.apply_theme("dark"), theme_keys,

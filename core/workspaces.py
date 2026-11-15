@@ -11,7 +11,8 @@ gives workspace 1 to, else the leftmost. Switched off, all monitors share 1-8 as
     choice: a fade, a vertical slide, no animation, stop at the ends, carry on into the next set, or Hyprland's
     own slide.
   * Ctrl+Super+Up / Down go to the same spot in the previous / next set (2 → 6 → 10), sliding vertically.
-  * Optionally the same keys with Shift move the active window along, and Super + the scroll wheel cycles too.
+  * Optionally the same keys with Shift move the active window along, Super + the scroll wheel cycles too, and
+    Ctrl+Super+1…9 go straight to that workspace of the set you are in.
   * More workspaces: every workspace of every set can be kept (persistent) so it is there before anything opens on
     it, and Caelestia's bar is told how many make a set, so it shows the set you are in.
 
@@ -27,7 +28,8 @@ from core import hypr
 log = logging.getLogger("workspaces")
 
 DEFAULTS = {"on": False, "per": 4, "sets": 2, "wrap": "fade", "vertical": "slidevert", "move_keys": True,
-            "scroll": False, "scroll_invert": False, "persistent": True, "bar": True, "split": True}
+            "scroll": False, "scroll_invert": False, "persistent": True, "bar": True, "split": True, "first": "",
+            "digits": False}
 
 WRAPS = [("fade", "Fade (no direction)"), ("vertical", "Slide up / down"), ("instant", "No animation"),
          ("next_set", "Carry on into the next set (Right on 4 goes to 5)"), ("stop", "Stop at the first and last"),
@@ -46,6 +48,7 @@ def config(saved: dict | None) -> dict:
         out.update({k: v for k, v in saved.items() if k in DEFAULTS})
     out["per"] = max(1, min(10, int(out["per"])))
     out["sets"] = max(1, min(10, int(out["sets"])))
+    out["first"] = str(out["first"] or "")
     return out
 
 
@@ -167,6 +170,11 @@ function W.set(dy, move)
   end
   W.go(base + ns * W.per + pos + 1, style, move)
 end
+function W.pick(i, move)                       -- the i-th workspace of the set you are in
+  if i > W.per then return end
+  local n, base = W.cur()
+  W.go(base + math.floor((n - 1) / W.per) * W.per + i, nil, move)
+end
 function W.key(keys, others, fn)
   W.fns[keys] = fn
   local s = W.slots[keys]
@@ -177,9 +185,10 @@ end
 """
 
 
-def monitor_order(mons: list | None = None, rules: list | None = None) -> list[str]:
+def monitor_order(mons: list | None = None, rules: list | None = None, first: str = "") -> list[str]:
     """The monitors in the order their blocks of workspaces go. A monitor your own config already gives
-    workspaces to (workspace rule "1" on HDMI-A-2) keeps them, so it comes first; the rest go left to right."""
+    workspaces to (workspace rule "1" on HDMI-A-2) keeps them, so it comes first; the rest go left to right.
+    `first` (Workspaces → First monitor) puts that one in front whatever the config says."""
     mons = hypr.query("monitors") if mons is None else mons
     rules = hypr.query("workspacerules") if rules is None else rules
     lowest: dict[str, int] = {}
@@ -191,7 +200,11 @@ def monitor_order(mons: list | None = None, rules: list | None = None) -> list[s
             lowest[mon] = min(lowest.get(mon, 10 ** 9), int(ws))
     real = [m for m in mons or [] if isinstance(m, dict) and m.get("name")]
     real.sort(key=lambda m: (lowest.get(m["name"], 10 ** 9), m.get("x", 0), m.get("y", 0), m["name"]))
-    return [m["name"] for m in real]
+    names = [m["name"] for m in real]
+    if first in names:
+        names.remove(first)
+        names.insert(0, first)
+    return names
 
 
 def layout(cfg: dict, order: list[str]) -> list[tuple[str, list[list[int]]]]:
@@ -224,6 +237,14 @@ def _lua_code(cfg: dict, anim: dict, order: list[str], own_rules: set, stray: li
         if cfg["move_keys"]:
             lines.append(f"W.key({q('SUPER + CONTROL + SHIFT + ' + key)}, {others(MODS_SHIFT, key)}, "
                          f"function() {call[:-1]}, true) end)")
+    if cfg["digits"]:                                 # by key code (10 = the 1 key), so it works on every layout
+        for i in range(1, min(cfg["per"], 10) + 1):
+            code, sym = f"code:{9 + i}", str(i % 10)
+            lines.append(f"W.key({q('SUPER + CONTROL + ' + code)}, "
+                         f"{others(MODS, code)[:-2]}, {others(MODS, sym)[2:]}, function() W.pick({i}) end)")
+            if cfg["move_keys"]:
+                lines.append(f"W.key({q('SUPER + CONTROL + SHIFT + ' + code)}, {others(MODS_SHIFT, code)[:-2]}, "
+                             f"{others(MODS_SHIFT, sym)[2:]}, function() W.pick({i}, true) end)")
     if cfg["scroll"]:
         up, down = ("W.step(-1)", "W.step(1)") if cfg["scroll_invert"] else ("W.step(1)", "W.step(-1)")
         for key, call in (("mouse_up", up), ("mouse_down", down)):
@@ -270,7 +291,7 @@ def apply(saved: dict | None) -> str:
     # a one-off fade may be set this very moment: put your own animation back before reading it
     hypr.lua("if LUMI and LUMI.ws and LUMI.ws.temp then pcall(hl.animation, LUMI.ws.anim) LUMI.ws.temp = false end")
     rules = [r for r in (hypr.query("workspacerules") or []) if isinstance(r, dict)]
-    order = monitor_order(None, rules)
+    order = monitor_order(None, rules, str(cfg["first"] or ""))
     own = {r.get("workspaceString") for r in rules}
     err = hypr.lua(_lua_code(cfg, _anim(), order, own, _stray(cfg, order, hypr.query("workspaces"))))
     if not err and cfg["bar"]:

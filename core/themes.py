@@ -217,6 +217,8 @@ class ThemeStore(QObject):
         t = self.get(tid)
         if t is None:
             return
+        if self.data.get("active") != tid:
+            self.data["previous"] = self.data.get("active", "")     # "Back to the theme before"
         self.data["active"] = tid
         self.save()
         theme.use(self.palette_values(t))

@@ -926,7 +926,7 @@ class WorkspacesPage(_Page):
         from core import workspaces as wsp
         self.m, self.wsp = m, wsp
         self.cfg = wsp.config(m.s("workspaces", {}))
-        self.order = wsp.monitor_order() if hypr.available() else []
+        self.order = wsp.monitor_order(first=self.cfg["first"]) if hypr.available() else []
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(450)
@@ -964,10 +964,20 @@ class WorkspacesPage(_Page):
             self.vert.addItem(t, v)
         self.vert.setCurrentIndex(max(0, self.vert.findData(self.cfg["vertical"])))
         self.vert.activated.connect(lambda _i: self._put("vertical", self.vert.currentData()))
-        calm(self.per, self.sets, self.wrap, self.vert)
-        for i, (text, w) in enumerate((("Workspaces in a set", self.per), ("Sets (Up / Down)", self.sets),
-                                       ("Going round from the last to the first", self.wrap),
-                                       ("Switching sets looks like", self.vert))):
+        self.first = QComboBox()
+        self.first.addItem("Automatic (the one with workspace 1, else the leftmost)", "")
+        for name in sorted(self.order):
+            self.first.addItem(name, name)
+        self.first.setCurrentIndex(max(0, self.first.findData(self.cfg["first"])))
+        self.first.setToolTip("Which monitor gets workspace 1 and up; the next one carries on after it. Workspace "
+                              "rules in your own Hyprland config that put a workspace on a monitor still win.")
+        self.first.activated.connect(lambda _i: self._put("first", self.first.currentData()))
+        calm(self.per, self.sets, self.wrap, self.vert, self.first)
+        rows = [("Workspaces in a set", self.per), ("Sets (Up / Down)", self.sets),
+                ("Going round from the last to the first", self.wrap), ("Switching sets looks like", self.vert)]
+        if len(self.order) > 1:
+            rows.append(("First monitor (gets workspace 1)", self.first))
+        for i, (text, w) in enumerate(rows):
             grid.addWidget(widgets.label(text, 13), i, 0)
             grid.addWidget(w, i, 1)
         grid.setColumnStretch(2, 1)
@@ -981,6 +991,9 @@ class WorkspacesPage(_Page):
                  "With 2 sets of 4 the first monitor has workspaces 1-8 and the second 9-16, so the keys never "
                  "throw you onto the other screen. Off: all monitors share the same workspaces."),
                 ("move_keys", "Ctrl+Super+Shift+arrows take the active window along", ""),
+                ("digits", "Ctrl+Super+1…9 go to that workspace of the set you are in",
+                 "On the second monitor's second set Ctrl+Super+2 is workspace 14. With Shift (when the option "
+                 "above is on) the active window goes along. Takes over your own Ctrl+Super+number binds."),
                 ("scroll", "Super + scroll wheel goes through the set too", ""),
                 ("scroll_invert", "Scroll the other way", "Scrolling down goes right instead of left"),
                 ("persistent", "Keep every workspace of every set (they exist before anything opens on them)",
@@ -1011,6 +1024,8 @@ class WorkspacesPage(_Page):
     def _put(self, key, value):
         was_on = self.cfg["on"]
         self.cfg[key] = value
+        if key == "first":
+            self.order = self.wsp.monitor_order(first=value)
         self.m.settings.set(f"{self.m.key}.workspaces", dict(self.cfg))
         self.m.settings.save_quiet()
         self._draw_map()
@@ -1181,6 +1196,9 @@ class SystemModule(Module):
             if sync is not None and not self._ws_hooked:
                 self._ws_hooked = True
                 sync.reloaded.connect(lambda: QTimer.singleShot(600, self.apply_workspaces) if self.running else None)
+                # a monitor plugged in or pulled out: the blocks of workspaces are worked out again
+                sync.monitors_changed.connect(
+                    lambda: QTimer.singleShot(1200, self.apply_workspaces) if self.running else None)
         k = int(self.s("night_kelvin", 6500) or 6500)
         if self.s("night_on", False) and k < 6500:
             QTimer.singleShot(2000, lambda: self.night.set(k))

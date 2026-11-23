@@ -73,3 +73,25 @@ fn settings_json_round_trips_through_the_store() {
     assert_eq!(lum_fixtures::without_whitespace(&after), lum_fixtures::without_whitespace(&before));
     assert_eq!(after, before, "settings.json is written exactly as Python writes it");
 }
+
+#[test]
+fn usage_files_round_trip_and_read_back() {
+    use jiff::civil::{Date, DateTime};
+    use lum_core::clock::FixedClock;
+    use lum_core::usage::Usage;
+    use std::sync::Arc;
+
+    let (_dir, home) = sample_copy();
+    let paths = lum_core::Paths::at(&home);
+    let usage_before = fs::read_to_string(paths.usage_file()).unwrap();
+    let activity_before = fs::read_to_string(paths.activity_file()).unwrap();
+    let clock = Arc::new(FixedClock::new(DateTime::constant(2026, 11, 23, 14, 30, 0, 0)));
+    let mut usage = Usage::new(&paths, clock);
+
+    let today = usage.day_activity(Some(Date::constant(2026, 11, 23)));
+    assert_eq!(today.len(), activity_before.lines().filter(|l| l.contains("2026-11-23")).count());
+    assert!(usage.stats()["items"].is_object());
+    usage.flush();
+    assert_eq!(fs::read_to_string(paths.usage_file()).unwrap(), usage_before);
+    assert_eq!(fs::read_to_string(paths.activity_file()).unwrap(), activity_before);
+}

@@ -31,7 +31,7 @@ adding a crate, check it is maintained, works on both Linux and Windows (or sits
 | logging | logs | `tracing`, `tracing-subscriber`, `tracing-appender` | 1 |
 | threading / QTimer | background work | `tokio` (services), `crossbeam-channel` (to the UI), `rayon` (thumbnails, OCR) | 1 |
 | ast-walking evaluator | calculator | hand-written Pratt parser in `lum-calc` | 8 |
-| datetime | dates and times | `chrono` | 1 |
+| datetime | dates and times | `jiff` (chrono is flagged unmaintained by RustSec, see D7) | 1 |
 | uuid | ids | `uuid` (v4, cut to 10 hex chars like the Python ids) | 1 |
 | zipfile / tarfile | backups, updates | `zip`, `tar`, `flate2` | 1, 15 |
 | shlex | command lines | `shlex` | 3 |

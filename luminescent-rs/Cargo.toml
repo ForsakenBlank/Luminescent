@@ -12,7 +12,7 @@ lum-core = { path = "crates/lum-core" }
 lum-fixtures = { path = "crates/lum-fixtures" }
 
 anyhow = "1"
-chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+jiff = "1"
 clap = { version = "4", features = ["derive"] }
 crc32fast = "1"
 crossbeam-channel = "0.5"

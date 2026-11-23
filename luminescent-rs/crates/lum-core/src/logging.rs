@@ -10,7 +10,7 @@ use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use chrono::Local;
+use jiff::ZonedDateTime;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::Writer;
@@ -64,7 +64,7 @@ where
         write!(
             writer,
             "{} {:<7} {}: ",
-            Local::now().format("%H:%M:%S"),
+            ZonedDateTime::now().strftime("%H:%M:%S"),
             level_name(*meta.level()),
             logger_name(meta.target())
         )?;

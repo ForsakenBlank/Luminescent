@@ -1,0 +1,13 @@
+[package]
+name = "lum-fixtures"
+description = "Reads the golden fixtures made from the Python app. Only used by tests."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

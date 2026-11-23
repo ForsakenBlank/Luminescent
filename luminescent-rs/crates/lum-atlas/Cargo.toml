@@ -1,0 +1,13 @@
+[package]
+name = "lum-atlas"
+description = "Atlas Sync wire protocol, records, shadow store and host (phase 13)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lum-core = { path = "../lum-core" }
+
+[lints]
+workspace = true

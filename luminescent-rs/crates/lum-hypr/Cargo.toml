@@ -1,0 +1,13 @@
+[package]
+name = "lum-hypr"
+description = "Hyprland sockets, the LUMI Lua bootstrap, binds, window rules and workspace sets (phase 3)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lum-core = { path = "../lum-core" }
+
+[lints]
+workspace = true

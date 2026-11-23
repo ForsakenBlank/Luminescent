@@ -1,0 +1,24 @@
+[package]
+name = "luminescent"
+description = "Luminescent: small tools a hotkey away."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+crc32fast.workspace = true
+interprocess.workspace = true
+lum-core.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

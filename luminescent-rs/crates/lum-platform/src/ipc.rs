@@ -1,9 +1,11 @@
 //! The ctl socket: how `luminescent ctl <command>`, a second start, a compositor bind or a script talk to the
 //! running app. A Unix socket in `$XDG_RUNTIME_DIR/luminescent/` on Linux, a named pipe on Windows.
 //!
-//! One request per connection: the client writes one line, the app answers and closes the connection.
+//! One request per connection: the client writes one line and reads one line back, then hangs up. The app waits
+//! for that before it closes its end, because a Windows pipe closed from the server side can lose an answer the
+//! client has not read yet.
 
-use std::io::{self, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 #[cfg(unix)]
 use std::path::PathBuf;
 use std::time::Duration;
@@ -17,6 +19,7 @@ use tokio::sync::oneshot;
 
 const MAX_LINE: u64 = 64 * 1024;
 const ANSWER_WITHIN: Duration = Duration::from_secs(5);
+const HANG_UP_WITHIN: Duration = Duration::from_secs(2);
 
 /// A line that came in, and where its answer goes.
 #[derive(Debug)]
@@ -91,16 +94,27 @@ impl CtlEndpoint {
 
     /// Sends one line to the running app and gives back its answer. Blocks; for the command line.
     pub fn request(&self, line: &str, timeout: Duration) -> io::Result<String> {
-        let stream = Stream::connect(self.name()?)?;
-        stream.set_recv_timeout(Some(timeout))?;
-        stream.set_send_timeout(Some(timeout))?;
-        let mut writer = &stream;
-        writer.write_all(format!("{}\n", line.trim()).as_bytes())?;
-        writer.flush()?;
-        let mut answer = String::new();
-        BufReader::new(&stream).take(MAX_LINE).read_to_string(&mut answer)?;
-        Ok(answer.trim_end().to_owned())
+        // named pipes have no read timeouts, so the whole exchange runs on a helper thread and is waited for
+        let name = self.name()?;
+        let line = line.trim().replace('\n', " ");
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(exchange(name, &line));
+        });
+        rx.recv_timeout(timeout).unwrap_or_else(|_| {
+            Err(io::Error::new(io::ErrorKind::TimedOut, "Luminescent did not answer in time"))
+        })
     }
+}
+
+fn exchange(name: Name<'static>, line: &str) -> io::Result<String> {
+    let stream = Stream::connect(name)?;
+    let mut writer = &stream;
+    writer.write_all(format!("{line}\n").as_bytes())?;
+    writer.flush()?;
+    let mut answer = String::new();
+    BufReader::new(&stream).take(MAX_LINE).read_line(&mut answer)?;
+    Ok(answer.trim_end().to_owned())
 }
 
 /// Answers connections until the runtime shuts down, handing each line to `requests`.
@@ -133,8 +147,20 @@ async fn answer(conn: TokioStream, requests: crossbeam_channel::Sender<CtlReques
         }
     };
     let mut writer = &conn;
-    writer.write_all(format!("{text}\n").as_bytes()).await?;
-    writer.flush().await
+    writer.write_all(format!("{}\n", text.replace('\n', " ")).as_bytes()).await?;
+    writer.flush().await?;
+    // wait for the client to hang up (or give up after a moment) before this end closes
+    let mut rest = [0u8; 256];
+    let _ = tokio::time::timeout(HANG_UP_WITHIN, async {
+        let mut reader = &conn;
+        while let Ok(n) = reader.read(&mut rest).await {
+            if n == 0 {
+                break;
+            }
+        }
+    })
+    .await;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -9,13 +9,13 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 2 %   [....................]   Current phase: Phase 0 done, Phase 1 is next
+Overall: 7 %   [#...................]   Current phase: Phase 1 done, Phase 2 is next
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
 |---|---|---|---|---|---|---|
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
-| 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 0 % | not started |
+| 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 0 % | not started |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | not started |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
@@ -49,10 +49,10 @@ Overall: 2 %   [....................]   Current phase: Phase 0 done, Phase 1 is 
 - [x] 100 %: BASELINE.md, measuring scripts, inventory reviewed
 
 ### Phase 1: Workspace + core infrastructure
-- [ ] 25 %: workspace, toolchain, lints, CI green, CLAUDE.md in place
-- [ ] 50 %: paths, storage, logging, settings + profiles + migrations passing fixtures
-- [ ] 75 %: event bus, actions, usage, backups, guard, start guard, module trait
-- [ ] 100 %: binary with CLI, single instance, ctl socket, `--smoke`, CI green on both systems
+- [x] 25 %: workspace, toolchain, lints, CI green, CLAUDE.md in place
+- [x] 50 %: paths, storage, logging, settings + profiles + migrations passing fixtures
+- [x] 75 %: event bus, actions, usage, backups, guard, start guard, module trait
+- [x] 100 %: binary with CLI, single instance, ctl socket, `--smoke`, CI green on both systems
 
 ### Phase 2: UI foundation + widget kit
 - [ ] 25 %: eframe skeleton, fonts, tokens, multi-monitor transparent overlay demo
@@ -143,6 +143,65 @@ Overall: 2 %   [....................]   Current phase: Phase 0 done, Phase 1 is 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
 
+### 2026-11-23, Phase 1 finished (100 %, overall 7 %)
+
+**Done.**
+* `luminescent-rs/` is a Cargo workspace with every crate from ARCHITECTURE.md (the later ones are empty), Rust
+  1.97.0 pinned in `rust-toolchain.toml`, workspace lints (clippy warnings fail CI), `rustfmt.toml`,
+  `clippy.toml`, `deny.toml`, and `luminescent-rs/CLAUDE.md` with the real commands.
+* `.github/workflows/rust.yml`: fmt, clippy `-D warnings`, tests and `--smoke` on ubuntu-22.04 and
+  windows-latest, plus `cargo deny`, only for changes under `luminescent-rs/`. `check.yml` is untouched.
+* `lum-fixtures` (dev-dependency): reads fixtures, `{"int"}` / `{"float"}` numbers, hex, `{"error", "message"}`
+  outcomes, placeholders, whitespace-free comparison, copying fixture folders into temp dirs.
+* `lum-core`: paths, `pyjson` (Python's `json.dump` byte for byte), atomic `store`, rotating `logging` in the
+  Python line format, `clock` (fake clock for tests), settings schema embedded per OS, the store with every
+  `_migrate` rule and profiles, `events`, `actions`, `usage`, `backup` (export, check, restore, weekly keep 5),
+  `guard` (`safely`, `Faults`, `StartGuard`, panic hook to crash.log), `module` (`Module`, `ModuleHost`).
+* `lum-platform`: single-instance file lock, the ctl socket (Unix socket / named pipe), quit signals.
+* `luminescent` binary: clap CLI (`--smoke`, `--bench-startup`, `--safe-mode`, `--strip-metadata` stub,
+  `ctl ping|status|overlay|palette|settings|action <id>|quit`), a 2-thread tokio runtime for services, a second
+  start that hands over and exits, clean shutdown (usage flushed, modules stopped, start guard cleared, socket
+  removed).
+* Tests: defaults on both systems, all 19 migration cases (known keys exact, unknown keys kept), the 8 profile
+  steps file for file, backup members and refusals, a Python-made backup restored byte for byte, all 24 JSON
+  files in `sample_home` saved back byte for byte, and the real binary driven end to end (smoke, second start,
+  ctl, quit). 53 tests.
+* Numbers (BASELINE.md): 17 ms start to ready (Python 276 ms), 0.00 % idle CPU, 0 wake-ups, 5 MB RSS (Python
+  114 MB), 2.8 MB binary. `tools/measure_rust.sh` measures the same way as `measure_python.sh`.
+
+**Left.** Nothing in phase 1. No module is ported yet: `modules()` in `crates/luminescent/src/launcher.rs` is the
+list each later phase adds to.
+
+**Surprising, worth knowing in later phases.**
+* **Phase 0 fixes.** The repo's root `.gitignore` (`settings.json`, `data/`) had kept `sample_home/settings.json`
+  and all of `sample_home/data/` out of git; `luminescent-rs/.gitignore` now re-includes them (the rule can not
+  live in `fixtures/`, which the generator wipes). And `settings_defaults.json` held the Linux defaults twice,
+  because `importlib.reload` hands back the same module object; the generator now reads defaults inside its loop.
+  So the phase 0 note is wrong: Windows defaults differ in `automation.shell` (`cmd`) and `vault.storage_path`.
+* **chrono is flagged unmaintained by RustSec**, so `cargo deny` failed; dates use `jiff` 1.0 now (D7). jiff 1.0
+  renamed `Zoned` to `ZonedDateTime`; most examples online still show the 0.2 names. `zip` is at 9.x.
+* **Write files with `lum_core::store::save_json(path, value, style)` and the style the Python module uses**:
+  settings and profiles `Style::indented(2)`, usage `indented(1)`, many small files `Style::COMPACT`. The
+  `sample_home` test shows which file uses which. Serde models must keep key order (`preserve_order` is on) and
+  unknown fields.
+* Python's `_migrate` raises part way through on a section that is not an object (`"ui": "not a dict"`) and keeps
+  what it already changed; `settings/migrate.rs` does the same on purpose.
+* Python restarts a module that tripped the fault limit on the very next settings save (its snapshot is set to
+  off, so "on" counts as a change). Kept for parity; it may be worth asking the user whether that is wanted.
+* Python counts every tool run twice in usage.json; Rust counts once (D14).
+* The main thread runs a crossbeam `select!` loop over ctl requests, service messages and the usage flush timer.
+  **Phase 2 must move that into eframe's update**: drain the same two channels each frame, and give services a
+  way to call `ctx.request_repaint()` so a ctl request or a timer wakes the UI without polling.
+* `clippy.toml` allows unwrap in `#[test]` functions only; integration test files under `tests/` start with
+  `#![allow(clippy::unwrap_used)]` for their helpers.
+* To catch Windows-only lint errors before CI: `rustup target add x86_64-pc-windows-gnu` and
+  `cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings` (an unused import
+  behind `cfg(unix)` broke one CI run).
+* Copying `sample_home` as a data folder starts in safe mode: its `starting.json` records a failed start. Delete
+  that file first (the measuring script does).
+* A second start waits up to 3 s for the lock before handing over, like Python's `tryLock(3000)`, so tests that
+  start a second copy take a few seconds.
+
 ### 2026-11-23, Phase 0 finished (100 %, overall 2 %)
 
 **Done.**
@@ -194,6 +253,11 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 1 (optional, does not block phase 2):** run `luminescent-rs/tools/measure_rust.sh` on your Hyprland PC
+  (it builds the release binary first) and paste the row into BASELINE.md next to the Python one. There is no
+  PowerShell version yet; on Windows, `cargo run --release -p luminescent -- --bench-startup` gives the in-process
+  start time.
 
 * **Phase 0 (optional, does not block phase 1):** run the measuring scripts on your Hyprland PC and on Windows 11
   and paste the rows into the table in [BASELINE.md](BASELINE.md). The commands are in BASELINE.md under "On your

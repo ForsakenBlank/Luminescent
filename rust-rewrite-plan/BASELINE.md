@@ -21,6 +21,28 @@ Hyprland, so no hotkeys), a fresh data folder. Python 3.13.18, PyQt6 6.12.1 on Q
 | Program folder size | PyQt6 alone is 273 MB in the venv | ≤ 30 MB | The PyInstaller build is the number to compare in phase 15 |
 | Fixture generator (`make_fixtures.py`) | 3.9 s | n/a | |
 
+### The Rust app, phase 1 (headless core, no UI yet)
+
+Measured with `luminescent-rs/tools/measure_rust.sh` in the same way (start to the "ready:" log line, 5 timed
+starts after one warm-up, then 60 s idle). Release build, Intel Xeon at 2.3 GHz, 4 threads (a slightly different
+cloud machine from the Python row). Phase 1 has no window, tray, hotkeys or modules yet, so this is the cost of
+the core: settings, profiles, logging, the start guard, the ctl socket and two service threads. The comparison
+that matters comes in phase 3 (Hello tray) and phase 5 (the overlay).
+
+| What | Python 1.9.21 (headless) | Rust, phase 1 (headless) | Rust budget |
+|---|---|---|---|
+| Start to "ready" log line | 276 ms median, 274 ms best | **17 ms** median, 16 ms best (fresh folder); 17 / 17 ms with a copy of `fixtures/sample_home` | ≤ 250 ms |
+| `main()` to ready (`--bench-startup`, inside the process) | n/a | 1.1 to 2.1 ms | n/a |
+| Idle CPU, 60 s | 0.70 % | **0.00 %** | 0.0 % |
+| Wake-ups while idle | 1.2 a second | **0.0** a second | under 1 a second |
+| Idle memory (RSS) | 114 MB | **5 MB** | ≤ 60 MB |
+| Threads / child processes | 2 / 0 | 3 / 0 (main + two service threads) | n/a |
+| `--smoke` | 16.4 s | 12 to 14 ms | n/a |
+| Program size | PyQt6 alone is 273 MB | 2.8 MB (one binary) | ≤ 30 MB |
+
+Most of the 17 ms is the measuring loop itself (it polls the log every 10 ms and starts `grep` each time); the
+app is ready about 2 ms after `main()` starts.
+
 ### Not measurable without a screen
 
 These need a real desktop and are filled in from the table below, or by the phase that owns them:

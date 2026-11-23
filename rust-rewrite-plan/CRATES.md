@@ -20,7 +20,7 @@ adding a crate, check it is maintained, works on both Linux and Windows (or sits
 | numpy | A-weighting FIR, RMS | hand-written IIR biquads; `realfft` only if needed | 12 |
 | cryptography | vault, Atlas | `aes-gcm`, `pbkdf2`, `sha2`, `hmac`, `zeroize`, `rand` / `getrandom` | 13 |
 | segno | QR codes | `qrcode` (PNG and SVG output) | 8 |
-| requests / urllib | currency, link previews, updates, webhooks | `ureq` on worker threads, or `reqwest` on the tokio runtime (pick one in phase 1) | 1, 8 |
+| requests / urllib | currency, link previews, updates, webhooks | `ureq` inside `spawn_blocking` (picked in phase 1, see D16) | 8 |
 | psutil | processes, CPU, disks, network, sensors | `sysinfo`; `procfs` for Linux extras | 11 |
 | pulsectl | volumes, sinks | `libpulse-binding` (works with pipewire-pulse) or `pipewire` | 11, 12 |
 | keyboard (Windows) | global hook | `windows` crate: `SetWindowsHookExW(WH_KEYBOARD_LL)` on its own thread | 3 |

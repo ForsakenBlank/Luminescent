@@ -1,0 +1,6 @@
+{
+  "pins": [
+    "cargo build --release",
+    "git status"
+  ]
+}

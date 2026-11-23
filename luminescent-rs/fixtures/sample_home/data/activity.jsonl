@@ -1,0 +1,3 @@
+{"t": "2026-11-23T09:01:00", "kind": "run", "label": "Firefox"}
+{"t": "2026-11-23T10:30:00", "kind": "timer", "label": "Focus", "secs": 1500.0}
+{"t": "2026-11-23T11:00:00", "kind": "reminder", "label": "Drink some water"}

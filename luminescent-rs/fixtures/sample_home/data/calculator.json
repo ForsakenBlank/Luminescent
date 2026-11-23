@@ -1,0 +1,38 @@
+{
+ "history": [
+  {
+   "expr": "950*12",
+   "result": "11,400",
+   "value": 11400,
+   "t": "2026-11-22 18:02"
+  },
+  {
+   "expr": "5 km to mi",
+   "result": "3.1068559612 mi",
+   "value": 3.1068559611866697,
+   "t": "2026-11-23 09:15"
+  },
+  {
+   "expr": "today + 45 days",
+   "result": "Thu 7 Jan 2027",
+   "value": null,
+   "t": "2026-11-23 09:16"
+  }
+ ],
+ "pins": [
+  {
+   "name": "Rent",
+   "var": "rent",
+   "expr": "950*12",
+   "value": 11400,
+   "result": "11,400",
+   "folder": "Money",
+   "colour": "#30A46C"
+  }
+ ],
+ "panel": {
+  "visible": true,
+  "base": "dec",
+  "keypad": false
+ }
+}

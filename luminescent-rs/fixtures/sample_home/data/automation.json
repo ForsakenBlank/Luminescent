@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "vars": {
+    "greeting": "Hello",
+    "count": "4"
+  },
+  "workspaces": [
+    {
+      "id": "63c5b2e982",
+      "name": "Example",
+      "enabled": false,
+      "view": {
+        "x": 0,
+        "y": 0,
+        "zoom": 1.0
+      },
+      "nodes": [
+        {
+          "id": "3cc3b1d292",
+          "type": "interval",
+          "x": -420,
+          "y": -120,
+          "title": "",
+          "off": false,
+          "state": {},
+          "fields": {
+            "seconds": 60,
+            "autostart": true,
+            "fire_now": false
+          }
+        },
+        {
+          "id": "ad2e132f65",
+          "type": "now",
+          "x": -420,
+          "y": 120,
+          "title": "",
+          "off": false,
+          "state": {},
+          "fields": {
+            "format": "%H:%M"
+          }
+        },
+        {
+          "id": "5b162de731",
+          "type": "notify",
+          "x": -40,
+          "y": -120,
+          "title": "",
+          "off": false,
+          "state": {},
+          "fields": {
+            "title": "Automation",
+            "message": "Another minute went by.",
+            "style": "card"
+          }
+        },
+        {
+          "id": "c5e8b8e264",
+          "type": "comment",
+          "x": 340,
+          "y": -120,
+          "title": "",
+          "off": false,
+          "state": {},
+          "fields": {
+            "text": "This workspace is off (the switch at the bottom). Turn it on and a card pops up every minute.\n\nDrag from a port to another to wire them. Right-click or double-click the space to add nodes."
+          }
+        }
+      ],
+      "wires": [
+        {
+          "id": "521a2b594c",
+          "src": [
+            "3cc3b1d292",
+            "out:tick"
+          ],
+          "dst": [
+            "5b162de731",
+            "in:run"
+          ]
+        },
+        {
+          "id": "6113eaafcf",
+          "src": [
+            "ad2e132f65",
+            "val:text"
+          ],
+          "dst": [
+            "5b162de731",
+            "field:title"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3b13f96d57",
+      "name": "Clipboard tidy",
+      "enabled": true,
+      "view": {
+        "x": -120,
+        "y": 40,
+        "zoom": 0.8
+      },
+      "nodes": [
+        {
+          "id": "ev",
+          "type": "event",
+          "x": 0,
+          "y": 0,
+          "title": "",
+          "off": false,
+          "state": {},
+          "fields": {
+            "event": "clipboard.changed",
+            "filter": ""
+          }
+        },
+        {
+          "id": "if",
+          "type": "if",
+          "x": 300,
+          "y": 0,
+          "title": "Long?",
+          "off": false,
+          "state": {},
+          "fields": {
+            "a": "{input}",
+            "op": "regex",
+            "b": "^https?://"
+          }
+        },
+        {
+          "id": "nt",
+          "type": "notify",
+          "x": 600,
+          "y": 0,
+          "title": "",
+          "off": true,
+          "state": {
+            "last": "x"
+          },
+          "fields": {
+            "title": "Link copied",
+            "message": "{input}",
+            "style": "card"
+          }
+        }
+      ],
+      "wires": [
+        {
+          "id": "w1",
+          "src": [
+            "ev",
+            "out:fire"
+          ],
+          "dst": [
+            "if",
+            "in:in"
+          ]
+        },
+        {
+          "id": "w2",
+          "src": [
+            "if",
+            "out:yes"
+          ],
+          "dst": [
+            "nt",
+            "in:run"
+          ]
+        }
+      ]
+    }
+  ],
+  "active": "63c5b2e982"
+}

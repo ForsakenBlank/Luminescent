@@ -4,8 +4,12 @@ Everything Luminescent 1.9.21 does, grouped by area, with the phase that rebuild
 the spec. Tick a box when the Rust app does it as well as the Python app. Phase 0 checks this list against the
 code and adds anything missing; phase 15 goes through it line by line before 2.0 ships.
 
-Sizes for scale: about 55 000 lines of Python, 22 modules, 27 settings sections with about 265 settings, 65
-automation node types, 30+ data files.
+Sizes for scale (counted in phase 0): about 55 000 lines of Python, 22 modules, 27 settings sections with 269
+stored settings (273 fields counting the button-only ones), 65 automation node types, 30+ data files.
+
+Phase 0 checked every line below against the code, README.md and CHANGELOG.md (1.5 to 1.9.21) and added the rows
+marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixture in `luminescent-rs/fixtures/`
+(see its README).
 
 ## Base app (phases 1, 3, 15)
 
@@ -23,6 +27,8 @@ automation node types, 30+ data files.
 | [ ] | Event bus (started, overlay opened / closed, theme changed, dashboard switched, item ran, timer finished, reminder fired, over the limit, clipboard changed, keep awake changed) | 1 | `core/events.py` |
 | [ ] | Usage stats (`usage.json`) and today's activity log (`activity.jsonl`) | 1 | `core/usage.py` |
 | [ ] | Export / import backup zip; weekly automatic backup keeping the last 5; vault never included | 1, 7 | `core/backup.py` |
+| [ ] | Old files are migrated on load: settings (nav bar, panel placement, animations, tray items, show on start), themes.json (first run from the old Appearance section, pre-redesign built-ins, theme pack), dashboard layouts 1 and 2, automation defaults *(added in phase 0)* | 1, 4, 6, 10 | `core/settings.py`, `core/themes.py`, `ui/dashboard.py`, `core/automation.py` |
+| [ ] | First start of a downloaded build copies settings and data from the source folder it was built from *(added in phase 0)* | 15 | `core/__init__.py` (`_first_frozen_run`) |
 | [ ] | `--smoke` self-test; `--strip-metadata <paths>` | 1, 13 | `Launcher.py` |
 | [ ] | Tray icon: the sparkle in the accent colour; click opens the overlay; menu editable (Settings → General → Tray menu) | 3, 7 | `Launcher.py` |
 | [ ] | Tray tooltip shows running timers (ticks only while a timer runs) | 3, 8 | `Launcher.py` |
@@ -32,6 +38,7 @@ automation node types, 30+ data files.
 | [ ] | Quit everything hotkey with confirm | 3, 7 | `Launcher.py` |
 | [ ] | Update check once a day; Tray → Update now (download + swap + restart, or `git pull` from source); "what is new" after restart | 15 | `core/updates.py` |
 | [ ] | Launcher entry and icon on Linux; Dolphin service menu; Explorer context menu | 3, 13 | `core/desktop*.py` |
+| [ ] | Sounds for timers and reminders: none, chime, alarm, a custom file (pw-play / paplay, else Qt; Windows system sounds and winsound) *(added in phase 0)* | 3 | `core/sounds.py` |
 
 ## Hotkeys and windows (phase 3)
 
@@ -47,6 +54,16 @@ automation node types, 30+ data files.
 | [ ] | Windows open on the right monitor even when Hyprland holds a new window for most of a second | 3 | `core/hypr.py` |
 | [ ] | Panels open in the middle of the screen with the mouse, or where you left them | 3, 5 | `core/settings.py` (`ui.panel_place`) |
 | [ ] | Floating panels: frameless, on top, translucent, drag by header, edge resize, edit look | 2 | `core/widgets.py` |
+| [ ] | Clipboard that works from a hotkey: wl-copy / wl-paste on Wayland (no focus needed), Qt's clipboard as the fallback *(added in phase 0)* | 3 | `core/clip.py` |
+| [ ] | App icons from the desktop's icon theme (qt6ct, KDE or GNOME theme read by hand); show a file in the file manager *(added in phase 0)* | 3 | `core/desktop.py` |
+
+## Widget kit (phase 2) *(section added in phase 0)*
+
+| Done | Feature | Phase | Spec |
+|---|---|---|---|
+| [ ] | Every dialog and message box in Luminescent's look (vault password, keybind editor, item editor, calibration, variables, date picker) | 2 | `core/widgets.py` |
+| [ ] | Disabled buttons, fields and check boxes look disabled; long names end in "…" | 2 | `core/widgets.py`, `core/theme.py` |
+| [ ] | Sliders jump to where you click; the wheel scrolls the page and only changes a spin box, combo box or slider after it was clicked; spin box text has room from the border | 2 | `core/ux.py` |
 
 ## Overlay and navigation (phase 5)
 
@@ -213,7 +230,7 @@ automation node types, 30+ data files.
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Doodle: hold Alt to draw (left) / erase (right); solo delay; other hotkeys cancel it | 9 | `modules/doodle.py` |
+| [ ] | Doodle: hold Alt to draw (left) / erase (right); solo delay; other hotkeys cancel it; "Start drawing with" a chosen tool or the last one | 9 | `modules/doodle.py` |
 | [ ] | Doodle tools: pen, highlighter, line, rectangle, circle, arrow, text, fill; Shift = straight line; wheel = size | 9 | `modules/doodle.py` |
 | [ ] | Doodle: clear, undo (shared across screens), blackboard, copy screen + drawing, panic, Esc | 9 | `modules/doodle.py` |
 | [ ] | Colour picker: frozen screens, 11 × 11 loupe, formats, arrow nudge, recent 10, to theme accent or new theme | 9 | `modules/colorpicker.py` |
@@ -237,6 +254,7 @@ automation node types, 30+ data files.
 | [ ] | Variables kept between restarts | 10 | `core/automation.py` |
 | [ ] | Pause everything (Settings, tray, hotkey); safety stop for wire loops | 10 | `core/automation.py` |
 | [ ] | Buttons in the palette and the tray | 10 | `core/automation.py` |
+| [ ] | System readings and controls the nodes use: volume, lock / sleep / screen off, temperatures, GPU load, the focused window, internet check (slow parts on a worker thread) *(added in phase 0)* | 10 | `core/system.py` |
 
 ## Prompt Log and Keybinds (phase 13)
 
@@ -284,8 +302,10 @@ automation node types, 30+ data files.
 | [ ] | System Settings: displays (drag, resolution, refresh, scale, rotation, main, VRR, mirror, off, Identify, 15 s revert, Copy as config) | 11 | `core/syscontrol.py` |
 | [ ] | Brightness (DDC/CI, laptop backlight) and night light | 11 | `core/syscontrol.py` |
 | [ ] | Mouse, touchpad, keyboard; windows & desktop (Hyprland); Explorer & taskbar (Windows); appearance; power; sound; This computer | 11 | `core/syscontrol.py` |
+| [ ] | Power & sleep: login screen, screen off and sleep times (Caelestia idle, hypridle, GNOME), lock on sleep, stay awake while playing or plugged in; Windows hibernate and password after sleep *(added in phase 0)* | 11 | `core/syscontrol.py` |
 | [ ] | Keep my changes after a Hyprland reload; Back to my Hyprland config | 11 | `modules/syscontrol.py` |
 | [ ] | Workspace sets: per-monitor sets, slide the way you pressed, named workspaces in the round, wrap modes, Ctrl+Super+1…9, move keys, scroll, persistent, Caelestia bar, first monitor | 11 | `core/workspaces.py` |
+| [ ] | Workspace sets, 1.9.x details: at the end of a set go round / carry on / stop; switching looks like slide the way you pressed / fade / none / Hyprland's own; Up and Down slide vertically; turning sets on leaves windows on their screen (renumbered); monitors plugged in or out re-work the sets; old settings carried over *(added in phase 0)* | 11 | `core/workspaces.py` |
 
 ## Sync and desktop (phases 13, 14)
 
@@ -293,6 +313,7 @@ automation node types, 30+ data files.
 |---|---|---|---|
 | [ ] | Atlas Sync over Wi-Fi: notes both ways, timer time adds up, themes, calendar events and tasks, skipped dates; encrypted with the code | 13 | `core/atlas_sync.py` |
 | [ ] | Caelestia & Glass module: shell config as forms or text with backups, scheme colours, glass per app, Add the app I click next, Lock the screen | 14 | `modules/caelestia.py` |
+| [ ] | Caelestia re-themes its apps (terminals, btop, GTK / Qt apps, Discord, Spotify) when a theme gives it colours; saved scheme colours come back when Caelestia rewrites its scheme *(added in phase 0)* | 14 | `modules/caelestia.py` |
 | [ ] | Wallpaper backends: Caelestia, Noctalia, swww, hyprpaper, swaybg, mpvpaper, linux-wallpaperengine, Windows; custom command | 14 | `core/wallpaper*.py` |
 | [ ] | Your own terminal follows the theme (kitty include line, Windows Terminal profiles, Caelestia fish sequences) | 14 | `core/terminal.py` |
 | [ ] | Start-up text in fish and the fastfetch info box per theme | 14 | `core/terminal.py` |

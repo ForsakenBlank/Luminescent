@@ -9,12 +9,12 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 0 %   [....................]   Current phase: not started (Phase 0 is next)
+Overall: 2 %   [....................]   Current phase: Phase 0 done, Phase 1 is next
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
 |---|---|---|---|---|---|---|
-| 0 | Groundwork | 2 % | 0 % | 2 % | 0 % | not started |
+| 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 0 % | not started |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 0 % | not started |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | not started |
@@ -43,10 +43,10 @@ Overall: 0 %   [....................]   Current phase: not started (Phase 0 is n
 ## Checkpoints
 
 ### Phase 0: Groundwork
-- [ ] 25 %: generator skeleton, all spec dumps
-- [ ] 50 %: behaviour fixtures for all pure logic
-- [ ] 75 %: format fixtures and `sample_home/`
-- [ ] 100 %: BASELINE.md, measuring scripts, inventory reviewed
+- [x] 25 %: generator skeleton, all spec dumps
+- [x] 50 %: behaviour fixtures for all pure logic
+- [x] 75 %: format fixtures and `sample_home/`
+- [x] 100 %: BASELINE.md, measuring scripts, inventory reviewed
 
 ### Phase 1: Workspace + core infrastructure
 - [ ] 25 %: workspace, toolchain, lints, CI green, CLAUDE.md in place
@@ -143,10 +143,58 @@ Overall: 0 %   [....................]   Current phase: not started (Phase 0 is n
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
 
-_(none yet)_
+### 2026-11-23, Phase 0 finished (100 %, overall 2 %)
+
+**Done.**
+* `luminescent-rs/tools/make_fixtures.py` writes `luminescent-rs/fixtures/` (1.4 MB, 31 entries, every one listed
+  in `fixtures/README.md` with what made it and what it pins down). Run it with the repo's `.venv`; it takes about
+  4 s and two runs give no diff. It needs Qt's system libraries (`libegl1 libgl1 libxkbcommon0 libfontconfig1
+  libdbus-1-3`, as in `check.yml`); `opencv-python` and `pulsectl` are not needed.
+* Spec dumps: settings schema for Linux and Windows, defaults, automation nodes, events, pages, theme presets and
+  the theme pack, key tables.
+* Behaviour cases: calculator (sums in degrees and radians, every base and format, the panel's compute with ans,
+  pins, conversions and dates), conversions, date sums, time parsing, reminders (next fire time for every schedule
+  type, descriptions, quick reminders), hotkeys, tones, gradients and generated themes, automation compare and
+  token expansion.
+* Format cases: settings migrations and profiles step by step, themes.json, dashboard.json and automation.json
+  migrations, a real vault with decoy plus a no-AAD-index vault and a pre-rewrite `.hash` vault, Atlas keys, frames
+  and fingerprints plus a whole hello / records / apply conversation, shell histories, a Lua Hyprland config with
+  every edit's exact result, terminal / kitty / fish / fastfetch / Windows Terminal output, backups, and
+  `sample_home/` with every data file.
+* `rust-rewrite-plan/BASELINE.md` with the headless numbers, plus `measure_python.sh` and `measure_python.ps1`.
+* FEATURE_INVENTORY.md checked against the code, README and CHANGELOG: 11 rows and a "Widget kit" section added,
+  counts corrected (269 stored settings, not about 265).
+* `.gitattributes` keeps every file under `luminescent-rs/fixtures/` byte for byte (no line-ending changes on
+  Windows), since vault blobs, histories and configs are compared exactly.
+
+**Left.** Nothing in phase 0 itself. The real-machine numbers are a manual check (below); they are not needed to
+start phase 1.
+
+**Surprising, worth knowing in later phases.**
+* The plan folder lived only on the branch `ccr-fc892c9d-4jloxi`, not on `main`; this phase's branch brings it
+  over.
+* The hidden Python app is not idle: 0.7 % of a core and about 1.2 wake-ups a second with nothing on screen. Find
+  the timer before copying behaviour in phase 3 or 5.
+* Start to ready headless is already 276 ms in Python (imports are lazy). The Rust budget of 250 ms is not a big
+  win on its own; the gains are memory (114 MB now) and everything after start.
+* Settings defaults are the same on Linux and Windows; only help texts and a few labels differ.
+* Python's `_merge` drops unknown settings keys. `settings_migration_cases.json` records what Python does; the Rust
+  test must compare the known keys and check separately that unknown ones survive.
+* `ui/dashboard.py` crashes migrating a layout-1 file whose items list holds a non-object (a real but unlikely bug
+  in the old code). The fixture leaves that case out; the Rust migration should just skip such items.
+* `core/hyprbinds.py` only uses string values from Hyprland's Lua registry, so binds made in a numeric loop show
+  "workspace …". The fixture pins that; improving it is a phase 16 idea, not parity.
+* `tones.surprise()` depends on Python's random number generator. The fixture shows its shape; the Rust port only
+  needs to match `harmony()`, which is pinned exactly.
+* The Windows Terminal fragment only exists in the Windows branch of `core/terminal.py`; the generator reloads the
+  module with `IS_WIN` patched to record it.
+* All time-dependent fixtures use TZ=UTC and Monday 2026-11-23 14:30. Rust tests that read shell history times or
+  Atlas repeat rules must run in UTC too (or convert).
 
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
 
-_(none yet)_
+* **Phase 0 (optional, does not block phase 1):** run the measuring scripts on your Hyprland PC and on Windows 11
+  and paste the rows into the table in [BASELINE.md](BASELINE.md). The commands are in BASELINE.md under "On your
+  machines". If the PowerShell one errors, paste the error instead; it could not be tested in the cloud session.

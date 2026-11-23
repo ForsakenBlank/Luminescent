@@ -105,6 +105,10 @@ impl ModuleHost {
         self.slots.iter().filter(|s| s.running).map(|s| s.module.key()).collect()
     }
 
+    pub fn title(&self, key: &str) -> Option<&'static str> {
+        self.slot(key).map(|s| s.module.title())
+    }
+
     pub fn is_running(&self, key: &str) -> bool {
         self.slot(key).is_some_and(|s| s.running)
     }

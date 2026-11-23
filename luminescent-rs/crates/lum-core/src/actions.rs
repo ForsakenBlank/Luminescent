@@ -71,7 +71,7 @@ impl Registered {
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ActionError {
-    #[error("{0} is not available")]
+    #[error("{0} is not available (not loaded)")]
     UnknownOwner(String),
     #[error("{owner} has no action '{id}' any more")]
     UnknownAction { owner: String, id: String },

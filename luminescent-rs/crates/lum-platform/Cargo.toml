@@ -1,13 +1,21 @@
 [package]
 name = "lum-platform"
-description = "Hotkeys, windows, tray, notifications, clipboard, capture, launching and other OS services (phase 3)."
+description = "Hotkeys, windows, tray, notifications, clipboard, capture, launching and other OS services."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish = false
 
 [dependencies]
-lum-core = { path = "../lum-core" }
+crc32fast.workspace = true
+crossbeam-channel.workspace = true
+interprocess.workspace = true
+lum-core.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

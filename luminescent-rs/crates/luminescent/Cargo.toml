@@ -8,17 +8,15 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-jiff.workspace = true
 clap.workspace = true
-crc32fast.workspace = true
-interprocess.workspace = true
+crossbeam-channel.workspace = true
+jiff.workspace = true
 lum-core.workspace = true
+lum-platform = { path = "../lum-platform" }
 serde_json.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
 
 [lints]
 workspace = true

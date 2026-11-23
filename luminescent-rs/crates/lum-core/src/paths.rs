@@ -13,7 +13,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 pub const APP_NAME: &str = "Luminescent";
-pub const VERSION: &str = "1.9.21";
+/// The Rust app's own version (the workspace version). The Python app it replaces is 1.9.21.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const REPO: &str = "ForsakenBlank/Luminescent";
 
 #[derive(Debug, Clone, PartialEq, Eq)]

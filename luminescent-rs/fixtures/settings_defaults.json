@@ -124,7 +124,7 @@
    "pause_hotkey": "",
    "max_rate": 200,
    "command_timeout": 0,
-   "shell": "bash"
+   "shell": "cmd"
   },
   "snippets": {
    "enabled": true,
@@ -233,7 +233,7 @@
   "vault": {
    "enabled": true,
    "hotkey": "ctrl+alt+q",
-   "storage_path": "<HOME>/.local/share/.idx",
+   "storage_path": "<HOME>/AppData/Local/Microsoft/Windows/Caches/.idx",
    "decrypt_output": "<HOME>/Documents/VaultDecrypted",
    "lock_minutes": 5,
    "secure_delete_passes": 3,

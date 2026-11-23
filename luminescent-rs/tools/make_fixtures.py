@@ -219,9 +219,12 @@ def settings_for(is_win: bool):
 
 def specs():
     tables = {}
+    defaults = {}
     for name, is_win in (("windows", True), ("linux", False)):     # linux last, so the module ends as it began
         mod = settings_for(is_win)
         tables[name] = mod
+        # reload() hands back the same module object, so anything per system has to be read inside this loop
+        defaults[name] = mod.defaults()
         write_json(f"settings_schema.{name}.json", {
             "shared_sections": sorted(mod.SHARED_SECTIONS), "default_profile": mod.DEFAULT_PROFILE,
             "field_types": ["hotkey", "text", "dir", "file", "int", "float", "opacity", "bool", "color", "choice",
@@ -229,7 +232,7 @@ def specs():
             "sections": schema_dump(mod)},
             "core/settings.py SCHEMA, reloaded with core.IS_WIN = " + str(is_win),
             f"every section and field on {name}: key, label, type, default, help, choices, limits, restart flag")
-    write_json("settings_defaults.json", {name: mod.defaults() for name, mod in tables.items()},
+    write_json("settings_defaults.json", defaults,
                "core/settings.py defaults() on each system",
                "what settings.json holds on a first start (widget fields are never stored)")
 

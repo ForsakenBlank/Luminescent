@@ -4,6 +4,7 @@
 //! One request per connection: the client writes one line, the app answers and closes the connection.
 
 use std::io::{self, BufReader, Read, Write};
+#[cfg(unix)]
 use std::path::PathBuf;
 use std::time::Duration;
 

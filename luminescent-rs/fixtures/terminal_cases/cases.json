@@ -1,0 +1,1350 @@
+{
+ "names": [
+  "background",
+  "foreground",
+  "cursorColor",
+  "selectionBackground",
+  "black",
+  "brightBlack",
+  "red",
+  "brightRed",
+  "green",
+  "brightGreen",
+  "yellow",
+  "brightYellow",
+  "blue",
+  "brightBlue",
+  "purple",
+  "brightPurple",
+  "cyan",
+  "brightCyan",
+  "white",
+  "brightWhite",
+  "colour16",
+  "colour17",
+  "colour18"
+ ],
+ "slots": {
+  "colour16": "38;5;16",
+  "colour17": "38;5;17",
+  "colour18": "38;5;18",
+  "foreground": "39",
+  "black": "30",
+  "red": "31",
+  "green": "32",
+  "yellow": "33",
+  "blue": "34",
+  "purple": "35",
+  "cyan": "36",
+  "white": "37",
+  "brightBlack": "90",
+  "brightRed": "91",
+  "brightGreen": "92",
+  "brightYellow": "93",
+  "brightBlue": "94",
+  "brightPurple": "95",
+  "brightCyan": "96",
+  "brightWhite": "97"
+ },
+ "info_modules": [
+  [
+   "os",
+   "distro"
+  ],
+  [
+   "kernel",
+   "kernel"
+  ],
+  [
+   "uptime",
+   "uptime"
+  ],
+  [
+   "shell",
+   "shell"
+  ],
+  [
+   "packages",
+   "pkgs"
+  ],
+  [
+   "memory",
+   "memory"
+  ],
+  [
+   "cpu",
+   "cpu"
+  ],
+  [
+   "gpu",
+   "gpu"
+  ],
+  [
+   "wm",
+   "wm"
+  ],
+  [
+   "terminal",
+   "terminal"
+  ],
+  [
+   "disk",
+   "disk"
+  ],
+  [
+   "battery",
+   "battery"
+  ],
+  [
+   "host",
+   "host"
+  ],
+  [
+   "title",
+   "user"
+  ],
+  [
+   "localip",
+   "ip"
+  ],
+  [
+   "datetime",
+   "time"
+  ],
+  [
+   "colors",
+   ""
+  ]
+ ],
+ "themes": [
+  {
+   "name": "dark",
+   "colours": {
+    "primary": "#7B6CF6",
+    "primary_hover": "#9184F8",
+    "primary_muted": "#24213B",
+    "primary_text": "#A99FFA",
+    "on_primary": "#FFFFFF",
+    "bg_base": "#131317",
+    "bg_card": "#1B1B21",
+    "bg_card_hover": "#23232A",
+    "bg_frame": "#0E0E11",
+    "bg_header": "#17171C",
+    "border": "#2A2A30",
+    "text_primary": "#ECECF1",
+    "text_secondary": "#A3A3AF",
+    "text_muted": "#6C6C78",
+    "folder_color": "#1B1B21",
+    "folder_border": "#A99FFA"
+   },
+   "theme_extras": {},
+   "theme_settings": {},
+   "scheme": {
+    "name": "Luminescent",
+    "background": "#131317",
+    "foreground": "#ECECF1",
+    "cursorColor": "#7B6CF6",
+    "selectionBackground": "#24213B",
+    "black": "#1B1B21",
+    "white": "#A3A3AF",
+    "brightBlack": "#6C6C78",
+    "brightWhite": "#ECECF1",
+    "red": "#E27087",
+    "brightRed": "#F38B90",
+    "green": "#A1D5AB",
+    "brightGreen": "#B6E8B2",
+    "yellow": "#EAD4B8",
+    "brightYellow": "#FAE7BD",
+    "blue": "#87ABFA",
+    "brightBlue": "#9EC2FB",
+    "purple": "#7B6CF6",
+    "brightPurple": "#D4B6F8",
+    "cyan": "#91D4D9",
+    "brightCyan": "#A7E7DD",
+    "colour16": "#7B6CF6",
+    "colour17": "#A99FFA",
+    "colour18": "#91D4D9"
+   },
+   "kitty_args": [
+    "-o",
+    "background=#131317",
+    "-o",
+    "foreground=#ECECF1",
+    "-o",
+    "cursor=#7B6CF6",
+    "-o",
+    "selection_background=#24213B",
+    "-o",
+    "color0=#1B1B21",
+    "-o",
+    "color1=#E27087",
+    "-o",
+    "color2=#A1D5AB",
+    "-o",
+    "color3=#EAD4B8",
+    "-o",
+    "color4=#87ABFA",
+    "-o",
+    "color5=#7B6CF6",
+    "-o",
+    "color6=#91D4D9",
+    "-o",
+    "color7=#A3A3AF",
+    "-o",
+    "color8=#6C6C78",
+    "-o",
+    "color9=#F38B90",
+    "-o",
+    "color10=#B6E8B2",
+    "-o",
+    "color11=#FAE7BD",
+    "-o",
+    "color12=#9EC2FB",
+    "-o",
+    "color13=#D4B6F8",
+    "-o",
+    "color14=#A7E7DD",
+    "-o",
+    "color15=#ECECF1"
+   ],
+   "alacritty_args": [
+    "-o",
+    "colors.primary.background=\"#131317\"",
+    "-o",
+    "colors.primary.foreground=\"#ECECF1\"",
+    "-o",
+    "colors.cursor.cursor=\"#7B6CF6\"",
+    "-o",
+    "colors.selection.background=\"#24213B\"",
+    "-o",
+    "colors.normal.black=\"#1B1B21\"",
+    "-o",
+    "colors.bright.black=\"#6C6C78\"",
+    "-o",
+    "colors.normal.red=\"#E27087\"",
+    "-o",
+    "colors.bright.red=\"#F38B90\"",
+    "-o",
+    "colors.normal.green=\"#A1D5AB\"",
+    "-o",
+    "colors.bright.green=\"#B6E8B2\"",
+    "-o",
+    "colors.normal.yellow=\"#EAD4B8\"",
+    "-o",
+    "colors.bright.yellow=\"#FAE7BD\"",
+    "-o",
+    "colors.normal.blue=\"#87ABFA\"",
+    "-o",
+    "colors.bright.blue=\"#9EC2FB\"",
+    "-o",
+    "colors.normal.magenta=\"#7B6CF6\"",
+    "-o",
+    "colors.bright.magenta=\"#D4B6F8\"",
+    "-o",
+    "colors.normal.cyan=\"#91D4D9\"",
+    "-o",
+    "colors.bright.cyan=\"#A7E7DD\"",
+    "-o",
+    "colors.normal.white=\"#A3A3AF\"",
+    "-o",
+    "colors.bright.white=\"#ECECF1\""
+   ],
+   "foot_args": [
+    "-o",
+    "colors.background=131317",
+    "-o",
+    "colors.foreground=ECECF1",
+    "-o",
+    "colors.regular0=1B1B21",
+    "-o",
+    "colors.regular1=E27087",
+    "-o",
+    "colors.regular2=A1D5AB",
+    "-o",
+    "colors.regular3=EAD4B8",
+    "-o",
+    "colors.regular4=87ABFA",
+    "-o",
+    "colors.regular5=7B6CF6",
+    "-o",
+    "colors.regular6=91D4D9",
+    "-o",
+    "colors.regular7=A3A3AF",
+    "-o",
+    "colors.bright0=6C6C78",
+    "-o",
+    "colors.bright1=F38B90",
+    "-o",
+    "colors.bright2=B6E8B2",
+    "-o",
+    "colors.bright3=FAE7BD",
+    "-o",
+    "colors.bright4=9EC2FB",
+    "-o",
+    "colors.bright5=D4B6F8",
+    "-o",
+    "colors.bright6=A7E7DD",
+    "-o",
+    "colors.bright7=ECECF1"
+   ],
+   "sequences": "\u001b]10;rgb:EC/EC/F1\u001b\\\u001b]11;rgb:13/13/17\u001b\\\u001b]12;rgb:7B/6C/F6\u001b\\\u001b]17;rgb:24/21/3B\u001b\\\u001b]4;0;rgb:1B/1B/21\u001b\\\u001b]4;1;rgb:E2/70/87\u001b\\\u001b]4;2;rgb:A1/D5/AB\u001b\\\u001b]4;3;rgb:EA/D4/B8\u001b\\\u001b]4;4;rgb:87/AB/FA\u001b\\\u001b]4;5;rgb:7B/6C/F6\u001b\\\u001b]4;6;rgb:91/D4/D9\u001b\\\u001b]4;7;rgb:A3/A3/AF\u001b\\\u001b]4;8;rgb:6C/6C/78\u001b\\\u001b]4;9;rgb:F3/8B/90\u001b\\\u001b]4;10;rgb:B6/E8/B2\u001b\\\u001b]4;11;rgb:FA/E7/BD\u001b\\\u001b]4;12;rgb:9E/C2/FB\u001b\\\u001b]4;13;rgb:D4/B6/F8\u001b\\\u001b]4;14;rgb:A7/E7/DD\u001b\\\u001b]4;15;rgb:EC/EC/F1\u001b\\\u001b]4;16;rgb:7B/6C/F6\u001b\\\u001b]4;17;rgb:A9/9F/FA\u001b\\\u001b]4;18;rgb:91/D4/D9\u001b\\",
+   "logo_value": null,
+   "greeting_script": "# Written by Luminescent for the theme's start-up text (theme settings > Terminal). It takes the place\n# of your own fish_greeting while it is here; delete this file, or untick the start-up text in the\n# theme, to get yours back.\nfunction fish_greeting\n    set -l w $COLUMNS\n    command -q fastfetch; or return\n    if test $w -lt 90\n        fastfetch --logo-type none\n    else\n        fastfetch\n    end\nend\n",
+   "kitty_theme_conf": "# Luminescent theme colours, rewritten whenever the theme changes. Do not edit.\nbackground #131317\nforeground #ECECF1\ncursor #7B6CF6\nselection_background #24213B\nselection_foreground #ECECF1\nactive_border_color #7B6CF6\ninactive_border_color #2A2A30\nurl_color #A99FFA\ncolor0 #1B1B21\ncolor1 #E27087\ncolor2 #A1D5AB\ncolor3 #EAD4B8\ncolor4 #87ABFA\ncolor5 #7B6CF6\ncolor6 #91D4D9\ncolor7 #A3A3AF\ncolor8 #6C6C78\ncolor9 #F38B90\ncolor10 #B6E8B2\ncolor11 #FAE7BD\ncolor12 #9EC2FB\ncolor13 #D4B6F8\ncolor14 #A7E7DD\ncolor15 #ECECF1\n"
+  },
+  {
+   "name": "light",
+   "colours": {
+    "primary": "#F2B705",
+    "primary_hover": "#DCA704",
+    "primary_muted": "#FCF1CD",
+    "primary_text": "#8A6A00",
+    "on_primary": "#1A1600",
+    "bg_base": "#FFFFFF",
+    "bg_card": "#F6F6F3",
+    "bg_card_hover": "#EEEEEA",
+    "bg_frame": "#F1F1ED",
+    "bg_header": "#FAFAF8",
+    "border": "#E4E4E1",
+    "text_primary": "#18180F",
+    "text_secondary": "#4F4F46",
+    "text_muted": "#86867C",
+    "folder_color": "#F6F6F3",
+    "folder_border": "#F2B705"
+   },
+   "theme_extras": {
+    "opacity": 0.85
+   },
+   "theme_settings": {
+    "opacity": 0.85
+   },
+   "scheme": {
+    "name": "Luminescent",
+    "background": "#FFFFFF",
+    "foreground": "#18180F",
+    "cursorColor": "#F2B705",
+    "selectionBackground": "#FCF1CD",
+    "black": "#1F1D18",
+    "white": "#E8E6DF",
+    "brightBlack": "#86867C",
+    "brightWhite": "#FFFFFF",
+    "red": "#BB3516",
+    "brightRed": "#941D14",
+    "green": "#46842D",
+    "brightGreen": "#266629",
+    "yellow": "#A57101",
+    "brightYellow": "#7E5400",
+    "blue": "#386AA9",
+    "brightBlue": "#194E9D",
+    "purple": "#F2B705",
+    "brightPurple": "#643391",
+    "cyan": "#2A827A",
+    "brightCyan": "#0C6571",
+    "colour16": "#F2B705",
+    "colour17": "#8A6A00",
+    "colour18": "#2A827A"
+   },
+   "kitty_args": [
+    "-o",
+    "background=#FFFFFF",
+    "-o",
+    "foreground=#18180F",
+    "-o",
+    "cursor=#F2B705",
+    "-o",
+    "selection_background=#FCF1CD",
+    "-o",
+    "color0=#1F1D18",
+    "-o",
+    "color1=#BB3516",
+    "-o",
+    "color2=#46842D",
+    "-o",
+    "color3=#A57101",
+    "-o",
+    "color4=#386AA9",
+    "-o",
+    "color5=#F2B705",
+    "-o",
+    "color6=#2A827A",
+    "-o",
+    "color7=#E8E6DF",
+    "-o",
+    "color8=#86867C",
+    "-o",
+    "color9=#941D14",
+    "-o",
+    "color10=#266629",
+    "-o",
+    "color11=#7E5400",
+    "-o",
+    "color12=#194E9D",
+    "-o",
+    "color13=#643391",
+    "-o",
+    "color14=#0C6571",
+    "-o",
+    "color15=#FFFFFF"
+   ],
+   "alacritty_args": [
+    "-o",
+    "colors.primary.background=\"#FFFFFF\"",
+    "-o",
+    "colors.primary.foreground=\"#18180F\"",
+    "-o",
+    "colors.cursor.cursor=\"#F2B705\"",
+    "-o",
+    "colors.selection.background=\"#FCF1CD\"",
+    "-o",
+    "colors.normal.black=\"#1F1D18\"",
+    "-o",
+    "colors.bright.black=\"#86867C\"",
+    "-o",
+    "colors.normal.red=\"#BB3516\"",
+    "-o",
+    "colors.bright.red=\"#941D14\"",
+    "-o",
+    "colors.normal.green=\"#46842D\"",
+    "-o",
+    "colors.bright.green=\"#266629\"",
+    "-o",
+    "colors.normal.yellow=\"#A57101\"",
+    "-o",
+    "colors.bright.yellow=\"#7E5400\"",
+    "-o",
+    "colors.normal.blue=\"#386AA9\"",
+    "-o",
+    "colors.bright.blue=\"#194E9D\"",
+    "-o",
+    "colors.normal.magenta=\"#F2B705\"",
+    "-o",
+    "colors.bright.magenta=\"#643391\"",
+    "-o",
+    "colors.normal.cyan=\"#2A827A\"",
+    "-o",
+    "colors.bright.cyan=\"#0C6571\"",
+    "-o",
+    "colors.normal.white=\"#E8E6DF\"",
+    "-o",
+    "colors.bright.white=\"#FFFFFF\""
+   ],
+   "foot_args": [
+    "-o",
+    "colors.background=FFFFFF",
+    "-o",
+    "colors.foreground=18180F",
+    "-o",
+    "colors.regular0=1F1D18",
+    "-o",
+    "colors.regular1=BB3516",
+    "-o",
+    "colors.regular2=46842D",
+    "-o",
+    "colors.regular3=A57101",
+    "-o",
+    "colors.regular4=386AA9",
+    "-o",
+    "colors.regular5=F2B705",
+    "-o",
+    "colors.regular6=2A827A",
+    "-o",
+    "colors.regular7=E8E6DF",
+    "-o",
+    "colors.bright0=86867C",
+    "-o",
+    "colors.bright1=941D14",
+    "-o",
+    "colors.bright2=266629",
+    "-o",
+    "colors.bright3=7E5400",
+    "-o",
+    "colors.bright4=194E9D",
+    "-o",
+    "colors.bright5=643391",
+    "-o",
+    "colors.bright6=0C6571",
+    "-o",
+    "colors.bright7=FFFFFF"
+   ],
+   "sequences": "\u001b]10;rgb:18/18/0F\u001b\\\u001b]11;rgb:FF/FF/FF\u001b\\\u001b]12;rgb:F2/B7/05\u001b\\\u001b]17;rgb:FC/F1/CD\u001b\\\u001b]4;0;rgb:1F/1D/18\u001b\\\u001b]4;1;rgb:BB/35/16\u001b\\\u001b]4;2;rgb:46/84/2D\u001b\\\u001b]4;3;rgb:A5/71/01\u001b\\\u001b]4;4;rgb:38/6A/A9\u001b\\\u001b]4;5;rgb:F2/B7/05\u001b\\\u001b]4;6;rgb:2A/82/7A\u001b\\\u001b]4;7;rgb:E8/E6/DF\u001b\\\u001b]4;8;rgb:86/86/7C\u001b\\\u001b]4;9;rgb:94/1D/14\u001b\\\u001b]4;10;rgb:26/66/29\u001b\\\u001b]4;11;rgb:7E/54/00\u001b\\\u001b]4;12;rgb:19/4E/9D\u001b\\\u001b]4;13;rgb:64/33/91\u001b\\\u001b]4;14;rgb:0C/65/71\u001b\\\u001b]4;15;rgb:FF/FF/FF\u001b\\\u001b]4;16;rgb:F2/B7/05\u001b\\\u001b]4;17;rgb:8A/6A/00\u001b\\\u001b]4;18;rgb:2A/82/7A\u001b\\",
+   "logo_value": null,
+   "greeting_script": "# Written by Luminescent for the theme's start-up text (theme settings > Terminal). It takes the place\n# of your own fish_greeting while it is here; delete this file, or untick the start-up text in the\n# theme, to get yours back.\nfunction fish_greeting\n    set -l w $COLUMNS\n    command -q fastfetch; or return\n    if test $w -lt 90\n        fastfetch --logo-type none\n    else\n        fastfetch\n    end\nend\n",
+   "kitty_theme_conf": "# Luminescent theme colours, rewritten whenever the theme changes. Do not edit.\nbackground #FFFFFF\nforeground #18180F\ncursor #F2B705\nselection_background #FCF1CD\nselection_foreground #18180F\nactive_border_color #F2B705\ninactive_border_color #E4E4E1\nurl_color #8A6A00\ncolor0 #1F1D18\ncolor1 #BB3516\ncolor2 #46842D\ncolor3 #A57101\ncolor4 #386AA9\ncolor5 #F2B705\ncolor6 #2A827A\ncolor7 #E8E6DF\ncolor8 #86867C\ncolor9 #941D14\ncolor10 #266629\ncolor11 #7E5400\ncolor12 #194E9D\ncolor13 #643391\ncolor14 #0C6571\ncolor15 #FFFFFF\ndynamic_background_opacity yes\nbackground_opacity 0.85\n"
+  },
+  {
+   "name": "custom",
+   "colours": {
+    "primary": "#FE8019",
+    "primary_hover": "#FE9239",
+    "primary_muted": "#4B2C13",
+    "primary_text": "#FEAC6A",
+    "on_primary": "#1A1600",
+    "bg_base": "#282828",
+    "bg_card": "#3C3836",
+    "bg_card_hover": "#46423D",
+    "bg_frame": "#1E1E1E",
+    "bg_header": "#32302F",
+    "border": "#504945",
+    "text_primary": "#EBDBB2",
+    "text_secondary": "#BDAE93",
+    "text_muted": "#817868",
+    "folder_color": "#3C3836",
+    "folder_border": "#FEAC6A"
+   },
+   "theme_extras": {
+    "colours": {
+     "red": "#FB4934",
+     "colour16": "#FABD2F",
+     "nope": "#000000",
+     "blue": "bad"
+    },
+    "opacity": 5,
+    "logo": "~/Pictures/logo.png",
+    "logo_width": 500,
+    "logo_height": "x",
+    "logo_position": "top",
+    "narrow": {
+     "below": 10,
+     "then": "text"
+    },
+    "greeting": {
+     "on": true,
+     "text": "Welcome back\nit's 'Monday'",
+     "colour": "purple",
+     "info": "luminescent",
+     "style": "box",
+     "args": "--pipe false",
+     "lines": [
+      {
+       "type": "os",
+       "label": "distro",
+       "colour": "brightBlue"
+      },
+      {
+       "type": "memory",
+       "label": "ram",
+       "colour": "nope"
+      },
+      {
+       "type": "colors",
+       "label": ""
+      },
+      {
+       "type": "unknown"
+      }
+     ]
+    }
+   },
+   "theme_settings": {
+    "colours": {
+     "red": "#FB4934",
+     "colour16": "#FABD2F"
+    },
+    "opacity": 1.0,
+    "logo": "~/Pictures/logo.png",
+    "logo_width": 200,
+    "logo_height": 0,
+    "logo_padding": 2,
+    "logo_padding_top": 0,
+    "logo_position": "top",
+    "narrow": {
+     "below": 20,
+     "then": "text"
+    },
+    "greeting": {
+     "text": "Welcome back\nit's 'Monday'",
+     "colour": "purple",
+     "info": "luminescent",
+     "style": "box",
+     "lines": [
+      {
+       "type": "os",
+       "label": "distro",
+       "colour": "brightBlue"
+      },
+      {
+       "type": "memory",
+       "label": "ram",
+       "colour": "colour16"
+      },
+      {
+       "type": "colors",
+       "label": "",
+       "colour": "colour16"
+      }
+     ],
+     "args": "--pipe false"
+    }
+   },
+   "scheme": {
+    "name": "Luminescent",
+    "background": "#282828",
+    "foreground": "#EBDBB2",
+    "cursorColor": "#FE8019",
+    "selectionBackground": "#4B2C13",
+    "black": "#3C3836",
+    "white": "#BDAE93",
+    "brightBlack": "#817868",
+    "brightWhite": "#EBDBB2",
+    "red": "#FB4934",
+    "brightRed": "#F38B90",
+    "green": "#B1D791",
+    "brightGreen": "#B6E8B2",
+    "yellow": "#FAD69D",
+    "brightYellow": "#FAE7BD",
+    "blue": "#97AEDF",
+    "brightBlue": "#9EC2FB",
+    "purple": "#FE8019",
+    "brightPurple": "#D4B6F8",
+    "cyan": "#A1D6BE",
+    "brightCyan": "#A7E7DD",
+    "colour16": "#FABD2F",
+    "colour17": "#FEAC6A",
+    "colour18": "#A1D6BE"
+   },
+   "kitty_args": [
+    "-o",
+    "background=#282828",
+    "-o",
+    "foreground=#EBDBB2",
+    "-o",
+    "cursor=#FE8019",
+    "-o",
+    "selection_background=#4B2C13",
+    "-o",
+    "color0=#3C3836",
+    "-o",
+    "color1=#FB4934",
+    "-o",
+    "color2=#B1D791",
+    "-o",
+    "color3=#FAD69D",
+    "-o",
+    "color4=#97AEDF",
+    "-o",
+    "color5=#FE8019",
+    "-o",
+    "color6=#A1D6BE",
+    "-o",
+    "color7=#BDAE93",
+    "-o",
+    "color8=#817868",
+    "-o",
+    "color9=#F38B90",
+    "-o",
+    "color10=#B6E8B2",
+    "-o",
+    "color11=#FAE7BD",
+    "-o",
+    "color12=#9EC2FB",
+    "-o",
+    "color13=#D4B6F8",
+    "-o",
+    "color14=#A7E7DD",
+    "-o",
+    "color15=#EBDBB2"
+   ],
+   "alacritty_args": [
+    "-o",
+    "colors.primary.background=\"#282828\"",
+    "-o",
+    "colors.primary.foreground=\"#EBDBB2\"",
+    "-o",
+    "colors.cursor.cursor=\"#FE8019\"",
+    "-o",
+    "colors.selection.background=\"#4B2C13\"",
+    "-o",
+    "colors.normal.black=\"#3C3836\"",
+    "-o",
+    "colors.bright.black=\"#817868\"",
+    "-o",
+    "colors.normal.red=\"#FB4934\"",
+    "-o",
+    "colors.bright.red=\"#F38B90\"",
+    "-o",
+    "colors.normal.green=\"#B1D791\"",
+    "-o",
+    "colors.bright.green=\"#B6E8B2\"",
+    "-o",
+    "colors.normal.yellow=\"#FAD69D\"",
+    "-o",
+    "colors.bright.yellow=\"#FAE7BD\"",
+    "-o",
+    "colors.normal.blue=\"#97AEDF\"",
+    "-o",
+    "colors.bright.blue=\"#9EC2FB\"",
+    "-o",
+    "colors.normal.magenta=\"#FE8019\"",
+    "-o",
+    "colors.bright.magenta=\"#D4B6F8\"",
+    "-o",
+    "colors.normal.cyan=\"#A1D6BE\"",
+    "-o",
+    "colors.bright.cyan=\"#A7E7DD\"",
+    "-o",
+    "colors.normal.white=\"#BDAE93\"",
+    "-o",
+    "colors.bright.white=\"#EBDBB2\""
+   ],
+   "foot_args": [
+    "-o",
+    "colors.background=282828",
+    "-o",
+    "colors.foreground=EBDBB2",
+    "-o",
+    "colors.regular0=3C3836",
+    "-o",
+    "colors.regular1=FB4934",
+    "-o",
+    "colors.regular2=B1D791",
+    "-o",
+    "colors.regular3=FAD69D",
+    "-o",
+    "colors.regular4=97AEDF",
+    "-o",
+    "colors.regular5=FE8019",
+    "-o",
+    "colors.regular6=A1D6BE",
+    "-o",
+    "colors.regular7=BDAE93",
+    "-o",
+    "colors.bright0=817868",
+    "-o",
+    "colors.bright1=F38B90",
+    "-o",
+    "colors.bright2=B6E8B2",
+    "-o",
+    "colors.bright3=FAE7BD",
+    "-o",
+    "colors.bright4=9EC2FB",
+    "-o",
+    "colors.bright5=D4B6F8",
+    "-o",
+    "colors.bright6=A7E7DD",
+    "-o",
+    "colors.bright7=EBDBB2"
+   ],
+   "sequences": "\u001b]10;rgb:EB/DB/B2\u001b\\\u001b]11;rgb:28/28/28\u001b\\\u001b]12;rgb:FE/80/19\u001b\\\u001b]17;rgb:4B/2C/13\u001b\\\u001b]4;0;rgb:3C/38/36\u001b\\\u001b]4;1;rgb:FB/49/34\u001b\\\u001b]4;2;rgb:B1/D7/91\u001b\\\u001b]4;3;rgb:FA/D6/9D\u001b\\\u001b]4;4;rgb:97/AE/DF\u001b\\\u001b]4;5;rgb:FE/80/19\u001b\\\u001b]4;6;rgb:A1/D6/BE\u001b\\\u001b]4;7;rgb:BD/AE/93\u001b\\\u001b]4;8;rgb:81/78/68\u001b\\\u001b]4;9;rgb:F3/8B/90\u001b\\\u001b]4;10;rgb:B6/E8/B2\u001b\\\u001b]4;11;rgb:FA/E7/BD\u001b\\\u001b]4;12;rgb:9E/C2/FB\u001b\\\u001b]4;13;rgb:D4/B6/F8\u001b\\\u001b]4;14;rgb:A7/E7/DD\u001b\\\u001b]4;15;rgb:EB/DB/B2\u001b\\\u001b]4;16;rgb:FA/BD/2F\u001b\\\u001b]4;17;rgb:FE/AC/6A\u001b\\\u001b]4;18;rgb:A1/D6/BE\u001b\\",
+   "logo_value": "{\"type\": \"auto\", \"source\": \"<HOME>/Pictures/logo.png\", \"width\": 200, \"padding\": {\"top\": 0, \"left\": 2, \"right\": 2}, \"position\": \"top\"}",
+   "greeting_script": "# Written by Luminescent for the theme's start-up text (theme settings > Terminal). It takes the place\n# of your own fish_greeting while it is here; delete this file, or untick the start-up text in the\n# theme, to get yours back.\nfunction fish_greeting\n    set -l w $COLUMNS\n    if test $w -ge 13\n        printf '\\e[35m'\n        printf '%s\\n' 'Welcome back' 'it\\'s \\'Monday\\''\n        set_color normal\n    end\n    command -q fastfetch; or return\n    if test $w -lt 20\n        return\n    else\n        fastfetch -c '<HOME>/.config/fastfetch/luminescent.jsonc' --pipe false\n    end\nend\n",
+   "kitty_theme_conf": "# Luminescent theme colours, rewritten whenever the theme changes. Do not edit.\nbackground #282828\nforeground #EBDBB2\ncursor #FE8019\nselection_background #4B2C13\nselection_foreground #EBDBB2\nactive_border_color #FE8019\ninactive_border_color #504945\nurl_color #FEAC6A\ncolor0 #3C3836\ncolor1 #FB4934\ncolor2 #B1D791\ncolor3 #FAD69D\ncolor4 #97AEDF\ncolor5 #FE8019\ncolor6 #A1D6BE\ncolor7 #BDAE93\ncolor8 #817868\ncolor9 #F38B90\ncolor10 #B6E8B2\ncolor11 #FAE7BD\ncolor12 #9EC2FB\ncolor13 #D4B6F8\ncolor14 #A7E7DD\ncolor15 #EBDBB2\ndynamic_background_opacity yes\nbackground_opacity 1.00\n",
+   "fastfetch_config": "// Written by Luminescent from the theme's Terminal page (the info box). It is rewritten when the theme changes;\n// your own config.jsonc is not used for it.\n{\n    \"$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\",\n    \"display\": {\n        \"separator\": \"  \"\n    },\n    \"modules\": [\n        \"break\",\n        {\n            \"type\": \"custom\",\n            \"key\": \"╭────────────────────────────────────\",\n            \"keyColor\": \"35\",\n            \"format\": \"\"\n        },\n        {\n            \"type\": \"os\",\n            \"key\": \"│ distro\",\n            \"keyColor\": \"94\"\n        },\n        {\n            \"type\": \"memory\",\n            \"key\": \"│ ram   \",\n            \"keyColor\": \"38;5;16\"\n        },\n        {\n            \"type\": \"colors\",\n            \"key\": \"│       \",\n            \"symbol\": \"circle\"\n        },\n        {\n            \"type\": \"custom\",\n            \"key\": \"╰────────────────────────────────────\",\n            \"keyColor\": \"35\",\n            \"format\": \"\"\n        },\n        \"break\"\n    ],\n    \"logo\": {\n        \"type\": \"auto\",\n        \"source\": \"<HOME>/Pictures/logo.png\",\n        \"width\": 200,\n        \"padding\": {\n            \"top\": 0,\n            \"left\": 2,\n            \"right\": 2\n        },\n        \"position\": \"top\"\n    }\n}\n"
+  },
+  {
+   "name": "plain greeting",
+   "colours": {
+    "primary": "#7B6CF6",
+    "primary_hover": "#9184F8",
+    "primary_muted": "#24213B",
+    "primary_text": "#A99FFA",
+    "on_primary": "#FFFFFF",
+    "bg_base": "#131317",
+    "bg_card": "#1B1B21",
+    "bg_card_hover": "#23232A",
+    "bg_frame": "#0E0E11",
+    "bg_header": "#17171C",
+    "border": "#2A2A30",
+    "text_primary": "#ECECF1",
+    "text_secondary": "#A3A3AF",
+    "text_muted": "#6C6C78",
+    "folder_color": "#1B1B21",
+    "folder_border": "#A99FFA"
+   },
+   "theme_extras": {
+    "greeting": {
+     "on": true,
+     "text": "",
+     "style": "plain",
+     "info": "own"
+    },
+    "narrow": {
+     "below": 120,
+     "then": "top"
+    }
+   },
+   "theme_settings": {
+    "narrow": {
+     "below": 120,
+     "then": "top"
+    },
+    "greeting": {
+     "text": "",
+     "colour": "colour16",
+     "info": "own",
+     "style": "plain",
+     "lines": [
+      {
+       "type": "os",
+       "label": "distro",
+       "colour": "colour16"
+      },
+      {
+       "type": "kernel",
+       "label": "kernel",
+       "colour": "colour16"
+      },
+      {
+       "type": "uptime",
+       "label": "uptime",
+       "colour": "colour16"
+      },
+      {
+       "type": "shell",
+       "label": "shell",
+       "colour": "colour16"
+      },
+      {
+       "type": "packages",
+       "label": "pkgs",
+       "colour": "colour16"
+      },
+      {
+       "type": "memory",
+       "label": "memory",
+       "colour": "colour16"
+      }
+     ],
+     "args": ""
+    }
+   },
+   "scheme": {
+    "name": "Luminescent",
+    "background": "#131317",
+    "foreground": "#ECECF1",
+    "cursorColor": "#7B6CF6",
+    "selectionBackground": "#24213B",
+    "black": "#1B1B21",
+    "white": "#A3A3AF",
+    "brightBlack": "#6C6C78",
+    "brightWhite": "#ECECF1",
+    "red": "#E27087",
+    "brightRed": "#F38B90",
+    "green": "#A1D5AB",
+    "brightGreen": "#B6E8B2",
+    "yellow": "#EAD4B8",
+    "brightYellow": "#FAE7BD",
+    "blue": "#87ABFA",
+    "brightBlue": "#9EC2FB",
+    "purple": "#7B6CF6",
+    "brightPurple": "#D4B6F8",
+    "cyan": "#91D4D9",
+    "brightCyan": "#A7E7DD",
+    "colour16": "#7B6CF6",
+    "colour17": "#A99FFA",
+    "colour18": "#91D4D9"
+   },
+   "kitty_args": [
+    "-o",
+    "background=#131317",
+    "-o",
+    "foreground=#ECECF1",
+    "-o",
+    "cursor=#7B6CF6",
+    "-o",
+    "selection_background=#24213B",
+    "-o",
+    "color0=#1B1B21",
+    "-o",
+    "color1=#E27087",
+    "-o",
+    "color2=#A1D5AB",
+    "-o",
+    "color3=#EAD4B8",
+    "-o",
+    "color4=#87ABFA",
+    "-o",
+    "color5=#7B6CF6",
+    "-o",
+    "color6=#91D4D9",
+    "-o",
+    "color7=#A3A3AF",
+    "-o",
+    "color8=#6C6C78",
+    "-o",
+    "color9=#F38B90",
+    "-o",
+    "color10=#B6E8B2",
+    "-o",
+    "color11=#FAE7BD",
+    "-o",
+    "color12=#9EC2FB",
+    "-o",
+    "color13=#D4B6F8",
+    "-o",
+    "color14=#A7E7DD",
+    "-o",
+    "color15=#ECECF1"
+   ],
+   "alacritty_args": [
+    "-o",
+    "colors.primary.background=\"#131317\"",
+    "-o",
+    "colors.primary.foreground=\"#ECECF1\"",
+    "-o",
+    "colors.cursor.cursor=\"#7B6CF6\"",
+    "-o",
+    "colors.selection.background=\"#24213B\"",
+    "-o",
+    "colors.normal.black=\"#1B1B21\"",
+    "-o",
+    "colors.bright.black=\"#6C6C78\"",
+    "-o",
+    "colors.normal.red=\"#E27087\"",
+    "-o",
+    "colors.bright.red=\"#F38B90\"",
+    "-o",
+    "colors.normal.green=\"#A1D5AB\"",
+    "-o",
+    "colors.bright.green=\"#B6E8B2\"",
+    "-o",
+    "colors.normal.yellow=\"#EAD4B8\"",
+    "-o",
+    "colors.bright.yellow=\"#FAE7BD\"",
+    "-o",
+    "colors.normal.blue=\"#87ABFA\"",
+    "-o",
+    "colors.bright.blue=\"#9EC2FB\"",
+    "-o",
+    "colors.normal.magenta=\"#7B6CF6\"",
+    "-o",
+    "colors.bright.magenta=\"#D4B6F8\"",
+    "-o",
+    "colors.normal.cyan=\"#91D4D9\"",
+    "-o",
+    "colors.bright.cyan=\"#A7E7DD\"",
+    "-o",
+    "colors.normal.white=\"#A3A3AF\"",
+    "-o",
+    "colors.bright.white=\"#ECECF1\""
+   ],
+   "foot_args": [
+    "-o",
+    "colors.background=131317",
+    "-o",
+    "colors.foreground=ECECF1",
+    "-o",
+    "colors.regular0=1B1B21",
+    "-o",
+    "colors.regular1=E27087",
+    "-o",
+    "colors.regular2=A1D5AB",
+    "-o",
+    "colors.regular3=EAD4B8",
+    "-o",
+    "colors.regular4=87ABFA",
+    "-o",
+    "colors.regular5=7B6CF6",
+    "-o",
+    "colors.regular6=91D4D9",
+    "-o",
+    "colors.regular7=A3A3AF",
+    "-o",
+    "colors.bright0=6C6C78",
+    "-o",
+    "colors.bright1=F38B90",
+    "-o",
+    "colors.bright2=B6E8B2",
+    "-o",
+    "colors.bright3=FAE7BD",
+    "-o",
+    "colors.bright4=9EC2FB",
+    "-o",
+    "colors.bright5=D4B6F8",
+    "-o",
+    "colors.bright6=A7E7DD",
+    "-o",
+    "colors.bright7=ECECF1"
+   ],
+   "sequences": "\u001b]10;rgb:EC/EC/F1\u001b\\\u001b]11;rgb:13/13/17\u001b\\\u001b]12;rgb:7B/6C/F6\u001b\\\u001b]17;rgb:24/21/3B\u001b\\\u001b]4;0;rgb:1B/1B/21\u001b\\\u001b]4;1;rgb:E2/70/87\u001b\\\u001b]4;2;rgb:A1/D5/AB\u001b\\\u001b]4;3;rgb:EA/D4/B8\u001b\\\u001b]4;4;rgb:87/AB/FA\u001b\\\u001b]4;5;rgb:7B/6C/F6\u001b\\\u001b]4;6;rgb:91/D4/D9\u001b\\\u001b]4;7;rgb:A3/A3/AF\u001b\\\u001b]4;8;rgb:6C/6C/78\u001b\\\u001b]4;9;rgb:F3/8B/90\u001b\\\u001b]4;10;rgb:B6/E8/B2\u001b\\\u001b]4;11;rgb:FA/E7/BD\u001b\\\u001b]4;12;rgb:9E/C2/FB\u001b\\\u001b]4;13;rgb:D4/B6/F8\u001b\\\u001b]4;14;rgb:A7/E7/DD\u001b\\\u001b]4;15;rgb:EC/EC/F1\u001b\\\u001b]4;16;rgb:7B/6C/F6\u001b\\\u001b]4;17;rgb:A9/9F/FA\u001b\\\u001b]4;18;rgb:91/D4/D9\u001b\\",
+   "logo_value": null,
+   "greeting_script": "# Written by Luminescent for the theme's start-up text (theme settings > Terminal). It takes the place\n# of your own fish_greeting while it is here; delete this file, or untick the start-up text in the\n# theme, to get yours back.\nfunction fish_greeting\n    set -l w $COLUMNS\n    command -q fastfetch; or return\n    if test $w -lt 120\n        fastfetch --logo-position top --logo-width (math \"min($w - 4, 30)\")\n    else\n        fastfetch\n    end\nend\n",
+   "kitty_theme_conf": "# Luminescent theme colours, rewritten whenever the theme changes. Do not edit.\nbackground #131317\nforeground #ECECF1\ncursor #7B6CF6\nselection_background #24213B\nselection_foreground #ECECF1\nactive_border_color #7B6CF6\ninactive_border_color #2A2A30\nurl_color #A99FFA\ncolor0 #1B1B21\ncolor1 #E27087\ncolor2 #A1D5AB\ncolor3 #EAD4B8\ncolor4 #87ABFA\ncolor5 #7B6CF6\ncolor6 #91D4D9\ncolor7 #A3A3AF\ncolor8 #6C6C78\ncolor9 #F38B90\ncolor10 #B6E8B2\ncolor11 #FAE7BD\ncolor12 #9EC2FB\ncolor13 #D4B6F8\ncolor14 #A7E7DD\ncolor15 #ECECF1\n",
+   "fastfetch_config": "// Written by Luminescent from the theme's Terminal page (the info box). It is rewritten when the theme changes;\n// your own config.jsonc is not used for it.\n{\n    \"$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\",\n    \"display\": {\n        \"separator\": \"  \"\n    },\n    \"modules\": [\n        \"break\",\n        {\n            \"type\": \"os\",\n            \"key\": \"distro\",\n            \"keyColor\": \"38;5;16\"\n        },\n        {\n            \"type\": \"kernel\",\n            \"key\": \"kernel\",\n            \"keyColor\": \"38;5;16\"\n        },\n        {\n            \"type\": \"uptime\",\n            \"key\": \"uptime\",\n            \"keyColor\": \"38;5;16\"\n        },\n        {\n            \"type\": \"shell\",\n            \"key\": \"shell \",\n            \"keyColor\": \"38;5;16\"\n        },\n        {\n            \"type\": \"packages\",\n            \"key\": \"pkgs  \",\n            \"keyColor\": \"38;5;16\"\n        },\n        {\n            \"type\": \"memory\",\n            \"key\": \"memory\",\n            \"keyColor\": \"38;5;16\"\n        },\n        \"break\"\n    ]\n}\n"
+  }
+ ],
+ "fastfetch_logo_edits": [
+  {
+   "value": "{\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30}",
+   "before": "// my fastfetch config\n{\n    \"$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\",\n    \"logo\": {\n        \"source\": \"arch\", // the distro logo\n        \"padding\": { \"top\": 1 }\n    },\n    \"modules\": [\"title\", \"os\", \"kernel\"]\n}\n",
+   "error": "",
+   "after": "// my fastfetch config\n{\n    \"$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\",\n    \"logo\": {\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30},\n    \"modules\": [\"title\", \"os\", \"kernel\"]\n}\n",
+   "logo_read_back": "{\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30}"
+  },
+  {
+   "value": "{\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30}",
+   "before": "{\n    \"modules\": []\n}\n",
+   "error": "",
+   "after": "{\n    \"logo\": {\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30},\n    \"modules\": []\n}\n",
+   "logo_read_back": "{\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30}"
+  },
+  {
+   "value": "{\"type\": \"auto\", \"source\": \"/x.png\", \"width\": 30}",
+   "before": "not json at all",
+   "error": "fastfetch's config is not a JSON object.",
+   "after": "not json at all",
+   "logo_read_back": null
+  },
+  {
+   "value": null,
+   "before": "// my fastfetch config\n{\n    \"$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\",\n    \"logo\": {\n        \"source\": \"arch\", // the distro logo\n        \"padding\": { \"top\": 1 }\n    },\n    \"modules\": [\"title\", \"os\", \"kernel\"]\n}\n",
+   "error": "",
+   "after": "// my fastfetch config\n{\n    \"$schema\": \"https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json\",\n    \"modules\": [\"title\", \"os\", \"kernel\"]\n}\n",
+   "logo_read_back": null
+  },
+  {
+   "value": null,
+   "before": "{\n    \"modules\": []\n}\n",
+   "error": "",
+   "after": "{\n    \"modules\": []\n}\n",
+   "logo_read_back": null
+  },
+  {
+   "value": null,
+   "before": "not json at all",
+   "error": "",
+   "after": "not json at all",
+   "logo_read_back": null
+  }
+ ],
+ "kitty_include_state": [
+  {
+   "kitty_conf": "include luminescent-theme.conf\n",
+   "state": "ok"
+  },
+  {
+   "kitty_conf": "font_size 11\ninclude luminescent-theme.con\n",
+   "state": "broken"
+  },
+  {
+   "kitty_conf": "font_size 11\n",
+   "state": "missing"
+  }
+ ],
+ "terminal_commands": [
+  {
+   "terminal": "kitty",
+   "command": [
+    "/usr/bin/kitty",
+    "--title",
+    "Title",
+    "--directory",
+    "/tmp/work",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "alacritty",
+   "command": [
+    "/usr/bin/alacritty",
+    "--title",
+    "Title",
+    "--working-directory",
+    "/tmp/work",
+    "-e",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "foot",
+   "command": [
+    "/usr/bin/foot",
+    "--title=Title",
+    "--working-directory=/tmp/work",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "wezterm",
+   "command": [
+    "/usr/bin/wezterm",
+    "start",
+    "--cwd",
+    "/tmp/work",
+    "--",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "ghostty",
+   "command": [
+    "/usr/bin/ghostty",
+    "--title=Title",
+    "--working-directory=/tmp/work",
+    "-e",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "konsole",
+   "command": [
+    "/usr/bin/konsole",
+    "--workdir",
+    "/tmp/work",
+    "-p",
+    "tabtitle=Title",
+    "-e",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "gnome-terminal",
+   "command": [
+    "/usr/bin/gnome-terminal",
+    "--title",
+    "Title",
+    "--working-directory=/tmp/work",
+    "--",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "xfce4-terminal",
+   "command": [
+    "/usr/bin/xfce4-terminal",
+    "--title",
+    "Title",
+    "--working-directory",
+    "/tmp/work",
+    "-x",
+    "htop",
+    "-d",
+    "5"
+   ]
+  },
+  {
+   "terminal": "xterm",
+   "command": [
+    "/usr/bin/xterm",
+    "-T",
+    "Title",
+    "-e",
+    "htop",
+    "-d",
+    "5"
+   ]
+  }
+ ],
+ "windows_terminal": {
+  "fragment_path": "<HOME>/AppData/Local/Microsoft/Windows Terminal/Fragments/Luminescent/luminescent.json",
+  "cases": [
+   {
+    "name": "dark",
+    "updates_own_profiles": false,
+    "fragment": {
+     "profiles": [
+      {
+       "name": "Luminescent",
+       "commandline": "powershell.exe -NoLogo",
+       "colorScheme": "Luminescent",
+       "startingDirectory": "%USERPROFILE%"
+      }
+     ],
+     "schemes": [
+      {
+       "name": "Luminescent",
+       "background": "#131317",
+       "foreground": "#ECECF1",
+       "cursorColor": "#7B6CF6",
+       "selectionBackground": "#24213B",
+       "black": "#1B1B21",
+       "white": "#A3A3AF",
+       "brightBlack": "#6C6C78",
+       "brightWhite": "#ECECF1",
+       "red": "#E27087",
+       "brightRed": "#F38B90",
+       "green": "#A1D5AB",
+       "brightGreen": "#B6E8B2",
+       "yellow": "#EAD4B8",
+       "brightYellow": "#FAE7BD",
+       "blue": "#87ABFA",
+       "brightBlue": "#9EC2FB",
+       "purple": "#7B6CF6",
+       "brightPurple": "#D4B6F8",
+       "cyan": "#91D4D9",
+       "brightCyan": "#A7E7DD",
+       "colour16": "#7B6CF6",
+       "colour17": "#A99FFA",
+       "colour18": "#91D4D9"
+      }
+     ]
+    },
+    "command": [
+     "htop;x"
+    ]
+   },
+   {
+    "name": "dark",
+    "updates_own_profiles": true,
+    "fragment": {
+     "profiles": [
+      {
+       "name": "Luminescent",
+       "commandline": "powershell.exe -NoLogo",
+       "colorScheme": "Luminescent",
+       "startingDirectory": "%USERPROFILE%"
+      },
+      {
+       "updates": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+       "colorScheme": "Luminescent"
+      },
+      {
+       "updates": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+       "colorScheme": "Luminescent"
+      },
+      {
+       "updates": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+       "colorScheme": "Luminescent"
+      }
+     ],
+     "schemes": [
+      {
+       "name": "Luminescent",
+       "background": "#131317",
+       "foreground": "#ECECF1",
+       "cursorColor": "#7B6CF6",
+       "selectionBackground": "#24213B",
+       "black": "#1B1B21",
+       "white": "#A3A3AF",
+       "brightBlack": "#6C6C78",
+       "brightWhite": "#ECECF1",
+       "red": "#E27087",
+       "brightRed": "#F38B90",
+       "green": "#A1D5AB",
+       "brightGreen": "#B6E8B2",
+       "yellow": "#EAD4B8",
+       "brightYellow": "#FAE7BD",
+       "blue": "#87ABFA",
+       "brightBlue": "#9EC2FB",
+       "purple": "#7B6CF6",
+       "brightPurple": "#D4B6F8",
+       "cyan": "#91D4D9",
+       "brightCyan": "#A7E7DD",
+       "colour16": "#7B6CF6",
+       "colour17": "#A99FFA",
+       "colour18": "#91D4D9"
+      }
+     ]
+    },
+    "command": [
+     "htop;x"
+    ]
+   },
+   {
+    "name": "custom",
+    "updates_own_profiles": false,
+    "fragment": {
+     "profiles": [
+      {
+       "name": "Luminescent",
+       "commandline": "powershell.exe -NoLogo",
+       "colorScheme": "Luminescent",
+       "startingDirectory": "%USERPROFILE%"
+      }
+     ],
+     "schemes": [
+      {
+       "name": "Luminescent",
+       "background": "#282828",
+       "foreground": "#EBDBB2",
+       "cursorColor": "#FE8019",
+       "selectionBackground": "#4B2C13",
+       "black": "#3C3836",
+       "white": "#BDAE93",
+       "brightBlack": "#817868",
+       "brightWhite": "#EBDBB2",
+       "red": "#FB4934",
+       "brightRed": "#F38B90",
+       "green": "#B1D791",
+       "brightGreen": "#B6E8B2",
+       "yellow": "#FAD69D",
+       "brightYellow": "#FAE7BD",
+       "blue": "#97AEDF",
+       "brightBlue": "#9EC2FB",
+       "purple": "#FE8019",
+       "brightPurple": "#D4B6F8",
+       "cyan": "#A1D6BE",
+       "brightCyan": "#A7E7DD",
+       "colour16": "#FABD2F",
+       "colour17": "#FEAC6A",
+       "colour18": "#A1D6BE"
+      }
+     ]
+    },
+    "command": [
+     "htop;x"
+    ]
+   },
+   {
+    "name": "custom",
+    "updates_own_profiles": true,
+    "fragment": {
+     "profiles": [
+      {
+       "name": "Luminescent",
+       "commandline": "powershell.exe -NoLogo",
+       "colorScheme": "Luminescent",
+       "startingDirectory": "%USERPROFILE%"
+      },
+      {
+       "updates": "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}",
+       "colorScheme": "Luminescent"
+      },
+      {
+       "updates": "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}",
+       "colorScheme": "Luminescent"
+      },
+      {
+       "updates": "{574e775e-4f2a-5b96-ac1e-a2962a402336}",
+       "colorScheme": "Luminescent"
+      }
+     ],
+     "schemes": [
+      {
+       "name": "Luminescent",
+       "background": "#282828",
+       "foreground": "#EBDBB2",
+       "cursorColor": "#FE8019",
+       "selectionBackground": "#4B2C13",
+       "black": "#3C3836",
+       "white": "#BDAE93",
+       "brightBlack": "#817868",
+       "brightWhite": "#EBDBB2",
+       "red": "#FB4934",
+       "brightRed": "#F38B90",
+       "green": "#B1D791",
+       "brightGreen": "#B6E8B2",
+       "yellow": "#FAD69D",
+       "brightYellow": "#FAE7BD",
+       "blue": "#97AEDF",
+       "brightBlue": "#9EC2FB",
+       "purple": "#FE8019",
+       "brightPurple": "#D4B6F8",
+       "cyan": "#A1D6BE",
+       "brightCyan": "#A7E7DD",
+       "colour16": "#FABD2F",
+       "colour17": "#FEAC6A",
+       "colour18": "#A1D6BE"
+      }
+     ]
+    },
+    "command": [
+     "htop;x"
+    ]
+   }
+  ]
+ }
+}

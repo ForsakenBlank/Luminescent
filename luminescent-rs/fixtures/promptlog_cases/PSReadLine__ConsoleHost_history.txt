@@ -1,0 +1,6 @@
+Get-Process
+Write-Host `
+  "hello"
+
+ls C:\
+cd ..`

@@ -1,0 +1,14 @@
+{
+  "folder_colours": {
+    "Work": "#3E63DD"
+  },
+  "order": {
+    "": [
+      "Work",
+      "hello.txt"
+    ]
+  },
+  "favourites": [
+    "hello.txt"
+  ]
+}

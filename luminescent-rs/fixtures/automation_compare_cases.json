@@ -1,0 +1,313 @@
+{
+ "compare": [
+  {
+   "a": "Hello World",
+   "op": "equals",
+   "b": "hello world",
+   "result": true
+  },
+  {
+   "a": " x ",
+   "op": "equals",
+   "b": "x",
+   "result": true
+  },
+  {
+   "a": "a",
+   "op": "not_equals",
+   "b": "A",
+   "result": false
+  },
+  {
+   "a": "Hello",
+   "op": "contains",
+   "b": "ELL",
+   "result": true
+  },
+  {
+   "a": "Hello",
+   "op": "starts",
+   "b": "he",
+   "result": true
+  },
+  {
+   "a": "Hello",
+   "op": "ends",
+   "b": "LO",
+   "result": true
+  },
+  {
+   "a": "abc123",
+   "op": "regex",
+   "b": "\\d+",
+   "result": true
+  },
+  {
+   "a": "ABC",
+   "op": "regex",
+   "b": "abc",
+   "result": false
+  },
+  {
+   "a": "x",
+   "op": "regex",
+   "b": "(",
+   "result": false
+  },
+  {
+   "a": "",
+   "op": "empty",
+   "b": "",
+   "result": true
+  },
+  {
+   "a": "  ",
+   "op": "empty",
+   "b": "",
+   "result": true
+  },
+  {
+   "a": "x",
+   "op": "not_empty",
+   "b": "",
+   "result": true
+  },
+  {
+   "a": "",
+   "op": "not_empty",
+   "b": "",
+   "result": false
+  },
+  {
+   "a": "10",
+   "op": "gt",
+   "b": "9",
+   "result": true
+  },
+  {
+   "a": "1,5",
+   "op": "lt",
+   "b": "2",
+   "result": true
+  },
+  {
+   "a": "2",
+   "op": "ge",
+   "b": "2.0",
+   "result": true
+  },
+  {
+   "a": "a",
+   "op": "le",
+   "b": "1",
+   "result": false
+  },
+  {
+   "a": "3",
+   "op": "le",
+   "b": " 3 ",
+   "result": true
+  },
+  {
+   "a": "x",
+   "op": "unknown",
+   "b": "",
+   "result": true
+  }
+ ],
+ "days": [
+  {
+   "text": "",
+   "days": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "text": "every day",
+   "days": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "text": "Daily",
+   "days": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "text": "weekdays",
+   "days": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "text": "weekends",
+   "days": [
+    5,
+    6
+   ]
+  },
+  {
+   "text": "mon",
+   "days": [
+    0
+   ]
+  },
+  {
+   "text": "Mon, Wed, Fri",
+   "days": [
+    0,
+    2,
+    4
+   ]
+  },
+  {
+   "text": "fri-mon",
+   "days": [
+    0,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "text": "tue-thu",
+   "days": [
+    1,
+    2,
+    3
+   ]
+  },
+  {
+   "text": "monday tuesday",
+   "days": [
+    0,
+    1
+   ]
+  },
+  {
+   "text": "nonsense",
+   "days": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
+  },
+  {
+   "text": "sat-sun, mon",
+   "days": [
+    0,
+    5,
+    6
+   ]
+  },
+  {
+   "text": "wed-wed",
+   "days": [
+    2
+   ]
+  }
+ ],
+ "hm": [
+  {
+   "text": "9:30",
+   "result": [
+    9,
+    30
+   ]
+  },
+  {
+   "text": "09.05",
+   "result": [
+    9,
+    5
+   ]
+  },
+  {
+   "text": "23:59",
+   "result": [
+    23,
+    59
+   ]
+  },
+  {
+   "text": "24:00",
+   "result": null
+  },
+  {
+   "text": "9:60",
+   "result": null
+  },
+  {
+   "text": " 7:15 ",
+   "result": [
+    7,
+    15
+   ]
+  },
+  {
+   "text": "915",
+   "result": null
+  }
+ ],
+ "number_fmt": [
+  {
+   "value": 0,
+   "text": "0"
+  },
+  {
+   "value": 1.0,
+   "text": "1"
+  },
+  {
+   "value": -3,
+   "text": "-3"
+  },
+  {
+   "value": 2.5,
+   "text": "2.5"
+  },
+  {
+   "value": 0.3333333333333333,
+   "text": "0.333333"
+  },
+  {
+   "value": 1e+20,
+   "text": "100000000000000000000"
+  },
+  {
+   "value": 123456789.0,
+   "text": "123456789"
+  },
+  {
+   "value": 1.2345e-05,
+   "text": "1.2345e-05"
+  }
+ ]
+}

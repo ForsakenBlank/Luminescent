@@ -1,0 +1,46 @@
+[
+ {
+  "name": "luminescent.started",
+  "label": "Luminescent started"
+ },
+ {
+  "name": "overlay.opened",
+  "label": "Overlay opened"
+ },
+ {
+  "name": "overlay.closed",
+  "label": "Overlay closed"
+ },
+ {
+  "name": "theme.changed",
+  "label": "Theme changed"
+ },
+ {
+  "name": "dashboard.switched",
+  "label": "Dashboard switched"
+ },
+ {
+  "name": "dashboard.item_run",
+  "label": "A dashboard item ran"
+ },
+ {
+  "name": "timer.finished",
+  "label": "A timer finished"
+ },
+ {
+  "name": "reminder.fired",
+  "label": "A reminder went off"
+ },
+ {
+  "name": "hearing.over_limit",
+  "label": "Hearing Guard: over the limit"
+ },
+ {
+  "name": "clipboard.changed",
+  "label": "Clipboard changed"
+ },
+ {
+  "name": "keepawake.changed",
+  "label": "Keep awake turned on or off"
+ }
+]

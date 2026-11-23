@@ -1,0 +1,171 @@
+{
+ "now": "2026-11-23T14:30:00",
+ "clipboard": "copied text",
+ "vars": {
+  "name": "Ada",
+  "count": "3",
+  "spaced name": "yes"
+ },
+ "cases": [
+  {
+   "text": "plain",
+   "input": "",
+   "result": "plain"
+  },
+  {
+   "text": "plain",
+   "input": "from the pulse",
+   "result": "plain"
+  },
+  {
+   "text": "{input}",
+   "input": "",
+   "result": ""
+  },
+  {
+   "text": "{input}",
+   "input": "from the pulse",
+   "result": "from the pulse"
+  },
+  {
+   "text": "Hi {var:name}!",
+   "input": "",
+   "result": "Hi Ada!"
+  },
+  {
+   "text": "Hi {var:name}!",
+   "input": "from the pulse",
+   "result": "Hi Ada!"
+  },
+  {
+   "text": "{var: name }",
+   "input": "",
+   "result": "Ada"
+  },
+  {
+   "text": "{var: name }",
+   "input": "from the pulse",
+   "result": "Ada"
+  },
+  {
+   "text": "{var:missing}",
+   "input": "",
+   "result": ""
+  },
+  {
+   "text": "{var:missing}",
+   "input": "from the pulse",
+   "result": ""
+  },
+  {
+   "text": "{var:spaced name}",
+   "input": "",
+   "result": "yes"
+  },
+  {
+   "text": "{var:spaced name}",
+   "input": "from the pulse",
+   "result": "yes"
+  },
+  {
+   "text": "{date} {time}",
+   "input": "",
+   "result": "2026-11-23 14:30"
+  },
+  {
+   "text": "{date} {time}",
+   "input": "from the pulse",
+   "result": "2026-11-23 14:30"
+  },
+  {
+   "text": "{now}",
+   "input": "",
+   "result": "2026-11-23 14:30:00"
+  },
+  {
+   "text": "{now}",
+   "input": "from the pulse",
+   "result": "2026-11-23 14:30:00"
+  },
+  {
+   "text": "a{newline}b",
+   "input": "",
+   "result": "a\nb"
+  },
+  {
+   "text": "a{newline}b",
+   "input": "from the pulse",
+   "result": "a\nb"
+  },
+  {
+   "text": "{clipboard}",
+   "input": "",
+   "result": "copied text"
+  },
+  {
+   "text": "{clipboard}",
+   "input": "from the pulse",
+   "result": "copied text"
+  },
+  {
+   "text": "{unknown} {input",
+   "input": "",
+   "result": "{unknown} {input"
+  },
+  {
+   "text": "{unknown} {input",
+   "input": "from the pulse",
+   "result": "{unknown} {input"
+  },
+  {
+   "text": "awk '{print $1}'",
+   "input": "",
+   "result": "awk '{print $1}'"
+  },
+  {
+   "text": "awk '{print $1}'",
+   "input": "from the pulse",
+   "result": "awk '{print $1}'"
+  },
+  {
+   "text": "{{input}}",
+   "input": "",
+   "result": "{}"
+  },
+  {
+   "text": "{{input}}",
+   "input": "from the pulse",
+   "result": "{from the pulse}"
+  },
+  {
+   "text": "{INPUT}",
+   "input": "",
+   "result": "{INPUT}"
+  },
+  {
+   "text": "{INPUT}",
+   "input": "from the pulse",
+   "result": "{INPUT}"
+  },
+  {
+   "text": "{var:}",
+   "input": "",
+   "result": "{var:}"
+  },
+  {
+   "text": "{var:}",
+   "input": "from the pulse",
+   "result": "{var:}"
+  },
+  {
+   "text": "{var:a{b}",
+   "input": "",
+   "result": "{var:a{b}"
+  },
+  {
+   "text": "{var:a{b}",
+   "input": "from the pulse",
+   "result": "{var:a{b}"
+  }
+ ]
+}

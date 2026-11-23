@@ -1,1 +1,3 @@
 *.bat text eol=crlf
+# golden fixtures are compared byte for byte (vault blobs, history files, configs): never convert line endings
+luminescent-rs/fixtures/** -text

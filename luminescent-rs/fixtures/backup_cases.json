@@ -1,0 +1,65 @@
+{
+ "files": [
+  "settings.json",
+  "data/notes.json",
+  "data/timers.json",
+  "data/reminders_state.json",
+  "data/hearing.json",
+  "data/dashboard.json",
+  "data/themes.json",
+  "data/calculator.json",
+  "data/colours.json",
+  "data/palette.json",
+  "data/profiles.json",
+  "data/automation.json"
+ ],
+ "sample_home_members": [
+  "data/automation.json",
+  "data/calculator.json",
+  "data/colours.json",
+  "data/dashboard.json",
+  "data/hearing.json",
+  "data/notes.json",
+  "data/palette.json",
+  "data/profiles.json",
+  "data/profiles/c749664795.json",
+  "data/reminders_state.json",
+  "data/themes.json",
+  "data/timers.json",
+  "settings.json"
+ ],
+ "count": 13,
+ "check": [
+  {
+   "name": "no settings.json",
+   "entries": [
+    "data/notes.json"
+   ],
+   "error": "ValueError",
+   "message": "This zip has no settings.json, so it is not a Luminescent backup."
+  },
+  {
+   "name": "damaged file",
+   "entries": [
+    "data/notes.json",
+    "settings.json"
+   ],
+   "error": "ValueError",
+   "message": "data/notes.json in the backup is damaged: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+  },
+  {
+   "name": "extra files are ignored",
+   "entries": [
+    "../escape.json",
+    "data/evil.json",
+    "data/profiles/a/b.json",
+    "data/profiles/x.json",
+    "settings.json"
+   ],
+   "ok": [
+    "settings.json",
+    "data/profiles/x.json"
+   ]
+  }
+ ]
+}

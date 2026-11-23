@@ -1,0 +1,1949 @@
+{
+ "next_due": [
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "15:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "15:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "15:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-11-23T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "15:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2026-11-23T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "15:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "14:30"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "14:30"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "14:30"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-11-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "14:30"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2026-11-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "14:30"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-20",
+    "time": "09:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-20",
+    "time": "09:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-20",
+    "time": "09:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-11-20T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-20",
+    "time": "09:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2026-11-20T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-20",
+    "time": "09:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "not a date",
+    "time": "09:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "not a date",
+    "time": "09:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "not a date",
+    "time": "09:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "not a date",
+    "time": "09:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "not a date",
+    "time": "09:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "09:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "09:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "09:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "09:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "09:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "14:30"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-24T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "14:30"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "14:30"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "14:30"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "14:30"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "23:59:59"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T23:59:59"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "23:59:59"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T23:59:59"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "23:59:59"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T23:59:59"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "23:59:59"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T23:59:59"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "23:59:59"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2026-12-31T23:59:59"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "bad"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "bad"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "bad"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "bad"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "bad"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "daily"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0,
+     2,
+     4
+    ],
+    "time": "08:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-25T08:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0,
+     2,
+     4
+    ],
+    "time": "08:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-02T08:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0,
+     2,
+     4
+    ],
+    "time": "08:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-02T08:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0,
+     2,
+     4
+    ],
+    "time": "08:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T08:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0,
+     2,
+     4
+    ],
+    "time": "08:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T08:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0
+    ],
+    "time": "14:30"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-30T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0
+    ],
+    "time": "14:30"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-07T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0
+    ],
+    "time": "14:30"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-02T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0
+    ],
+    "time": "14:30"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-04T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0
+    ],
+    "time": "14:30"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-04T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [],
+    "time": "08:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [],
+    "time": "08:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [],
+    "time": "08:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [],
+    "time": "08:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [],
+    "time": "08:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     6
+    ],
+    "time": "20:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-29T20:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     6
+    ],
+    "time": "20:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-06T20:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     6
+    ],
+    "time": "20:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T20:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     6
+    ],
+    "time": "20:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-03T20:00:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     6
+    ],
+    "time": "20:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-03T20:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "10:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-30T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "10:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-31T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "10:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-31T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "10:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "10:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-31T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "14:30"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-12-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "14:30"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "14:30"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "14:30"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "14:30"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-23T14:30:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 0,
+    "time": "10:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-12-01T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 0,
+    "time": "10:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 0,
+    "time": "10:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 0,
+    "time": "10:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 0,
+    "time": "10:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 99,
+    "time": "10:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-30T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 99,
+    "time": "10:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-31T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 99,
+    "time": "10:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-31T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 99,
+    "time": "10:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 99,
+    "time": "10:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-31T10:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 3,
+    "date": "2026-11-01",
+    "time": "07:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-25T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 3,
+    "date": "2026-11-01",
+    "time": "07:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 3,
+    "date": "2026-11-01",
+    "time": "07:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-11-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 3,
+    "date": "2026-11-01",
+    "time": "07:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2026-11-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 3,
+    "date": "2026-11-01",
+    "time": "07:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-03T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 2,
+    "date": "2026-12-01",
+    "time": "07:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-12-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 2,
+    "date": "2026-12-01",
+    "time": "07:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 2,
+    "date": "2026-12-01",
+    "time": "07:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-12-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 2,
+    "date": "2026-12-01",
+    "time": "07:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2026-12-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 2,
+    "date": "2026-12-01",
+    "time": "07:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-02T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 0,
+    "time": "07:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-24T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 0,
+    "time": "07:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 0,
+    "time": "07:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 0,
+    "time": "07:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 0,
+    "time": "07:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 7,
+    "date": "",
+    "time": "07:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-30T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 7,
+    "date": "",
+    "time": "07:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-07T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 7,
+    "date": "",
+    "time": "07:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-07T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 7,
+    "date": "",
+    "time": "07:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-07T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 7,
+    "date": "",
+    "time": "07:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-07T07:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 30
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 30
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T00:29:59"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 30
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T12:30:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 30
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T09:30:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 30
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2026-12-31T23:30:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 0
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T14:31:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 0
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T00:00:59"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 0
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T12:01:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 0
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T09:01:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 0
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2026-12-31T23:01:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 90,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T16:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 90,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 90,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T13:30:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 90,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T10:30:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 90,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "15:00",
+    "to": "18:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T15:30:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "15:00",
+    "to": "18:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "15:00",
+    "to": "18:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "15:00",
+    "to": "18:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "15:00",
+    "to": "18:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T15:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 600,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 600,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T09:59:59"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 600,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 600,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-03-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 600,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T09:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "22:00",
+    "to": "02:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T22:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "22:00",
+    "to": "02:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T00:59:59"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "22:00",
+    "to": "02:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T22:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "22:00",
+    "to": "02:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T22:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "22:00",
+    "to": "02:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2027-01-01T00:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 15,
+    "window": true,
+    "from": "22:00",
+    "to": "14:00"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": "2026-11-23T22:00:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 15,
+    "window": true,
+    "from": "22:00",
+    "to": "14:00"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": "2026-12-01T00:14:59"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 15,
+    "window": true,
+    "from": "22:00",
+    "to": "14:00"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": "2026-02-28T12:15:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 15,
+    "window": true,
+    "from": "22:00",
+    "to": "14:00"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": "2024-02-29T09:15:00"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 15,
+    "window": true,
+    "from": "22:00",
+    "to": "14:00"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": "2026-12-31T23:15:00"
+  },
+  {
+   "schedule": {
+    "type": "startup",
+    "startup_delay": 20
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "startup",
+    "startup_delay": 20
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "startup",
+    "startup_delay": 20
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "startup",
+    "startup_delay": 20
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "startup",
+    "startup_delay": 20
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "nonsense"
+   },
+   "after": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "nonsense"
+   },
+   "after": "2026-11-30T23:59:59",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "nonsense"
+   },
+   "after": "2026-02-28T12:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "nonsense"
+   },
+   "after": "2024-02-29T09:00:00",
+   "due": null
+  },
+  {
+   "schedule": {
+    "type": "nonsense"
+   },
+   "after": "2026-12-31T23:00:00",
+   "due": null
+  }
+ ],
+ "describe": [
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "15:00"
+   },
+   "text": "Once on 2026-11-23 at 15:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-23",
+    "time": "14:30"
+   },
+   "text": "Once on 2026-11-23 at 14:30"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "2026-11-20",
+    "time": "09:00"
+   },
+   "text": "Once on 2026-11-20 at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "once",
+    "date": "not a date",
+    "time": "09:00"
+   },
+   "text": "Once on not a date at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "09:00"
+   },
+   "text": "Every day at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "14:30"
+   },
+   "text": "Every day at 14:30"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "23:59:59"
+   },
+   "text": "Every day at 23:59:59"
+  },
+  {
+   "schedule": {
+    "type": "daily",
+    "time": "bad"
+   },
+   "text": "Every day at bad"
+  },
+  {
+   "schedule": {
+    "type": "daily"
+   },
+   "text": "Every day at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0,
+     2,
+     4
+    ],
+    "time": "08:00"
+   },
+   "text": "Mon, Wed, Fri at 08:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     0
+    ],
+    "time": "14:30"
+   },
+   "text": "Mon at 14:30"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [],
+    "time": "08:00"
+   },
+   "text": "No days at 08:00"
+  },
+  {
+   "schedule": {
+    "type": "weekly",
+    "days": [
+     6
+    ],
+    "time": "20:00"
+   },
+   "text": "Sun at 20:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "10:00"
+   },
+   "text": "Every month on the 31st at 10:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "14:30"
+   },
+   "text": "Every month on the 23rd at 14:30"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 0,
+    "time": "10:00"
+   },
+   "text": "Every month on the 0th at 10:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 99,
+    "time": "10:00"
+   },
+   "text": "Every month on the 99th at 10:00"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 3,
+    "date": "2026-11-01",
+    "time": "07:00"
+   },
+   "text": "Every 3 days at 07:00 (from 2026-11-01)"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 2,
+    "date": "2026-12-01",
+    "time": "07:00"
+   },
+   "text": "Every 2 days at 07:00 (from 2026-12-01)"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 0,
+    "time": "07:00"
+   },
+   "text": "Every 0 days at 07:00 (from ?)"
+  },
+  {
+   "schedule": {
+    "type": "every_days",
+    "every_days": 7,
+    "date": "",
+    "time": "07:00"
+   },
+   "text": "Every 7 days at 07:00 (from )"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 30
+   },
+   "text": "Every 30 min"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 0
+   },
+   "text": "Every 0 min"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 90,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "text": "Every 90 min (09:00–17:00)"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "15:00",
+    "to": "18:00"
+   },
+   "text": "Every 60 min (15:00–18:00)"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 600,
+    "window": true,
+    "from": "09:00",
+    "to": "17:00"
+   },
+   "text": "Every 600 min (09:00–17:00)"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 60,
+    "window": true,
+    "from": "22:00",
+    "to": "02:00"
+   },
+   "text": "Every 60 min (22:00–02:00)"
+  },
+  {
+   "schedule": {
+    "type": "interval",
+    "every_minutes": 15,
+    "window": true,
+    "from": "22:00",
+    "to": "14:00"
+   },
+   "text": "Every 15 min (22:00–14:00)"
+  },
+  {
+   "schedule": {
+    "type": "startup",
+    "startup_delay": 20
+   },
+   "text": "When the launcher starts (after 20 s)"
+  },
+  {
+   "schedule": {
+    "type": "nonsense"
+   },
+   "text": "nonsense"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 1,
+    "time": "09:00"
+   },
+   "text": "Every month on the 1st at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 2,
+    "time": "09:00"
+   },
+   "text": "Every month on the 2nd at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 3,
+    "time": "09:00"
+   },
+   "text": "Every month on the 3rd at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 4,
+    "time": "09:00"
+   },
+   "text": "Every month on the 4th at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 11,
+    "time": "09:00"
+   },
+   "text": "Every month on the 11th at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 12,
+    "time": "09:00"
+   },
+   "text": "Every month on the 12th at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 13,
+    "time": "09:00"
+   },
+   "text": "Every month on the 13th at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 21,
+    "time": "09:00"
+   },
+   "text": "Every month on the 21st at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 22,
+    "time": "09:00"
+   },
+   "text": "Every month on the 22nd at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 23,
+    "time": "09:00"
+   },
+   "text": "Every month on the 23rd at 09:00"
+  },
+  {
+   "schedule": {
+    "type": "monthly",
+    "monthday": 31,
+    "time": "09:00"
+   },
+   "text": "Every month on the 31st at 09:00"
+  }
+ ],
+ "parse_quick": [
+  {
+   "text": "remind me in 20m to stretch",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T14:50:00",
+    "Stretch"
+   ]
+  },
+  {
+   "text": "in 1h30 call mum",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T16:00:00",
+    "Call mum"
+   ]
+  },
+  {
+   "text": "remind me to stretch in 20m",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T14:50:00",
+    "Stretch"
+   ]
+  },
+  {
+   "text": "remind me at 17:30 to call mum",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T17:30:00",
+    "Call mum"
+   ]
+  },
+  {
+   "text": "at 9am standup",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-24T09:00:00",
+    "Standup"
+   ]
+  },
+  {
+   "text": "tomorrow at 9 dentist",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-24T09:00:00",
+    "Dentist"
+   ]
+  },
+  {
+   "text": "remind me to call mum at 17:30",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T17:30:00",
+    "Call mum"
+   ]
+  },
+  {
+   "text": "remind me to call mum tomorrow at 8am",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-24T08:00:00",
+    "Call mum"
+   ]
+  },
+  {
+   "text": "remind me about the oven in 5 minutes",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T14:35:00",
+    "The oven"
+   ]
+  },
+  {
+   "text": "remind me in 5",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T14:35:00",
+    "Me"
+   ]
+  },
+  {
+   "text": "in 5 m",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "in 2 hours that the bins go out.",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T16:30:00",
+    "The bins go out"
+   ]
+  },
+  {
+   "text": "remind me in 0s to x",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "remind me at 25:00 to x",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "at 13pm lunch",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "hello there",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "short",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "in 1:30 tea",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T14:31:30",
+    "Tea"
+   ]
+  },
+  {
+   "text": "remind me in 10 min min",
+   "now": "2026-11-23T14:30:00",
+   "result": null
+  },
+  {
+   "text": "Remind Me In 10 Minutes To Do Things",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T14:40:00",
+    "Do Things"
+   ]
+  },
+  {
+   "text": "in 1h 30m nap",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T16:00:00",
+    "Nap"
+   ]
+  },
+  {
+   "text": "in 1.5h nap",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T16:00:00",
+    "Nap"
+   ]
+  },
+  {
+   "text": "remind me that it is late at 11pm",
+   "now": "2026-11-23T14:30:00",
+   "result": [
+    "2026-11-23T23:00:00",
+    "It is late"
+   ]
+  }
+ ],
+ "new_reminder": {
+  "id": "cdb52bbbd23f42b694314660cd936b37",
+  "title": "New reminder",
+  "message": "",
+  "enabled": true,
+  "schedule": {
+   "type": "daily",
+   "time": "09:00",
+   "date": "2026-11-23",
+   "days": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "every_minutes": 60,
+   "window": false,
+   "from": "09:00",
+   "to": "18:00",
+   "startup_delay": 10,
+   "monthday": 23,
+   "every_days": 2
+  },
+  "actions": {
+   "popup": true,
+   "position": "default",
+   "sound": "default",
+   "sound_file": "",
+   "sound_repeat": 1,
+   "toast": true
+  }
+ },
+ "snooze_choices": [
+  5,
+  10,
+  15,
+  30,
+  60
+ ]
+}

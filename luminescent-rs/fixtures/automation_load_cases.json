@@ -1,0 +1,247 @@
+[
+ {
+  "name": "first start: the switched-off example",
+  "saved": null,
+  "result": {
+   "version": 1,
+   "vars": {},
+   "workspaces": [
+    {
+     "id": "ff37007604",
+     "name": "Example",
+     "enabled": false,
+     "view": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     },
+     "nodes": [
+      {
+       "id": "887d113c8f",
+       "type": "interval",
+       "x": -420,
+       "y": -120,
+       "title": "",
+       "off": false,
+       "state": {},
+       "fields": {
+        "seconds": 60,
+        "autostart": true,
+        "fire_now": false
+       }
+      },
+      {
+       "id": "4e7d96d6c1",
+       "type": "now",
+       "x": -420,
+       "y": 120,
+       "title": "",
+       "off": false,
+       "state": {},
+       "fields": {
+        "format": "%H:%M"
+       }
+      },
+      {
+       "id": "c05f666b82",
+       "type": "notify",
+       "x": -40,
+       "y": -120,
+       "title": "",
+       "off": false,
+       "state": {},
+       "fields": {
+        "title": "Automation",
+        "message": "Another minute went by.",
+        "style": "card"
+       }
+      },
+      {
+       "id": "7ddf45b187",
+       "type": "comment",
+       "x": 340,
+       "y": -120,
+       "title": "",
+       "off": false,
+       "state": {},
+       "fields": {
+        "text": "This workspace is off (the switch at the bottom). Turn it on and a card pops up every minute.\n\nDrag from a port to another to wire them. Right-click or double-click the space to add nodes."
+       }
+      }
+     ],
+     "wires": [
+      {
+       "id": "b450c3439b",
+       "src": [
+        "887d113c8f",
+        "out:tick"
+       ],
+       "dst": [
+        "c05f666b82",
+        "in:run"
+       ]
+      },
+      {
+       "id": "4f405112ab",
+       "src": [
+        "4e7d96d6c1",
+        "val:text"
+       ],
+       "dst": [
+        "c05f666b82",
+        "field:title"
+       ]
+      }
+     ]
+    }
+   ],
+   "active": "ff37007604"
+  }
+ },
+ {
+  "name": "no workspaces left",
+  "saved": {
+   "workspaces": [
+    "junk"
+   ],
+   "vars": []
+  },
+  "result": {
+   "workspaces": [
+    {
+     "id": "cc078859bb",
+     "name": "Workspace",
+     "enabled": true,
+     "view": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     },
+     "nodes": [],
+     "wires": []
+    }
+   ],
+   "vars": {},
+   "active": "cc078859bb"
+  }
+ },
+ {
+  "name": "unknown node types and loose wires are dropped, fields get their defaults",
+  "saved": {
+   "version": 1,
+   "active": "w1",
+   "vars": {
+    "x": "1"
+   },
+   "workspaces": [
+    {
+     "id": "w1",
+     "name": "Mine",
+     "nodes": [
+      {
+       "id": "a",
+       "type": "interval",
+       "fields": {
+        "seconds": 2
+       }
+      },
+      {
+       "id": "b",
+       "type": "no_such_node"
+      },
+      {
+       "type": "notify",
+       "state": "bad"
+      }
+     ],
+     "wires": [
+      {
+       "src": [
+        "a",
+        "out:tick"
+       ],
+       "dst": [
+        "b",
+        "in:run"
+       ]
+      },
+      {
+       "id": "w",
+       "src": [
+        "a",
+        "out:tick"
+       ],
+       "dst": [
+        "a",
+        "in:stop"
+       ]
+      },
+      "junk"
+     ]
+    }
+   ]
+  },
+  "result": {
+   "version": 1,
+   "active": "w1",
+   "vars": {
+    "x": "1"
+   },
+   "workspaces": [
+    {
+     "id": "w1",
+     "name": "Mine",
+     "nodes": [
+      {
+       "id": "a",
+       "type": "interval",
+       "fields": {
+        "seconds": 2,
+        "autostart": true,
+        "fire_now": false
+       },
+       "x": 0,
+       "y": 0,
+       "title": "",
+       "off": false,
+       "state": {}
+      },
+      {
+       "type": "notify",
+       "state": {},
+       "id": "c93a8b8319",
+       "x": 0,
+       "y": 0,
+       "title": "",
+       "off": false,
+       "fields": {
+        "title": "Luminescent",
+        "message": "{input}",
+        "style": "card"
+       }
+      }
+     ],
+     "wires": [
+      {
+       "id": "w",
+       "src": [
+        "a",
+        "out:tick"
+       ],
+       "dst": [
+        "a",
+        "in:stop"
+       ]
+      }
+     ],
+     "enabled": true,
+     "view": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    }
+   ]
+  }
+ }
+]

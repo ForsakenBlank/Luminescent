@@ -1,0 +1,676 @@
+{
+ "units": {
+  "s": 1,
+  "sec": 1,
+  "secs": 1,
+  "second": 1,
+  "seconds": 1,
+  "m": 60,
+  "min": 60,
+  "mins": 60,
+  "minute": 60,
+  "minutes": 60,
+  "h": 3600,
+  "hr": 3600,
+  "hrs": 3600,
+  "hour": 3600,
+  "hours": 3600,
+  "d": 86400,
+  "day": 86400,
+  "days": 86400,
+  "w": 604800,
+  "wk": 604800,
+  "week": 604800,
+  "weeks": 604800
+ },
+ "durations": [
+  {
+   "text": "5m",
+   "bare_unit": 60,
+   "seconds": 300.0
+  },
+  {
+   "text": "5m",
+   "bare_unit": 1,
+   "seconds": 300.0
+  },
+  {
+   "text": "5 m",
+   "bare_unit": 60,
+   "seconds": 300.0
+  },
+  {
+   "text": "5 m",
+   "bare_unit": 1,
+   "seconds": 300.0
+  },
+  {
+   "text": "1h30",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h30",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h 30m",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h 30m",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h30m",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h30m",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "90s",
+   "bare_unit": 60,
+   "seconds": 90.0
+  },
+  {
+   "text": "90s",
+   "bare_unit": 1,
+   "seconds": 90.0
+  },
+  {
+   "text": "2.5h",
+   "bare_unit": 60,
+   "seconds": 9000.0
+  },
+  {
+   "text": "2.5h",
+   "bare_unit": 1,
+   "seconds": 9000.0
+  },
+  {
+   "text": "2,5h",
+   "bare_unit": 60,
+   "seconds": 9000.0
+  },
+  {
+   "text": "2,5h",
+   "bare_unit": 1,
+   "seconds": 9000.0
+  },
+  {
+   "text": "1:30:00",
+   "bare_unit": 60,
+   "seconds": 5400
+  },
+  {
+   "text": "1:30:00",
+   "bare_unit": 1,
+   "seconds": 5400
+  },
+  {
+   "text": "25:00",
+   "bare_unit": 60,
+   "seconds": 1500
+  },
+  {
+   "text": "25:00",
+   "bare_unit": 1,
+   "seconds": 1500
+  },
+  {
+   "text": "1:5",
+   "bare_unit": 60,
+   "seconds": 65
+  },
+  {
+   "text": "1:5",
+   "bare_unit": 1,
+   "seconds": 65
+  },
+  {
+   "text": "5",
+   "bare_unit": 60,
+   "seconds": 300.0
+  },
+  {
+   "text": "5",
+   "bare_unit": 1,
+   "seconds": 5.0
+  },
+  {
+   "text": "5.5",
+   "bare_unit": 60,
+   "seconds": 330.0
+  },
+  {
+   "text": "5.5",
+   "bare_unit": 1,
+   "seconds": 5.5
+  },
+  {
+   "text": "",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "   ",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "   ",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "abc",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "abc",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "5x",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "5x",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "1h and 30m",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h and 30m",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1 hour 30 minutes",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1 hour 30 minutes",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "2 days",
+   "bare_unit": 60,
+   "seconds": 172800.0
+  },
+  {
+   "text": "2 days",
+   "bare_unit": 1,
+   "seconds": 172800.0
+  },
+  {
+   "text": "1w2d",
+   "bare_unit": 60,
+   "seconds": 777600.0
+  },
+  {
+   "text": "1w2d",
+   "bare_unit": 1,
+   "seconds": 777600.0
+  },
+  {
+   "text": "1d2",
+   "bare_unit": 60,
+   "seconds": 93600.0
+  },
+  {
+   "text": "1d2",
+   "bare_unit": 1,
+   "seconds": 93600.0
+  },
+  {
+   "text": "1w 2",
+   "bare_unit": 60,
+   "seconds": 777600.0
+  },
+  {
+   "text": "1w 2",
+   "bare_unit": 1,
+   "seconds": 777600.0
+  },
+  {
+   "text": "3 hrs",
+   "bare_unit": 60,
+   "seconds": 10800.0
+  },
+  {
+   "text": "3 hrs",
+   "bare_unit": 1,
+   "seconds": 10800.0
+  },
+  {
+   "text": "10 secs",
+   "bare_unit": 60,
+   "seconds": 10.0
+  },
+  {
+   "text": "10 secs",
+   "bare_unit": 1,
+   "seconds": 10.0
+  },
+  {
+   "text": "1:60",
+   "bare_unit": 60,
+   "seconds": 120
+  },
+  {
+   "text": "1:60",
+   "bare_unit": 1,
+   "seconds": 120
+  },
+  {
+   "text": "1:2:3:4",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "1:2:3:4",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "5m garbage",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "5m garbage",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "m5",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "m5",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "1h, 30m",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1h, 30m",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "0",
+   "bare_unit": 60,
+   "seconds": 0.0
+  },
+  {
+   "text": "0",
+   "bare_unit": 1,
+   "seconds": 0.0
+  },
+  {
+   "text": "0s",
+   "bare_unit": 60,
+   "seconds": 0.0
+  },
+  {
+   "text": "0s",
+   "bare_unit": 1,
+   "seconds": 0.0
+  },
+  {
+   "text": "100000000h",
+   "bare_unit": 60,
+   "seconds": 360000000000.0
+  },
+  {
+   "text": "100000000h",
+   "bare_unit": 1,
+   "seconds": 360000000000.0
+  },
+  {
+   "text": "1.5.5",
+   "bare_unit": 60,
+   "seconds": null
+  },
+  {
+   "text": "1.5.5",
+   "bare_unit": 1,
+   "seconds": null
+  },
+  {
+   "text": "1 h 30",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1 h 30",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  },
+  {
+   "text": "45 min",
+   "bare_unit": 60,
+   "seconds": 2700.0
+  },
+  {
+   "text": "45 min",
+   "bare_unit": 1,
+   "seconds": 2700.0
+  },
+  {
+   "text": "1 wk",
+   "bare_unit": 60,
+   "seconds": 604800.0
+  },
+  {
+   "text": "1 wk",
+   "bare_unit": 1,
+   "seconds": 604800.0
+  },
+  {
+   "text": "1 week",
+   "bare_unit": 60,
+   "seconds": 604800.0
+  },
+  {
+   "text": "1 week",
+   "bare_unit": 1,
+   "seconds": 604800.0
+  },
+  {
+   "text": "1H30M",
+   "bare_unit": 60,
+   "seconds": 5400.0
+  },
+  {
+   "text": "1H30M",
+   "bare_unit": 1,
+   "seconds": 5400.0
+  }
+ ],
+ "clocks": [
+  {
+   "text": "17:30",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-23T17:30:00"
+  },
+  {
+   "text": "5:30pm",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-23T17:30:00"
+  },
+  {
+   "text": "9am",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "text": "9",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "text": "12am",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T00:00:00"
+  },
+  {
+   "text": "12pm",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T12:00:00"
+  },
+  {
+   "text": "0:00",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T00:00:00"
+  },
+  {
+   "text": "23:59",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-23T23:59:00"
+  },
+  {
+   "text": "24:00",
+   "now": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "text": "13pm",
+   "now": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "text": "0am",
+   "now": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "text": "9.15",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T09:15:00"
+  },
+  {
+   "text": "9:5",
+   "now": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "text": "14:30",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T14:30:00"
+  },
+  {
+   "text": "14:29",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-24T14:29:00"
+  },
+  {
+   "text": "",
+   "now": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "text": "noon",
+   "now": "2026-11-23T14:30:00",
+   "due": null
+  },
+  {
+   "text": " 7 pm ",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-23T19:00:00"
+  },
+  {
+   "text": "7PM",
+   "now": "2026-11-23T14:30:00",
+   "due": "2026-11-23T19:00:00"
+  },
+  {
+   "text": "17:30",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T17:30:00"
+  },
+  {
+   "text": "5:30pm",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T17:30:00"
+  },
+  {
+   "text": "9am",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "text": "9",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T09:00:00"
+  },
+  {
+   "text": "12am",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T00:00:00"
+  },
+  {
+   "text": "12pm",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T12:00:00"
+  },
+  {
+   "text": "0:00",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T00:00:00"
+  },
+  {
+   "text": "23:59",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T23:59:00"
+  },
+  {
+   "text": "24:00",
+   "now": "2026-11-23T23:59:30",
+   "due": null
+  },
+  {
+   "text": "13pm",
+   "now": "2026-11-23T23:59:30",
+   "due": null
+  },
+  {
+   "text": "0am",
+   "now": "2026-11-23T23:59:30",
+   "due": null
+  },
+  {
+   "text": "9.15",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T09:15:00"
+  },
+  {
+   "text": "9:5",
+   "now": "2026-11-23T23:59:30",
+   "due": null
+  },
+  {
+   "text": "14:30",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T14:30:00"
+  },
+  {
+   "text": "14:29",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T14:29:00"
+  },
+  {
+   "text": "",
+   "now": "2026-11-23T23:59:30",
+   "due": null
+  },
+  {
+   "text": "noon",
+   "now": "2026-11-23T23:59:30",
+   "due": null
+  },
+  {
+   "text": " 7 pm ",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T19:00:00"
+  },
+  {
+   "text": "7PM",
+   "now": "2026-11-23T23:59:30",
+   "due": "2026-11-24T19:00:00"
+  }
+ ],
+ "fmt_secs": [
+  {
+   "seconds": 0,
+   "text": "0s"
+  },
+  {
+   "seconds": 0.4,
+   "text": "0s"
+  },
+  {
+   "seconds": 0.5,
+   "text": "0s"
+  },
+  {
+   "seconds": 1.5,
+   "text": "2s"
+  },
+  {
+   "seconds": 59,
+   "text": "59s"
+  },
+  {
+   "seconds": 59.6,
+   "text": "1m"
+  },
+  {
+   "seconds": 60,
+   "text": "1m"
+  },
+  {
+   "seconds": 61,
+   "text": "1m 01s"
+  },
+  {
+   "seconds": 90,
+   "text": "1m 30s"
+  },
+  {
+   "seconds": 3599,
+   "text": "59m 59s"
+  },
+  {
+   "seconds": 3600,
+   "text": "1h"
+  },
+  {
+   "seconds": 3660,
+   "text": "1h 01m"
+  },
+  {
+   "seconds": 5400,
+   "text": "1h 30m"
+  },
+  {
+   "seconds": 86400,
+   "text": "24h"
+  },
+  {
+   "seconds": 90061,
+   "text": "25h 01m"
+  },
+  {
+   "seconds": -5,
+   "text": "-1h 59m"
+  }
+ ]
+}

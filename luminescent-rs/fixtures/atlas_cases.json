@@ -1,0 +1,1523 @@
+{
+ "constants": {
+  "port": 47830,
+  "magic": "ATLS",
+  "salt": "atlas-sync-1",
+  "rounds": 120000,
+  "max_frame": 536870912,
+  "protocol": 1,
+  "accepts": {
+   "kinds": [
+    "item",
+    "log",
+    "event",
+    "task",
+    "theme"
+   ],
+   "items": [
+    "NOTE",
+    "TRACKER:TIMER"
+   ]
+  },
+  "sealed": 0,
+  "error": 1,
+  "current_theme": "luminescent-current",
+  "ignored_in_fingerprint": [
+   "created",
+   "updated"
+  ]
+ },
+ "now_ms": 1795444200000,
+ "timezone": "UTC",
+ "derive_key": [
+  {
+   "code": "000000",
+   "key": "36b1864b9f8872aac87e8140564069a6de0b24090986081e9c7781b8e200a96e"
+  },
+  {
+   "code": "123456",
+   "key": "89312a7a08d2afc2a4ed5d37e1c6d40c3fde3585d7ab1050e5c33e00d6f2e792"
+  },
+  {
+   "code": "987654",
+   "key": "73bd0b6e41c9a1ea854a15c3a391793fe82f1f714d41d3a4902421029a025d4a"
+  }
+ ],
+ "seal": [
+  {
+   "code": "123456",
+   "plain": "{}",
+   "sealed": "8d6df9c5a7296633ef871ab2a88f053135f062b27130240fa42c5773fdce",
+   "frame": "41544c53000000001e8d6df9c5a7296633ef871ab2a88f053135f062b27130240fa42c5773fdce",
+   "read_back": "{}"
+  },
+  {
+   "code": "123456",
+   "plain": "{\"action\": \"hello\", \"name\": \"Pixel\"}",
+   "sealed": "cddb012bf32b4957f6c3405c8775e05bee4aeefb063d838500096f2a8e05db01b93ce2288502d73cf52f855220ee77d50d45a61df1eef15b7d1fdea65cf5cbd4",
+   "frame": "41544c530000000040cddb012bf32b4957f6c3405c8775e05bee4aeefb063d838500096f2a8e05db01b93ce2288502d73cf52f855220ee77d50d45a61df1eef15b7d1fdea65cf5cbd4",
+   "read_back": "{\"action\": \"hello\", \"name\": \"Pixel\"}"
+  }
+ ],
+ "error_frame": "41544c53010000000a57726f6e6720636f6465",
+ "bad_frames": [
+  {
+   "name": "wrong magic",
+   "bytes": "4e4f50450000000000",
+   "error": "SyncError",
+   "message": "That is not an Atlas device"
+  },
+  {
+   "name": "negative length",
+   "bytes": "41544c5300ffffffff",
+   "error": "SyncError",
+   "message": "Too big"
+  },
+  {
+   "name": "too big",
+   "bytes": "41544c530020000001",
+   "error": "SyncError",
+   "message": "Too big"
+  },
+  {
+   "name": "cut short",
+   "bytes": "41544c530000000010616263",
+   "error": "SyncError",
+   "message": "The other device hung up"
+  }
+ ],
+ "fingerprints": [
+  {
+   "record": {
+    "kind": "item",
+    "uid": "n1",
+    "fields": {
+     "type": "NOTE",
+     "name": "Ideas",
+     "note": {
+      "text": "x"
+     },
+     "updated": 5,
+     "created": 1
+    }
+   },
+   "canonical": "{\"created\":1,\"name\":\"Ideas\",\"note\":{\"text\":\"x\"},\"type\":\"NOTE\",\"updated\":5}",
+   "fingerprint": "iKIH54j5D34Bsh1uS1Bs-Z"
+  },
+  {
+   "record": {
+    "kind": "item",
+    "uid": "n1",
+    "fields": {
+     "type": "NOTE",
+     "name": "Ideas",
+     "note": {
+      "text": "x"
+     },
+     "updated": 99,
+     "created": 2
+    }
+   },
+   "canonical": "{\"created\":2,\"name\":\"Ideas\",\"note\":{\"text\":\"x\"},\"type\":\"NOTE\",\"updated\":99}",
+   "fingerprint": "iKIH54j5D34Bsh1uS1Bs-Z"
+  },
+  {
+   "record": {
+    "kind": "item",
+    "uid": "n2",
+    "fields": {
+     "type": "NOTE",
+     "note": {
+      "text": "y",
+      "markdown": false
+     }
+    }
+   },
+   "canonical": "{\"note\":{\"markdown\":false,\"text\":\"y\"},\"type\":\"NOTE\"}",
+   "fingerprint": "Q_pFnXrLjCKxSXyMFU4s7m"
+  },
+  {
+   "record": {
+    "kind": "item",
+    "uid": "n2",
+    "fields": {
+     "type": "NOTE",
+     "note": {
+      "text": "y"
+     }
+    }
+   },
+   "canonical": "{\"note\":{\"text\":\"y\"},\"type\":\"NOTE\"}",
+   "fingerprint": "Q_pFnXrLjCKxSXyMFU4s7m"
+  },
+  {
+   "record": {
+    "kind": "item",
+    "uid": "n3",
+    "fields": {
+     "type": "NOTE",
+     "note": {
+      "text": "y",
+      "markdown": true
+     }
+    }
+   },
+   "canonical": "{\"note\":{\"markdown\":true,\"text\":\"y\"},\"type\":\"NOTE\"}",
+   "fingerprint": "TnHxQVLBUeU6rlRutHE4vt"
+  },
+  {
+   "record": {
+    "kind": "event",
+    "uid": "e1",
+    "fields": {
+     "title": "Ünïcode ☕",
+     "skippedDays": null,
+     "z": [
+      1,
+      {
+       "b": 2,
+       "a": 1
+      }
+     ]
+    }
+   },
+   "canonical": "{\"skippedDays\":null,\"title\":\"Ünïcode ☕\",\"z\":[1,{\"a\":1,\"b\":2}]}",
+   "fingerprint": "Jg1K8QWY4IgjolZxPIkeDN"
+  },
+  {
+   "record": {
+    "kind": "event",
+    "uid": "e1",
+    "fields": {
+     "title": "Ünïcode ☕",
+     "z": [
+      1,
+      {
+       "a": 1,
+       "b": 2
+      }
+     ]
+    }
+   },
+   "canonical": "{\"title\":\"Ünïcode ☕\",\"z\":[1,{\"a\":1,\"b\":2}]}",
+   "fingerprint": "Jg1K8QWY4IgjolZxPIkeDN"
+  },
+  {
+   "record": {
+    "kind": "log",
+    "uid": "l1",
+    "fields": {
+     "value": 1800.0,
+     "durationSeconds": 1800,
+     "note": null
+    }
+   },
+   "canonical": "{\"durationSeconds\":1800,\"note\":null,\"value\":1800.0}",
+   "fingerprint": "oWydjLLX2vic0xcyf3tv92"
+  }
+ ],
+ "colour_to_int": [
+  {
+   "colour": "#E5484D",
+   "int": -1750963
+  },
+  {
+   "colour": "e5484d",
+   "int": -1750963
+  },
+  {
+   "colour": "#FFF",
+   "int": null
+  },
+  {
+   "colour": "",
+   "int": null
+  },
+  {
+   "colour": "#000000",
+   "int": -16777216
+  }
+ ],
+ "int_to_colour": [
+  {
+   "int": null,
+   "colour": ""
+  },
+  {
+   "int": -1702579,
+   "colour": "#E6054D"
+  },
+  {
+   "int": -16777216,
+   "colour": "#000000"
+  },
+  {
+   "int": 0,
+   "colour": "#000000"
+  },
+  {
+   "int": 16777215,
+   "colour": "#FFFFFF"
+  }
+ ],
+ "note_text": [
+  {
+   "note": {
+    "id": "n1",
+    "name": "Ideas",
+    "type": "note",
+    "content": "build a boat",
+    "items": [],
+    "colour": "#E5484D",
+    "pinned": true,
+    "tags": [
+     "Work",
+     "boat"
+    ]
+   },
+   "text": "build a boat",
+   "signature": [
+    "Ideas",
+    "build a boat",
+    "#E5484D",
+    true,
+    [
+     "boat",
+     "work"
+    ]
+   ]
+  },
+  {
+   "note": {
+    "id": "n2",
+    "name": "Shop",
+    "type": "todo",
+    "content": "",
+    "tags": [],
+    "colour": "",
+    "pinned": false,
+    "items": [
+     {
+      "id": "a",
+      "text": "milk",
+      "checked": true,
+      "due": ""
+     },
+     {
+      "id": "b",
+      "text": "eggs",
+      "checked": false,
+      "due": "2026-11-24T09:00"
+     }
+    ]
+   },
+   "text": "- [x] milk\n- [ ] eggs (due 2026-11-24 09:00)",
+   "signature": [
+    "Shop",
+    "- [x] milk\n- [ ] eggs (due 2026-11-24 09:00)",
+    "",
+    false,
+    []
+   ]
+  }
+ ],
+ "checklists": [
+  {
+   "text": "- [x] milk\n- [ ] eggs (due 2026-11-24 09:00)\n- [X] bread",
+   "is_checklist": true,
+   "items": [
+    {
+     "id": "a",
+     "text": "milk",
+     "checked": true,
+     "due": ""
+    },
+    {
+     "id": "b",
+     "text": "eggs",
+     "checked": false,
+     "due": "2026-11-24T09:00"
+    },
+    {
+     "id": "75350b8f9d",
+     "text": "bread",
+     "checked": true,
+     "due": ""
+    }
+   ]
+  },
+  {
+   "text": "plain text",
+   "is_checklist": false,
+   "items": []
+  },
+  {
+   "text": "",
+   "is_checklist": false,
+   "items": []
+  },
+  {
+   "text": "- [ ] a\nnot a line",
+   "is_checklist": false,
+   "items": [
+    {
+     "id": "0441b45735",
+     "text": "a",
+     "checked": false,
+     "due": ""
+    }
+   ]
+  },
+  {
+   "text": "- [ ] trailing \n\n- [x] b",
+   "is_checklist": true,
+   "items": [
+    {
+     "id": "013e811c88",
+     "text": "trailing ",
+     "checked": false,
+     "due": ""
+    },
+    {
+     "id": "24ef2f66d1",
+     "text": "b",
+     "checked": true,
+     "due": ""
+    }
+   ]
+  }
+ ],
+ "occurrences": [
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "NONE"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "DAILY"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1793696400000,
+    1793782800000,
+    1793869200000,
+    1793955600000,
+    1794042000000,
+    1794128400000,
+    1794214800000,
+    1794301200000,
+    1794387600000,
+    1794474000000,
+    1794560400000,
+    1794646800000,
+    1794733200000,
+    1794819600000,
+    1794906000000,
+    1794992400000,
+    1795078800000,
+    1795165200000,
+    1795251600000,
+    1795338000000,
+    1795424400000,
+    1795510800000,
+    1795597200000,
+    1795683600000,
+    1795770000000,
+    1795856400000,
+    1795942800000,
+    1796029200000,
+    1796115600000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "WEEKDAYS"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1793696400000,
+    1793782800000,
+    1793869200000,
+    1793955600000,
+    1794214800000,
+    1794301200000,
+    1794387600000,
+    1794474000000,
+    1794560400000,
+    1794819600000,
+    1794906000000,
+    1794992400000,
+    1795078800000,
+    1795165200000,
+    1795424400000,
+    1795510800000,
+    1795597200000,
+    1795683600000,
+    1795770000000,
+    1796029200000,
+    1796115600000,
+    1796202000000,
+    1796288400000,
+    1796374800000,
+    1796634000000,
+    1796720400000,
+    1796806800000,
+    1796893200000,
+    1796979600000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "WEEKLY"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1794214800000,
+    1794819600000,
+    1795424400000,
+    1796029200000,
+    1796634000000,
+    1797238800000,
+    1797843600000,
+    1798448400000,
+    1799053200000,
+    1799658000000,
+    1800262800000,
+    1800867600000,
+    1801472400000,
+    1802077200000,
+    1802682000000,
+    1803286800000,
+    1803891600000,
+    1804496400000,
+    1805101200000,
+    1805706000000,
+    1806310800000,
+    1806915600000,
+    1807520400000,
+    1808125200000,
+    1808730000000,
+    1809334800000,
+    1809939600000,
+    1810544400000,
+    1811149200000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "FORTNIGHTLY"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1794819600000,
+    1796029200000,
+    1797238800000,
+    1798448400000,
+    1799658000000,
+    1800867600000,
+    1802077200000,
+    1803286800000,
+    1804496400000,
+    1805706000000,
+    1806915600000,
+    1808125200000,
+    1809334800000,
+    1810544400000,
+    1811754000000,
+    1812963600000,
+    1814173200000,
+    1815382800000,
+    1816592400000,
+    1817802000000,
+    1819011600000,
+    1820221200000,
+    1821430800000,
+    1822640400000,
+    1823850000000,
+    1825059600000,
+    1826269200000,
+    1827478800000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "MONTHLY"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1796202000000,
+    1798880400000,
+    1801558800000,
+    1803978000000,
+    1806656400000,
+    1809248400000,
+    1811926800000,
+    1814518800000,
+    1817197200000,
+    1819875600000,
+    1822467600000,
+    1825146000000,
+    1827738000000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "YEARLY"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1825146000000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "DAILY",
+    "repeatUntil": 1793869200000
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1793696400000,
+    1793782800000,
+    1793869200000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "DAILY",
+    "skippedDays": "20760, 20761"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000,
+    1793869200000,
+    1793955600000,
+    1794042000000,
+    1794128400000,
+    1794214800000,
+    1794301200000,
+    1794387600000,
+    1794474000000,
+    1794560400000,
+    1794646800000,
+    1794733200000,
+    1794819600000,
+    1794906000000,
+    1794992400000,
+    1795078800000,
+    1795165200000,
+    1795251600000,
+    1795338000000,
+    1795424400000,
+    1795510800000,
+    1795597200000,
+    1795683600000,
+    1795770000000,
+    1795856400000,
+    1795942800000,
+    1796029200000,
+    1796115600000,
+    1796202000000,
+    1796288400000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1793610000000,
+    "repeatRule": "ODD"
+   },
+   "from": 1793610000000,
+   "to": 1828170000000,
+   "occurrences": [
+    1793610000000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1769846400000,
+    "repeatRule": "MONTHLY"
+   },
+   "from": 1769846400000,
+   "to": 1838966400000,
+   "occurrences": [
+    1769846400000,
+    1772524800000,
+    1775203200000,
+    1777795200000,
+    1780473600000,
+    1783065600000,
+    1785744000000,
+    1788422400000,
+    1791014400000,
+    1793692800000,
+    1796284800000,
+    1798963200000,
+    1801641600000,
+    1804060800000,
+    1806739200000,
+    1809331200000,
+    1812009600000,
+    1814601600000,
+    1817280000000,
+    1819958400000,
+    1822550400000,
+    1825228800000,
+    1827820800000,
+    1830499200000,
+    1833177600000,
+    1835683200000,
+    1838361600000
+   ]
+  },
+  {
+   "event": {
+    "startsAt": 1709193600000,
+    "repeatRule": "YEARLY"
+   },
+   "from": 1709193600000,
+   "to": 1778313600000,
+   "occurrences": [
+    1709193600000,
+    1740729600000,
+    1772265600000
+   ]
+  }
+ ],
+ "atlas_theme": {
+  "id": "luminescent-current",
+  "name": "Luminescent: Dark",
+  "dark": true,
+  "background": -15527145,
+  "surface": -15263972,
+  "card": -15000799,
+  "primary": -8688394,
+  "secondary": -7240456,
+  "accent": -5660678,
+  "text": -1250063,
+  "mutedText": -6052945,
+  "border": -14013904,
+  "danger": -1750963,
+  "success": -11751600,
+  "warning": -19712
+ },
+ "theme_roles": {
+  "primary": "#7B6CF6",
+  "bg": "#131317",
+  "card": "#1B1B21",
+  "text": "#ECECF1",
+  "muted": "#A3A3AF",
+  "border": "#2A2A30"
+ },
+ "baseline_digest": {
+  "baseline": {
+   "theme/luminescent-current": "PuJUr7dRyGB3L1IlZhq_Yb",
+   "item/lum-n1": "3aASNsM2kqLB_6Vkq1sqin",
+   "item/lum-n2": "KIcfTV90_iP9YM9OzEfaUF",
+   "item/lum-timer-coding-cc4948": "AZZmxEf9mOulcCmTOgvGx9",
+   "log/lum-act-6489a8295e841cf5": "46evoGSg5VEixVUw3zBbVG",
+   "item/atlas-note-1": "yZpD8eovRgahp08zG1SuoF",
+   "log/atlas-log-1": "8cyyyBXPkAbkIyccj1wshS",
+   "event/ev-1": "8spfB2dGoXirwS0laN01sv",
+   "theme/atlas-ocean": "pxwD_uAX1ksH5ZsKfYQNUD"
+  },
+  "digest": "hjwI7wj1LGFA7H1oRMvADh0HaqeQa50kMDXwxeEMP3Q"
+ },
+ "conversation": {
+  "device_name": "test-pc",
+  "notes_before": [
+   {
+    "id": "n1",
+    "name": "Ideas",
+    "type": "note",
+    "content": "build a boat",
+    "items": [],
+    "colour": "#E5484D",
+    "pinned": true,
+    "tags": [
+     "Work",
+     "boat"
+    ]
+   },
+   {
+    "id": "n2",
+    "name": "Shop",
+    "type": "todo",
+    "content": "",
+    "tags": [],
+    "colour": "",
+    "pinned": false,
+    "items": [
+     {
+      "id": "a",
+      "text": "milk",
+      "checked": true,
+      "due": ""
+     },
+     {
+      "id": "b",
+      "text": "eggs",
+      "checked": false,
+      "due": "2026-11-24T09:00"
+     }
+    ]
+   }
+  ],
+  "activity": [
+   {
+    "t": "2026-11-23T10:30:00",
+    "kind": "timer",
+    "label": "Coding",
+    "secs": 1800.0
+   },
+   {
+    "t": "2026-11-23T11:00:00",
+    "kind": "run",
+    "label": "Firefox"
+   }
+  ],
+  "theme": {
+   "id": "luminescent-current",
+   "name": "Luminescent: Dark",
+   "dark": true,
+   "background": -15527145,
+   "surface": -15263972,
+   "card": -15000799,
+   "primary": -8688394,
+   "secondary": -7240456,
+   "accent": -5660678,
+   "text": -1250063,
+   "mutedText": -6052945,
+   "border": -14013904,
+   "danger": -1750963,
+   "success": -11751600,
+   "warning": -19712
+  },
+  "exchanges": [
+   {
+    "request": {
+     "action": "hello",
+     "name": "Pixel",
+     "kind": "Phone",
+     "deviceId": "phone"
+    },
+    "reply": {
+     "app": "luminescent",
+     "protocol": 1,
+     "deviceId": "c10e1cf9c3d14c51819903b9a557eb57",
+     "name": "test-pc",
+     "kind": "PC",
+     "accepts": {
+      "kinds": [
+       "item",
+       "log",
+       "event",
+       "task",
+       "theme"
+      ],
+      "items": [
+       "NOTE",
+       "TRACKER:TIMER"
+      ]
+     }
+    }
+   },
+   {
+    "request": {
+     "action": "records",
+     "peerId": "phone",
+     "name": "Pixel"
+    },
+    "reply": {
+     "records": [
+      {
+       "kind": "theme",
+       "uid": "luminescent-current",
+       "fields": {
+        "id": "luminescent-current",
+        "name": "Luminescent: Dark",
+        "dark": true,
+        "background": -15527145,
+        "surface": -15263972,
+        "card": -15000799,
+        "primary": -8688394,
+        "secondary": -7240456,
+        "accent": -5660678,
+        "text": -1250063,
+        "mutedText": -6052945,
+        "border": -14013904,
+        "danger": -1750963,
+        "success": -11751600,
+        "warning": -19712
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "lum-n1",
+       "fields": {
+        "type": "NOTE",
+        "parentId": null,
+        "name": "Ideas",
+        "color": -1750963,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": true,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "note": {
+         "text": "build a boat"
+        },
+        "tags": [
+         "boat",
+         "work"
+        ]
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "lum-n2",
+       "fields": {
+        "type": "NOTE",
+        "parentId": null,
+        "name": "Shop",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "note": {
+         "text": "- [x] milk\n- [ ] eggs (due 2026-11-24 09:00)"
+        }
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "lum-timer-coding-cc4948",
+       "fields": {
+        "type": "TRACKER",
+        "parentId": null,
+        "name": "Coding",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "tracker": {
+         "kind": "TIMER",
+         "unit": null,
+         "dailyGoal": null,
+         "showOnHome": true,
+         "aggregate": null,
+         "showOnCalendar": true
+        }
+       }
+      },
+      {
+       "kind": "log",
+       "uid": "lum-act-6489a8295e841cf5",
+       "fields": {
+        "trackerId": "lum-timer-coding-cc4948",
+        "timestamp": 1795428000000,
+        "value": 1800.0,
+        "durationSeconds": 1800,
+        "note": null
+       }
+      }
+     ],
+     "baseDigest": "RBNvo1WzZ4oRRq0W9-hknpT7T8If536DEMBg9hyq_4o"
+    }
+   },
+   {
+    "request": {
+     "action": "apply",
+     "syncId": "x1",
+     "peerId": "phone",
+     "name": "Pixel",
+     "kind": "Phone",
+     "upserts": [
+      {
+       "kind": "item",
+       "uid": "lum-n2",
+       "fields": {
+        "type": "NOTE",
+        "parentId": null,
+        "name": "Shop",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "note": {
+         "text": "- [x] milk\n- [x] eggs\n- [ ] bread"
+        }
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "atlas-note-1",
+       "fields": {
+        "type": "NOTE",
+        "parentId": null,
+        "name": "From phone",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "note": {
+         "text": "hi"
+        }
+       }
+      },
+      {
+       "kind": "log",
+       "uid": "atlas-log-1",
+       "fields": {
+        "trackerId": "lum-timer-coding-cc4948",
+        "timestamp": 1795440600000,
+        "value": 1200.0,
+        "durationSeconds": 1200,
+        "note": null
+       }
+      },
+      {
+       "kind": "event",
+       "uid": "ev-1",
+       "fields": {
+        "title": "Dentist",
+        "startsAt": 1795530600000,
+        "repeatRule": "NONE"
+       }
+      },
+      {
+       "kind": "theme",
+       "uid": "atlas-ocean",
+       "fields": {
+        "id": "luminescent-current",
+        "name": "Luminescent: Ocean",
+        "dark": true,
+        "background": -16052192,
+        "surface": -8355712,
+        "card": -8355712,
+        "primary": -12688419,
+        "secondary": -8355712,
+        "accent": -8355712,
+        "text": -8355712,
+        "mutedText": -8355712,
+        "border": -8355712,
+        "danger": -1750963,
+        "success": -11751600,
+        "warning": -19712
+       }
+      }
+     ],
+     "deletes": [
+      {
+       "kind": "item",
+       "uid": "lum-n1"
+      }
+     ],
+     "relinks": [],
+     "baseline": {
+      "theme/luminescent-current": "PuJUr7dRyGB3L1IlZhq_Yb",
+      "item/lum-n1": "3aASNsM2kqLB_6Vkq1sqin",
+      "item/lum-n2": "KIcfTV90_iP9YM9OzEfaUF",
+      "item/lum-timer-coding-cc4948": "AZZmxEf9mOulcCmTOgvGx9",
+      "log/lum-act-6489a8295e841cf5": "46evoGSg5VEixVUw3zBbVG",
+      "item/atlas-note-1": "yZpD8eovRgahp08zG1SuoF",
+      "log/atlas-log-1": "8cyyyBXPkAbkIyccj1wshS",
+      "event/ev-1": "8spfB2dGoXirwS0laN01sv",
+      "theme/atlas-ocean": "pxwD_uAX1ksH5ZsKfYQNUD"
+     }
+    },
+    "reply": {
+     "ok": true
+    }
+   },
+   {
+    "request": {
+     "action": "apply",
+     "syncId": "x1",
+     "peerId": "phone",
+     "upserts": [],
+     "deletes": []
+    },
+    "reply": {
+     "ok": true
+    }
+   },
+   {
+    "request": {
+     "action": "records",
+     "peerId": "phone",
+     "name": "Pixel"
+    },
+    "reply": {
+     "records": [
+      {
+       "kind": "theme",
+       "uid": "luminescent-current",
+       "fields": {
+        "id": "luminescent-current",
+        "name": "Luminescent: Dark",
+        "dark": true,
+        "background": -15527145,
+        "surface": -15263972,
+        "card": -15000799,
+        "primary": -8688394,
+        "secondary": -7240456,
+        "accent": -5660678,
+        "text": -1250063,
+        "mutedText": -6052945,
+        "border": -14013904,
+        "danger": -1750963,
+        "success": -11751600,
+        "warning": -19712
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "lum-n2",
+       "fields": {
+        "type": "NOTE",
+        "parentId": null,
+        "name": "Shop",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "note": {
+         "text": "- [x] milk\n- [x] eggs\n- [ ] bread"
+        }
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "lum-timer-coding-cc4948",
+       "fields": {
+        "type": "TRACKER",
+        "parentId": null,
+        "name": "Coding",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "tracker": {
+         "kind": "TIMER",
+         "unit": null,
+         "dailyGoal": null,
+         "showOnHome": true,
+         "aggregate": null,
+         "showOnCalendar": true
+        }
+       }
+      },
+      {
+       "kind": "log",
+       "uid": "lum-act-6489a8295e841cf5",
+       "fields": {
+        "trackerId": "lum-timer-coding-cc4948",
+        "timestamp": 1795428000000,
+        "value": 1800.0,
+        "durationSeconds": 1800,
+        "note": null
+       }
+      },
+      {
+       "kind": "item",
+       "uid": "atlas-note-1",
+       "fields": {
+        "type": "NOTE",
+        "parentId": null,
+        "name": "From phone",
+        "color": null,
+        "icon": null,
+        "sortOrder": 0,
+        "pinned": false,
+        "created": 1795444200000,
+        "updated": 1795444200000,
+        "archived": false,
+        "deletedAt": null,
+        "note": {
+         "text": "hi"
+        }
+       }
+      },
+      {
+       "kind": "log",
+       "uid": "atlas-log-1",
+       "fields": {
+        "trackerId": "lum-timer-coding-cc4948",
+        "timestamp": 1795440600000,
+        "value": 1200.0,
+        "durationSeconds": 1200,
+        "note": null
+       }
+      },
+      {
+       "kind": "event",
+       "uid": "ev-1",
+       "fields": {
+        "title": "Dentist",
+        "startsAt": 1795530600000,
+        "repeatRule": "NONE"
+       }
+      },
+      {
+       "kind": "theme",
+       "uid": "atlas-ocean",
+       "fields": {
+        "id": "luminescent-current",
+        "name": "Luminescent: Ocean",
+        "dark": true,
+        "background": -16052192,
+        "surface": -8355712,
+        "card": -8355712,
+        "primary": -12688419,
+        "secondary": -8355712,
+        "accent": -8355712,
+        "text": -8355712,
+        "mutedText": -8355712,
+        "border": -8355712,
+        "danger": -1750963,
+        "success": -11751600,
+        "warning": -19712
+       }
+      }
+     ],
+     "baseDigest": "hjwI7wj1LGFA7H1oRMvADh0HaqeQa50kMDXwxeEMP3Q"
+    }
+   }
+  ],
+  "unknown_action": {
+   "error": "SyncError",
+   "message": "Luminescent doesn't know that request"
+  },
+  "notes_after": [
+   {
+    "id": "n2",
+    "name": "Shop",
+    "type": "todo",
+    "content": "",
+    "tags": [],
+    "colour": "",
+    "pinned": false,
+    "items": [
+     {
+      "id": "a",
+      "text": "milk",
+      "checked": true,
+      "due": ""
+     },
+     {
+      "id": "b",
+      "text": "eggs",
+      "checked": true,
+      "due": ""
+     },
+     {
+      "id": "778c9a3380",
+      "text": "bread",
+      "checked": false,
+      "due": ""
+     }
+    ]
+   },
+   {
+    "id": "3d2b1cbd5a",
+    "atlas_uid": "atlas-note-1",
+    "items": [],
+    "content": "hi",
+    "type": "note",
+    "tags": [],
+    "name": "From phone",
+    "colour": "",
+    "pinned": false
+   }
+  ],
+  "activity_added": [
+   {
+    "t": "2026-11-23T13:50:00",
+    "kind": "timer",
+    "label": "Coding",
+    "secs": 1200.0,
+    "atlas": "atlas-log-1"
+   }
+  ],
+  "store_after": {
+   "device_id": "c10e1cf9c3d14c51819903b9a557eb57",
+   "peers": {
+    "phone": {
+     "name": "Pixel",
+     "kind": "Phone",
+     "last": 1795444200000,
+     "baseline": {
+      "theme/luminescent-current": "PuJUr7dRyGB3L1IlZhq_Yb",
+      "item/lum-n1": "3aASNsM2kqLB_6Vkq1sqin",
+      "item/lum-n2": "KIcfTV90_iP9YM9OzEfaUF",
+      "item/lum-timer-coding-cc4948": "AZZmxEf9mOulcCmTOgvGx9",
+      "log/lum-act-6489a8295e841cf5": "46evoGSg5VEixVUw3zBbVG",
+      "item/atlas-note-1": "yZpD8eovRgahp08zG1SuoF",
+      "log/atlas-log-1": "8cyyyBXPkAbkIyccj1wshS",
+      "event/ev-1": "8spfB2dGoXirwS0laN01sv",
+      "theme/atlas-ocean": "pxwD_uAX1ksH5ZsKfYQNUD"
+     }
+    }
+   },
+   "shadow": {
+    "theme/luminescent-current": {
+     "kind": "theme",
+     "uid": "luminescent-current",
+     "fields": {
+      "id": "luminescent-current",
+      "name": "Luminescent: Dark",
+      "dark": true,
+      "background": -15527145,
+      "surface": -15263972,
+      "card": -15000799,
+      "primary": -8688394,
+      "secondary": -7240456,
+      "accent": -5660678,
+      "text": -1250063,
+      "mutedText": -6052945,
+      "border": -14013904,
+      "danger": -1750963,
+      "success": -11751600,
+      "warning": -19712
+     }
+    },
+    "item/lum-n1": {
+     "kind": "item",
+     "uid": "lum-n1",
+     "fields": {
+      "type": "NOTE",
+      "parentId": null,
+      "name": "Ideas",
+      "color": -1750963,
+      "icon": null,
+      "sortOrder": 0,
+      "pinned": true,
+      "created": 1795444200000,
+      "updated": 1795444200000,
+      "archived": false,
+      "deletedAt": null,
+      "note": {
+       "text": "build a boat"
+      },
+      "tags": [
+       "boat",
+       "work"
+      ]
+     }
+    },
+    "item/lum-n2": {
+     "kind": "item",
+     "uid": "lum-n2",
+     "fields": {
+      "type": "NOTE",
+      "parentId": null,
+      "name": "Shop",
+      "color": null,
+      "icon": null,
+      "sortOrder": 0,
+      "pinned": false,
+      "created": 1795444200000,
+      "updated": 1795444200000,
+      "archived": false,
+      "deletedAt": null,
+      "note": {
+       "text": "- [x] milk\n- [x] eggs\n- [ ] bread"
+      }
+     }
+    },
+    "item/lum-timer-coding-cc4948": {
+     "kind": "item",
+     "uid": "lum-timer-coding-cc4948",
+     "fields": {
+      "type": "TRACKER",
+      "parentId": null,
+      "name": "Coding",
+      "color": null,
+      "icon": null,
+      "sortOrder": 0,
+      "pinned": false,
+      "created": 1795444200000,
+      "updated": 1795444200000,
+      "archived": false,
+      "deletedAt": null,
+      "tracker": {
+       "kind": "TIMER",
+       "unit": null,
+       "dailyGoal": null,
+       "showOnHome": true,
+       "aggregate": null,
+       "showOnCalendar": true
+      }
+     }
+    },
+    "log/lum-act-6489a8295e841cf5": {
+     "kind": "log",
+     "uid": "lum-act-6489a8295e841cf5",
+     "fields": {
+      "trackerId": "lum-timer-coding-cc4948",
+      "timestamp": 1795428000000,
+      "value": 1800.0,
+      "durationSeconds": 1800,
+      "note": null
+     }
+    },
+    "item/atlas-note-1": {
+     "kind": "item",
+     "uid": "atlas-note-1",
+     "fields": {
+      "type": "NOTE",
+      "parentId": null,
+      "name": "From phone",
+      "color": null,
+      "icon": null,
+      "sortOrder": 0,
+      "pinned": false,
+      "created": 1795444200000,
+      "updated": 1795444200000,
+      "archived": false,
+      "deletedAt": null,
+      "note": {
+       "text": "hi"
+      }
+     }
+    },
+    "log/atlas-log-1": {
+     "kind": "log",
+     "uid": "atlas-log-1",
+     "fields": {
+      "trackerId": "lum-timer-coding-cc4948",
+      "timestamp": 1795440600000,
+      "value": 1200.0,
+      "durationSeconds": 1200,
+      "note": null
+     }
+    },
+    "event/ev-1": {
+     "kind": "event",
+     "uid": "ev-1",
+     "fields": {
+      "title": "Dentist",
+      "startsAt": 1795530600000,
+      "repeatRule": "NONE"
+     }
+    },
+    "theme/atlas-ocean": {
+     "kind": "theme",
+     "uid": "atlas-ocean",
+     "fields": {
+      "id": "luminescent-current",
+      "name": "Luminescent: Ocean",
+      "dark": true,
+      "background": -16052192,
+      "surface": -8355712,
+      "card": -8355712,
+      "primary": -12688419,
+      "secondary": -8355712,
+      "accent": -8355712,
+      "text": -8355712,
+      "mutedText": -8355712,
+      "border": -8355712,
+      "danger": -1750963,
+      "success": -11751600,
+      "warning": -19712
+     }
+    }
+   },
+   "timers": {
+    "Coding": "lum-timer-coding-cc4948"
+   },
+   "alias": {},
+   "gone": [],
+   "notified": []
+  },
+  "incoming_themes": [
+   {
+    "kind": "theme",
+    "uid": "atlas-ocean",
+    "fields": {
+     "id": "luminescent-current",
+     "name": "Luminescent: Ocean",
+     "dark": true,
+     "background": -16052192,
+     "surface": -8355712,
+     "card": -8355712,
+     "primary": -12688419,
+     "secondary": -8355712,
+     "accent": -8355712,
+     "text": -8355712,
+     "mutedText": -8355712,
+     "border": -8355712,
+     "danger": -1750963,
+     "success": -11751600,
+     "warning": -19712
+    }
+   }
+  ],
+  "calendar": {
+   "events": [
+    {
+     "title": "Dentist",
+     "startsAt": 1795530600000,
+     "repeatRule": "NONE",
+     "uid": "ev-1"
+    }
+   ],
+   "tasks": []
+  }
+ }
+}

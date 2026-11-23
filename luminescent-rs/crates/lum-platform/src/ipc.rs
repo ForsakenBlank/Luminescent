@@ -117,14 +117,18 @@ fn exchange(name: Name<'static>, line: &str) -> io::Result<String> {
     Ok(answer.trim_end().to_owned())
 }
 
-/// Answers connections until the runtime shuts down, handing each line to `requests`.
-pub async fn serve(listener: TokioListener, requests: crossbeam_channel::Sender<CtlRequest>) {
+/// Something to call after a request was queued, so the UI thread wakes up and answers it.
+pub type Wake = std::sync::Arc<dyn Fn() + Send + Sync>;
+
+/// Answers connections until the runtime shuts down, handing each line to `requests` and calling `wake`.
+pub async fn serve(listener: TokioListener, requests: crossbeam_channel::Sender<CtlRequest>, wake: Wake) {
     loop {
         match listener.accept().await {
             Ok(conn) => {
                 let requests = requests.clone();
+                let wake = wake.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = answer(conn, requests).await {
+                    if let Err(e) = answer(conn, requests, wake).await {
                         tracing::debug!("ctl connection: {e}");
                     }
                 });
@@ -134,13 +138,18 @@ pub async fn serve(listener: TokioListener, requests: crossbeam_channel::Sender<
     }
 }
 
-async fn answer(conn: TokioStream, requests: crossbeam_channel::Sender<CtlRequest>) -> io::Result<()> {
+async fn answer(
+    conn: TokioStream,
+    requests: crossbeam_channel::Sender<CtlRequest>,
+    wake: Wake,
+) -> io::Result<()> {
     let mut line = String::new();
     tokio::io::BufReader::new(&conn).take(MAX_LINE).read_line(&mut line).await?;
     let (reply, answered) = oneshot::channel();
     let text = if requests.send(CtlRequest { line: line.trim().to_owned(), reply }).is_err() {
         "Luminescent is shutting down.".to_owned()
     } else {
+        wake();
         match tokio::time::timeout(ANSWER_WITHIN, answered).await {
             Ok(Ok(text)) => text,
             _ => "Luminescent did not answer in time.".to_owned(),
@@ -188,7 +197,7 @@ mod tests {
         let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
         let (tx, rx) = crossbeam_channel::unbounded::<CtlRequest>();
         let listener = runtime.block_on(async { endpoint.listen() }).unwrap();
-        std::thread::spawn(move || runtime.block_on(serve(listener, tx)));
+        std::thread::spawn(move || runtime.block_on(serve(listener, tx, std::sync::Arc::new(|| {}))));
         std::thread::spawn(move || {
             for request in rx {
                 let _ = request.reply.send(format!("got {}", request.line));

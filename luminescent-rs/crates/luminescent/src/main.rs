@@ -4,12 +4,17 @@
 //!     luminescent --smoke               start, check every part once, then quit (0 when all is well)
 //!     luminescent --bench-startup       start, print how long it took to be ready, then quit
 //!     luminescent --safe-mode           start without modules and with automations paused
+//!     luminescent --idle-check <secs>   start, measure idle CPU, wake-ups and memory, print them, then quit
+//!     luminescent --spike <name>        one of the UI framework checks (`--spike list` names them)
 //!     luminescent ctl <command>         talk to the running app (ping, status, overlay, action <id>, quit)
 //!     luminescent --strip-metadata <paths>   clean copies into the Metadata save folder (Dolphin / Explorer menu)
 
 mod ctl;
+mod idle;
 mod launcher;
+mod shell;
 mod smoke;
+mod spike;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -33,6 +38,27 @@ struct Cli {
     /// Start without modules and with automations paused
     #[arg(long)]
     safe_mode: bool,
+
+    /// Start, sit idle for this many seconds, print CPU, wake-ups and memory, then quit (1 when over budget)
+    #[arg(long, value_name = "SECS")]
+    idle_check: Option<u64>,
+
+    /// Run without any windows, even with a display
+    #[arg(long)]
+    headless: bool,
+
+    /// Draw with this renderer: glow (OpenGL) or wgpu (needs a build with --features wgpu)
+    #[arg(long, default_value = "glow")]
+    renderer: shell::Renderer,
+
+    /// Run one of the UI framework checks instead of the app: list, overlay, clickthrough, nofocus, drop,
+    /// idle, form, wires, note, gallery
+    #[arg(long, value_name = "NAME")]
+    spike: Option<String>,
+
+    /// How long a timed spike runs, in seconds
+    #[arg(long, value_name = "SECS")]
+    secs: Option<u64>,
 
     /// Make cleaned copies of these files or folders in the Metadata save folder
     #[arg(long, num_args = 1.., value_name = "PATHS", allow_hyphen_values = true)]
@@ -67,7 +93,18 @@ fn main() -> ExitCode {
         return send_ctl(&command.join(" "));
     }
 
-    let options = launcher::Options { smoke: cli.smoke, bench: cli.bench_startup, safe_mode: cli.safe_mode };
+    if let Some(name) = cli.spike {
+        return ExitCode::from(spike::run(&name, cli.renderer, cli.secs));
+    }
+
+    let options = launcher::Options {
+        smoke: cli.smoke,
+        bench: cli.bench_startup,
+        safe_mode: cli.safe_mode,
+        headless: cli.headless || std::env::var_os("LUMINESCENT_HEADLESS").is_some_and(|v| !v.is_empty()),
+        idle_check: cli.idle_check,
+        renderer: cli.renderer,
+    };
     match launcher::run(options, started) {
         Ok(code) => ExitCode::from(code),
         Err(e) => {

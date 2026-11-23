@@ -9,14 +9,14 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 7 %   [#...................]   Current phase: Phase 1 done, Phase 2 is next
+Overall: 7 %   [#...................]   Current phase: Phase 2 started (before its 25 % checkpoint)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
 |---|---|---|---|---|---|---|
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
-| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 0 % | not started |
+| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 0 % | in progress |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | not started |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
@@ -142,6 +142,58 @@ Overall: 7 %   [#...................]   Current phase: Phase 1 done, Phase 2 is 
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-23, Phase 2 started (work in progress, no checkpoint ticked yet, overall 7 %)
+
+The session ran out of room part way to the 25 % checkpoint. Everything below is committed and builds
+(`cargo build -p luminescent`); fmt has run; **clippy, `cargo test --workspace`, the Windows cross-clippy and CI have
+not been run on this work yet**. Do those first.
+
+**Done (not yet verified by tests/CI).**
+* Workspace deps: egui / eframe 0.37 (glow, wayland, x11, default_fonts), egui_kittest 0.37 (snapshot + wgpu).
+  The binary has a `wgpu` cargo feature for the renderer comparison. `cargo deny check` not run yet.
+* `lum-hypr::socket`: minimal Hyprland control socket client (request, `j/` queries, `eval` Lua, `lstr`), tested
+  against a fake socket.
+* `lum-platform`: `desktop` (monitors from Hyprland / EnumDisplayMonitors, window rules in a `LUMRS` Lua table so
+  they never clash with the Python app's `LUMI`, hidden-root rule, cover rules per monitor, `describe_windows`,
+  `has_display`, `places_windows_by_rule`), `process` (CPU via getrusage / GetProcessTimes, RSS, threads,
+  context switches), and `ipc::serve` now takes a `Wake` callback so a ctl request wakes the UI.
+* `lum-ui`: `fonts` (Geist / Geist Mono embedded from `assets/fonts`, one family per weight, egui fonts as symbol
+  fallback) and `theme` (Dark / Light `Palette` from `core/theme.py`, `Gradient`, `mix` / `alpha`, `Tokens` with
+  r / rs / rb, text scale clamped 0.8 to 1.6, tones, scrim, and `Tokens::style()` applied to egui's Style;
+  `Tokens::of(ctx)` reads them back). Unit tests pass.
+* Binary: `launcher.rs` no longer blocks on `select!` when there is a display. `shell.rs` runs eframe with a hidden
+  1x1 transparent root; `App::logic` calls `App::poll()` (drains ctl + messages, usage flush via
+  `request_repaint_after`), quitting sends `Close` to the root. `Waker` / `Mailbox` call `ctx.request_repaint()`
+  from services. No display (or `--headless` / `LUMINESCENT_HEADLESS=1`), or a renderer that fails or panics,
+  falls back to the old windowless loop (`run_headless`). Shutdown is idempotent.
+* `--idle-check <secs>` (`idle.rs`): settles 3 s, samples the process, prints a block plus a table row, exits 1 when
+  over budget (CPU >= 0.1 %, >= 1 wake-up/s, any painted frame, RSS over 100 MB).
+* `--spike <name>` (`spike/`): overlay, clickthrough, nofocus, drop (windows.rs), idle, form, wires, note
+  (perf.rs), `list`; `--renderer glow|wgpu`, `--secs N`. Each prints numbers and a `| ... |` row for
+  SPIKE_RESULTS.md. None of them has been run yet, not even under Xvfb.
+
+**Surprising.**
+* eframe 0.37 has `App::logic` (runs on `request_repaint` even while hidden) and `App::ui(&mut Ui)`;
+  viewport callbacks also get `&mut Ui`. `CentralPanel::show_inside` is deprecated (use `show(ui, ..)`).
+  `Id::new` is deprecated (`Id::unique` / `IdSalt`). `DroppedFile` is a trait (`path()`, `bytes()`).
+* eframe always calls `set_visible(true)` on the root after its first painted frame, so `with_visible(false)` does
+  nothing; the shell sends `Visible(false)` on frame one (it runs after that show). winit can not hide windows on
+  Wayland at all, so on Hyprland the root relies on the `LUMRS` rule (1x1, opacity 0, no focus). The overlay spike
+  prints `describe_windows()` so the user can see whether anything of ours is on screen.
+* Hiding a viewport on Wayland means destroying it, so the overlay spike times reopen (create + first frame); that
+  number decides the phase 5 prewarm design.
+* winit panics (not errors) when `libxkbcommon-x11.so` is missing; CI on ubuntu-22.04 needs `libxkbcommon-x11-0`
+  (and `xvfb` + mesa for a windowed idle check, `mesa-vulkan-drivers` for kittest snapshots via wgpu). Add them to
+  `.github/workflows/rust.yml` only.
+* First Xvfb run (debug build, llvmpipe): `--idle-check 5` gave 0.01 % CPU, 0.4 wake-ups/s, 0 frames painted,
+  but **114 MB RSS** (llvmpipe and a debug build inflate it). Measure a release build; if RSS stays high, compare
+  wgpu and check what glow / Mesa allocate.
+
+**Left for phase 2.** Run clippy / tests / Windows cross-clippy / deny, fix; update `instance.rs` if needed (CI has
+no display, so it takes the windowless path); CI deps; give the user the spike commands and record results in
+SPIKE_RESULTS.md; then Part B (widget kit, FloatingPanel, dialogs, menus, Animator, gradient and glow painters,
+kittest snapshots, gallery, `--smoke` building every widget headless with a plain `egui::Context`).
 
 ### 2026-11-23, Phase 1 finished (100 %, overall 7 %)
 

@@ -300,33 +300,61 @@ native drop handler later) instead of switching frameworks over it alone.
 
 ```text
 We are rewriting Luminescent (a Python + PyQt6 tray app in this repo) as a native Rust app. Read
-rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 2 section), rust-rewrite-plan/PROGRESS.md,
-rust-rewrite-plan/ARCHITECTURE.md (especially D1, the UI framework), rust-rewrite-plan/PERFORMANCE.md,
-rust-rewrite-plan/RISKS.md and luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 2 already started,
-continue from its handoff note.
+rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 2 section), rust-rewrite-plan/PROGRESS.md
+(including the Phase 1 handoff note), rust-rewrite-plan/ARCHITECTURE.md (especially D1, the UI framework, and
+the decision log D7 to D17), rust-rewrite-plan/PERFORMANCE.md, rust-rewrite-plan/RISKS.md,
+rust-rewrite-plan/BASELINE.md and luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 2 already started,
+continue from its handoff note instead of starting over. If luminescent-rs/Cargo.toml is missing on your branch,
+Phase 1 is not merged yet: fetch the branch claude/fervent-mayer-9vmvr9 and work from it.
 
 This session is Phase 2: prove the UI framework, then build the widget kit. The look is specified by
 UI_OVERVIEW.md, core/widgets.py, core/theme.py, core/anim.py, core/ux.py, ui/toast.py and the mock-ups in
 "Luminescent UI mockups/". Read them first.
 
+What Phase 1 left for you (details in the handoff note):
+- The binary's main thread runs a crossbeam select! loop in crates/luminescent/src/launcher.rs over ctl
+  requests, service messages and the usage flush timer. eframe must own the main thread, so move that loop into
+  the eframe app: drain the same channels in update(), and give the tokio services a way to call
+  ctx.request_repaint() (keep the egui::Context somewhere they can reach) so a ctl request, a signal or a timer
+  wakes the UI without polling. Ctrl+C, `luminescent ctl quit` and closing must still shut down cleanly (usage
+  flushed, modules stopped, start guard cleared, socket removed); crates/luminescent/tests/instance.rs checks it.
+- The Module trait in lum-core has no show(); add the drawing side in lum-ui on top of it (D12).
+- Only lum-ui and luminescent may depend on egui. Platform code stays in lum-platform behind cfg(target_os).
+- New crates must pass `cargo deny check` (chrono is out, use jiff; see D7). Check Windows-only lint errors
+  locally with `rustup target add x86_64-pc-windows-gnu` and
+  `cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings`.
+- If eframe needs system libraries to build or test on ubuntu-22.04, add them to .github/workflows/rust.yml
+  only; leave check.yml alone.
+
 Part A, the spike: build the eight checks from the Phase 2 Deliverables list as `luminescent --spike <name>`
 commands. This container has no display, so make each check runnable by me with one command on Hyprland and on
-Windows 11, print its numbers, and tell me exactly what to run. Record what I report in
-rust-rewrite-plan/SPIKE_RESULTS.md and write the decision (egui or iced, glow or wgpu) into the decision log in
-ARCHITECTURE.md. If egui fails a hard check that iced would pass, stop and tell me before switching.
+Windows 11, print its numbers, and tell me exactly what to run (with LUMINESCENT_HOME pointing at a temp folder).
+Add `--idle-check <secs>` as TESTING.md describes, reusing the method of luminescent-rs/tools/measure_rust.sh, and
+compare idle CPU, wake-ups and RSS with the Phase 1 rows in BASELINE.md (the core alone idles at 0 % CPU and
+5 MB). Record what I report in rust-rewrite-plan/SPIKE_RESULTS.md and write the decision (egui or iced, glow or
+wgpu) into the decision log in ARCHITECTURE.md. If egui fails a hard check that iced would pass, stop and tell me
+before switching.
 
 Part B, once the gate passes: build lum-ui's foundation (eframe app with a hidden root viewport, embedded Geist
 fonts from assets/fonts, a Tokens struct from a hard-coded Dark and Light palette applied to egui::Style, text
-scale), the full widget kit, FloatingPanel, dialogs, menus, the Animator and the gradient and glow painters, all
-in Luminescent's look. Add an egui_kittest snapshot harness and a widget gallery in Dark and Light, and make
---smoke build every widget.
+scale from the ui.text_scale setting), the full widget kit, FloatingPanel, dialogs, menus, the Animator (reading
+the animations.* settings) and the gradient and glow painters, all in Luminescent's look. Add an egui_kittest
+snapshot harness and a widget gallery in Dark and Light, and make --smoke build every widget headless (it must
+still pass in CI on both systems, with no display).
 
 Rules: follow luminescent-rs/CLAUDE.md. Code should read like a careful human Rust developer wrote it: comments
 only where they explain why, no banner comments, no emoji. Never use em dashes anywhere. No widget may repaint
-or tick while nothing changes. Commit after each checkpoint.
+or tick while nothing changes. Commit after each checkpoint in the Phase 2 table with a short plain commit
+message, and push to your session's branch.
 
-Finish: fmt, clippy -D warnings, tests and --smoke pass. Update rust-rewrite-plan/PROGRESS.md (tick checkpoints,
-percentages, handoff note). Stop at a checkpoint boundary if you run low on room.
+Finish: cargo fmt, cargo clippy --workspace --all-targets -- -D warnings, cargo test --workspace and --smoke must
+all pass, and CI must be green on both systems. Update rust-rewrite-plan/PROGRESS.md (tick checkpoints, set the
+phase and overall percentages, write a handoff note with anything surprising) and add any decision you made to
+the decision log in ARCHITECTURE.md. Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (Phase 3 from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---

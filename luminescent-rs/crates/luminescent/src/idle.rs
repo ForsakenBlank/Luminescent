@@ -25,16 +25,20 @@ pub struct Numbers {
     pub cpu_percent: f64,
     pub wakeups_per_sec: Option<f64>,
     pub rss_mb: f64,
+    pub private_mb: Option<f64>,
     pub threads: Option<u32>,
     pub logic_passes: u64,
     pub ui_passes: u64,
+    /// The CPU draws the pixels (llvmpipe in CI and cloud machines). Its driver adds 50 MB or more of
+    /// libraries to the RSS, so memory over the limit is reported but does not fail the check.
+    pub software_renderer: bool,
 }
 
 impl Numbers {
     pub fn ok(&self) -> bool {
         self.cpu_percent < CPU_BUDGET
             && self.wakeups_per_sec.is_none_or(|w| w < WAKEUP_BUDGET)
-            && self.rss_mb <= RSS_LIMIT_MB
+            && (self.rss_mb <= RSS_LIMIT_MB || self.software_renderer)
             && self.ui_passes == 0
             && (self.logic_passes as f64) < self.secs * WAKEUP_BUDGET
     }
@@ -43,6 +47,12 @@ impl Numbers {
     pub fn report(&self, mode: &str) -> String {
         let wakeups = self.wakeups_per_sec.map_or("n/a".to_owned(), |w| format!("{w:.1}"));
         let threads = self.threads.map_or("n/a".to_owned(), |t| t.to_string());
+        let private = self.private_mb.map_or(String::new(), |p| format!(", {p:.0} MB of it private"));
+        let software = if self.software_renderer && self.rss_mb > RSS_LIMIT_MB {
+            " (over, but a software renderer's libraries are in it, so it does not count)"
+        } else {
+            ""
+        };
         let verdict = if self.ok() { "OK" } else { "OVER BUDGET" };
         let desktop =
             std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_| std::env::consts::OS.to_owned());
@@ -50,7 +60,7 @@ impl Numbers {
             "IDLE CHECK {secs:.0} s, {mode}\n\
              \x20 CPU          {cpu:.2} % of one core (budget 0.0 %, fails at {CPU_BUDGET} %)\n\
              \x20 wake-ups     {wakeups} a second (budget under {WAKEUP_BUDGET:.0})\n\
-             \x20 memory       {rss:.0} MB RSS (target {RSS_TARGET_MB:.0} MB, limit {RSS_LIMIT_MB:.0} MB)\n\
+             \x20 memory       {rss:.0} MB RSS{private} (target {RSS_TARGET_MB:.0} MB, limit {RSS_LIMIT_MB:.0} MB){software}\n\
              \x20 threads      {threads}\n\
              \x20 UI passes    {logic} woken, {ui} painted (budget 0 painted)\n\
              \x20 result       {verdict}\n\
@@ -78,9 +88,11 @@ pub async fn check(length: Duration, passes: Arc<Passes>, mailbox: Mailbox) {
             _ => None,
         },
         rss_mb: after.rss_bytes as f64 / 1_048_576.0,
+        private_mb: after.private_bytes.map(|b| b as f64 / 1_048_576.0),
         threads: after.threads,
         logic_passes: passes_after.0 - passes_before.0,
         ui_passes: passes_after.1 - passes_before.1,
+        software_renderer: false,
     };
     mailbox.send(AppMsg::IdleReport(numbers));
 }
@@ -95,9 +107,11 @@ mod tests {
             cpu_percent: 0.0,
             wakeups_per_sec: Some(0.2),
             rss_mb: 30.0,
+            private_mb: Some(20.0),
             threads: Some(5),
             logic_passes: 0,
             ui_passes: 0,
+            software_renderer: false,
         }
     }
 
@@ -109,6 +123,7 @@ mod tests {
         assert!(!Numbers { wakeups_per_sec: Some(1.2), ..quiet() }.ok());
         assert!(!Numbers { ui_passes: 1, ..quiet() }.ok(), "nothing may paint while nothing changes");
         assert!(!Numbers { rss_mb: 120.0, ..quiet() }.ok());
+        assert!(Numbers { rss_mb: 120.0, software_renderer: true, ..quiet() }.ok(), "llvmpipe's libraries");
         assert!(quiet().report("no windows").contains("result       OK"));
     }
 }

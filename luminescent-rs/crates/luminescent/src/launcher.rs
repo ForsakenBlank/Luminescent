@@ -179,6 +179,8 @@ pub struct App {
     pub quitting: bool,
     /// How it runs, for reports: "no windows" or the renderer of the hidden main window.
     pub mode: String,
+    /// The pixels are drawn by the CPU, whose driver memory then shows up in ours.
+    pub software_renderer: bool,
     notifier: LogNotifier,
     clock: Arc<dyn Clock>,
     start_guard: Option<Arc<StartGuard>>,
@@ -237,6 +239,7 @@ impl App {
             exit_code: 0,
             quitting: false,
             mode: "no windows".to_owned(),
+            software_renderer: false,
             clock,
             start_guard,
             runtime: None,
@@ -280,7 +283,7 @@ impl App {
         let quit = messages.clone();
         runtime.spawn(async move {
             lum_platform::signals::quit_requested().await;
-            let _ = quit.send(AppMsg::Quit("asked to by the system"));
+            quit.send(AppMsg::Quit("asked to by the system"));
         });
 
         if let Some(secs) = options.idle_check {
@@ -290,8 +293,7 @@ impl App {
             let started = messages.clone();
             runtime.spawn(async move {
                 tokio::time::sleep(Duration::from_millis(1500)).await;
-                let _ =
-                    started.send(AppMsg::Emit { name: "luminescent.started".into(), text: VERSION.into() });
+                started.send(AppMsg::Emit { name: "luminescent.started".into(), text: VERSION.into() });
             });
             if let Some(start_guard) = self.start_guard.clone() {
                 runtime.spawn(async move {
@@ -390,7 +392,8 @@ impl App {
                 self.quitting = true;
             }
             AppMsg::Emit { name, text } => self.emit(&name, &text),
-            AppMsg::IdleReport(numbers) => {
+            AppMsg::IdleReport(mut numbers) => {
+                numbers.software_renderer = self.software_renderer;
                 let text = numbers.report(&self.mode);
                 println!("{text}");
                 tracing::info!("{}", text.lines().next().unwrap_or_default());

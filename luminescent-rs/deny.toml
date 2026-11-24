@@ -24,6 +24,10 @@ allow = [
     "0BSD",
 ]
 confidence-threshold = 0.9
+# egui's bundled fallback fonts (symbols Geist lacks); fonts under these licences can ship in a program
+exceptions = [
+    { crate = "epaint_default_fonts", allow = ["OFL-1.1", "Ubuntu-font-1.0"] },
+]
 
 [licenses.private]
 # the workspace crates are never published

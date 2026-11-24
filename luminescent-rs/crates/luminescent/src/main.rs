@@ -52,7 +52,7 @@ struct Cli {
     renderer: shell::Renderer,
 
     /// Run one of the UI framework checks instead of the app: list, overlay, clickthrough, nofocus, drop,
-    /// idle, form, wires, note, gallery
+    /// idle, form, wires, note
     #[arg(long, value_name = "NAME")]
     spike: Option<String>,
 

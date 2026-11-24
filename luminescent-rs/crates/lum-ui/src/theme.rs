@@ -83,10 +83,12 @@ impl Gradient {
     }
 }
 
-/// `a` blended towards `b` by `t`, rounding like `theme.mix`.
+/// `a` blended towards `b` by `t`, like `theme.mix` (Python's `round` sends halves to the even number).
 pub fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
-    let ch =
-        |x: u8, y: u8| (f32::from(x) + (f32::from(y) - f32::from(x)) * t).round().clamp(0.0, 255.0) as u8;
+    let t = f64::from(t);
+    let ch = |x: u8, y: u8| {
+        (f64::from(x) + (f64::from(y) - f64::from(x)) * t).round_ties_even().clamp(0.0, 255.0) as u8
+    };
     Color32::from_rgba_unmultiplied(ch(a.r(), b.r()), ch(a.g(), b.g()), ch(a.b(), b.b()), ch(a.a(), b.a()))
 }
 
@@ -434,8 +436,9 @@ mod tests {
 
     #[test]
     fn colour_maths_matches_python() {
-        // theme.mix("#7B6CF6", "#FFFFFF", 0.35) == "#A99FFA", the dark accent text
-        assert_eq!(mix(hex(0x7B6CF6), hex(0xFFFFFF), 0.35), hex(0xA99FFA));
+        // theme.mix("#7B6CF6", "#FFFFFF", 0.35), how derive_primary_text lightens the accent
+        assert_eq!(mix(hex(0x7B6CF6), hex(0xFFFFFF), 0.35), hex(0xA99FF9));
+        assert_eq!(mix(hex(0x000000), hex(0x030303), 0.5), hex(0x020202), "1.5 rounds to the even 2");
         assert!(Palette::light().is_light() && !Palette::dark().is_light());
         let g = Gradient::new(GradientKind::Linear, -90.0, vec![(1.0, hex(0x000000)), (0.0, hex(0xFFFFFF))])
             .expect("two stops");

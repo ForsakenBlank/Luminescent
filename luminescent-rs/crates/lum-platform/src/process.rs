@@ -8,6 +8,9 @@ pub struct Sample {
     /// User plus system time of every thread so far.
     pub cpu: Duration,
     pub rss_bytes: u64,
+    /// The part of the RSS that is this process's alone (heap, stacks, GPU buffers), without the shared
+    /// library pages. Linux only.
+    pub private_bytes: Option<u64>,
     pub threads: Option<u32>,
     /// Voluntary plus involuntary context switches of every thread: a fair count of how often the process
     /// woke up. Windows does not keep a per-process count, so it is `None` there.
@@ -33,6 +36,7 @@ pub fn sample() -> Sample {
     Sample {
         cpu: time(usage.ru_utime) + time(usage.ru_stime),
         rss_bytes: field("VmRSS:").unwrap_or(0) * 1024,
+        private_bytes: field("RssAnon:").map(|kb| kb * 1024),
         threads: field("Threads:").and_then(|n| u32::try_from(n).ok()),
         context_switches: Some((usage.ru_nvcsw + usage.ru_nivcsw) as u64),
     }
@@ -65,12 +69,12 @@ pub fn sample() -> Sample {
         };
         (cpu, rss)
     };
-    Sample { cpu, rss_bytes: rss, threads: None, context_switches: None }
+    Sample { cpu, rss_bytes: rss, private_bytes: None, threads: None, context_switches: None }
 }
 
 #[cfg(not(any(target_os = "linux", windows)))]
 pub fn sample() -> Sample {
-    Sample { cpu: Duration::ZERO, rss_bytes: 0, threads: None, context_switches: None }
+    Sample { cpu: Duration::ZERO, rss_bytes: 0, private_bytes: None, threads: None, context_switches: None }
 }
 
 #[cfg(test)]

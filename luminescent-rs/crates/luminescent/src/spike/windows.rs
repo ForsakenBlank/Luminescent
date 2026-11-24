@@ -120,7 +120,7 @@ pub fn overlay(renderer: Renderer, secs: u64) -> Result<(), String> {
         shown: true,
         reported: false,
         describe_at: None,
-        frames: 0,
+        ended: false,
     };
     launch(renderer, shell::hidden_root().with_title(desktop::ROOT_TITLE), &covers, |_| app)
 }
@@ -134,15 +134,15 @@ struct OverlaySpike {
     reported: bool,
     /// When to print where the dims ended up (once, a moment after they first opened).
     describe_at: Option<Instant>,
-    frames: u64,
+    /// The report is printed; the window closes on the next pass.
+    ended: bool,
 }
 
 impl eframe::App for OverlaySpike {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.frames += 1;
-        if self.frames == 1 {
-            ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+        if self.ended {
+            return;
         }
         let tokens = Tokens::of(&ctx);
         let mut close = Instant::now() >= self.deadline;
@@ -221,7 +221,10 @@ impl eframe::App for OverlaySpike {
                 self.reopens.first().map_or(0.0, |d| ms(*d)),
                 worst
             );
+            self.ended = true;
             ctx.send_viewport_cmd_to(ViewportId::ROOT, ViewportCommand::Close);
+        } else {
+            ctx.request_repaint_after(self.deadline.saturating_duration_since(Instant::now()));
         }
     }
 
@@ -247,7 +250,7 @@ pub fn click_through(renderer: Renderer, secs: u64) -> Result<(), String> {
         secs,
         through: false,
         caught: [0, 0],
-        frames: 0,
+        ended: false,
     };
     launch(renderer, shell::hidden_root(), &covers, |_| app)
 }
@@ -260,15 +263,14 @@ struct ClickSpike {
     through: bool,
     /// Clicks the dim caught while normal, and while click-through (that one should stay 0).
     caught: [u32; 2],
-    frames: u64,
+    ended: bool,
 }
 
 impl eframe::App for ClickSpike {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.frames += 1;
-        if self.frames == 1 {
-            ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+        if self.ended {
+            return;
         }
         let tokens = Tokens::of(&ctx);
         let elapsed = self.started.elapsed();
@@ -327,6 +329,7 @@ impl eframe::App for ClickSpike {
                 self.caught[1],
                 if ok { "pass" } else { "FAIL" }
             );
+            self.ended = true;
             ctx.send_viewport_cmd_to(ViewportId::ROOT, ViewportCommand::Close);
         } else {
             ctx.request_repaint_after(Duration::from_millis(250));
@@ -350,7 +353,7 @@ pub fn no_focus(renderer: Renderer) -> Result<(), String> {
         renderer,
         quiet: Sample::default(),
         loud: Sample::default(),
-        frames: 0,
+        ended: false,
     };
     launch(renderer, shell::hidden_root(), &[], |_| app)
 }
@@ -367,7 +370,7 @@ struct FocusSpike {
     renderer: Renderer,
     quiet: Sample,
     loud: Sample,
-    frames: u64,
+    ended: bool,
 }
 
 impl FocusSpike {
@@ -407,9 +410,8 @@ impl FocusSpike {
 impl eframe::App for FocusSpike {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        self.frames += 1;
-        if self.frames == 1 {
-            ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+        if self.ended {
+            return;
         }
         let t = self.started.elapsed().as_secs_f32();
         if t >= 5.0 {
@@ -452,6 +454,7 @@ impl eframe::App for FocusSpike {
                 verdict(&self.loud),
                 if quiet_ok && loud_ok { "pass" } else { "FAIL" }
             );
+            self.ended = true;
             ctx.send_viewport_cmd_to(ViewportId::ROOT, ViewportCommand::Close);
             return;
         }
@@ -470,6 +473,7 @@ pub fn drop(renderer: Renderer, secs: u64) -> Result<(), String> {
         deadline: Instant::now() + Duration::from_secs(secs),
         hovered: 0,
         dropped: Vec::new(),
+        ended: false,
     };
     launch(renderer, window("Luminescent drop check", [560.0, 320.0]).with_drag_and_drop(true), &[], |_| app)
 }
@@ -479,10 +483,14 @@ struct DropSpike {
     deadline: Instant,
     hovered: u32,
     dropped: Vec<String>,
+    ended: bool,
 }
 
 impl eframe::App for DropSpike {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if self.ended {
+            return;
+        }
         let ctx = ui.ctx().clone();
         let tokens = Tokens::of(&ctx);
         let (hovering, dropped, close) = ui.input(|i| {
@@ -526,6 +534,7 @@ impl eframe::App for DropSpike {
                 self.dropped.len(),
                 if self.dropped.is_empty() { "FAIL (nothing arrived)" } else { "pass" }
             );
+            self.ended = true;
             ctx.send_viewport_cmd(ViewportCommand::Close);
         } else {
             ctx.request_repaint_after(self.deadline.saturating_duration_since(Instant::now()));

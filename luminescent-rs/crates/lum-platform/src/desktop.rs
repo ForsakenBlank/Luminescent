@@ -16,7 +16,8 @@ pub mod marker {
     pub const NO_FOCUS: char = '\u{200c}';
 }
 
-/// The hidden main window's title. winit can not hide a window on Wayland, so a rule keeps it out of sight.
+/// The unseen main window's title. It is a transparent pixel; on Hyprland a rule keeps it small, unfocused and
+/// in a corner.
 pub const ROOT_TITLE: &str = "Luminescent root";
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,10 +128,12 @@ mod imp {
                 "{{ match = {{ class = {class}, title = {} }}, no_initial_focus = true, no_focus = true }}",
                 title(&format!(".*{}.*", marker::NO_FOCUS))
             ),
-            // the main window has to exist for the UI to run, but nobody should ever see it
+            // the main window has to exist for the UI to run, but nobody should ever see it. It draws nothing
+            // (fully transparent), so it needs no opacity rule, and a window Hyprland sees as shown keeps getting
+            // frame callbacks, which every other window of ours depends on (they are drawn in its pass)
             format!(
                 "{{ match = {{ class = {class}, title = {} }}, no_initial_focus = true, no_focus = true, \
-                 pin = false, size = \"1 1\", move = \"0 0\", opacity = \"0 override 0 override\" }}",
+                 pin = false, size = \"1 1\", move = \"0 0\" }}",
                 title(&format!("{ROOT_TITLE}.*"))
             ),
         ];
@@ -213,9 +216,10 @@ mod imp {
     use super::{Cover, Monitor};
     use windows_sys::Win32::Foundation::{LPARAM, RECT, TRUE};
     use windows_sys::Win32::Graphics::Gdi::{
-        EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW, MONITORINFOF_PRIMARY,
+        EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW,
     };
     use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
+    use windows_sys::Win32::UI::WindowsAndMessaging::MONITORINFOF_PRIMARY;
     use windows_sys::core::BOOL;
 
     unsafe extern "system" fn collect(monitor: HMONITOR, _dc: HDC, _rect: *mut RECT, data: LPARAM) -> BOOL {

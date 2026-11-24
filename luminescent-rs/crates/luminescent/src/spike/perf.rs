@@ -48,7 +48,10 @@ fn measure_idle(ctx: egui::Context, renderer: Renderer, secs: u64, passes: &Atom
     let threads = after.threads.map_or("n/a".to_owned(), |t| t.to_string());
     println!("  CPU          {cpu:.2} % of one core");
     println!("  wake-ups     {wakeups} a second");
-    println!("  memory       {rss:.0} MB RSS");
+    let private = after
+        .private_bytes
+        .map_or(String::new(), |b| format!(", {:.0} MB of it private", b as f64 / 1_048_576.0));
+    println!("  memory       {rss:.0} MB RSS{private}");
     println!("  threads      {threads}");
     println!("  frames       {painted} painted while idle (should be 0)");
     println!(
@@ -104,6 +107,7 @@ pub fn form(renderer: Renderer, secs: u64) -> Result<(), String> {
         max_offset: 0.0,
         timed: FrameStats::default(),
         by_hand: FrameStats::default(),
+        ended: false,
     };
     launch(renderer, window("Luminescent form check", [900.0, 700.0]), &[], |_| app)
 }
@@ -119,10 +123,14 @@ struct FormSpike {
     max_offset: f32,
     timed: FrameStats,
     by_hand: FrameStats,
+    ended: bool,
 }
 
 impl eframe::App for FormSpike {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        if self.ended {
+            return;
+        }
         let t = self.started.elapsed().as_secs_f32();
         let auto = t < 8.0;
         let stats = if auto { &mut self.timed } else { &mut self.by_hand };
@@ -179,7 +187,8 @@ impl eframe::App for FormSpike {
         if close || t >= self.secs as f32 {
             println!("  scrolling by itself:");
             self.timed.summary().iter().for_each(|l| println!("  {l}"));
-            if !self.by_hand.is_empty() {
+            // a handful of frames is hovering and the close, not scrolling
+            if self.by_hand.frames() >= 10 {
                 println!("  scrolled by hand (only frames something changed in):");
                 self.by_hand.summary().iter().for_each(|l| println!("  {l}"));
             }
@@ -188,6 +197,7 @@ impl eframe::App for FormSpike {
                 self.renderer.name(),
                 self.timed.row()
             );
+            self.ended = true;
             ui.ctx().send_viewport_cmd(ViewportCommand::Close);
         } else if !auto {
             ui.ctx().request_repaint_after(Duration::from_secs_f32((self.secs as f32 - t).max(0.0)));
@@ -217,9 +227,79 @@ pub fn wires(renderer: Renderer, secs: u64) -> Result<(), String> {
         (0..NODES).map(|_| pos2((next() % 1100) as f32 + 20.0, (next() % 640) as f32 + 40.0)).collect();
     let links: Vec<(usize, usize)> =
         (0..WIRES).map(|_| ((next() as usize) % NODES, (next() as usize) % NODES)).collect();
-    let app =
-        WireSpike { renderer, started: Instant::now(), secs, nodes, links, stats: FrameStats::default() };
+    let app = WireSpike {
+        renderer,
+        started: Instant::now(),
+        secs,
+        nodes,
+        links,
+        stats: FrameStats::default(),
+        ended: false,
+    };
     launch(renderer, window("Luminescent wires check", [1280.0, 760.0]), &[], |_| app)
+}
+
+const NODE_SIZE: egui::Vec2 = vec2(120.0, 44.0);
+
+fn paint_wires(
+    painter: &egui::Painter,
+    area: Rect,
+    tokens: &Tokens,
+    nodes: &[Pos2],
+    links: &[(usize, usize)],
+    t: f32,
+) {
+    let origin = area.min.to_vec2();
+    painter.rect_filled(area, 0.0, tokens.p.bg_frame);
+    let wire = Stroke::new(2.0, lum_ui::theme::alpha(tokens.p.text_muted, 0.8));
+    for (i, &(a, b)) in links.iter().enumerate() {
+        let from = nodes[a] + origin + vec2(NODE_SIZE.x, NODE_SIZE.y / 2.0);
+        let to = nodes[b] + origin + vec2(0.0, NODE_SIZE.y / 2.0);
+        let pull = ((to.x - from.x).abs() * 0.5).max(60.0);
+        let curve = CubicBezierShape::from_points_stroke(
+            [from, from + vec2(pull, 0.0), to - vec2(pull, 0.0), to],
+            false,
+            Color32::TRANSPARENT,
+            wire,
+        );
+        let pulse = (i < PULSES).then(|| curve.sample((t * 0.45 + i as f32 * 0.137).fract()));
+        painter.add(curve);
+        if let Some(at) = pulse {
+            painter.circle_filled(at, 4.0, tokens.p.primary);
+        }
+    }
+    for (i, &node) in nodes.iter().enumerate() {
+        let rect = Rect::from_min_size(node + origin, NODE_SIZE);
+        painter.rect(rect, 8.0, tokens.p.bg_card, Stroke::new(1.0, tokens.p.border), StrokeKind::Inside);
+        painter.text(
+            rect.left_center() + vec2(10.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            format!("NODE {i:02}"),
+            tokens.font(10.5, lum_ui::fonts::Weight::SemiBold, true),
+            tokens.p.text_primary,
+        );
+    }
+}
+
+/// Median milliseconds egui needs to turn one frame of wires into triangles, on a context with no window, so
+/// the GPU (or a software renderer) is left out.
+fn tessellation_alone(nodes: &[Pos2], links: &[(usize, usize)]) -> f32 {
+    let ctx = egui::Context::default();
+    lum_ui::setup(&ctx, Tokens::dark());
+    let tokens = Tokens::of(&ctx);
+    let screen = Rect::from_min_size(Pos2::ZERO, vec2(1280.0, 760.0));
+    let mut times: Vec<f32> = (0..15)
+        .map(|n| {
+            let input = egui::RawInput { screen_rect: Some(screen), ..Default::default() };
+            let output =
+                ctx.run_ui(input, |ui| paint_wires(ui.painter(), screen, &tokens, nodes, links, n as f32));
+            let started = Instant::now();
+            std::hint::black_box(ctx.tessellate(output.shapes, 1.0));
+            started.elapsed().as_secs_f32() * 1000.0
+        })
+        .collect();
+    times.sort_by(f32::total_cmp);
+    times[times.len() / 2]
 }
 
 struct WireSpike {
@@ -229,56 +309,33 @@ struct WireSpike {
     nodes: Vec<Pos2>,
     links: Vec<(usize, usize)>,
     stats: FrameStats,
+    ended: bool,
 }
 
 impl eframe::App for WireSpike {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        if self.ended {
+            return;
+        }
         self.stats.begin(frame.info().cpu_usage);
         let tokens = Tokens::of(ui.ctx());
         let t = self.started.elapsed().as_secs_f32();
-        let painter = ui.painter();
-        let origin = ui.max_rect().min.to_vec2();
-        painter.rect_filled(ui.max_rect(), 0.0, tokens.p.bg_frame);
-        let wire = Stroke::new(2.0, lum_ui::theme::alpha(tokens.p.text_muted, 0.8));
-        let size = vec2(120.0, 44.0);
-        for (i, &(a, b)) in self.links.iter().enumerate() {
-            let from = self.nodes[a] + origin + vec2(size.x, size.y / 2.0);
-            let to = self.nodes[b] + origin + vec2(0.0, size.y / 2.0);
-            let pull = ((to.x - from.x).abs() * 0.5).max(60.0);
-            let curve = CubicBezierShape::from_points_stroke(
-                [from, from + vec2(pull, 0.0), to - vec2(pull, 0.0), to],
-                false,
-                Color32::TRANSPARENT,
-                wire,
-            );
-            if i < PULSES {
-                let at = curve.sample((t * 0.45 + i as f32 * 0.137).fract());
-                painter.add(curve);
-                painter.circle_filled(at, 4.0, tokens.p.primary);
-            } else {
-                painter.add(curve);
-            }
-        }
-        for (i, &node) in self.nodes.iter().enumerate() {
-            let rect = Rect::from_min_size(node + origin, size);
-            painter.rect(rect, 8.0, tokens.p.bg_card, Stroke::new(1.0, tokens.p.border), StrokeKind::Inside);
-            painter.text(
-                rect.left_center() + vec2(10.0, 0.0),
-                egui::Align2::LEFT_CENTER,
-                format!("NODE {i:02}"),
-                tokens.font(10.5, lum_ui::fonts::Weight::SemiBold, true),
-                tokens.p.text_primary,
-            );
-        }
+        paint_wires(ui.painter(), ui.max_rect(), &tokens, &self.nodes, &self.links, t);
         self.stats.end();
         let close = ui.input(|i| i.key_pressed(Key::Escape) || i.viewport().close_requested());
         if close || t >= self.secs as f32 {
             self.stats.summary().iter().for_each(|l| println!("{l}"));
+            let tessellate = tessellation_alone(&self.nodes, &self.links);
+            println!(
+                "  tessellating the wires alone (CPU, no GPU): {tessellate:.2} ms a frame; the rest of the whole \
+                 frame is handing it to the GPU (all CPU with a software renderer such as llvmpipe)"
+            );
             println!(
                 "| 7 wires, {WIRES} + {PULSES} pulses | {} | {} |",
                 self.renderer.name(),
                 self.stats.row()
             );
+            self.ended = true;
             ui.ctx().send_viewport_cmd(ViewportCommand::Close);
         } else {
             ui.ctx().request_repaint();
@@ -319,6 +376,7 @@ pub fn note(renderer: Renderer, secs: u64) -> Result<(), String> {
         by_hand: FrameStats::default(),
         placed: false,
         typing,
+        ended: false,
     };
     launch(renderer, window("Luminescent note check", [900.0, 700.0]), &[], |_| app)
 }
@@ -333,10 +391,11 @@ struct NoteSpike {
     by_hand: FrameStats,
     placed: bool,
     typing: Arc<AtomicBool>,
+    ended: bool,
 }
 
 impl eframe::App for NoteSpike {
-    fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
         if !self.typing.load(Ordering::Relaxed) {
             return;
         }
@@ -348,10 +407,12 @@ impl eframe::App for NoteSpike {
             self.typed_at = Instant::now();
             raw_input.events.push(egui::Event::Text("x".to_owned()));
         }
-        ctx.request_repaint_after(Duration::from_millis(40));
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if self.ended {
+            return;
+        }
         let typing = self.typing.load(Ordering::Relaxed);
         let before = self.text.len();
         let started = Instant::now();
@@ -395,8 +456,12 @@ impl eframe::App for NoteSpike {
                 self.renderer.name(),
                 self.timed.row_build()
             );
+            self.ended = true;
             ui.ctx().send_viewport_cmd(ViewportCommand::Close);
-        } else if !typing {
+        } else if typing {
+            // asked for here, not in raw_input_hook: a request made before the pass starts is dropped by it
+            ui.ctx().request_repaint_after(Duration::from_millis(40));
+        } else {
             ui.ctx().request_repaint_after(Duration::from_secs_f32((self.secs as f32 - t).max(0.0)));
         }
     }

@@ -1,9 +1,14 @@
 //! The app with a display: eframe owns the main thread and the core [`App`] lives inside it.
 //!
 //! eframe needs a main window, but Luminescent has none: every window it shows is a viewport of its own
-//! (overlays, panels, toasts). So the main window is a 1×1 transparent one that is never seen. Nothing paints
+//! (overlays, panels, toasts). So the main window is a 1x1 transparent one that is never seen. Nothing paints
 //! while nothing happens: services post a message and call `request_repaint`, which runs [`eframe::App::logic`]
 //! once, and the usage flush asks for a single wake-up when it is due.
+//!
+//! The main window stays "visible" as far as winit knows. eframe paints a hidden main window from outside the
+//! event loop, where a window opened from it (every overlay and panel is drawn from the main window's pass)
+//! can not be created, and a repaint of any of those windows is a repaint of the main window. So it is a
+//! transparent, click-through pixel, off screen where the system lets us put it.
 
 use std::cell::RefCell;
 use std::panic::AssertUnwindSafe;
@@ -57,6 +62,41 @@ impl Renderer {
     }
 }
 
+/// What draws the pixels, from the renderer itself.
+#[derive(Debug, Clone, Default)]
+pub struct Gpu {
+    pub name: String,
+    /// Drawn by the CPU (llvmpipe, lavapipe, WARP). Its memory then counts as ours, so `--idle-check` does not
+    /// hold the memory budget against it.
+    pub software: bool,
+}
+
+impl Gpu {
+    pub fn of(cc: &eframe::CreationContext<'_>) -> Gpu {
+        if let Some(gl) = &cc.gl {
+            use eframe::glow::HasContext as _;
+            // SAFETY: a plain query on the context eframe just made current on this thread.
+            let name = unsafe { gl.get_parameter_string(eframe::glow::RENDERER) };
+            let lower = name.to_ascii_lowercase();
+            let software = ["llvmpipe", "softpipe", "swrast", "software", "gdi generic"]
+                .iter()
+                .any(|s| lower.contains(s));
+            return Gpu { name, software };
+        }
+        #[cfg(feature = "wgpu")]
+        if let Some(state) = &cc.wgpu_render_state {
+            let info = state.adapter.get_info();
+            let software = info.device_type == eframe::wgpu::DeviceType::Cpu;
+            return Gpu { name: format!("{} ({:?})", info.name, info.backend), software };
+        }
+        Gpu { name: "unknown".to_owned(), software: false }
+    }
+
+    pub fn describe(&self) -> String {
+        if self.software { format!("{} (software)", self.name) } else { self.name.clone() }
+    }
+}
+
 /// eframe's options for a program whose windows are all viewports of their own.
 pub fn native_options(renderer: Renderer, root: ViewportBuilder) -> Result<eframe::NativeOptions, String> {
     Ok(eframe::NativeOptions {
@@ -74,11 +114,14 @@ pub fn hidden_root() -> ViewportBuilder {
         .with_title(desktop::ROOT_TITLE)
         .with_app_id(desktop::APP_ID)
         .with_inner_size([1.0, 1.0])
+        // far outside every screen on X11 and Windows; on Hyprland the rule from install_rules places it
+        .with_position([-30_000.0, -30_000.0])
         .with_decorations(false)
         .with_transparent(true)
+        .with_mouse_passthrough(true)
+        .with_resizable(false)
         .with_taskbar(false)
         .with_active(false)
-        .with_visible(false)
 }
 
 /// Runs the app until something asks it to quit, and hands it back. Without a working renderer it falls back
@@ -90,7 +133,6 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
         if let Err(e) = desktop::install_rules(desktop::APP_ID, &[]) {
             tracing::warn!("could not set the window rules: {e}");
         }
-        shared.borrow_mut().mode = format!("hidden main window, {}", renderer.name());
         let (app, flag) = (shared.clone(), started.clone());
         // a missing system library makes winit panic rather than fail, and that must not take the app down
         let ran = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -100,8 +142,14 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
                 Box::new(move |cc| {
                     *flag.borrow_mut() = true;
                     lum_ui::setup(&cc.egui_ctx, lum_ui::Tokens::dark());
-                    app.borrow().waker.set(&cc.egui_ctx);
-                    Ok(Box::new(Shell { app, frames: 0 }))
+                    let gpu = Gpu::of(cc);
+                    tracing::info!("drawing with {} on {}", renderer.name(), gpu.describe());
+                    let mut core = app.borrow_mut();
+                    core.mode = format!("hidden main window, {} on {}", renderer.name(), gpu.describe());
+                    core.software_renderer = gpu.software;
+                    core.waker.set(&cc.egui_ctx);
+                    drop(core);
+                    Ok(Box::new(Shell { app }))
                 }),
             )
         }));
@@ -131,7 +179,6 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
 
 struct Shell {
     app: Rc<RefCell<App>>,
-    frames: u64,
 }
 
 impl eframe::App for Shell {
@@ -146,13 +193,8 @@ impl eframe::App for Shell {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, _ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.app.borrow().passes.ui.fetch_add(1, Ordering::Relaxed);
-        self.frames += 1;
-        if self.frames == 1 {
-            // eframe shows the main window once its first frame is painted; this hides it again right after
-            ui.ctx().send_viewport_cmd(ViewportCommand::Visible(false));
-        }
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {

@@ -35,12 +35,21 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: luminescent-rs
+      - name: System libraries (winit needs libxkbcommon-x11; Xvfb and Mesa draw the windowed checks)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            libxkbcommon-x11-0 xvfb libegl1 libgl1-mesa-dri mesa-vulkan-drivers
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         run: cargo test --workspace --locked
+      - name: Tests with a display (start, hand over and quit inside eframe)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a -s "-screen 0 1280x800x24" cargo test -p luminescent --test instance --locked
       - name: Smoke test
         shell: bash
         run: |
@@ -50,6 +59,16 @@ jobs:
           echo "--- warnings and errors in launcher.log ---"
           grep -E "WARNING|ERROR|panicked" "$LUMINESCENT_HOME/data/launcher.log" || echo "(none)"
           exit $code
+      - name: Idle check
+        shell: bash
+        run: |
+          export LUMINESCENT_HOME="$RUNNER_TEMP/idlehome"
+          cargo run -p luminescent --locked -- --idle-check 20
+      - name: Idle check with a window (Xvfb and llvmpipe)
+        if: runner.os == 'Linux'
+        run: |
+          export LUMINESCENT_HOME="$RUNNER_TEMP/idlehome-x"
+          xvfb-run -a -s "-screen 0 1280x800x24" cargo run -p luminescent --locked -- --idle-check 20
 
   deny:
     runs-on: ubuntu-22.04

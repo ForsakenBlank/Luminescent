@@ -83,6 +83,7 @@ fn launch<A: eframe::App + 'static>(
         "Luminescent spike",
         options,
         Box::new(move |cc| {
+            println!("  GPU: {}", shell::Gpu::of(cc).describe());
             lum_ui::setup(&cc.egui_ctx, Tokens::dark());
             Ok(Box::new(make(&cc.egui_ctx)))
         }),

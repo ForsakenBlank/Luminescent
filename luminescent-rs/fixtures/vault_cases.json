@@ -1,0 +1,205 @@
+{
+ "real": {
+  "folder": "vault_fixture/real",
+  "password": "correct horse battery staple",
+  "decoy_password": "decoy password",
+  "recovery_key": "B8F1-3DA2-C0C9-1830-CC7A-6E42-CFE8-E6B4",
+  "index": {
+   "tree": {
+    "hello.txt": "7db8fadeb7e2373a0e2ff98d30b3a72a",
+    "notes": {
+     "todo.md": "1b35c03e617f7e20d2c696fee8989ec2",
+     "deep": {
+      "data.bin": "2db45ad0e04cf707ec5812a35b1782e2"
+     }
+    },
+    "empty.txt": "2ef727251bed4a04a96822a2f3e8fd84",
+    "ünïcode name.txt": "b268ba8bce35ae97bd12123444a9eb3b"
+   },
+   "perm": {
+    "hello.txt": "/home/me/Decrypted/hello.txt"
+   }
+  },
+  "files": {
+   "hello.txt": {
+    "blob": "7db8fadeb7e2373a0e2ff98d30b3a72a",
+    "text": "Hello from the Python vault.\n"
+   },
+   "notes/todo.md": {
+    "blob": "1b35c03e617f7e20d2c696fee8989ec2",
+    "text": "- [ ] Rust rewrite\n- [x] fixtures\n"
+   },
+   "notes/deep/data.bin": {
+    "blob": "2db45ad0e04cf707ec5812a35b1782e2",
+    "hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+   },
+   "empty.txt": {
+    "blob": "2ef727251bed4a04a96822a2f3e8fd84",
+    "hex": ""
+   },
+   "ünïcode name.txt": {
+    "blob": "b268ba8bce35ae97bd12123444a9eb3b",
+    "text": "café ☕\n"
+   }
+  },
+  "decoy_index": {
+   "tree": {
+    "hello.txt": "2ffe6cc6452d56c21d5b158e531c45fc"
+   },
+   "perm": {}
+  },
+  "decoy_files": {
+   "hello.txt": {
+    "blob": "2ffe6cc6452d56c21d5b158e531c45fc",
+    "text": "Hello from the Python vault.\n"
+   }
+  },
+  "aad": {
+   ".master": "master",
+   ".dmaster": "dmaster",
+   ".recovery": "recovery",
+   ".meta": "index",
+   ".dmeta": "index",
+   "blobs": ""
+  }
+ },
+ "legacy_index": {
+  "folder": "vault_fixture/legacy_index",
+  "password": "old password",
+  "recovery_key": "9A01-9ADE-891B-563C-CE76-335C-3B51-27EE",
+  "index": {
+   "tree": {
+    "hello.txt": "81f40ad7c6aa887c9684fa9df4861342"
+   },
+   "perm": {}
+  },
+  "note": ".meta is sealed without AAD; opening it should succeed and save it back with AAD"
+ },
+ "pre_rewrite": {
+  "folder": "vault_fixture/pre_rewrite",
+  "password": "ancient",
+  "unlock_mode": "real",
+  "index_after": {
+   "tree": {
+    "hello.txt": "284ff1cf77c94b8eb12393d1db0ed418"
+   },
+   "perm": {}
+  },
+  "files_after": [
+   ".master",
+   ".meta",
+   ".recovery",
+   ".salt",
+   "284ff1cf77c94b8eb12393d1db0ed418"
+  ],
+  "recovery_key_made": "1152-C5F6-F69A-83C8-512F-A2B2-C639-0290",
+  "note": "unlocking migrates in place: .hash goes, .master and .recovery appear, the old {files, perm_decrypted} index becomes {tree, perm} with AAD. Test on a copy."
+ },
+ "primitives": {
+  "pbkdf2_rounds": 480000,
+  "derive_key": [
+   {
+    "password": "",
+    "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "key": "76aa43ff87f9fef134e4967d73a86b7c6bd0eb60ef77ccd6691ec0ecd637eaf5"
+   },
+   {
+    "password": "password",
+    "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "key": "e9ea6b4e85a098ad15885394f016f539db2da32efecdcc59b5a36de8c4a94d84"
+   },
+   {
+    "password": "pässwörd ☕",
+    "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "key": "8bd1f0ef6638586e3eb51fed00b8311d44637849f92f5bc20f37608ec96e995f"
+   }
+  ],
+  "recovery_key_to_bytes": [
+   {
+    "text": "ABCD-EF01-2345-6789-ABCD-EF01-2345-6789",
+    "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "key": "f21ad24d41a048370aac8443a6f84488867b0b3c6e5dbdf8081ef5d90faf79cb"
+   },
+   {
+    "text": " abcd ef01 2345 6789 abcd ef01 2345 6789 ",
+    "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "key": "f21ad24d41a048370aac8443a6f84488867b0b3c6e5dbdf8081ef5d90faf79cb"
+   },
+   {
+    "text": "abcd-ef01",
+    "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "key": "3a502bb318388e48bcf978afef59d9c04a7df02c6cd174e78538aa7a7f1ae6b4"
+   }
+  ],
+  "format_recovery_key": [
+   {
+    "raw": "0123456789abcdef0123456789abcdef",
+    "text": "0123-4567-89AB-CDEF-0123-4567-89AB-CDEF"
+   },
+   {
+    "raw": "abc",
+    "text": "ABC"
+   },
+   {
+    "raw": "",
+    "text": ""
+   }
+  ],
+  "unique_name": [
+   {
+    "name": "a.txt",
+    "existing": [],
+    "result": "a.txt"
+   },
+   {
+    "name": "a.txt",
+    "existing": [
+     "a.txt"
+    ],
+    "result": "a_1.txt"
+   },
+   {
+    "name": "a.txt",
+    "existing": [
+     "a.txt",
+     "a_1.txt"
+    ],
+    "result": "a_2.txt"
+   },
+   {
+    "name": "noext",
+    "existing": [
+     "noext"
+    ],
+    "result": "noext_1"
+   },
+   {
+    "name": ".hidden",
+    "existing": [
+     ".hidden"
+    ],
+    "result": ".hidden_1"
+   }
+  ],
+  "seal": [
+   {
+    "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "plain": "sealed text",
+    "aad": "",
+    "sealed": "942935d18b10d08f4f0c6e9b0fe0d28a93025fa826421939845b78e4c9a1cbc9257b00199213f4"
+   },
+   {
+    "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "plain": "sealed text",
+    "aad": "master",
+    "sealed": "0ea58f83153e2d3bb8893804c266aac12ba01cc82d63b0cf9235c540fc209f28d3b1957190960b"
+   },
+   {
+    "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "plain": "sealed text",
+    "aad": "index",
+    "sealed": "c14d1d3e5716932e0a2d419cd73631edf55f42657e4333d90d634727532087fef7f25e90d628f8"
+   }
+  ]
+ }
+}

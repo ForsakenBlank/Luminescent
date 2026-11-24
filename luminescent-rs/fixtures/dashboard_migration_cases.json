@@ -1,0 +1,476 @@
+{
+ "fake_modules": {
+  "notes": {
+   "icon": "📝",
+   "actions": [
+    [
+     "toggle",
+     "Show / hide Notes"
+    ]
+   ]
+  },
+  "timer": {
+   "icon": "⏱",
+   "actions": [
+    [
+     "new",
+     "New timer"
+    ],
+    [
+     "edit",
+     "Edit a timer"
+    ]
+   ]
+  }
+ },
+ "cases": [
+  {
+   "name": "first start (Tools tab from the modules' actions)",
+   "saved": null,
+   "raw_settings": null,
+   "result": {
+    "layout": 3,
+    "active": "main",
+    "boards": [
+     {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+       {
+        "id": "tools",
+        "kind": "items",
+        "title": "Tools",
+        "x": 96,
+        "y": 136,
+        "w": 264,
+        "h": 520,
+        "collapsed": false,
+        "screen": "",
+        "items": [
+         {
+          "id": "105feeb444",
+          "kind": "item",
+          "name": "Show / hide Notes",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "action": "notes:toggle",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "id": "55b860528d",
+          "kind": "item",
+          "name": "New timer",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "action": "timer:new",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "id": "b5fb7ab640",
+          "kind": "item",
+          "name": "Edit a timer",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "action": "timer:edit",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "locked": false,
+    "screens": {}
+   }
+  },
+  {
+   "name": "first start with old File Launcher shortcuts",
+   "saved": null,
+   "raw_settings": {
+    "file_launcher": {
+     "shortcuts": [
+      {
+       "hotkey": "ctrl+alt+f",
+       "path": "/home/me/Downloads/"
+      },
+      {
+       "path": "  "
+      },
+      {
+       "path": "/usr/bin/firefox"
+      }
+     ]
+    }
+   },
+   "result": {
+    "layout": 3,
+    "active": "main",
+    "boards": [
+     {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+       {
+        "id": "tools",
+        "kind": "items",
+        "title": "Tools",
+        "x": 96,
+        "y": 136,
+        "w": 264,
+        "h": 520,
+        "collapsed": false,
+        "screen": "",
+        "items": [
+         {
+          "id": "8b4529ada6",
+          "kind": "item",
+          "name": "Show / hide Notes",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "action": "notes:toggle",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "id": "ebf3675701",
+          "kind": "item",
+          "name": "New timer",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "action": "timer:new",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "id": "8a5c30e36e",
+          "kind": "item",
+          "name": "Edit a timer",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "action": "timer:edit",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         }
+        ]
+       },
+       {
+        "id": "21fbf196a0",
+        "title": "Shortcuts",
+        "x": 392,
+        "y": 136,
+        "w": 264,
+        "collapsed": false,
+        "items": [
+         {
+          "id": "cb31168291",
+          "name": "Downloads",
+          "path": "/home/me/Downloads/",
+          "args": "",
+          "hotkey": "ctrl+alt+f",
+          "action": "",
+          "kind": "item",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "id": "59b98570c3",
+          "name": "firefox",
+          "path": "/usr/bin/firefox",
+          "args": "",
+          "hotkey": "",
+          "action": "",
+          "kind": "item",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         }
+        ],
+        "kind": "items",
+        "h": 520,
+        "screen": ""
+       }
+      ]
+     }
+    ],
+    "locked": false,
+    "screens": {}
+   }
+  },
+  {
+   "name": "layout 1: panel-relative tabs",
+   "saved": {
+    "tabs": [
+     {
+      "id": "tools",
+      "title": "Tools",
+      "x": 16,
+      "y": 16,
+      "w": 232,
+      "items": [
+       {
+        "id": "a",
+        "name": "📝 Show / hide Notes",
+        "action": "notes:toggle"
+       },
+       {
+        "id": "b",
+        "name": "⏱New timer",
+        "action": "timer:new"
+       },
+       {
+        "name": "Firefox",
+        "path": "/usr/bin/firefox"
+       }
+      ]
+     },
+     {
+      "title": "Mine",
+      "x": 300,
+      "y": 40,
+      "items": []
+     }
+    ]
+   },
+   "raw_settings": null,
+   "result": {
+    "layout": 3,
+    "boards": [
+     {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+       {
+        "id": "tools",
+        "title": "Tools",
+        "x": 96,
+        "y": 144,
+        "w": 264,
+        "items": [
+         {
+          "id": "a",
+          "name": "Show / hide Notes",
+          "action": "notes:toggle",
+          "kind": "item",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "id": "b",
+          "name": "New timer",
+          "action": "timer:new",
+          "kind": "item",
+          "path": "",
+          "args": "",
+          "hotkey": "",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         },
+         {
+          "name": "Firefox",
+          "path": "/usr/bin/firefox",
+          "id": "803795a13e",
+          "kind": "item",
+          "args": "",
+          "hotkey": "",
+          "action": "",
+          "cwd": "",
+          "admin": false,
+          "ask_args": false,
+          "terminal": false,
+          "group": []
+         }
+        ],
+        "kind": "items",
+        "h": 520,
+        "collapsed": false,
+        "screen": ""
+       },
+       {
+        "title": "Mine",
+        "x": 380,
+        "y": 168,
+        "items": [],
+        "id": "abb82730ea",
+        "kind": "items",
+        "w": 264,
+        "h": 520,
+        "collapsed": false,
+        "screen": ""
+       }
+      ]
+     }
+    ],
+    "active": "main",
+    "locked": false,
+    "screens": {}
+   }
+  },
+  {
+   "name": "layout 2: one tab list becomes the Main board",
+   "saved": {
+    "layout": 2,
+    "tabs": [
+     {
+      "id": "t1",
+      "title": "A",
+      "x": 5
+     }
+    ]
+   },
+   "raw_settings": null,
+   "result": {
+    "layout": 3,
+    "boards": [
+     {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+       {
+        "id": "t1",
+        "title": "A",
+        "x": 5,
+        "kind": "items",
+        "y": 16,
+        "w": 264,
+        "h": 520,
+        "collapsed": false,
+        "screen": "",
+        "items": []
+       }
+      ]
+     }
+    ],
+    "active": "main",
+    "locked": false,
+    "screens": {}
+   }
+  },
+  {
+   "name": "layout 3 with a page box, a bad board and a pinned screen",
+   "saved": {
+    "layout": 3,
+    "active": "nope",
+    "locked": true,
+    "screens": {
+     "DP-1": "main",
+     "HDMI-A-1": "gone",
+     "5": "main"
+    },
+    "boards": [
+     {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+       {
+        "id": "p",
+        "kind": "page",
+        "page": "notes"
+       },
+       {
+        "id": "q",
+        "kind": "page",
+        "state": "bad"
+       }
+      ]
+     },
+     "junk",
+     {
+      "tabs": []
+     }
+    ]
+   },
+   "raw_settings": null,
+   "result": {
+    "layout": 3,
+    "active": "main",
+    "locked": true,
+    "screens": {
+     "DP-1": "main",
+     "5": "main"
+    },
+    "boards": [
+     {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+       {
+        "id": "p",
+        "kind": "page",
+        "page": "notes",
+        "title": "Tab",
+        "x": 16,
+        "y": 16,
+        "w": 264,
+        "h": 520,
+        "collapsed": false,
+        "screen": "",
+        "state": {},
+        "items": []
+       },
+       {
+        "id": "q",
+        "kind": "page",
+        "state": {},
+        "title": "Tab",
+        "x": 16,
+        "y": 16,
+        "w": 264,
+        "h": 520,
+        "collapsed": false,
+        "screen": "",
+        "page": "settings",
+        "items": []
+       }
+      ]
+     },
+     {
+      "tabs": [],
+      "id": "80da97b97a",
+      "name": "Dashboard"
+     }
+    ]
+   }
+  }
+ ]
+}

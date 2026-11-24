@@ -1,0 +1,2227 @@
+{
+ "today": "2026-11-23",
+ "rates": {
+  "EUR": 1.0,
+  "USD": 1.08,
+  "GBP": 0.85,
+  "JPY": 162.5,
+  "CHF": 0.95,
+  "SEK": 11.4,
+  "INR": 90.1
+ },
+ "evaluate_variables": {
+  "rent": 1000
+ },
+ "units": {
+  "mm": [
+   "length",
+   {
+    "float": "0.001"
+   }
+  ],
+  "millimetre": [
+   "length",
+   {
+    "float": "0.001"
+   }
+  ],
+  "millimetres": [
+   "length",
+   {
+    "float": "0.001"
+   }
+  ],
+  "cm": [
+   "length",
+   {
+    "float": "0.01"
+   }
+  ],
+  "centimetre": [
+   "length",
+   {
+    "float": "0.01"
+   }
+  ],
+  "centimetres": [
+   "length",
+   {
+    "float": "0.01"
+   }
+  ],
+  "m": [
+   "length",
+   {
+    "int": "1"
+   }
+  ],
+  "metre": [
+   "length",
+   {
+    "int": "1"
+   }
+  ],
+  "metres": [
+   "length",
+   {
+    "int": "1"
+   }
+  ],
+  "meter": [
+   "length",
+   {
+    "int": "1"
+   }
+  ],
+  "meters": [
+   "length",
+   {
+    "int": "1"
+   }
+  ],
+  "km": [
+   "length",
+   {
+    "int": "1000"
+   }
+  ],
+  "kilometre": [
+   "length",
+   {
+    "int": "1000"
+   }
+  ],
+  "kilometres": [
+   "length",
+   {
+    "int": "1000"
+   }
+  ],
+  "in": [
+   "length",
+   {
+    "float": "0.0254"
+   }
+  ],
+  "inch": [
+   "length",
+   {
+    "float": "0.0254"
+   }
+  ],
+  "inches": [
+   "length",
+   {
+    "float": "0.0254"
+   }
+  ],
+  "\"": [
+   "length",
+   {
+    "float": "0.0254"
+   }
+  ],
+  "ft": [
+   "length",
+   {
+    "float": "0.3048"
+   }
+  ],
+  "foot": [
+   "length",
+   {
+    "float": "0.3048"
+   }
+  ],
+  "feet": [
+   "length",
+   {
+    "float": "0.3048"
+   }
+  ],
+  "yd": [
+   "length",
+   {
+    "float": "0.9144"
+   }
+  ],
+  "yard": [
+   "length",
+   {
+    "float": "0.9144"
+   }
+  ],
+  "yards": [
+   "length",
+   {
+    "float": "0.9144"
+   }
+  ],
+  "mi": [
+   "length",
+   {
+    "float": "1609.344"
+   }
+  ],
+  "mile": [
+   "length",
+   {
+    "float": "1609.344"
+   }
+  ],
+  "miles": [
+   "length",
+   {
+    "float": "1609.344"
+   }
+  ],
+  "nmi": [
+   "length",
+   {
+    "int": "1852"
+   }
+  ],
+  "um": [
+   "length",
+   {
+    "float": "1e-06"
+   }
+  ],
+  "nm": [
+   "length",
+   {
+    "float": "1e-09"
+   }
+  ],
+  "mg": [
+   "mass",
+   {
+    "float": "1e-06"
+   }
+  ],
+  "g": [
+   "mass",
+   {
+    "float": "0.001"
+   }
+  ],
+  "gram": [
+   "mass",
+   {
+    "float": "0.001"
+   }
+  ],
+  "grams": [
+   "mass",
+   {
+    "float": "0.001"
+   }
+  ],
+  "kg": [
+   "mass",
+   {
+    "int": "1"
+   }
+  ],
+  "kilo": [
+   "mass",
+   {
+    "int": "1"
+   }
+  ],
+  "kilos": [
+   "mass",
+   {
+    "int": "1"
+   }
+  ],
+  "kilogram": [
+   "mass",
+   {
+    "int": "1"
+   }
+  ],
+  "kilograms": [
+   "mass",
+   {
+    "int": "1"
+   }
+  ],
+  "t": [
+   "mass",
+   {
+    "int": "1000"
+   }
+  ],
+  "tonne": [
+   "mass",
+   {
+    "int": "1000"
+   }
+  ],
+  "tonnes": [
+   "mass",
+   {
+    "int": "1000"
+   }
+  ],
+  "oz": [
+   "mass",
+   {
+    "float": "0.028349523125"
+   }
+  ],
+  "ounce": [
+   "mass",
+   {
+    "float": "0.028349523125"
+   }
+  ],
+  "ounces": [
+   "mass",
+   {
+    "float": "0.028349523125"
+   }
+  ],
+  "lb": [
+   "mass",
+   {
+    "float": "0.45359237"
+   }
+  ],
+  "lbs": [
+   "mass",
+   {
+    "float": "0.45359237"
+   }
+  ],
+  "pound": [
+   "mass",
+   {
+    "float": "0.45359237"
+   }
+  ],
+  "pounds": [
+   "mass",
+   {
+    "float": "0.45359237"
+   }
+  ],
+  "st": [
+   "mass",
+   {
+    "float": "6.35029318"
+   }
+  ],
+  "stone": [
+   "mass",
+   {
+    "float": "6.35029318"
+   }
+  ],
+  "ms": [
+   "time",
+   {
+    "float": "0.001"
+   }
+  ],
+  "s": [
+   "time",
+   {
+    "int": "1"
+   }
+  ],
+  "sec": [
+   "time",
+   {
+    "int": "1"
+   }
+  ],
+  "secs": [
+   "time",
+   {
+    "int": "1"
+   }
+  ],
+  "second": [
+   "time",
+   {
+    "int": "1"
+   }
+  ],
+  "seconds": [
+   "time",
+   {
+    "int": "1"
+   }
+  ],
+  "min": [
+   "time",
+   {
+    "int": "60"
+   }
+  ],
+  "mins": [
+   "time",
+   {
+    "int": "60"
+   }
+  ],
+  "minute": [
+   "time",
+   {
+    "int": "60"
+   }
+  ],
+  "minutes": [
+   "time",
+   {
+    "int": "60"
+   }
+  ],
+  "h": [
+   "time",
+   {
+    "int": "3600"
+   }
+  ],
+  "hr": [
+   "time",
+   {
+    "int": "3600"
+   }
+  ],
+  "hrs": [
+   "time",
+   {
+    "int": "3600"
+   }
+  ],
+  "hour": [
+   "time",
+   {
+    "int": "3600"
+   }
+  ],
+  "hours": [
+   "time",
+   {
+    "int": "3600"
+   }
+  ],
+  "day": [
+   "time",
+   {
+    "int": "86400"
+   }
+  ],
+  "days": [
+   "time",
+   {
+    "int": "86400"
+   }
+  ],
+  "week": [
+   "time",
+   {
+    "int": "604800"
+   }
+  ],
+  "weeks": [
+   "time",
+   {
+    "int": "604800"
+   }
+  ],
+  "wk": [
+   "time",
+   {
+    "int": "604800"
+   }
+  ],
+  "month": [
+   "time",
+   {
+    "int": "2629746"
+   }
+  ],
+  "months": [
+   "time",
+   {
+    "int": "2629746"
+   }
+  ],
+  "year": [
+   "time",
+   {
+    "int": "31556952"
+   }
+  ],
+  "years": [
+   "time",
+   {
+    "int": "31556952"
+   }
+  ],
+  "yr": [
+   "time",
+   {
+    "int": "31556952"
+   }
+  ],
+  "bit": [
+   "data",
+   {
+    "float": "0.125"
+   }
+  ],
+  "bits": [
+   "data",
+   {
+    "float": "0.125"
+   }
+  ],
+  "b": [
+   "data",
+   {
+    "int": "1"
+   }
+  ],
+  "byte": [
+   "data",
+   {
+    "int": "1"
+   }
+  ],
+  "bytes": [
+   "data",
+   {
+    "int": "1"
+   }
+  ],
+  "kb": [
+   "data",
+   {
+    "float": "1000.0"
+   }
+  ],
+  "mb": [
+   "data",
+   {
+    "float": "1000000.0"
+   }
+  ],
+  "gb": [
+   "data",
+   {
+    "float": "1000000000.0"
+   }
+  ],
+  "tb": [
+   "data",
+   {
+    "float": "1000000000000.0"
+   }
+  ],
+  "pb": [
+   "data",
+   {
+    "float": "1000000000000000.0"
+   }
+  ],
+  "kib": [
+   "data",
+   {
+    "int": "1024"
+   }
+  ],
+  "mib": [
+   "data",
+   {
+    "int": "1048576"
+   }
+  ],
+  "gib": [
+   "data",
+   {
+    "int": "1073741824"
+   }
+  ],
+  "tib": [
+   "data",
+   {
+    "int": "1099511627776"
+   }
+  ],
+  "ml": [
+   "volume",
+   {
+    "float": "0.001"
+   }
+  ],
+  "cl": [
+   "volume",
+   {
+    "float": "0.01"
+   }
+  ],
+  "dl": [
+   "volume",
+   {
+    "float": "0.1"
+   }
+  ],
+  "l": [
+   "volume",
+   {
+    "int": "1"
+   }
+  ],
+  "litre": [
+   "volume",
+   {
+    "int": "1"
+   }
+  ],
+  "litres": [
+   "volume",
+   {
+    "int": "1"
+   }
+  ],
+  "liter": [
+   "volume",
+   {
+    "int": "1"
+   }
+  ],
+  "liters": [
+   "volume",
+   {
+    "int": "1"
+   }
+  ],
+  "tsp": [
+   "volume",
+   {
+    "float": "0.00492892"
+   }
+  ],
+  "tbsp": [
+   "volume",
+   {
+    "float": "0.0147868"
+   }
+  ],
+  "cup": [
+   "volume",
+   {
+    "float": "0.236588"
+   }
+  ],
+  "cups": [
+   "volume",
+   {
+    "float": "0.236588"
+   }
+  ],
+  "floz": [
+   "volume",
+   {
+    "float": "0.0295735"
+   }
+  ],
+  "pt": [
+   "volume",
+   {
+    "float": "0.568261"
+   }
+  ],
+  "pint": [
+   "volume",
+   {
+    "float": "0.568261"
+   }
+  ],
+  "pints": [
+   "volume",
+   {
+    "float": "0.568261"
+   }
+  ],
+  "gal": [
+   "volume",
+   {
+    "float": "4.54609"
+   }
+  ],
+  "gallon": [
+   "volume",
+   {
+    "float": "4.54609"
+   }
+  ],
+  "gallons": [
+   "volume",
+   {
+    "float": "4.54609"
+   }
+  ],
+  "uspt": [
+   "volume",
+   {
+    "float": "0.473176"
+   }
+  ],
+  "usgal": [
+   "volume",
+   {
+    "float": "3.785411784"
+   }
+  ],
+  "m3": [
+   "volume",
+   {
+    "int": "1000"
+   }
+  ],
+  "cm3": [
+   "volume",
+   {
+    "float": "0.001"
+   }
+  ],
+  "mm2": [
+   "area",
+   {
+    "float": "1e-06"
+   }
+  ],
+  "cm2": [
+   "area",
+   {
+    "float": "0.0001"
+   }
+  ],
+  "m2": [
+   "area",
+   {
+    "int": "1"
+   }
+  ],
+  "km2": [
+   "area",
+   {
+    "float": "1000000.0"
+   }
+  ],
+  "ha": [
+   "area",
+   {
+    "float": "10000.0"
+   }
+  ],
+  "hectare": [
+   "area",
+   {
+    "float": "10000.0"
+   }
+  ],
+  "hectares": [
+   "area",
+   {
+    "float": "10000.0"
+   }
+  ],
+  "acre": [
+   "area",
+   {
+    "float": "4046.8564224"
+   }
+  ],
+  "acres": [
+   "area",
+   {
+    "float": "4046.8564224"
+   }
+  ],
+  "ft2": [
+   "area",
+   {
+    "float": "0.09290304"
+   }
+  ],
+  "sqft": [
+   "area",
+   {
+    "float": "0.09290304"
+   }
+  ],
+  "in2": [
+   "area",
+   {
+    "float": "0.00064516"
+   }
+  ],
+  "mi2": [
+   "area",
+   {
+    "float": "2589988.110336"
+   }
+  ],
+  "m/s": [
+   "speed",
+   {
+    "int": "1"
+   }
+  ],
+  "mps": [
+   "speed",
+   {
+    "int": "1"
+   }
+  ],
+  "km/h": [
+   "speed",
+   {
+    "float": "0.2777777777777778"
+   }
+  ],
+  "kmh": [
+   "speed",
+   {
+    "float": "0.2777777777777778"
+   }
+  ],
+  "kph": [
+   "speed",
+   {
+    "float": "0.2777777777777778"
+   }
+  ],
+  "mph": [
+   "speed",
+   {
+    "float": "0.44704"
+   }
+  ],
+  "kn": [
+   "speed",
+   {
+    "float": "0.514444"
+   }
+  ],
+  "knot": [
+   "speed",
+   {
+    "float": "0.514444"
+   }
+  ],
+  "knots": [
+   "speed",
+   {
+    "float": "0.514444"
+   }
+  ],
+  "ft/s": [
+   "speed",
+   {
+    "float": "0.3048"
+   }
+  ],
+  "j": [
+   "energy",
+   {
+    "int": "1"
+   }
+  ],
+  "kj": [
+   "energy",
+   {
+    "int": "1000"
+   }
+  ],
+  "cal": [
+   "energy",
+   {
+    "float": "4.184"
+   }
+  ],
+  "kcal": [
+   "energy",
+   {
+    "int": "4184"
+   }
+  ],
+  "wh": [
+   "energy",
+   {
+    "int": "3600"
+   }
+  ],
+  "kwh": [
+   "energy",
+   {
+    "float": "3600000.0"
+   }
+  ],
+  "w": [
+   "power",
+   {
+    "int": "1"
+   }
+  ],
+  "kw": [
+   "power",
+   {
+    "int": "1000"
+   }
+  ],
+  "hp": [
+   "power",
+   {
+    "float": "745.699872"
+   }
+  ],
+  "pa": [
+   "pressure",
+   {
+    "int": "1"
+   }
+  ],
+  "kpa": [
+   "pressure",
+   {
+    "int": "1000"
+   }
+  ],
+  "bar": [
+   "pressure",
+   {
+    "float": "100000.0"
+   }
+  ],
+  "mbar": [
+   "pressure",
+   {
+    "int": "100"
+   }
+  ],
+  "psi": [
+   "pressure",
+   {
+    "float": "6894.757293"
+   }
+  ],
+  "atm": [
+   "pressure",
+   {
+    "int": "101325"
+   }
+  ],
+  "deg": [
+   "angle",
+   {
+    "float": "0.017453292519943295"
+   }
+  ],
+  "degree": [
+   "angle",
+   {
+    "float": "0.017453292519943295"
+   }
+  ],
+  "degrees": [
+   "angle",
+   {
+    "float": "0.017453292519943295"
+   }
+  ],
+  "rad": [
+   "angle",
+   {
+    "int": "1"
+   }
+  ],
+  "radian": [
+   "angle",
+   {
+    "int": "1"
+   }
+  ],
+  "radians": [
+   "angle",
+   {
+    "int": "1"
+   }
+  ]
+ },
+ "temps": {
+  "c": "c",
+  "°c": "c",
+  "celsius": "c",
+  "f": "f",
+  "°f": "f",
+  "fahrenheit": "f",
+  "k": "k",
+  "kelvin": "k"
+ },
+ "symbols": {
+  "$": "usd",
+  "€": "eur",
+  "£": "gbp",
+  "¥": "jpy"
+ },
+ "conversions": [
+  {
+   "text": "5 km to mi",
+   "rates": true,
+   "ok": [
+    {
+     "float": "3.1068559611866697"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "5 km to mi",
+   "rates": false,
+   "ok": [
+    {
+     "float": "3.1068559611866697"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "5km to mi",
+   "rates": true,
+   "ok": [
+    {
+     "float": "3.1068559611866697"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "5km to mi",
+   "rates": false,
+   "ok": [
+    {
+     "float": "3.1068559611866697"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "1 mile in km",
+   "rates": true,
+   "ok": [
+    {
+     "float": "1.609344"
+    },
+    "km"
+   ]
+  },
+  {
+   "text": "1 mile in km",
+   "rates": false,
+   "ok": [
+    {
+     "float": "1.609344"
+    },
+    "km"
+   ]
+  },
+  {
+   "text": "3 ft to m",
+   "rates": true,
+   "ok": [
+    {
+     "float": "0.9144000000000001"
+    },
+    "m"
+   ]
+  },
+  {
+   "text": "3 ft to m",
+   "rates": false,
+   "ok": [
+    {
+     "float": "0.9144000000000001"
+    },
+    "m"
+   ]
+  },
+  {
+   "text": "12 in to cm",
+   "rates": true,
+   "ok": [
+    {
+     "float": "30.479999999999997"
+    },
+    "cm"
+   ]
+  },
+  {
+   "text": "12 in to cm",
+   "rates": false,
+   "ok": [
+    {
+     "float": "30.479999999999997"
+    },
+    "cm"
+   ]
+  },
+  {
+   "text": "12 \" to cm",
+   "rates": true,
+   "ok": [
+    {
+     "float": "30.479999999999997"
+    },
+    "cm"
+   ]
+  },
+  {
+   "text": "12 \" to cm",
+   "rates": false,
+   "ok": [
+    {
+     "float": "30.479999999999997"
+    },
+    "cm"
+   ]
+  },
+  {
+   "text": "1 kg to lb",
+   "rates": true,
+   "ok": [
+    {
+     "float": "2.2046226218487757"
+    },
+    "lb"
+   ]
+  },
+  {
+   "text": "1 kg to lb",
+   "rates": false,
+   "ok": [
+    {
+     "float": "2.2046226218487757"
+    },
+    "lb"
+   ]
+  },
+  {
+   "text": "1 st to kg",
+   "rates": true,
+   "ok": [
+    {
+     "float": "6.35029318"
+    },
+    "kg"
+   ]
+  },
+  {
+   "text": "1 st to kg",
+   "rates": false,
+   "ok": [
+    {
+     "float": "6.35029318"
+    },
+    "kg"
+   ]
+  },
+  {
+   "text": "1 l to floz",
+   "rates": true,
+   "ok": [
+    {
+     "float": "33.81405650328842"
+    },
+    "floz"
+   ]
+  },
+  {
+   "text": "1 l to floz",
+   "rates": false,
+   "ok": [
+    {
+     "float": "33.81405650328842"
+    },
+    "floz"
+   ]
+  },
+  {
+   "text": "1 gal to l",
+   "rates": true,
+   "ok": [
+    {
+     "float": "4.54609"
+    },
+    "l"
+   ]
+  },
+  {
+   "text": "1 gal to l",
+   "rates": false,
+   "ok": [
+    {
+     "float": "4.54609"
+    },
+    "l"
+   ]
+  },
+  {
+   "text": "1 usgal to l",
+   "rates": true,
+   "ok": [
+    {
+     "float": "3.785411784"
+    },
+    "l"
+   ]
+  },
+  {
+   "text": "1 usgal to l",
+   "rates": false,
+   "ok": [
+    {
+     "float": "3.785411784"
+    },
+    "l"
+   ]
+  },
+  {
+   "text": "1 m2 to sqft",
+   "rates": true,
+   "ok": [
+    {
+     "float": "10.763910416709722"
+    },
+    "sqft"
+   ]
+  },
+  {
+   "text": "1 m2 to sqft",
+   "rates": false,
+   "ok": [
+    {
+     "float": "10.763910416709722"
+    },
+    "sqft"
+   ]
+  },
+  {
+   "text": "1 acre to ha",
+   "rates": true,
+   "ok": [
+    {
+     "float": "0.40468564224000003"
+    },
+    "ha"
+   ]
+  },
+  {
+   "text": "1 acre to ha",
+   "rates": false,
+   "ok": [
+    {
+     "float": "0.40468564224000003"
+    },
+    "ha"
+   ]
+  },
+  {
+   "text": "100 km/h to mph",
+   "rates": true,
+   "ok": [
+    {
+     "float": "62.1371192237334"
+    },
+    "mph"
+   ]
+  },
+  {
+   "text": "100 km/h to mph",
+   "rates": false,
+   "ok": [
+    {
+     "float": "62.1371192237334"
+    },
+    "mph"
+   ]
+  },
+  {
+   "text": "30 knots to km/h",
+   "rates": true,
+   "ok": [
+    {
+     "float": "55.559951999999996"
+    },
+    "km/h"
+   ]
+  },
+  {
+   "text": "30 knots to km/h",
+   "rates": false,
+   "ok": [
+    {
+     "float": "55.559951999999996"
+    },
+    "km/h"
+   ]
+  },
+  {
+   "text": "1 kwh to j",
+   "rates": true,
+   "ok": [
+    {
+     "float": "3600000.0"
+    },
+    "j"
+   ]
+  },
+  {
+   "text": "1 kwh to j",
+   "rates": false,
+   "ok": [
+    {
+     "float": "3600000.0"
+    },
+    "j"
+   ]
+  },
+  {
+   "text": "1 kcal to kj",
+   "rates": true,
+   "ok": [
+    {
+     "float": "4.184"
+    },
+    "kj"
+   ]
+  },
+  {
+   "text": "1 kcal to kj",
+   "rates": false,
+   "ok": [
+    {
+     "float": "4.184"
+    },
+    "kj"
+   ]
+  },
+  {
+   "text": "1 hp to kw",
+   "rates": true,
+   "ok": [
+    {
+     "float": "0.745699872"
+    },
+    "kw"
+   ]
+  },
+  {
+   "text": "1 hp to kw",
+   "rates": false,
+   "ok": [
+    {
+     "float": "0.745699872"
+    },
+    "kw"
+   ]
+  },
+  {
+   "text": "1 bar to psi",
+   "rates": true,
+   "ok": [
+    {
+     "float": "14.503773773375086"
+    },
+    "psi"
+   ]
+  },
+  {
+   "text": "1 bar to psi",
+   "rates": false,
+   "ok": [
+    {
+     "float": "14.503773773375086"
+    },
+    "psi"
+   ]
+  },
+  {
+   "text": "1 atm to kpa",
+   "rates": true,
+   "ok": [
+    {
+     "float": "101.325"
+    },
+    "kpa"
+   ]
+  },
+  {
+   "text": "1 atm to kpa",
+   "rates": false,
+   "ok": [
+    {
+     "float": "101.325"
+    },
+    "kpa"
+   ]
+  },
+  {
+   "text": "180 deg to rad",
+   "rates": true,
+   "ok": [
+    {
+     "float": "3.141592653589793"
+    },
+    "rad"
+   ]
+  },
+  {
+   "text": "180 deg to rad",
+   "rates": false,
+   "ok": [
+    {
+     "float": "3.141592653589793"
+    },
+    "rad"
+   ]
+  },
+  {
+   "text": "1 day to hours",
+   "rates": true,
+   "ok": [
+    {
+     "float": "24.0"
+    },
+    "hours"
+   ]
+  },
+  {
+   "text": "1 day to hours",
+   "rates": false,
+   "ok": [
+    {
+     "float": "24.0"
+    },
+    "hours"
+   ]
+  },
+  {
+   "text": "1 year to days",
+   "rates": true,
+   "ok": [
+    {
+     "float": "365.2425"
+    },
+    "days"
+   ]
+  },
+  {
+   "text": "1 year to days",
+   "rates": false,
+   "ok": [
+    {
+     "float": "365.2425"
+    },
+    "days"
+   ]
+  },
+  {
+   "text": "1 gib to mb",
+   "rates": true,
+   "ok": [
+    {
+     "float": "1073.741824"
+    },
+    "mb"
+   ]
+  },
+  {
+   "text": "1 gib to mb",
+   "rates": false,
+   "ok": [
+    {
+     "float": "1073.741824"
+    },
+    "mb"
+   ]
+  },
+  {
+   "text": "8 bits to b",
+   "rates": true,
+   "ok": [
+    {
+     "float": "1.0"
+    },
+    "b"
+   ]
+  },
+  {
+   "text": "8 bits to b",
+   "rates": false,
+   "ok": [
+    {
+     "float": "1.0"
+    },
+    "b"
+   ]
+  },
+  {
+   "text": "100 c to f",
+   "rates": true,
+   "ok": [
+    {
+     "float": "212.0"
+    },
+    "°F"
+   ]
+  },
+  {
+   "text": "100 c to f",
+   "rates": false,
+   "ok": [
+    {
+     "float": "212.0"
+    },
+    "°F"
+   ]
+  },
+  {
+   "text": "32 f to c",
+   "rates": true,
+   "ok": [
+    {
+     "float": "0.0"
+    },
+    "°C"
+   ]
+  },
+  {
+   "text": "32 f to c",
+   "rates": false,
+   "ok": [
+    {
+     "float": "0.0"
+    },
+    "°C"
+   ]
+  },
+  {
+   "text": "0 k to c",
+   "rates": true,
+   "ok": [
+    {
+     "float": "-273.15"
+    },
+    "°C"
+   ]
+  },
+  {
+   "text": "0 k to c",
+   "rates": false,
+   "ok": [
+    {
+     "float": "-273.15"
+    },
+    "°C"
+   ]
+  },
+  {
+   "text": "-40 °c to °f",
+   "rates": true,
+   "ok": [
+    {
+     "float": "-40.0"
+    },
+    "°F"
+   ]
+  },
+  {
+   "text": "-40 °c to °f",
+   "rates": false,
+   "ok": [
+    {
+     "float": "-40.0"
+    },
+    "°F"
+   ]
+  },
+  {
+   "text": "100 celsius to kelvin",
+   "rates": true,
+   "ok": [
+    {
+     "float": "373.15"
+    },
+    "K"
+   ]
+  },
+  {
+   "text": "100 celsius to kelvin",
+   "rates": false,
+   "ok": [
+    {
+     "float": "373.15"
+    },
+    "K"
+   ]
+  },
+  {
+   "text": "5 km to kg",
+   "rates": true,
+   "error": "ConvertError",
+   "message": "can't convert length (km) to mass (kg)"
+  },
+  {
+   "text": "5 km to kg",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "can't convert length (km) to mass (kg)"
+  },
+  {
+   "text": "2*5 km to mi",
+   "rates": true,
+   "ok": [
+    {
+     "float": "6.2137119223733395"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "2*5 km to mi",
+   "rates": false,
+   "ok": [
+    {
+     "float": "6.2137119223733395"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "rent eur to usd",
+   "rates": true,
+   "ok": [
+    {
+     "float": "1080.0"
+    },
+    "USD"
+   ]
+  },
+  {
+   "text": "rent eur to usd",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "100 usd in eur",
+   "rates": true,
+   "ok": [
+    {
+     "float": "92.59259259259258"
+    },
+    "EUR"
+   ]
+  },
+  {
+   "text": "100 usd in eur",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "100 usd -> gbp",
+   "rates": true,
+   "ok": [
+    {
+     "float": "78.7037037037037"
+    },
+    "GBP"
+   ]
+  },
+  {
+   "text": "100 usd -> gbp",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "100 usd => jpy",
+   "rates": true,
+   "ok": [
+    {
+     "float": "15046.296296296294"
+    },
+    "JPY"
+   ]
+  },
+  {
+   "text": "100 usd => jpy",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "100 usd as chf",
+   "rates": true,
+   "ok": [
+    {
+     "float": "87.96296296296295"
+    },
+    "CHF"
+   ]
+  },
+  {
+   "text": "100 usd as chf",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "$20 to eur",
+   "rates": true,
+   "ok": [
+    {
+     "float": "18.51851851851852"
+    },
+    "EUR"
+   ]
+  },
+  {
+   "text": "$20 to eur",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "€5 to $",
+   "rates": true,
+   "ok": [
+    {
+     "float": "5.4"
+    },
+    "USD"
+   ]
+  },
+  {
+   "text": "€5 to $",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "£10 to usd",
+   "rates": true,
+   "ok": [
+    {
+     "float": "12.705882352941178"
+    },
+    "USD"
+   ]
+  },
+  {
+   "text": "£10 to usd",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "¥1000 to eur",
+   "rates": true,
+   "ok": [
+    {
+     "float": "6.153846153846154"
+    },
+    "EUR"
+   ]
+  },
+  {
+   "text": "¥1000 to eur",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "20 abc to usd",
+   "rates": true,
+   "error": "ConvertError",
+   "message": "unknown currency ABC"
+  },
+  {
+   "text": "20 abc to usd",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "20 usd to xyz",
+   "rates": true,
+   "error": "ConvertError",
+   "message": "unknown currency XYZ"
+  },
+  {
+   "text": "20 usd to xyz",
+   "rates": false,
+   "error": "ConvertError",
+   "message": "currency rates are not loaded yet (needs internet once a day)"
+  },
+  {
+   "text": "5 km",
+   "rates": true,
+   "ok": null
+  },
+  {
+   "text": "5 km",
+   "rates": false,
+   "ok": null
+  },
+  {
+   "text": "to mi",
+   "rates": true,
+   "ok": null
+  },
+  {
+   "text": "to mi",
+   "rates": false,
+   "ok": null
+  },
+  {
+   "text": "km to mi",
+   "rates": true,
+   "ok": [
+    {
+     "float": "0.621371192237334"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "km to mi",
+   "rates": false,
+   "ok": [
+    {
+     "float": "0.621371192237334"
+    },
+    "mi"
+   ]
+  },
+  {
+   "text": "5 km to",
+   "rates": true,
+   "ok": null
+  },
+  {
+   "text": "5 km to",
+   "rates": false,
+   "ok": null
+  },
+  {
+   "text": "hello world",
+   "rates": true,
+   "ok": null
+  },
+  {
+   "text": "hello world",
+   "rates": false,
+   "ok": null
+  },
+  {
+   "text": "5 KM TO MI",
+   "rates": true,
+   "ok": null
+  },
+  {
+   "text": "5 KM TO MI",
+   "rates": false,
+   "ok": null
+  },
+  {
+   "text": "5 Km to Mi",
+   "rates": true,
+   "ok": [
+    {
+     "float": "3.1068559611866697"
+    },
+    "Mi"
+   ]
+  },
+  {
+   "text": "5 Km to Mi",
+   "rates": false,
+   "ok": [
+    {
+     "float": "3.1068559611866697"
+    },
+    "Mi"
+   ]
+  },
+  {
+   "text": "1 mm to nm",
+   "rates": true,
+   "ok": [
+    {
+     "float": "1000000.0"
+    },
+    "nm"
+   ]
+  },
+  {
+   "text": "1 mm to nm",
+   "rates": false,
+   "ok": [
+    {
+     "float": "1000000.0"
+    },
+    "nm"
+   ]
+  },
+  {
+   "text": "1 um to mm",
+   "rates": true,
+   "ok": [
+    {
+     "float": "0.001"
+    },
+    "mm"
+   ]
+  },
+  {
+   "text": "1 um to mm",
+   "rates": false,
+   "ok": [
+    {
+     "float": "0.001"
+    },
+    "mm"
+   ]
+  },
+  {
+   "text": "5 km to mi to ft",
+   "rates": true,
+   "error": "CalcError",
+   "message": "not a sum"
+  },
+  {
+   "text": "5 km to mi to ft",
+   "rates": false,
+   "error": "CalcError",
+   "message": "not a sum"
+  }
+ ],
+ "date_math": [
+  {
+   "text": "today",
+   "ok": [
+    null,
+    "Mon 23 Nov 2026"
+   ]
+  },
+  {
+   "text": "now",
+   "ok": null
+  },
+  {
+   "text": "tomorrow",
+   "ok": [
+    null,
+    "Tue 24 Nov 2026"
+   ]
+  },
+  {
+   "text": "yesterday",
+   "ok": [
+    null,
+    "Sun 22 Nov 2026"
+   ]
+  },
+  {
+   "text": "Today",
+   "ok": [
+    null,
+    "Mon 23 Nov 2026"
+   ]
+  },
+  {
+   "text": "today + 45 days",
+   "ok": [
+    null,
+    "Thu 7 Jan 2027"
+   ]
+  },
+  {
+   "text": "today+1d",
+   "ok": [
+    null,
+    "Tue 24 Nov 2026"
+   ]
+  },
+  {
+   "text": "today - 2 weeks",
+   "ok": [
+    null,
+    "Mon 9 Nov 2026"
+   ]
+  },
+  {
+   "text": "2026-01-31 + 1 month",
+   "ok": [
+    null,
+    "Sat 28 Feb 2026"
+   ]
+  },
+  {
+   "text": "31/1/2026 + 1 month",
+   "ok": [
+    null,
+    "Sat 28 Feb 2026"
+   ]
+  },
+  {
+   "text": "29/2/2024 + 1 year",
+   "ok": [
+    null,
+    "Fri 28 Feb 2025"
+   ]
+  },
+  {
+   "text": "2024-02-29 + 4 years",
+   "ok": [
+    null,
+    "Tue 29 Feb 2028"
+   ]
+  },
+  {
+   "text": "in 3 days",
+   "ok": [
+    null,
+    "Thu 26 Nov 2026"
+   ]
+  },
+  {
+   "text": "3 days",
+   "ok": [
+    null,
+    "Thu 26 Nov 2026"
+   ]
+  },
+  {
+   "text": "10 weeks from 1/1/2026",
+   "ok": [
+    null,
+    "Thu 12 Mar 2026"
+   ]
+  },
+  {
+   "text": "2 months from now",
+   "ok": [
+    null,
+    "Sat 23 Jan 2027"
+   ]
+  },
+  {
+   "text": "5 years ago",
+   "ok": [
+    null,
+    "Tue 23 Nov 2021"
+   ]
+  },
+  {
+   "text": "2 weeks before 2026-12-25",
+   "ok": [
+    null,
+    "Fri 11 Dec 2026"
+   ]
+  },
+  {
+   "text": "2026-12-25 - 2026-11-23",
+   "ok": [
+    {
+     "int": "32"
+    },
+    "32 days (4.6 weeks)"
+   ]
+  },
+  {
+   "text": "1/1/2027 - today",
+   "ok": [
+    {
+     "int": "39"
+    },
+    "39 days (5.6 weeks)"
+   ]
+  },
+  {
+   "text": "25/12/26 - today",
+   "ok": [
+    {
+     "int": "32"
+    },
+    "32 days (4.6 weeks)"
+   ]
+  },
+  {
+   "text": "days until 25/12/2026",
+   "ok": [
+    {
+     "int": "32"
+    },
+    "32 days (4.6 weeks)"
+   ]
+  },
+  {
+   "text": "day till 2027-01-01",
+   "ok": [
+    {
+     "int": "39"
+    },
+    "39 days (5.6 weeks)"
+   ]
+  },
+  {
+   "text": "days to tomorrow",
+   "ok": [
+    {
+     "int": "1"
+    },
+    "1 day"
+   ]
+  },
+  {
+   "text": "days since 1/1/2026",
+   "ok": [
+    {
+     "int": "326"
+    },
+    "326 days (46.6 weeks)"
+   ]
+  },
+  {
+   "text": "days between 2026-01-01 and 2026-12-31",
+   "ok": [
+    {
+     "int": "364"
+    },
+    "364 days (52.0 weeks)"
+   ]
+  },
+  {
+   "text": "days between 1.1.2026 and 1.3.2026",
+   "ok": [
+    {
+     "int": "59"
+    },
+    "59 days (8.4 weeks)"
+   ]
+  },
+  {
+   "text": "31/2/2026 + 1 day",
+   "error": "ConvertError",
+   "message": "not a date: 31/2/2026"
+  },
+  {
+   "text": "2026-13-01 + 1 day",
+   "error": "ConvertError",
+   "message": "not a date: 2026-13-01"
+  },
+  {
+   "text": "today + 1 fortnight",
+   "ok": null
+  },
+  {
+   "text": "1 + 1",
+   "ok": null
+  },
+  {
+   "text": "",
+   "ok": null
+  },
+  {
+   "text": "today + 100000 years",
+   "error": "ValueError",
+   "message": "year 102026 is out of range"
+  },
+  {
+   "text": "in 1 mo",
+   "ok": [
+    null,
+    "Wed 23 Dec 2026"
+   ]
+  },
+  {
+   "text": "in 2 yrs",
+   "ok": [
+    null,
+    "Thu 23 Nov 2028"
+   ]
+  },
+  {
+   "text": "in 3 wks",
+   "ok": [
+    null,
+    "Mon 14 Dec 2026"
+   ]
+  },
+  {
+   "text": "today + 0 days",
+   "ok": [
+    null,
+    "Mon 23 Nov 2026"
+   ]
+  },
+  {
+   "text": "10/10/10 + 1 day",
+   "ok": [
+    null,
+    "Mon 11 Oct 2010"
+   ]
+  }
+ ],
+ "parse_date": [
+  {
+   "text": "today",
+   "ok": "2026-11-23"
+  },
+  {
+   "text": "tomorrow",
+   "ok": "2026-11-24"
+  },
+  {
+   "text": "2026-3-7",
+   "ok": "2026-03-07"
+  },
+  {
+   "text": "7/3/2026",
+   "ok": "2026-03-07"
+  },
+  {
+   "text": "7.3.26",
+   "ok": "2026-03-07"
+  },
+  {
+   "text": "31/2/2026",
+   "error": "ConvertError",
+   "message": "not a date: 31/2/2026"
+  },
+  {
+   "text": "x",
+   "error": "ConvertError",
+   "message": "not a date: x"
+  },
+  {
+   "text": "",
+   "ok": "2026-11-23"
+  },
+  {
+   "text": "1/1/99",
+   "ok": "2099-01-01"
+  }
+ ]
+}

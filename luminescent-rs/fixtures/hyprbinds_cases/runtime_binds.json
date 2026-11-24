@@ -1,0 +1,238 @@
+[
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "Q",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "1",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    "kitty"
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "G",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "2",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    "uwsm app -- zen-browser"
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "C",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "3",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": []
+  }
+ },
+ {
+  "modmask": 65,
+  "submap": "",
+  "key": "E",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "4",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": []
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "F",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "5",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": []
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "left",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "6",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": []
+  }
+ },
+ {
+  "modmask": 8,
+  "submap": "",
+  "key": "R",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "7",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    "fuzzel --drun"
+   ]
+  }
+ },
+ {
+  "modmask": 12,
+  "key": "T",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "8",
+  "description": "",
+  "lua": {
+   "kind": "L",
+   "source": "<HOME>/.config/hypr/binds.lua",
+   "line": 11
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "1",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "9",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    1.0
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "2",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "10",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    2.0
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "3",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "11",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    3.0
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "mouse:272",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "12",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": []
+  },
+  "mouse": true
+ },
+ {
+  "modmask": 64,
+  "key": "",
+  "keycode": 10,
+  "dispatcher": "__lua",
+  "arg": "13",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    1.0
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "D",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "14",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": [
+    "dolphin"
+   ]
+  }
+ },
+ {
+  "modmask": 64,
+  "submap": "",
+  "key": "V",
+  "keycode": 0,
+  "dispatcher": "__lua",
+  "arg": "15",
+  "description": "",
+  "lua": {
+   "kind": "C",
+   "values": []
+  }
+ },
+ {
+  "modmask": 64,
+  "key": "B",
+  "keycode": 0,
+  "dispatcher": "exec",
+  "arg": "firefox",
+  "description": ""
+ },
+ {
+  "modmask": 0,
+  "key": "XF86AudioPlay",
+  "keycode": 0,
+  "dispatcher": "exec",
+  "arg": "playerctl play-pause",
+  "description": "",
+  "locked": true
+ },
+ {
+  "modmask": 12,
+  "key": "K",
+  "keycode": 0,
+  "dispatcher": "exec",
+  "arg": "luminescent",
+  "description": "Luminescent"
+ }
+]

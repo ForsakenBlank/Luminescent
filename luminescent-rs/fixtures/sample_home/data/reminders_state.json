@@ -1,0 +1,11 @@
+{
+  "r-water": {
+    "last": "2026-11-23T14:00:00",
+    "sched": "{\"date\": \"2026-11-01\", \"days\": [0, 1, 2, 3, 4], \"every_days\": 2, \"every_minutes\": 60, \"from\": \"09:00\", \"monthday\": 1, \"startup_delay\": 10, \"time\": \"09:00\", \"to\": \"18:00\", \"type\": \"interval\", \"window\": true}"
+  },
+  "r-bins": {
+    "last": "2026-11-17T19:30:00",
+    "sched": "{\"days\": [1], \"time\": \"19:30\", \"type\": \"weekly\"}",
+    "snoozed": "2026-11-23T14:45:00"
+  }
+}

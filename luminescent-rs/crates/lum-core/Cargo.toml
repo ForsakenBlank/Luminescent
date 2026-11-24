@@ -1,0 +1,25 @@
+[package]
+name = "lum-core"
+description = "Paths, JSON storage, settings and profiles, events, actions, usage, backups, fault guards and logging."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+jiff.workspace = true
+crossbeam-channel.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+lum-fixtures.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,2722 @@
+{
+ "categories": [
+  {
+   "id": "trigger",
+   "label": "Triggers",
+   "colour": "#F2B705"
+  },
+  {
+   "id": "action",
+   "label": "Actions",
+   "colour": "#7B6CF6"
+  },
+  {
+   "id": "logic",
+   "label": "Logic",
+   "colour": "#3FBF74"
+  },
+  {
+   "id": "value",
+   "label": "Values & text",
+   "colour": "#4CA7F5"
+  },
+  {
+   "id": "other",
+   "label": "Other",
+   "colour": "#8A8A96"
+  }
+ ],
+ "compare_ops": [
+  [
+   "equals",
+   "is"
+  ],
+  [
+   "not_equals",
+   "is not"
+  ],
+  [
+   "contains",
+   "contains"
+  ],
+  [
+   "starts",
+   "starts with"
+  ],
+  [
+   "ends",
+   "ends with"
+  ],
+  [
+   "regex",
+   "matches (regex)"
+  ],
+  [
+   "empty",
+   "is empty"
+  ],
+  [
+   "not_empty",
+   "is not empty"
+  ],
+  [
+   "gt",
+   ">"
+  ],
+  [
+   "lt",
+   "<"
+  ],
+  [
+   "ge",
+   "≥"
+  ],
+  [
+   "le",
+   "≤"
+  ]
+ ],
+ "max_text": 200000,
+ "token_pattern": "\\{(input|date|time|now|clipboard|newline|var:[^{}\\n]+)\\}",
+ "port_prefixes": {
+  "flow_in": "in:",
+  "flow_out": "out:",
+  "value": "val:",
+  "field": "field:"
+ },
+ "nodes": [
+  {
+   "id": "interval",
+   "title": "Every…",
+   "category": "trigger",
+   "class": "Interval",
+   "ins": [
+    "start",
+    "stop"
+   ],
+   "outs": [
+    "tick"
+   ],
+   "values": [
+    "count"
+   ],
+   "fields": [
+    {
+     "key": "seconds",
+     "label": "Every (seconds)",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "autostart",
+     "label": "Running from the start",
+     "kind": "bool",
+     "default": true,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "fire_now",
+     "label": "Also fire straight away",
+     "kind": "bool",
+     "default": false,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires again and again. Its input says how many times it fired. Start and stop it with a wire.",
+   "width": 260,
+   "live": true
+  },
+  {
+   "id": "at_time",
+   "title": "At a time of day",
+   "category": "trigger",
+   "class": "AtTime",
+   "ins": [],
+   "outs": [
+    "fire"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "time",
+     "label": "Time",
+     "kind": "time",
+     "default": "16:00",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "days",
+     "label": "Days",
+     "kind": "text",
+     "default": "every day",
+     "choices": [],
+     "pin": false,
+     "hint": "every day · weekdays · weekends · mon,wed,fri"
+    }
+   ],
+   "help": "Fires at that time on those days. Its input is the time.",
+   "width": 260,
+   "live": true
+  },
+  {
+   "id": "on_date",
+   "title": "On a date",
+   "category": "trigger",
+   "class": "OnDate",
+   "ins": [],
+   "outs": [
+    "fire"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "date",
+     "label": "Date",
+     "kind": "date",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "time",
+     "label": "Time",
+     "kind": "time",
+     "default": "09:00",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "catch_up",
+     "label": "If Luminescent was off then, fire when it starts",
+     "kind": "bool",
+     "default": true,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires once, on that day at that time (e.g. 3 October 2028, 09:00).",
+   "width": 260,
+   "live": true
+  },
+  {
+   "id": "hotkey",
+   "title": "Hotkey",
+   "category": "trigger",
+   "class": "HotkeyTrigger",
+   "ins": [],
+   "outs": [
+    "pressed"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "combo",
+     "label": "Hotkey",
+     "kind": "hotkey",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires when you press the hotkey, anywhere.",
+   "width": 330,
+   "live": false
+  },
+  {
+   "id": "manual",
+   "title": "Button",
+   "category": "trigger",
+   "class": "Manual",
+   "ins": [],
+   "outs": [
+    "fire"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "label",
+     "label": "Name",
+     "kind": "text",
+     "default": "Run",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires when you click ▶ on it, or pick it in the command palette or the tray menu (Automation).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "event",
+   "title": "Luminescent event",
+   "category": "trigger",
+   "class": "EventTrigger",
+   "ins": [],
+   "outs": [
+    "fire"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "event",
+     "label": "When",
+     "kind": "choice",
+     "default": "luminescent.started",
+     "choices": [
+      [
+       "luminescent.started",
+       "Luminescent started"
+      ],
+      [
+       "overlay.opened",
+       "Overlay opened"
+      ],
+      [
+       "overlay.closed",
+       "Overlay closed"
+      ],
+      [
+       "theme.changed",
+       "Theme changed"
+      ],
+      [
+       "dashboard.switched",
+       "Dashboard switched"
+      ],
+      [
+       "dashboard.item_run",
+       "A dashboard item ran"
+      ],
+      [
+       "timer.finished",
+       "A timer finished"
+      ],
+      [
+       "reminder.fired",
+       "A reminder went off"
+      ],
+      [
+       "hearing.over_limit",
+       "Hearing Guard: over the limit"
+      ],
+      [
+       "clipboard.changed",
+       "Clipboard changed"
+      ],
+      [
+       "keepawake.changed",
+       "Keep awake turned on or off"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "filter",
+     "label": "Only if its text contains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "(anything)"
+    }
+   ],
+   "help": "Fires when something happens in Luminescent. Its input says what (the timer's name, the theme…).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "process",
+   "title": "Program starts / stops",
+   "category": "trigger",
+   "class": "ProcessTrigger",
+   "ins": [],
+   "outs": [
+    "started",
+    "stopped"
+   ],
+   "values": [
+    "running"
+   ],
+   "fields": [
+    {
+     "key": "name",
+     "label": "Program",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "firefox, steam, notepad.exe…"
+    }
+   ],
+   "help": "Watches for a program by its process name (looked up every two seconds).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "file_watch",
+   "title": "File or folder changes",
+   "category": "trigger",
+   "class": "FileWatch",
+   "ins": [],
+   "outs": [
+    "changed"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "path",
+     "label": "File or folder",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires when the file, or anything directly in the folder, changes. Its input is the path.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "clipboard",
+   "title": "Clipboard changes",
+   "category": "trigger",
+   "class": "ClipTrigger",
+   "ins": [],
+   "outs": [
+    "changed"
+   ],
+   "values": [],
+   "fields": [],
+   "help": "Fires when something new is copied. Its input is the copied text.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "idle",
+   "title": "Idle / back",
+   "category": "trigger",
+   "class": "IdleTrigger",
+   "ins": [],
+   "outs": [
+    "idle",
+    "back"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "minutes",
+     "label": "Idle for (minutes)",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires when the PC has not been used for that long, and again when you are back. On Wayland only the mouse can be seen, so it counts the mouse standing still.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "threshold",
+   "title": "CPU / GPU / temperature / battery",
+   "category": "trigger",
+   "class": "ThresholdTrigger",
+   "ins": [],
+   "outs": [
+    "crossed",
+    "back"
+   ],
+   "values": [
+    "percent"
+   ],
+   "fields": [
+    {
+     "key": "metric",
+     "label": "Watch",
+     "kind": "choice",
+     "default": "cpu",
+     "choices": [
+      [
+       "cpu",
+       "CPU load (%)"
+      ],
+      [
+       "cpu_temp",
+       "CPU temperature (°C)"
+      ],
+      [
+       "gpu",
+       "GPU load (%)"
+      ],
+      [
+       "gpu_temp",
+       "GPU temperature (°C)"
+      ],
+      [
+       "ram",
+       "Memory (RAM, %)"
+      ],
+      [
+       "battery",
+       "Battery (%)"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "op",
+     "label": "When it is",
+     "kind": "choice",
+     "default": "above",
+     "choices": [
+      [
+       "above",
+       "above"
+      ],
+      [
+       "below",
+       "below"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "value",
+     "label": "Line (% or °C)",
+     "kind": "number",
+     "default": 90,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "for_s",
+     "label": "For at least (seconds)",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Fires when the level crosses your line and stays there, and again when it is back. Temperatures and GPU load come from the sensors (Linux; on Windows only an NVIDIA GPU can be read). Wire it to \"Warning on screen\" for a proper heads-up, e.g. CPU temperature above 80 °C.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "window",
+   "title": "Window focused",
+   "category": "trigger",
+   "class": "WindowTrigger",
+   "ins": [],
+   "outs": [
+    "focused",
+    "left"
+   ],
+   "values": [
+    "title"
+   ],
+   "fields": [
+    {
+     "key": "match",
+     "label": "App or title contains",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "firefox, Visual Studio Code, YouTube…"
+    }
+   ],
+   "help": "Fires when you switch to a window whose app or title contains the text, and when you leave it. Its input is the window title. Needs Hyprland.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "network",
+   "title": "Internet on / off",
+   "category": "trigger",
+   "class": "NetTrigger",
+   "ins": [],
+   "outs": [
+    "online",
+    "offline"
+   ],
+   "values": [
+    "online"
+   ],
+   "fields": [],
+   "help": "Fires when the internet goes away and when it comes back (checked every 10 seconds).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "command",
+   "title": "Run command",
+   "category": "action",
+   "class": "Command",
+   "ins": [
+    "run",
+    "stop"
+   ],
+   "outs": [
+    "done",
+    "failed",
+    "line"
+   ],
+   "values": [
+    "output"
+   ],
+   "fields": [
+    {
+     "key": "commands",
+     "label": "Commands (one per line, each after the last one finishes)",
+     "kind": "multiline",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "echo hello"
+    },
+    {
+     "key": "terminal",
+     "label": "Show it in a terminal window",
+     "kind": "bool",
+     "default": false,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "stop_on_error",
+     "label": "Stop at a command that fails",
+     "kind": "bool",
+     "default": true,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "folder",
+     "label": "Run in folder",
+     "kind": "folder",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "your home folder"
+    }
+   ],
+   "help": "Runs the commands one after another (in the background, or in a terminal you can watch). Done/failed carry the output; line fires for every line it prints.",
+   "width": 320,
+   "live": false
+  },
+  {
+   "id": "open",
+   "title": "Open a program, file or URL",
+   "category": "action",
+   "class": "OpenTarget",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "target",
+     "label": "Open",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "firefox · ~/notes.txt · https://…"
+    },
+    {
+     "key": "args",
+     "label": "Arguments",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "Starts a program, opens a file or folder in its app, or a web page in the browser.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "close_program",
+   "title": "Close a program",
+   "category": "action",
+   "class": "CloseProgram",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done",
+    "not_running"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "name",
+     "label": "Program",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "firefox, notepad.exe…"
+    },
+    {
+     "key": "force",
+     "label": "Force it (no chance to save)",
+     "kind": "bool",
+     "default": false,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Closes every running copy of the program.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "lum_action",
+   "title": "Luminescent tool",
+   "category": "action",
+   "class": "LumAction",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "action",
+     "label": "Do",
+     "kind": "choice",
+     "default": "notes:toggle",
+     "choices": {
+      "dynamic": "_lum_actions"
+     },
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Anything from the Dashboard's Tools tab: show Notes, a new timer, pick a colour, snap a window…",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "overlay",
+   "title": "Open / close Luminescent",
+   "category": "action",
+   "class": "OverlayNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "mode",
+     "label": "Do",
+     "kind": "choice",
+     "default": "open",
+     "choices": [
+      [
+       "open",
+       "Open it on a page"
+      ],
+      [
+       "close",
+       "Close it"
+      ],
+      [
+       "toggle",
+       "Open or close it"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "page",
+     "label": "Page",
+     "kind": "choice",
+     "default": "dashboard",
+     "choices": {
+      "dynamic": "_pages"
+     },
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Opens the overlay on a page (Dashboard, Notes, Settings…) or closes it.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "dash_item",
+   "title": "Run a dashboard item",
+   "category": "action",
+   "class": "DashItem",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "item",
+     "label": "Item",
+     "kind": "choice",
+     "default": "",
+     "choices": {
+      "dynamic": "_items"
+     },
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Runs an item from the Dashboard, as if you double-clicked it.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "switch_board",
+   "title": "Switch dashboard",
+   "category": "action",
+   "class": "SwitchBoard",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "board",
+     "label": "Dashboard",
+     "kind": "choice",
+     "default": "",
+     "choices": {
+      "dynamic": "_boards"
+     },
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "theme",
+   "title": "Switch theme",
+   "category": "action",
+   "class": "ThemeNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "theme",
+     "label": "Theme",
+     "kind": "choice",
+     "default": "next",
+     "choices": {
+      "dynamic": "_themes"
+     },
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "timer",
+   "title": "Start a timer",
+   "category": "action",
+   "class": "TimerNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "started"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "time",
+     "label": "Time",
+     "kind": "text",
+     "default": "5m",
+     "choices": [],
+     "pin": true,
+     "hint": "5m · 1h30 · 25m focus · at 17:30"
+    }
+   ],
+   "help": "A Timer panel, already running. Wire the “A timer finished” event to do something when it ends.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "workspace",
+   "title": "Workspace on / off",
+   "category": "action",
+   "class": "WorkspaceNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "workspace",
+     "label": "Workspace",
+     "kind": "choice",
+     "default": "",
+     "choices": {
+      "dynamic": "_workspaces"
+     },
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "mode",
+     "label": "Turn it",
+     "kind": "choice",
+     "default": "off",
+     "choices": [
+      [
+       "on",
+       "on"
+      ],
+      [
+       "off",
+       "off"
+      ],
+      [
+       "toggle",
+       "the other way"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Switches a whole workspace on or off (this one too).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "notify",
+   "title": "Show a notification",
+   "category": "action",
+   "class": "Notify",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "title",
+     "label": "Title",
+     "kind": "text",
+     "default": "Luminescent",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "message",
+     "label": "Message",
+     "kind": "multiline",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "style",
+     "label": "Show as",
+     "kind": "choice",
+     "default": "card",
+     "choices": [
+      [
+       "card",
+       "A Luminescent card"
+      ],
+      [
+       "desktop",
+       "A desktop notification"
+      ],
+      [
+       "center",
+       "A warning in the middle of the screen"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "A small card in the corner, a desktop notification, or a big warning in the middle of the screen.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "message",
+   "title": "Big message",
+   "category": "action",
+   "class": "MessageNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "ok"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "title",
+     "label": "Title",
+     "kind": "text",
+     "default": "Luminescent",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "text",
+     "label": "Message",
+     "kind": "multiline",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "A message box on top of everything; ok fires when you close it.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "ask",
+   "title": "Ask me",
+   "category": "action",
+   "class": "Ask",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "answer",
+    "cancelled"
+   ],
+   "values": [
+    "answer"
+   ],
+   "fields": [
+    {
+     "key": "question",
+     "label": "Question",
+     "kind": "text",
+     "default": "What should I type?",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "default",
+     "label": "Starts with",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "var",
+     "label": "Also keep it in variable",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "(none)"
+    }
+   ],
+   "help": "Pops up a box for you to type in, then carries on with what you typed.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "sound",
+   "title": "Play a sound",
+   "category": "action",
+   "class": "SoundNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "sound",
+     "label": "Sound",
+     "kind": "choice",
+     "default": "chime",
+     "choices": [
+      [
+       "chime",
+       "Chime"
+      ],
+      [
+       "alarm",
+       "Alarm"
+      ],
+      [
+       "custom",
+       "A sound file"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "file",
+     "label": "Sound file",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "speak",
+   "title": "Say it out loud",
+   "category": "action",
+   "class": "Speak",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "text",
+     "label": "Say",
+     "kind": "text",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "Needs spd-say (speech-dispatcher) or espeak-ng / espeak.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "type_text",
+   "title": "Type text",
+   "category": "action",
+   "class": "TypeText",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "text",
+     "label": "Type",
+     "kind": "multiline",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "delay_ms",
+     "label": "Wait first (ms)",
+     "kind": "number",
+     "default": 300,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Types into the focused window (with wtype or ydotool if installed, else it pastes).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "keys",
+   "title": "Press keys",
+   "category": "action",
+   "class": "Keys",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "combo",
+     "label": "Keys",
+     "kind": "hotkey",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Presses a key combination (Ctrl+S, Alt+Tab…) in the focused window.",
+   "width": 330,
+   "live": false
+  },
+  {
+   "id": "set_clipboard",
+   "title": "Copy to clipboard",
+   "category": "action",
+   "class": "SetClipboard",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "text",
+     "label": "Text",
+     "kind": "multiline",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "http",
+   "title": "Web request",
+   "category": "action",
+   "class": "Http",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done",
+    "failed"
+   ],
+   "values": [
+    "body",
+    "status"
+   ],
+   "fields": [
+    {
+     "key": "method",
+     "label": "Method",
+     "kind": "choice",
+     "default": "GET",
+     "choices": [
+      [
+       "GET",
+       "GET"
+      ],
+      [
+       "POST",
+       "POST"
+      ],
+      [
+       "PUT",
+       "PUT"
+      ],
+      [
+       "PATCH",
+       "PATCH"
+      ],
+      [
+       "DELETE",
+       "DELETE"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "url",
+     "label": "URL",
+     "kind": "text",
+     "default": "https://",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "body",
+     "label": "Body (for POST…)",
+     "kind": "multiline",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "{\"content\": \"{input}\"}"
+    },
+    {
+     "key": "headers",
+     "label": "Headers (Name: value, one per line)",
+     "kind": "multiline",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "Content-Type: application/json"
+    }
+   ],
+   "help": "Calls a web address (a Discord webhook, an API…). Done carries the answer's text.",
+   "width": 320,
+   "live": false
+  },
+  {
+   "id": "download",
+   "title": "Download a file",
+   "category": "action",
+   "class": "Download",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done",
+    "failed"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "url",
+     "label": "URL",
+     "kind": "text",
+     "default": "https://",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "folder",
+     "label": "Save in",
+     "kind": "folder",
+     "default": "~/Downloads",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "name",
+     "label": "File name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "(from the URL)"
+    }
+   ],
+   "help": "Done carries the saved file's path.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "file_op",
+   "title": "Copy / move / delete",
+   "category": "action",
+   "class": "FileOp",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done",
+    "failed"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "op",
+     "label": "Do",
+     "kind": "choice",
+     "default": "copy",
+     "choices": [
+      [
+       "copy",
+       "Copy"
+      ],
+      [
+       "move",
+       "Move"
+      ],
+      [
+       "delete",
+       "Delete"
+      ],
+      [
+       "mkdir",
+       "Make a folder"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "src",
+     "label": "File or folder",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "dst",
+     "label": "To",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "a folder, or a new path"
+    }
+   ],
+   "help": "Done carries the new path. Delete moves nothing to the bin: it is gone.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "write_file",
+   "title": "Write to a file",
+   "category": "action",
+   "class": "WriteFile",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done",
+    "failed"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "path",
+     "label": "File",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "text",
+     "label": "Text",
+     "kind": "multiline",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "mode",
+     "label": "",
+     "kind": "choice",
+     "default": "append",
+     "choices": [
+      [
+       "append",
+       "Add to the end"
+      ],
+      [
+       "overwrite",
+       "Replace the file"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "newline",
+     "label": "End with a new line",
+     "kind": "bool",
+     "default": true,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "alert",
+   "title": "Warning on screen",
+   "category": "action",
+   "class": "AlertNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "ok"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "title",
+     "label": "Title",
+     "kind": "text",
+     "default": "Heads up",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "text",
+     "label": "Message",
+     "kind": "multiline",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "level",
+     "label": "Look",
+     "kind": "choice",
+     "default": "warning",
+     "choices": [
+      [
+       "warning",
+       "Warning (amber)"
+      ],
+      [
+       "danger",
+       "Danger (red)"
+      ],
+      [
+       "info",
+       "Info (theme colour)"
+      ],
+      [
+       "ok",
+       "Good news (green)"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "seconds",
+     "label": "Close by itself after (seconds, 0 = stay)",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "sound",
+     "label": "Play a sound",
+     "kind": "choice",
+     "default": "alarm",
+     "choices": [
+      [
+       "none",
+       "No sound"
+      ],
+      [
+       "chime",
+       "Chime"
+      ],
+      [
+       "alarm",
+       "Alarm"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "A big warning in the middle of the screen, above everything, that stays until you click Got it. ok fires when it closes. A new one with the same title replaces the old one.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "wallpaper",
+   "title": "Set wallpaper",
+   "category": "action",
+   "class": "WallpaperNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done",
+    "failed"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "mode",
+     "label": "Use",
+     "kind": "choice",
+     "default": "file",
+     "choices": [
+      [
+       "file",
+       "This picture, GIF or video"
+      ],
+      [
+       "next",
+       "The next one in a folder"
+      ],
+      [
+       "random",
+       "A random one from a folder"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "path",
+     "label": "Picture or folder",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": "a file, or a folder for next / random"
+    }
+   ],
+   "help": "Changes the desktop wallpaper. Wire a timer (Every… 30 min) to it for a slideshow. GIFs play with swww, videos with mpvpaper. Settings → Overlay & Interface → Wallpaper command lets your own tool do it instead.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "volume",
+   "title": "Volume",
+   "category": "action",
+   "class": "VolumeNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [
+    "volume"
+   ],
+   "fields": [
+    {
+     "key": "mode",
+     "label": "Do",
+     "kind": "choice",
+     "default": "set",
+     "choices": [
+      [
+       "set",
+       "Set it to"
+      ],
+      [
+       "up",
+       "Turn it up by"
+      ],
+      [
+       "down",
+       "Turn it down by"
+      ],
+      [
+       "mute",
+       "Mute"
+      ],
+      [
+       "unmute",
+       "Unmute"
+      ],
+      [
+       "toggle_mute",
+       "Mute / unmute"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "amount",
+     "label": "Percent",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "The volume of your default speakers or headphones. The volume port reads it as a number.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "power",
+   "title": "Lock / sleep / shut down",
+   "category": "action",
+   "class": "PowerNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "action",
+     "label": "Do",
+     "kind": "choice",
+     "default": "lock",
+     "choices": [
+      [
+       "lock",
+       "Lock the screen"
+      ],
+      [
+       "screen_off",
+       "Turn the screens off"
+      ],
+      [
+       "sleep",
+       "Sleep"
+      ],
+      [
+       "hibernate",
+       "Hibernate"
+      ],
+      [
+       "logout",
+       "Sign out"
+      ],
+      [
+       "restart",
+       "Restart the PC"
+      ],
+      [
+       "shutdown",
+       "Shut down the PC"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "ask",
+     "label": "Ask me first",
+     "kind": "bool",
+     "default": true,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Locks the screen, turns the screens off, sleeps, signs out, restarts or shuts down the PC.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "keep_awake",
+   "title": "Keep awake",
+   "category": "action",
+   "class": "KeepAwakeNode",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [
+    "on"
+   ],
+   "fields": [
+    {
+     "key": "mode",
+     "label": "Turn it",
+     "kind": "choice",
+     "default": "on",
+     "choices": [
+      [
+       "on",
+       "on"
+      ],
+      [
+       "off",
+       "off"
+      ],
+      [
+       "toggle",
+       "the other way"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Stops the screen going dark and the PC going to sleep (until it is turned off, or Luminescent quits). E.g. Program starts (a game, OBS) → on, Program stops → off. Also in the tray.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "open_note",
+   "title": "Open a note",
+   "category": "action",
+   "class": "OpenNote",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "note",
+     "label": "Note",
+     "kind": "choice",
+     "default": "",
+     "choices": {
+      "dynamic": "_notes"
+     },
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Shows the Notes panel on that note.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "show",
+   "title": "Show",
+   "category": "action",
+   "class": "Show",
+   "ins": [
+    "in"
+   ],
+   "outs": [
+    "out"
+   ],
+   "values": [],
+   "fields": [],
+   "help": "Shows what comes through (handy to see what a wire carries) and passes it on.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "delay",
+   "title": "Wait",
+   "category": "logic",
+   "class": "Delay",
+   "ins": [
+    "in",
+    "cancel"
+   ],
+   "outs": [
+    "out"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "seconds",
+     "label": "Seconds",
+     "kind": "number",
+     "default": 5,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "Passes the pulse on after a while.",
+   "width": 260,
+   "live": true
+  },
+  {
+   "id": "if",
+   "title": "If",
+   "category": "logic",
+   "class": "If",
+   "ins": [
+    "in"
+   ],
+   "outs": [
+    "yes",
+    "no"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "a",
+     "label": "This",
+     "kind": "text",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "op",
+     "label": "",
+     "kind": "choice",
+     "default": "contains",
+     "choices": [
+      [
+       "equals",
+       "is"
+      ],
+      [
+       "not_equals",
+       "is not"
+      ],
+      [
+       "contains",
+       "contains"
+      ],
+      [
+       "starts",
+       "starts with"
+      ],
+      [
+       "ends",
+       "ends with"
+      ],
+      [
+       "regex",
+       "matches (regex)"
+      ],
+      [
+       "empty",
+       "is empty"
+      ],
+      [
+       "not_empty",
+       "is not empty"
+      ],
+      [
+       "gt",
+       ">"
+      ],
+      [
+       "lt",
+       "<"
+      ],
+      [
+       "ge",
+       "≥"
+      ],
+      [
+       "le",
+       "≤"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "b",
+     "label": "That",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "Sends the pulse out of yes or no. Text is compared ignoring upper/lower case.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "gate",
+   "title": "Gate",
+   "category": "logic",
+   "class": "Gate",
+   "ins": [
+    "in",
+    "open",
+    "close",
+    "toggle"
+   ],
+   "outs": [
+    "out"
+   ],
+   "values": [
+    "open"
+   ],
+   "fields": [
+    {
+     "key": "start_open",
+     "label": "Open from the start",
+     "kind": "bool",
+     "default": true,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Lets pulses through only while it is open.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "counter",
+   "title": "Count",
+   "category": "logic",
+   "class": "Counter",
+   "ins": [
+    "in",
+    "reset"
+   ],
+   "outs": [
+    "every",
+    "out"
+   ],
+   "values": [
+    "count"
+   ],
+   "fields": [
+    {
+     "key": "every",
+     "label": "Fire “every” each … times",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "Counts pulses. Out passes every pulse on with the count; every fires each Nth time.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "once",
+   "title": "Only once",
+   "category": "logic",
+   "class": "Once",
+   "ins": [
+    "in",
+    "reset"
+   ],
+   "outs": [
+    "out"
+   ],
+   "values": [],
+   "fields": [],
+   "help": "Lets the first pulse through, then nothing until reset.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "cooldown",
+   "title": "Cooldown",
+   "category": "logic",
+   "class": "Cooldown",
+   "ins": [
+    "in"
+   ],
+   "outs": [
+    "out"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "seconds",
+     "label": "At most once every (seconds)",
+     "kind": "number",
+     "default": 10,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Lets a pulse through, then ignores the next ones for a while.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "sequence",
+   "title": "Sequence",
+   "category": "logic",
+   "class": "Sequence",
+   "ins": [
+    "in"
+   ],
+   "outs": [
+    "first",
+    "second",
+    "third",
+    "fourth"
+   ],
+   "values": [],
+   "fields": [],
+   "help": "Fires its outputs one after another, first to fourth.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "turns",
+   "title": "Take turns",
+   "category": "logic",
+   "class": "Turns",
+   "ins": [
+    "in",
+    "reset"
+   ],
+   "outs": [
+    "first",
+    "second",
+    "third",
+    "fourth"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "count",
+     "label": "How many outputs take turns",
+     "kind": "number",
+     "default": 2,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Each pulse goes out of the next output: first, second, first, second…",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "random",
+   "title": "Random chance",
+   "category": "logic",
+   "class": "Chance",
+   "ins": [
+    "in"
+   ],
+   "outs": [
+    "yes",
+    "no"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "percent",
+     "label": "Chance of yes (%)",
+     "kind": "number",
+     "default": 50,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "repeat",
+   "title": "Repeat",
+   "category": "logic",
+   "class": "Repeat",
+   "ins": [
+    "in",
+    "stop"
+   ],
+   "outs": [
+    "each",
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "times",
+     "label": "Times",
+     "kind": "number",
+     "default": 3,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "gap",
+     "label": "Seconds between",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "Fires each the number of times (its input counts 1, 2, 3…), then done.",
+   "width": 260,
+   "live": true
+  },
+  {
+   "id": "text",
+   "title": "Text",
+   "category": "value",
+   "class": "TextNode",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [
+    {
+     "key": "text",
+     "label": "",
+     "kind": "multiline",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "Hello {input}"
+    }
+   ],
+   "help": "A piece of text. {input} becomes what came in with the pulse that asked for it.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "number",
+   "title": "Number",
+   "category": "value",
+   "class": "NumberNode",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "number"
+   ],
+   "fields": [
+    {
+     "key": "number",
+     "label": "",
+     "kind": "number",
+     "default": 0,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "var_get",
+   "title": "Variable",
+   "category": "value",
+   "class": "VarGet",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "value"
+   ],
+   "fields": [
+    {
+     "key": "name",
+     "label": "Name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "name"
+    }
+   ],
+   "help": "Reads a variable (kept between restarts). {var:name} in any field does the same.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "var_set",
+   "title": "Set variable",
+   "category": "action",
+   "class": "VarSet",
+   "ins": [
+    "run"
+   ],
+   "outs": [
+    "done"
+   ],
+   "values": [],
+   "fields": [
+    {
+     "key": "name",
+     "label": "Name",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": "name"
+    },
+    {
+     "key": "value",
+     "label": "Value",
+     "kind": "text",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "mode",
+     "label": "",
+     "kind": "choice",
+     "default": "set",
+     "choices": [
+      [
+       "set",
+       "Set it to the value"
+      ],
+      [
+       "append",
+       "Add the value to its end"
+      ],
+      [
+       "add",
+       "Add the value as a number"
+      ],
+      [
+       "clear",
+       "Empty it"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Keeps a value for later (also after a restart). Done carries the new value.",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "join",
+   "title": "Join text",
+   "category": "value",
+   "class": "Join",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [
+    {
+     "key": "a",
+     "label": "A",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "b",
+     "label": "B",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "c",
+     "label": "C",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "sep",
+     "label": "Between them",
+     "kind": "text",
+     "default": " ",
+     "choices": [],
+     "pin": false,
+     "hint": "(nothing)"
+    }
+   ],
+   "help": "A, B and C joined into one text (empty ones are left out). Wire it into a command, a message…",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "math",
+   "title": "Maths",
+   "category": "value",
+   "class": "MathNode",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "result"
+   ],
+   "fields": [
+    {
+     "key": "a",
+     "label": "A",
+     "kind": "text",
+     "default": "0",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "op",
+     "label": "",
+     "kind": "choice",
+     "default": "+",
+     "choices": [
+      [
+       "+",
+       "+"
+      ],
+      [
+       "-",
+       "-"
+      ],
+      [
+       "×",
+       "×"
+      ],
+      [
+       "÷",
+       "÷"
+      ],
+      [
+       "mod",
+       "mod"
+      ],
+      [
+       "min",
+       "min"
+      ],
+      [
+       "max",
+       "max"
+      ],
+      [
+       "^",
+       "^"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "b",
+     "label": "B",
+     "kind": "text",
+     "default": "0",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "now",
+   "title": "Date / time",
+   "category": "value",
+   "class": "Now",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [
+    {
+     "key": "format",
+     "label": "Format",
+     "kind": "text",
+     "default": "%Y-%m-%d %H:%M",
+     "choices": [],
+     "pin": false,
+     "hint": "%H:%M · %A %d %B"
+    }
+   ],
+   "help": "Now, written your way (%Y year, %m month, %d day, %H hour, %M minute, %A weekday, %B month name).",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "clip_get",
+   "title": "Clipboard text",
+   "category": "value",
+   "class": "ClipGet",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "read_file",
+   "title": "Read a file",
+   "category": "value",
+   "class": "ReadFile",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [
+    {
+     "key": "path",
+     "label": "File",
+     "kind": "file",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "replace",
+   "title": "Replace text",
+   "category": "value",
+   "class": "Replace",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [
+    {
+     "key": "text",
+     "label": "In",
+     "kind": "text",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "find",
+     "label": "Find",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    },
+    {
+     "key": "with",
+     "label": "Replace with",
+     "kind": "text",
+     "default": "",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "regex",
+     "label": "Find is a regex",
+     "kind": "bool",
+     "default": false,
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "change",
+   "title": "Change text",
+   "category": "value",
+   "class": "Change",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "text"
+   ],
+   "fields": [
+    {
+     "key": "text",
+     "label": "Text",
+     "kind": "text",
+     "default": "{input}",
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "op",
+     "label": "Make it",
+     "kind": "choice",
+     "default": "trim",
+     "choices": [
+      [
+       "upper",
+       "UPPER CASE"
+      ],
+      [
+       "lower",
+       "lower case"
+      ],
+      [
+       "title",
+       "Title Case"
+      ],
+      [
+       "trim",
+       "trimmed (no spaces around)"
+      ],
+      [
+       "first",
+       "its first line"
+      ],
+      [
+       "last",
+       "its last line"
+      ],
+      [
+       "length",
+       "its length"
+      ],
+      [
+       "lines",
+       "its number of lines"
+      ]
+     ],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "random_num",
+   "title": "Random number",
+   "category": "value",
+   "class": "RandomNum",
+   "ins": [],
+   "outs": [],
+   "values": [
+    "number"
+   ],
+   "fields": [
+    {
+     "key": "min",
+     "label": "From",
+     "kind": "number",
+     "default": 1,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    },
+    {
+     "key": "max",
+     "label": "To",
+     "kind": "number",
+     "default": 6,
+     "choices": [],
+     "pin": true,
+     "hint": ""
+    }
+   ],
+   "help": "",
+   "width": 260,
+   "live": false
+  },
+  {
+   "id": "comment",
+   "title": "Note",
+   "category": "other",
+   "class": "Comment",
+   "ins": [],
+   "outs": [],
+   "values": [],
+   "fields": [
+    {
+     "key": "text",
+     "label": "",
+     "kind": "multiline",
+     "default": "",
+     "choices": [],
+     "pin": false,
+     "hint": ""
+    }
+   ],
+   "help": "Writing for yourself. It does nothing.",
+   "width": 280,
+   "live": false
+  }
+ ]
+}

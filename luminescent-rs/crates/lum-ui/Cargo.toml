@@ -1,0 +1,20 @@
+[package]
+name = "lum-ui"
+description = "The egui app: widget kit, overlay, pages and panels."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+egui.workspace = true
+lum-core.workspace = true
+lum-platform.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+egui_kittest.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

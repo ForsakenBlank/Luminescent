@@ -1,0 +1,982 @@
+{
+ "added_mark": "-- added with Luminescent",
+ "files_in_order": [
+  "hyprland.lua",
+  "variables.lua",
+  "binds.lua"
+ ],
+ "tokens": [
+  {
+   "src": "local x = \"a\" .. 'b'",
+   "tokens": [
+    [
+     "name",
+     "local",
+     1
+    ],
+    [
+     "name",
+     "x",
+     1
+    ],
+    [
+     "op",
+     "=",
+     1
+    ],
+    [
+     "str",
+     "\"a\"",
+     1
+    ],
+    [
+     "op",
+     "..",
+     1
+    ],
+    [
+     "str",
+     "'b'",
+     1
+    ]
+   ]
+  },
+  {
+   "src": "a = 0x1F + 2.5e3 -- c\nb=[[long\nstring]]",
+   "tokens": [
+    [
+     "name",
+     "a",
+     1
+    ],
+    [
+     "op",
+     "=",
+     1
+    ],
+    [
+     "num",
+     "0x1F",
+     1
+    ],
+    [
+     "op",
+     "+",
+     1
+    ],
+    [
+     "num",
+     "2.5e3",
+     1
+    ],
+    [
+     "name",
+     "b",
+     2
+    ],
+    [
+     "op",
+     "=",
+     2
+    ],
+    [
+     "str",
+     "[[long\nstring]]",
+     2
+    ]
+   ]
+  },
+  {
+   "src": "hl.bind(m .. \" + Q\", f({a = 1}))",
+   "tokens": [
+    [
+     "name",
+     "hl",
+     1
+    ],
+    [
+     "op",
+     ".",
+     1
+    ],
+    [
+     "name",
+     "bind",
+     1
+    ],
+    [
+     "op",
+     "(",
+     1
+    ],
+    [
+     "name",
+     "m",
+     1
+    ],
+    [
+     "op",
+     "..",
+     1
+    ],
+    [
+     "str",
+     "\" + Q\"",
+     1
+    ],
+    [
+     "op",
+     ",",
+     1
+    ],
+    [
+     "name",
+     "f",
+     1
+    ],
+    [
+     "op",
+     "(",
+     1
+    ],
+    [
+     "op",
+     "{",
+     1
+    ],
+    [
+     "name",
+     "a",
+     1
+    ],
+    [
+     "op",
+     "=",
+     1
+    ],
+    [
+     "num",
+     "1",
+     1
+    ],
+    [
+     "op",
+     "}",
+     1
+    ],
+    [
+     "op",
+     ")",
+     1
+    ],
+    [
+     "op",
+     ")",
+     1
+    ]
+   ]
+  },
+  {
+   "src": "x = \"esc\\\"aped\\n\"",
+   "tokens": [
+    [
+     "name",
+     "x",
+     1
+    ],
+    [
+     "op",
+     "=",
+     1
+    ],
+    [
+     "str",
+     "\"esc\\\"aped\\n\"",
+     1
+    ]
+   ]
+  },
+  {
+   "src": "--[==[ block ]==] y = 1",
+   "tokens": [
+    [
+     "name",
+     "y",
+     1
+    ],
+    [
+     "op",
+     "=",
+     1
+    ],
+    [
+     "num",
+     "1",
+     1
+    ]
+   ]
+  }
+ ],
+ "parsed": [
+  {
+   "file": "hyprland.lua",
+   "variables": {
+    "gaps_in": "4"
+   },
+   "globals": {
+    "gaps_in": "4"
+   },
+   "calls": []
+  },
+  {
+   "file": "variables.lua",
+   "variables": {
+    "mainMod": "SUPER",
+    "BROWSER": "zen-browser",
+    "TERMINAL": "kitty",
+    "FILES": "dolphin"
+   },
+   "globals": {
+    "mainMod": "SUPER",
+    "BROWSER": "zen-browser",
+    "TERMINAL": "kitty",
+    "FILES": "dolphin"
+   },
+   "calls": []
+  },
+  {
+   "file": "binds.lua",
+   "variables": {
+    "menu": "fuzzel"
+   },
+   "globals": {
+    "menu": "fuzzel"
+   },
+   "calls": [
+    {
+     "line": 4,
+     "end_line": 4,
+     "args": [
+      "mainMod .. \" + Q\"",
+      "hl.dsp.exec_cmd(TERMINAL)"
+     ],
+     "in_loop": false,
+     "keys": null,
+     "static_keys": [
+      [],
+      "Q"
+     ],
+     "dispatcher": "exec_cmd"
+    },
+    {
+     "line": 5,
+     "end_line": 5,
+     "args": [
+      "mainMod .. \" + G\"",
+      "hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER)"
+     ],
+     "in_loop": false,
+     "keys": null,
+     "static_keys": [
+      [],
+      "G"
+     ],
+     "dispatcher": "exec_cmd"
+    },
+    {
+     "line": 6,
+     "end_line": 6,
+     "args": [
+      "mainMod .. \" + C\"",
+      "hl.dsp.window.close()"
+     ],
+     "in_loop": false,
+     "keys": null,
+     "static_keys": [
+      [],
+      "C"
+     ],
+     "dispatcher": "window.close"
+    },
+    {
+     "line": 7,
+     "end_line": 7,
+     "args": [
+      "\"SUPER + SHIFT + E\"",
+      "hl.dsp.exit()"
+     ],
+     "in_loop": false,
+     "keys": "SUPER + SHIFT + E",
+     "static_keys": [
+      [
+       "SHIFT",
+       "SUPER"
+      ],
+      "E"
+     ],
+     "dispatcher": "exit"
+    },
+    {
+     "line": 8,
+     "end_line": 8,
+     "args": [
+      "mainMod .. \" + F\"",
+      "hl.dsp.window.fullscreen({ mode = 1 })"
+     ],
+     "in_loop": false,
+     "keys": null,
+     "static_keys": [
+      [],
+      "F"
+     ],
+     "dispatcher": "window.fullscreen"
+    },
+    {
+     "line": 9,
+     "end_line": 9,
+     "args": [
+      "mainMod .. \" + left\"",
+      "hl.dsp.focus({ direction = \"left\" })"
+     ],
+     "in_loop": false,
+     "keys": null,
+     "static_keys": [
+      [],
+      "left"
+     ],
+     "dispatcher": "focus"
+    },
+    {
+     "line": 10,
+     "end_line": 10,
+     "args": [
+      "\"ALT + R\"",
+      "hl.dsp.exec_cmd(menu .. \" --drun\")"
+     ],
+     "in_loop": false,
+     "keys": "ALT + R",
+     "static_keys": [
+      [
+       "ALT"
+      ],
+      "R"
+     ],
+     "dispatcher": "exec_cmd"
+    },
+    {
+     "line": 11,
+     "end_line": 11,
+     "args": [
+      "\"CTRL + ALT + T\"",
+      "function() hl.dsp.exec_cmd(\"notify-send hi\") end"
+     ],
+     "in_loop": false,
+     "keys": "CTRL + ALT + T",
+     "static_keys": [
+      [
+       "ALT",
+       "CTRL"
+      ],
+      "T"
+     ],
+     "dispatcher": "function"
+    },
+    {
+     "line": 16,
+     "end_line": 16,
+     "args": [
+      "mainMod .. \" + \" .. key",
+      "hl.dsp.focus({ workspace = i })"
+     ],
+     "in_loop": true,
+     "keys": null,
+     "static_keys": [
+      [],
+      null
+     ],
+     "dispatcher": "focus"
+    },
+    {
+     "line": 18,
+     "end_line": 18,
+     "args": [
+      "mainMod .. \" + mouse:272\"",
+      "hl.dsp.window.drag()",
+      "{ mouse = true }"
+     ],
+     "in_loop": false,
+     "keys": null,
+     "static_keys": [
+      [],
+      "mouse:272"
+     ],
+     "dispatcher": "window.drag"
+    },
+    {
+     "line": 19,
+     "end_line": 19,
+     "args": [
+      "\"SUPER + code:10\"",
+      "hl.dsp.focus({ workspace = 1 })"
+     ],
+     "in_loop": false,
+     "keys": "SUPER + code:10",
+     "static_keys": [
+      [
+       "SUPER"
+      ],
+      "code:10"
+     ],
+     "dispatcher": "focus"
+    },
+    {
+     "line": 19,
+     "end_line": 19,
+     "args": [
+      "\"SUPER + D\"",
+      "hl.dsp.exec_cmd(FILES)"
+     ],
+     "in_loop": false,
+     "keys": "SUPER + D",
+     "static_keys": [
+      [
+       "SUPER"
+      ],
+      "D"
+     ],
+     "dispatcher": "exec_cmd"
+    },
+    {
+     "line": 20,
+     "end_line": 20,
+     "args": [
+      "\"SUPER + V\"",
+      "hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\")"
+     ],
+     "in_loop": false,
+     "keys": "SUPER + V",
+     "static_keys": [
+      [
+       "SUPER"
+      ],
+      "V"
+     ],
+     "dispatcher": "exec_cmd"
+    }
+   ]
+  }
+ ],
+ "luminescent_binds": [
+  [
+   "ctrl+shift+space",
+   "launcher",
+   "Open Luminescent"
+  ],
+  [
+   "alt",
+   "doodle",
+   "Doodle"
+  ],
+  [
+   "super+c",
+   "notes",
+   "Clashes with Close window"
+  ]
+ ],
+ "listed": [
+  {
+   "keys": "SUPER + Q",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "Q",
+   "action": "Open TERMINAL",
+   "detail": "kitty",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 4,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": "kitty"
+  },
+  {
+   "keys": "SUPER + G",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "G",
+   "action": "Open BROWSER",
+   "detail": "zen-browser",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 5,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": "uwsm app -- zen-browser"
+  },
+  {
+   "keys": "SUPER + C",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "C",
+   "action": "Close window",
+   "detail": "",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 6,
+   "flags": [],
+   "release": false,
+   "conflict": true,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + SHIFT + E",
+   "mods": [
+    "SUPER",
+    "SHIFT"
+   ],
+   "key": "E",
+   "action": "Exit Hyprland",
+   "detail": "",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 7,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + F",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "F",
+   "action": "Fullscreen",
+   "detail": "maximise",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 8,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + left",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "left",
+   "action": "Focus",
+   "detail": "left",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 9,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "ALT + R",
+   "mods": [
+    "ALT"
+   ],
+   "key": "R",
+   "action": "Run",
+   "detail": "fuzzel --drun",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 10,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": "fuzzel --drun"
+  },
+  {
+   "keys": "CTRL + ALT + T",
+   "mods": [
+    "CTRL",
+    "ALT"
+   ],
+   "key": "T",
+   "action": "Lua",
+   "detail": "hl.dsp.exec_cmd(\"notify-send hi\")",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 11,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + 1",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "1",
+   "action": "Focus",
+   "detail": "workspace …",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 16,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": false,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + 2",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "2",
+   "action": "Focus",
+   "detail": "workspace …",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 16,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": false,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + 3",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "3",
+   "action": "Focus",
+   "detail": "workspace …",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 16,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": false,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + Left mouse",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "mouse:272",
+   "action": "Drag window (mouse)",
+   "detail": "",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 18,
+   "flags": [
+    "mouse"
+   ],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + 1",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "code:10",
+   "action": "Focus",
+   "detail": "workspace 1",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 19,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": ""
+  },
+  {
+   "keys": "SUPER + D",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "D",
+   "action": "Open FILES",
+   "detail": "dolphin",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 19,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": "dolphin"
+  },
+  {
+   "keys": "SUPER + V",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "V",
+   "action": "Run",
+   "detail": "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "binds.lua",
+   "line": 20,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": true,
+   "combo": "",
+   "runs_command": "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"
+  },
+  {
+   "keys": "SUPER + B",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "B",
+   "action": "Run",
+   "detail": "firefox",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "hyprland.conf",
+   "line": 2,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": false,
+   "combo": "",
+   "runs_command": null
+  },
+  {
+   "keys": "XF86AudioPlay",
+   "mods": [],
+   "key": "XF86AudioPlay",
+   "action": "Run",
+   "detail": "playerctl play-pause",
+   "origin": "hyprland",
+   "owner": "",
+   "file": "hyprland.conf",
+   "line": 3,
+   "flags": [
+    "locked"
+   ],
+   "release": false,
+   "conflict": false,
+   "editable": false,
+   "combo": "",
+   "runs_command": null
+  },
+  {
+   "keys": "CTRL + SHIFT + space",
+   "mods": [
+    "CTRL",
+    "SHIFT"
+   ],
+   "key": "space",
+   "action": "Open Luminescent",
+   "detail": "",
+   "origin": "luminescent",
+   "owner": "launcher",
+   "file": "",
+   "line": 0,
+   "flags": [],
+   "release": false,
+   "conflict": false,
+   "editable": false,
+   "combo": "ctrl+shift+space",
+   "runs_command": null
+  },
+  {
+   "keys": "ALT + Alt_L",
+   "mods": [
+    "ALT"
+   ],
+   "key": "Alt_L",
+   "action": "Doodle",
+   "detail": "",
+   "origin": "luminescent",
+   "owner": "doodle",
+   "file": "",
+   "line": 0,
+   "flags": [],
+   "release": true,
+   "conflict": false,
+   "editable": false,
+   "combo": "alt",
+   "runs_command": null
+  },
+  {
+   "keys": "ALT + Alt_R",
+   "mods": [
+    "ALT"
+   ],
+   "key": "Alt_R",
+   "action": "Doodle",
+   "detail": "",
+   "origin": "luminescent",
+   "owner": "doodle",
+   "file": "",
+   "line": 0,
+   "flags": [],
+   "release": true,
+   "conflict": false,
+   "editable": false,
+   "combo": "alt",
+   "runs_command": null
+  },
+  {
+   "keys": "SUPER + c",
+   "mods": [
+    "SUPER"
+   ],
+   "key": "c",
+   "action": "Clashes with Close window",
+   "detail": "",
+   "origin": "luminescent",
+   "owner": "notes",
+   "file": "",
+   "line": 0,
+   "flags": [],
+   "release": false,
+   "conflict": true,
+   "editable": false,
+   "combo": "super+c",
+   "runs_command": null
+  }
+ ],
+ "edits": [
+  {
+   "name": "change keys keeps the mainMod .. form",
+   "error": "",
+   "files_after": {
+    "binds.lua": "local menu = \"fuzzel\"\nlocal function ws(n) return mainMod .. \" + \" .. n end\n\nhl.bind(mainMod .. \" + Q\", hl.dsp.exec_cmd(TERMINAL))\nhl.bind(mainMod .. \" + G\", hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER))\nhl.bind(mainMod .. \" + SHIFT + C\", hl.dsp.window.close())\nhl.bind(\"SUPER + SHIFT + E\", hl.dsp.exit())\nhl.bind(mainMod .. \" + F\", hl.dsp.window.fullscreen({ mode = 1 }))\nhl.bind(mainMod .. \" + left\", hl.dsp.focus({ direction = \"left\" }))\nhl.bind(\"ALT + R\", hl.dsp.exec_cmd(menu .. \" --drun\"))  -- a comment\nhl.bind(\"CTRL + ALT + T\", function() hl.dsp.exec_cmd(\"notify-send hi\") end)\n--[[ hl.bind(\"SUPER + X\", hl.dsp.exit()) ]]\n-- hl.bind(\"SUPER + Y\", hl.dsp.exit())\nfor i = 1, 3 do\n    local key = i\n    hl.bind(mainMod .. \" + \" .. key, hl.dsp.focus({ workspace = i }))\nend\nhl.bind(mainMod .. \" + mouse:272\", hl.dsp.window.drag(), { mouse = true })\nhl.bind(\"SUPER + code:10\", hl.dsp.focus({ workspace = 1 })); hl.bind(\"SUPER + D\", hl.dsp.exec_cmd(FILES))\nhl.bind(\"SUPER + V\", hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\"))\n"
+   }
+  },
+  {
+   "name": "change keys to another modifier",
+   "error": "",
+   "files_after": {
+    "binds.lua": "local menu = \"fuzzel\"\nlocal function ws(n) return mainMod .. \" + \" .. n end\n\nhl.bind(mainMod .. \" + Q\", hl.dsp.exec_cmd(TERMINAL))\nhl.bind(mainMod .. \" + G\", hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER))\nhl.bind(\"ALT + C\", hl.dsp.window.close())\nhl.bind(\"SUPER + SHIFT + E\", hl.dsp.exit())\nhl.bind(mainMod .. \" + F\", hl.dsp.window.fullscreen({ mode = 1 }))\nhl.bind(mainMod .. \" + left\", hl.dsp.focus({ direction = \"left\" }))\nhl.bind(\"ALT + R\", hl.dsp.exec_cmd(menu .. \" --drun\"))  -- a comment\nhl.bind(\"CTRL + ALT + T\", function() hl.dsp.exec_cmd(\"notify-send hi\") end)\n--[[ hl.bind(\"SUPER + X\", hl.dsp.exit()) ]]\n-- hl.bind(\"SUPER + Y\", hl.dsp.exit())\nfor i = 1, 3 do\n    local key = i\n    hl.bind(mainMod .. \" + \" .. key, hl.dsp.focus({ workspace = i }))\nend\nhl.bind(mainMod .. \" + mouse:272\", hl.dsp.window.drag(), { mouse = true })\nhl.bind(\"SUPER + code:10\", hl.dsp.focus({ workspace = 1 })); hl.bind(\"SUPER + D\", hl.dsp.exec_cmd(FILES))\nhl.bind(\"SUPER + V\", hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\"))\n"
+   }
+  },
+  {
+   "name": "edit keys and command",
+   "error": "",
+   "files_after": {
+    "binds.lua": "local menu = \"fuzzel\"\nlocal function ws(n) return mainMod .. \" + \" .. n end\n\nhl.bind(mainMod .. \" + RETURN\", hl.dsp.exec_cmd(\"foot \\\"-e\\\" htop\"))\nhl.bind(mainMod .. \" + G\", hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER))\nhl.bind(mainMod .. \" + C\", hl.dsp.window.close())\nhl.bind(\"SUPER + SHIFT + E\", hl.dsp.exit())\nhl.bind(mainMod .. \" + F\", hl.dsp.window.fullscreen({ mode = 1 }))\nhl.bind(mainMod .. \" + left\", hl.dsp.focus({ direction = \"left\" }))\nhl.bind(\"ALT + R\", hl.dsp.exec_cmd(menu .. \" --drun\"))  -- a comment\nhl.bind(\"CTRL + ALT + T\", function() hl.dsp.exec_cmd(\"notify-send hi\") end)\n--[[ hl.bind(\"SUPER + X\", hl.dsp.exit()) ]]\n-- hl.bind(\"SUPER + Y\", hl.dsp.exit())\nfor i = 1, 3 do\n    local key = i\n    hl.bind(mainMod .. \" + \" .. key, hl.dsp.focus({ workspace = i }))\nend\nhl.bind(mainMod .. \" + mouse:272\", hl.dsp.window.drag(), { mouse = true })\nhl.bind(\"SUPER + code:10\", hl.dsp.focus({ workspace = 1 })); hl.bind(\"SUPER + D\", hl.dsp.exec_cmd(FILES))\nhl.bind(\"SUPER + V\", hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\"))\n"
+   }
+  },
+  {
+   "name": "delete comments the call out",
+   "error": "",
+   "files_after": {
+    "binds.lua": "local menu = \"fuzzel\"\nlocal function ws(n) return mainMod .. \" + \" .. n end\n\nhl.bind(mainMod .. \" + Q\", hl.dsp.exec_cmd(TERMINAL))\nhl.bind(mainMod .. \" + G\", hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER))\nhl.bind(mainMod .. \" + C\", hl.dsp.window.close())\n-- hl.bind(\"SUPER + SHIFT + E\", hl.dsp.exit())\nhl.bind(mainMod .. \" + F\", hl.dsp.window.fullscreen({ mode = 1 }))\nhl.bind(mainMod .. \" + left\", hl.dsp.focus({ direction = \"left\" }))\nhl.bind(\"ALT + R\", hl.dsp.exec_cmd(menu .. \" --drun\"))  -- a comment\nhl.bind(\"CTRL + ALT + T\", function() hl.dsp.exec_cmd(\"notify-send hi\") end)\n--[[ hl.bind(\"SUPER + X\", hl.dsp.exit()) ]]\n-- hl.bind(\"SUPER + Y\", hl.dsp.exit())\nfor i = 1, 3 do\n    local key = i\n    hl.bind(mainMod .. \" + \" .. key, hl.dsp.focus({ workspace = i }))\nend\nhl.bind(mainMod .. \" + mouse:272\", hl.dsp.window.drag(), { mouse = true })\nhl.bind(\"SUPER + code:10\", hl.dsp.focus({ workspace = 1 })); hl.bind(\"SUPER + D\", hl.dsp.exec_cmd(FILES))\nhl.bind(\"SUPER + V\", hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\"))\n"
+   }
+  },
+  {
+   "name": "delete refuses a shared line",
+   "error": "That line holds more than this bind; edit it in the file instead.",
+   "files_after": {}
+  },
+  {
+   "name": "delete refuses a loop",
+   "error": "This bind is made in a loop; edit that loop in the file instead.",
+   "files_after": {}
+  },
+  {
+   "name": "add goes to the file with most binds",
+   "error": "",
+   "files_after": {
+    "binds.lua": "local menu = \"fuzzel\"\nlocal function ws(n) return mainMod .. \" + \" .. n end\n\nhl.bind(mainMod .. \" + Q\", hl.dsp.exec_cmd(TERMINAL))\nhl.bind(mainMod .. \" + G\", hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER))\nhl.bind(mainMod .. \" + C\", hl.dsp.window.close())\nhl.bind(\"SUPER + SHIFT + E\", hl.dsp.exit())\nhl.bind(mainMod .. \" + F\", hl.dsp.window.fullscreen({ mode = 1 }))\nhl.bind(mainMod .. \" + left\", hl.dsp.focus({ direction = \"left\" }))\nhl.bind(\"ALT + R\", hl.dsp.exec_cmd(menu .. \" --drun\"))  -- a comment\nhl.bind(\"CTRL + ALT + T\", function() hl.dsp.exec_cmd(\"notify-send hi\") end)\n--[[ hl.bind(\"SUPER + X\", hl.dsp.exit()) ]]\n-- hl.bind(\"SUPER + Y\", hl.dsp.exit())\nfor i = 1, 3 do\n    local key = i\n    hl.bind(mainMod .. \" + \" .. key, hl.dsp.focus({ workspace = i }))\nend\nhl.bind(mainMod .. \" + mouse:272\", hl.dsp.window.drag(), { mouse = true })\nhl.bind(\"SUPER + code:10\", hl.dsp.focus({ workspace = 1 })); hl.bind(\"SUPER + D\", hl.dsp.exec_cmd(FILES))\nhl.bind(\"SUPER + V\", hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\"))\n\n-- added with Luminescent\nhl.bind(\"SUPER + N\", hl.dsp.exec_cmd(\"notify-send \\\"hi\\\"\"))\n"
+   }
+  },
+  {
+   "name": "file changed since it was listed",
+   "error": "The file changed since the list was loaded. Refresh and try again.",
+   "files_after": {
+    "binds.lua": "local menu = \"fuzzel\"\nlocal function ws(n) return mainMod .. \" + \" .. n end\n\nhl.bind(mainMod .. \" + Q\", hl.dsp.exec_cmd(TERMINAL))\nhl.bind(mainMod .. \" + G\", hl.dsp.exec_cmd(\"uwsm app -- \" .. BROWSER))\nhl.bind(mainMod .. \" + C\", hl.dsp.window.close())\nhl.bind(\"SUPER + SHIFT + E\", hl.dsp.exit())\nhl.bind(mainMod .. \" + F\", hl.dsp.window.fullscreen({ mode = 1 }))\nhl.bind(mainMod .. \" + left\", hl.dsp.focus({ direction = \"left\" }))\nhl.bind(\"ALT + R\", hl.dsp.exec_cmd(menu .. \" --drun\"))  -- a comment\nhl.bind(\"CTRL + ALT + T\", function() hl.dsp.exec_cmd(\"notify-send hi\") end)\n--[[ hl.bind(\"SUPER + X\", hl.dsp.exit()) ]]\n-- hl.bind(\"SUPER + Y\", hl.dsp.exit())\nfor i = 1, 3 do\n    local key = i\n    hl.bind(mainMod .. \" + \" .. key, hl.dsp.focus({ workspace = i }))\nend\nhl.bind(mainMod .. \" + mouse:272\", hl.dsp.window.drag(), { mouse = true })\nhl.bind(\"SUPER + code:10\", hl.dsp.focus({ workspace = 1 })); hl.bind(\"SUPER + D\", hl.dsp.exec_cmd(FILES))\nhl.bind(\"SUPER + V\", hl.dsp.exec_cmd(\"cliphist list | \" .. menu .. \" --dmenu | cliphist decode | wl-copy\"))\n-- changed\n"
+   }
+  },
+  {
+   "name": "Hyprland reports an error: the old file is put back",
+   "error": "Hyprland did not accept the change, so it was undone:\nbinds.lua:3: syntax error",
+   "files_after": {}
+  }
+ ],
+ "find_conf_line": [
+  {
+   "key": "B",
+   "mods": [
+    "SUPER"
+   ],
+   "arg": "firefox",
+   "found": [
+    "hyprland.conf",
+    2
+   ]
+  },
+  {
+   "key": "XF86AudioPlay",
+   "mods": [],
+   "arg": "",
+   "found": [
+    "hyprland.conf",
+    3
+   ]
+  },
+  {
+   "key": "Z",
+   "mods": [],
+   "arg": "",
+   "found": [
+    "",
+    0
+   ]
+  }
+ ]
+}

@@ -1,0 +1,282 @@
+{
+ "nav_sections": [
+  [
+   "dashboard",
+   "Dashboard"
+  ],
+  [
+   "automation",
+   "Automation"
+  ],
+  [
+   "themes",
+   "Themes"
+  ],
+  [
+   "clipboard",
+   "Clipboard"
+  ],
+  [
+   "settings",
+   "Settings"
+  ]
+ ],
+ "extra_pages": [
+  [
+   "notes",
+   "Notes"
+  ],
+  [
+   "timers",
+   "Timers"
+  ],
+  [
+   "calculator",
+   "Calculator"
+  ],
+  [
+   "today",
+   "Today"
+  ],
+  [
+   "stats",
+   "Usage"
+  ],
+  [
+   "calendar",
+   "Calendar"
+  ],
+  [
+   "hearing",
+   "Hearing Guard"
+  ],
+  [
+   "sysmon",
+   "System Monitor"
+  ],
+  [
+   "media",
+   "Media"
+  ],
+  [
+   "syscontrol",
+   "System Settings"
+  ],
+  [
+   "performance",
+   "Performance"
+  ]
+ ],
+ "required_pages": [
+  "dashboard",
+  "settings"
+ ],
+ "start_panels": [
+  [
+   "notes",
+   "Notes"
+  ],
+  [
+   "hearing",
+   "Hearing Guard"
+  ],
+  [
+   "sysmon",
+   "System Monitor"
+  ],
+  [
+   "performance",
+   "Performance"
+  ],
+  [
+   "media",
+   "Media controls"
+  ]
+ ],
+ "tray_items": [
+  [
+   "open",
+   "Open Luminescent"
+  ],
+  [
+   "palette",
+   "Command palette"
+  ],
+  [
+   "dashboard",
+   "Dashboard items"
+  ],
+  [
+   "automation",
+   "Automation (pause, buttons, workspaces)"
+  ],
+  [
+   "modules",
+   "Modules submenu"
+  ],
+  [
+   "actions",
+   "Module actions (Snippets, Notes, Calculator…)"
+  ],
+  [
+   "colours",
+   "Recent colours"
+  ],
+  [
+   "keepawake",
+   "Keep awake"
+  ],
+  [
+   "reset",
+   "Reset stuck keys"
+  ],
+  [
+   "settings",
+   "Settings"
+  ],
+  [
+   "log",
+   "Open log file"
+  ],
+  [
+   "restart",
+   "Restart"
+  ],
+  [
+   "quit",
+   "Quit"
+  ]
+ ],
+ "anchor_choices": [
+  [
+   "tl",
+   "Top left"
+  ],
+  [
+   "tc",
+   "Top centre"
+  ],
+  [
+   "tr",
+   "Top right"
+  ],
+  [
+   "ml",
+   "Middle left"
+  ],
+  [
+   "mc",
+   "Centre of screen"
+  ],
+  [
+   "mr",
+   "Middle right"
+  ],
+  [
+   "bl",
+   "Bottom left"
+  ],
+  [
+   "bc",
+   "Bottom centre"
+  ],
+  [
+   "br",
+   "Bottom right"
+  ]
+ ],
+ "sound_choices": [
+  [
+   "none",
+   "No sound"
+  ],
+  [
+   "chime",
+   "Chime"
+  ],
+  [
+   "alarm",
+   "Alarm"
+  ],
+  [
+   "custom",
+   "Custom sound file"
+  ]
+ ],
+ "audio_filter": "Audio (*.wav *.mp3 *.ogg *.flac *.m4a);;All files (*)",
+ "animation_kinds": [
+  [
+   "overlay",
+   "Overlay fades in and out",
+   "The dimmed hub and everything on it."
+  ],
+  [
+   "pages",
+   "Switching pages",
+   "Pages and Settings sections fade in when you switch to them."
+  ],
+  [
+   "nav",
+   "Sliding marker under the page switcher",
+   ""
+  ],
+  [
+   "boxes",
+   "Dashboard boxes glide",
+   "Tidy up, folding, new boxes and boxes moved to another screen."
+  ],
+  [
+   "theme",
+   "Crossfade when the theme changes",
+   "The old look fades into the new one instead of jumping."
+  ],
+  [
+   "toasts",
+   "Notifications fade in and out",
+   "Luminescent's own notification cards."
+  ],
+  [
+   "panels",
+   "Panels fade in and out",
+   "Notes, Calculator, Timers and the other floating panels, and the command palette."
+  ],
+  [
+   "zoom",
+   "Smooth zoom on the Automation page",
+   ""
+  ],
+  [
+   "pulses",
+   "Pulses travelling along Automation wires",
+   "Only drawn while the Automation page is open."
+  ]
+ ],
+ "animation_speeds": [
+  [
+   "fast",
+   "Fast"
+  ],
+  [
+   "normal",
+   "Normal"
+  ],
+  [
+   "relaxed",
+   "Relaxed"
+  ]
+ ],
+ "animation_styles": [
+  [
+   "smooth",
+   "Smooth (gentle ease out)"
+  ],
+  [
+   "caelestia",
+   "Caelestia (expressive, with a little overshoot)"
+  ],
+  [
+   "snappy",
+   "Snappy (quick start, short)"
+  ]
+ ]
+}

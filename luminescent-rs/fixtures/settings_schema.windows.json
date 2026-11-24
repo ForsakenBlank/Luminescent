@@ -1,0 +1,4207 @@
+{
+ "shared_sections": [
+  "animations",
+  "automation",
+  "dashboard",
+  "general",
+  "ui"
+ ],
+ "default_profile": "default",
+ "field_types": [
+  "hotkey",
+  "text",
+  "dir",
+  "file",
+  "int",
+  "float",
+  "opacity",
+  "bool",
+  "color",
+  "choice",
+  "custom",
+  "widget",
+  "hidden"
+ ],
+ "sections": [
+  {
+   "key": "general",
+   "title": "General",
+   "icon": "⚙",
+   "description": "Launcher-wide options. These are the same in every settings profile.",
+   "fields": [
+    {
+     "key": "run_at_startup",
+     "label": "Run at login",
+     "type": "bool",
+     "default": false,
+     "help": "Adds Luminescent to your user's Run key in the registry, so it starts when you sign in.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "force_quit_hotkey",
+     "label": "Quit everything hotkey",
+     "type": "hotkey",
+     "default": "ctrl+u",
+     "help": "Asks for confirmation, then closes Luminescent and every module. The ✕ on the overlay only hides it.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "settings_hotkey",
+     "label": "Open settings hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+s",
+     "help": "Opens the overlay straight on the Settings page.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "tray_messages",
+     "label": "Show notifications",
+     "type": "bool",
+     "default": true,
+     "help": "Small notifications when modules are toggled, things are copied or errors happen.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "notify_style",
+     "label": "Notification style",
+     "type": "choice",
+     "default": "luminescent",
+     "help": "Reminders and dose warnings always use desktop notifications as well, so they also show up in your notification history.",
+     "choices": [
+      [
+       "luminescent",
+       "Luminescent cards (top-right, in the theme's colours)"
+      ],
+      [
+       "system",
+       "Windows notifications"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_position",
+     "label": "Notifications appear",
+     "type": "choice",
+     "default": "tr",
+     "help": "Luminescent cards only. Their colours (and gradients) are in Themes → right-click a theme → Settings… → Notifications.",
+     "choices": [
+      [
+       "tr",
+       "Top right"
+      ],
+      [
+       "tc",
+       "Top centre"
+      ],
+      [
+       "tl",
+       "Top left"
+      ],
+      [
+       "br",
+       "Bottom right"
+      ],
+      [
+       "bc",
+       "Bottom centre"
+      ],
+      [
+       "bl",
+       "Bottom left"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_style",
+     "label": "Notification accent",
+     "type": "choice",
+     "default": "glow",
+     "help": "",
+     "choices": [
+      [
+       "glow",
+       "A soft glow of the accent"
+      ],
+      [
+       "stripe",
+       "A stripe down the left side"
+      ],
+      [
+       "top",
+       "A line along the top"
+      ],
+      [
+       "outline",
+       "An accent-coloured outline"
+      ],
+      [
+       "none",
+       "No accent"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_width",
+     "label": "Notification width (px)",
+     "type": "int",
+     "default": 360,
+     "help": "",
+     "choices": [],
+     "min": 260,
+     "max": 640,
+     "step": 20,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_time",
+     "label": "Notifications stay up",
+     "type": "choice",
+     "default": 1.0,
+     "help": "Long messages always stay up a little longer, and hovering a card keeps it up.",
+     "choices": [
+      [
+       0.5,
+       "Half as long"
+      ],
+      [
+       1.0,
+       "Normal"
+      ],
+      [
+       1.5,
+       "A bit longer"
+      ],
+      [
+       2.0,
+       "Twice as long"
+      ],
+      [
+       3.0,
+       "Three times as long"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_max",
+     "label": "Most notifications on screen at once",
+     "type": "int",
+     "default": 5,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 10,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_opacity",
+     "label": "Notification background",
+     "type": "opacity",
+     "default": 1.0,
+     "help": "Lower lets what is behind show through.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_text",
+     "label": "Notification text size",
+     "type": "choice",
+     "default": 1.0,
+     "help": "",
+     "choices": [
+      [
+       0.9,
+       "Small"
+      ],
+      [
+       1.0,
+       "Normal"
+      ],
+      [
+       1.15,
+       "Large"
+      ],
+      [
+       1.3,
+       "Larger"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_icon",
+     "label": "Show an icon on notifications",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toast_test",
+     "label": "Try it",
+     "type": "widget",
+     "default": null,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "start_panels",
+     "label": "Show on start",
+     "type": "custom",
+     "default": [
+      "notes"
+     ],
+     "help": "Panels that open by themselves when Luminescent starts.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "tray_items",
+     "label": "Tray menu",
+     "type": "custom",
+     "default": [
+      "open",
+      "palette",
+      "dashboard",
+      "automation",
+      "modules",
+      "actions",
+      "colours",
+      "keepawake",
+      "reset",
+      "settings",
+      "log",
+      "restart",
+      "quit"
+     ],
+     "help": "What the tray icon's right-click menu lists.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "desktop_entry",
+     "label": "Add Luminescent to the Start menu",
+     "type": "bool",
+     "default": true,
+     "help": "A Luminescent shortcut in your Start menu, so Start and search find it.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "check_updates",
+     "label": "Tell me when a new version is out",
+     "type": "bool",
+     "default": true,
+     "help": "Asks GitHub once a day. Tray → Update now downloads it, installs it and restarts; your notes and settings are kept.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "updates",
+     "label": "Updates",
+     "type": "widget",
+     "default": null,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "whats_new",
+     "label": "Show what is new after an update",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "seen_version",
+     "label": "",
+     "type": "hidden",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "keep_awake_hotkey",
+     "label": "Keep awake on / off hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "Stops the screen going dark and the PC going to sleep until you turn it off again (also in the tray, the command palette and the Automation \"Keep awake\" node).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "auto_backup",
+     "label": "Back up automatically once a week",
+     "type": "bool",
+     "default": true,
+     "help": "Zips your setup into data/backups (weekly-….zip) and keeps the last 5.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "pass_keys",
+     "label": "Hotkeys also reach the app you are in",
+     "type": "bool",
+     "default": true,
+     "help": "On Windows the keys always reach the app as well; this only changes something on Linux.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": true
+    },
+    {
+     "key": "log_to_file",
+     "label": "Write a log file (data/launcher.log)",
+     "type": "bool",
+     "default": true,
+     "help": "Useful for finding out why something went wrong.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "backup",
+     "label": "Backup",
+     "type": "widget",
+     "default": null,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "quit",
+     "label": "Quit",
+     "type": "widget",
+     "default": null,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "ui",
+   "title": "Overlay & Interface",
+   "icon": "✦",
+   "description": "The Luminescent overlay: a dimmed full-screen hub with the Dashboard, Themes, Clipboard and Settings.",
+   "fields": [
+    {
+     "key": "overlay_hotkey",
+     "label": "Open Luminescent",
+     "type": "hotkey",
+     "default": "ctrl+shift+space",
+     "help": "Shows the overlay on the Dashboard. Press it again, Esc or ✕ to hide it (it keeps running).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "palette_hotkey",
+     "label": "Command palette",
+     "type": "hotkey",
+     "default": "ctrl+alt+space",
+     "help": "A search box for every action, dashboard item, note, theme and settings page.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "cheatsheet_hotkey",
+     "label": "Hotkey cheat sheet",
+     "type": "hotkey",
+     "default": "ctrl+alt+/",
+     "help": "Shows every hotkey while held.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "cheatsheet_toggle",
+     "label": "Cheat sheet: press to show / press again to hide (instead of hold)",
+     "type": "bool",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey_dashboard",
+     "label": "Jump to Dashboard",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey_automation",
+     "label": "Jump to Automation",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey_themes",
+     "label": "Jump to Themes",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey_clipboard",
+     "label": "Jump to Clipboard",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey_settings_page",
+     "label": "Jump to Settings",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "nav_order",
+     "label": "Navigation bar",
+     "type": "custom",
+     "default": [
+      "dashboard",
+      "automation",
+      "themes",
+      "clipboard",
+      "settings"
+     ],
+     "help": "Tick the pages you want in the bar and put them in order. Ctrl+1…9 switch pages while the overlay is open. Notes, Timers and Calculator pages are the same notes, timers and history as the panels.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "text_scale",
+     "label": "Text size",
+     "type": "choice",
+     "default": 1.0,
+     "help": "Makes the text in every panel, page, menu and pop-up bigger or smaller.",
+     "choices": [
+      [
+       0.85,
+       "Small (85%)"
+      ],
+      [
+       1.0,
+       "Normal (100%)"
+      ],
+      [
+       1.1,
+       "Large (110%)"
+      ],
+      [
+       1.2,
+       "Larger (120%)"
+      ],
+      [
+       1.35,
+       "Huge (135%)"
+      ],
+      [
+       1.5,
+       "Biggest (150%)"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": true
+    },
+    {
+     "key": "remember_page",
+     "label": "Open on the page I was on last",
+     "type": "bool",
+     "default": false,
+     "help": "Off: the overlay always opens on the Dashboard.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "last_page",
+     "label": "",
+     "type": "hidden",
+     "default": "dashboard",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "settings_search_only",
+     "label": "",
+     "type": "hidden",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "panel_place_v",
+     "label": "",
+     "type": "hidden",
+     "default": 1,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "settings_pinned",
+     "label": "",
+     "type": "hidden",
+     "default": [],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "chrome_items",
+     "label": "",
+     "type": "hidden",
+     "default": [],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "overlay_screen",
+     "label": "Open the overlay on",
+     "type": "choice",
+     "default": "cursor",
+     "help": "The page switcher, panels and the dashboard's toolbar go to that screen. Dashboard boxes you put on a particular screen stay there.",
+     "choices": [
+      [
+       "primary",
+       "The primary screen"
+      ],
+      [
+       "cursor",
+       "The screen with the mouse"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "panel_place",
+     "label": "Panels like Notes open",
+     "type": "choice",
+     "default": "centre",
+     "help": "On the screen the overlay opens on. Sticky notes always stay where you put them.",
+     "choices": [
+      [
+       "kept",
+       "Where I left them"
+      ],
+      [
+       "centre",
+       "In the middle of the screen"
+      ],
+      [
+       "cursor",
+       "Next to the mouse"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "type_to_search",
+     "label": "Type anywhere on the overlay to search",
+     "type": "bool",
+     "default": true,
+     "help": "Start typing on the Dashboard or Themes page and the command palette opens with what you typed.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "show_clock",
+     "label": "Clock and date in the top-left corner",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "show_status",
+     "label": "Status strip (running timers, Hearing Guard, next reminder)",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "blur",
+     "label": "Frosted (blurred) background",
+     "type": "bool",
+     "default": true,
+     "help": "Linux (Hyprland) only for now; on Windows the overlay is dimmed without blur.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "panel_glass",
+     "label": "Glass panels and notifications (blur what is behind them)",
+     "type": "bool",
+     "default": false,
+     "help": "Linux (Hyprland) only.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "glass_parts",
+     "label": "",
+     "type": "hidden",
+     "default": [
+      "panels",
+      "notes",
+      "notifications"
+     ],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "glass_amount",
+     "label": "",
+     "type": "hidden",
+     "default": 0.82,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "theme_cycle_hotkey",
+     "label": "Next theme hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "Switches to the next theme in the active theme's folder (or the next of all themes).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "theme_prev_hotkey",
+     "label": "Previous theme hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "Switches back to the theme before it, the same way round. A theme can also have a key of its own (theme editor → General).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "overlay_dim",
+     "label": "Dim the screen behind the overlay",
+     "type": "opacity",
+     "default": 0.64,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "click_outside_closes",
+     "label": "Clicking the dimmed area closes the overlay",
+     "type": "bool",
+     "default": true,
+     "help": "Around the Themes, Clipboard and Settings panels. The Dashboard works like a desktop: clicking it never closes the overlay, and dragging on it draws a selection box.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "apps_over_overlay",
+     "label": "Apps opened while the overlay is up appear on top of it",
+     "type": "bool",
+     "default": true,
+     "help": "Linux (Hyprland) only; on Windows new windows already open on top.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "performance_mode",
+     "label": "Performance mode",
+     "type": "bool",
+     "default": false,
+     "help": "No glow, shadows, animations or background images. Use it on a slow PC or while gaming.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "tray_timers",
+     "label": "Show running timers in the tray tooltip",
+     "type": "bool",
+     "default": true,
+     "help": "Hover the tray icon to see what is left. Only updates while a timer runs.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "wallpaper_engine_exe",
+     "label": "Wallpaper Engine (wallpaper64.exe)",
+     "type": "file",
+     "default": "",
+     "help": "Only needed if themes use Wallpaper Engine projects and Steam's copy is not found by itself.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "Programs (*.exe);;All files (*)",
+     "restart": false
+    },
+    {
+     "key": "wallpaper_command",
+     "label": "Wallpaper command (optional)",
+     "type": "text",
+     "default": "",
+     "help": "Your own command for changing the wallpaper, used by themes and the Automation \"Set wallpaper\" node instead of the built-in ones. {file} is the picture or video, e.g. mytool set {file}. Blank: Windows' own wallpaper setting.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "terminal_scheme",
+     "label": "Use the Luminescent colours in the terminal",
+     "type": "bool",
+     "default": true,
+     "help": "Windows Terminal tabs opened by Luminescent use a Luminescent colour scheme (added as a Terminal fragment, so your own Terminal settings are not touched).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "own_terminal",
+     "label": "Your own terminal follows the theme too",
+     "type": "bool",
+     "default": false,
+     "help": "Asks first. Linux: adds one include line to ~/.config/kitty/kitty.conf (a backup goes to data/terminal-backups) and writes luminescent-theme.conf next to it, rewritten and reloaded whenever the theme changes. Windows: your PowerShell and Command Prompt profiles in Windows Terminal get the Luminescent colours. Turning it off undoes it.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "fastfetch_before",
+     "label": "",
+     "type": "hidden",
+     "default": null,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "terminal_pushed",
+     "label": "",
+     "type": "hidden",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "animations",
+   "title": "Animations",
+   "icon": "〰",
+   "description": "Every animation in Luminescent. Performance mode (Overlay & Interface) turns all of them off.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Animations",
+     "type": "bool",
+     "default": true,
+     "help": "Off: everything appears and moves instantly.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "speed",
+     "label": "Speed",
+     "type": "choice",
+     "default": "normal",
+     "help": "",
+     "choices": [
+      [
+       "fast",
+       "Fast"
+      ],
+      [
+       "normal",
+       "Normal"
+      ],
+      [
+       "relaxed",
+       "Relaxed"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "style",
+     "label": "Style",
+     "type": "choice",
+     "default": "smooth",
+     "help": "How things move: Caelestia glides with a little overshoot and panels rise into place.",
+     "choices": [
+      [
+       "smooth",
+       "Smooth (gentle ease out)"
+      ],
+      [
+       "caelestia",
+       "Caelestia (expressive, with a little overshoot)"
+      ],
+      [
+       "snappy",
+       "Snappy (quick start, short)"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hover",
+     "label": "Hover effects",
+     "type": "bool",
+     "default": true,
+     "help": "Dashboard boxes and cards light up their edge in the accent colour under the mouse.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "overlay",
+     "label": "Overlay fades in and out",
+     "type": "bool",
+     "default": true,
+     "help": "The dimmed hub and everything on it.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "pages",
+     "label": "Switching pages",
+     "type": "bool",
+     "default": true,
+     "help": "Pages and Settings sections fade in when you switch to them.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "nav",
+     "label": "Sliding marker under the page switcher",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "boxes",
+     "label": "Dashboard boxes glide",
+     "type": "bool",
+     "default": true,
+     "help": "Tidy up, folding, new boxes and boxes moved to another screen.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "theme",
+     "label": "Crossfade when the theme changes",
+     "type": "bool",
+     "default": true,
+     "help": "The old look fades into the new one instead of jumping.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "toasts",
+     "label": "Notifications fade in and out",
+     "type": "bool",
+     "default": true,
+     "help": "Luminescent's own notification cards.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "panels",
+     "label": "Panels fade in and out",
+     "type": "bool",
+     "default": true,
+     "help": "Notes, Calculator, Timers and the other floating panels, and the command palette.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "zoom",
+     "label": "Smooth zoom on the Automation page",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "pulses",
+     "label": "Pulses travelling along Automation wires",
+     "type": "bool",
+     "default": true,
+     "help": "Only drawn while the Automation page is open.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "dashboard",
+   "title": "Dashboard & Scripts",
+   "icon": "▦",
+   "description": "How dashboard items start.",
+   "fields": [
+    {
+     "key": "use_terminal",
+     "label": "Run scripts (.py, .bat, .ps1...) in Windows Terminal",
+     "type": "bool",
+     "default": true,
+     "help": "Off: they run in the background and their output is not shown.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "terminal",
+     "label": "Terminal program",
+     "type": "text",
+     "default": "",
+     "help": "Blank: Windows Terminal (wt), else a console window.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "keep_open",
+     "label": "Keep the script's window open after it finishes",
+     "type": "bool",
+     "default": true,
+     "help": "So you can read its output and errors.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "python_path",
+     "label": "Python for scripts",
+     "type": "file",
+     "default": "",
+     "help": "Leave blank to use the Python Luminescent runs with (or the one on PATH for a built version).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "Python (python.exe pythonw.exe);;All files (*)",
+     "restart": false
+    },
+    {
+     "key": "show_in_tray",
+     "label": "List dashboard items in the tray menu",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "show_icons",
+     "label": "Show program and file icons on items",
+     "type": "bool",
+     "default": true,
+     "help": "Taken from the program's app entry, your icon theme or the file type.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "group_delay_ms",
+     "label": "Pause between the items of a group (ms)",
+     "type": "int",
+     "default": 400,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 10000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "tidy_style",
+     "label": "Tidy up arranges the boxes in",
+     "type": "choice",
+     "default": "columns",
+     "help": "Also under the arrow next to Tidy up. With boxes selected only those are tidied; Ctrl+Z puts them back.",
+     "choices": [
+      [
+       "columns",
+       "Columns (every box keeps its width)"
+      ],
+      [
+       "grid",
+       "A grid (tabs the same width)"
+      ],
+      [
+       "rows",
+       "Rows (left to right, then the next row)"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "tidy_order",
+     "label": "Tidy up order",
+     "type": "choice",
+     "default": "position",
+     "help": "",
+     "choices": [
+      [
+       "position",
+       "Keep the order they are in"
+      ],
+      [
+       "name",
+       "By name, A to Z"
+      ],
+      [
+       "size",
+       "Biggest first"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "snap",
+     "label": "Snap boxes to a grid while moving (px)",
+     "type": "int",
+     "default": 8,
+     "help": "0 = off: boxes follow the mouse pixel by pixel, perfectly smooth. Also in the dashboard's right-click menu.",
+     "choices": [],
+     "min": 0,
+     "max": 64,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "automation",
+   "title": "Automation",
+   "icon": "⚡",
+   "description": "The Automation page: nodes you wire together (a timer fires, a command runs, a message pops up…). They run in the background whether or not the overlay is open.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Run automations",
+     "type": "bool",
+     "default": true,
+     "help": "Off pauses every workspace (the Automation page still opens, so you can keep editing).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "pause_hotkey",
+     "label": "Pause / resume all automations",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "max_rate",
+     "label": "Safety stop: pause a workspace that fires more than this many times a second",
+     "type": "int",
+     "default": 200,
+     "help": "Stops a wire loop (a node wired back into itself) from freezing Luminescent.",
+     "choices": [],
+     "min": 10,
+     "max": 5000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "command_timeout",
+     "label": "Stop a background command after (seconds, 0 = never)",
+     "type": "int",
+     "default": 0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 86400,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "shell",
+     "label": "Shell for commands",
+     "type": "choice",
+     "default": "cmd",
+     "help": "",
+     "choices": [
+      [
+       "cmd",
+       "Command Prompt (cmd)"
+      ],
+      [
+       "powershell",
+       "PowerShell"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "snippets",
+   "title": "Clipboard (Snippets)",
+   "icon": "📋",
+   "description": "A folder of files, text and images you can paste with one click. Press the hotkey (or open the Clipboard page), click a card to paste it. Ctrl+click pastes and presses Enter.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Snippets",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "ctrl+b",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "base_path",
+     "label": "Snippets folder",
+     "type": "dir",
+     "default": "<HOME>/Pictures/Clipboard",
+     "help": "Sub-folders become folder cards. .txt/.md/.py files paste as text; other files are pasted as files.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "auto_paste",
+     "label": "Paste automatically after clicking",
+     "type": "bool",
+     "default": true,
+     "help": "When off, the item is only copied to the clipboard.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "placeholders",
+     "label": "Fill in {date}, {time} and {clipboard} in text snippets",
+     "type": "bool",
+     "default": false,
+     "help": "When a text snippet is used, {date} becomes today (2026-11-15), {time} the time (14:05), {datetime} both, {weekday} the day and {clipboard} what was on the clipboard before.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "window_width",
+     "label": "Window width",
+     "type": "int",
+     "default": 960,
+     "help": "",
+     "choices": [],
+     "min": 400,
+     "max": 3000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "window_height",
+     "label": "Window height",
+     "type": "int",
+     "default": 560,
+     "help": "",
+     "choices": [],
+     "min": 300,
+     "max": 2000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "card_cols",
+     "label": "Columns in the pop-up",
+     "type": "int",
+     "default": 4,
+     "help": "The Clipboard page in the overlay always shows five.",
+     "choices": [],
+     "min": 1,
+     "max": 12,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "name_limit",
+     "label": "Max name length",
+     "type": "int",
+     "default": 20,
+     "help": "",
+     "choices": [],
+     "min": 5,
+     "max": 100,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "overlay_dim",
+     "label": "Dim the screen behind",
+     "type": "opacity",
+     "default": 0.35,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "notes",
+   "title": "Notes",
+   "icon": "📝",
+   "description": "A floating always-on-top notes / to-do panel.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Notes",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Show / hide hotkey",
+     "type": "hotkey",
+     "default": "alt+n",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "edit_hotkey",
+     "label": "Edit mode hotkey",
+     "type": "hotkey",
+     "default": "alt+e",
+     "help": "Drag the panel by its header any time. Edit mode lets you resize, anchor, add, rename and delete notes.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "open_pinned",
+     "label": "Open straight to the pinned note",
+     "type": "bool",
+     "default": true,
+     "help": "Showing the panel opens your first pinned note (right-click a note → Pin).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.85,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "overlay_dim",
+     "label": "Dim the screen in edit mode",
+     "type": "opacity",
+     "default": 0.35,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "markdown",
+     "label": "Markdown formatting (**bold**, # headings, - lists)",
+     "type": "bool",
+     "default": true,
+     "help": "Notes are stored as plain text; the 👁 button in a note's header shows it formatted.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "font_size",
+     "label": "Note font size",
+     "type": "int",
+     "default": 16,
+     "help": "",
+     "choices": [],
+     "min": 6,
+     "max": 40,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "todo_font_size",
+     "label": "To-do font size",
+     "type": "int",
+     "default": 12,
+     "help": "",
+     "choices": [],
+     "min": 6,
+     "max": 40,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "default_width",
+     "label": "Default width",
+     "type": "int",
+     "default": 360,
+     "help": "",
+     "choices": [],
+     "min": 150,
+     "max": 2000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "default_height",
+     "label": "Default height",
+     "type": "int",
+     "default": 460,
+     "help": "",
+     "choices": [],
+     "min": 120,
+     "max": 2000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "min_width",
+     "label": "Minimum width",
+     "type": "int",
+     "default": 250,
+     "help": "",
+     "choices": [],
+     "min": 100,
+     "max": 1000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "min_height",
+     "label": "Minimum height",
+     "type": "int",
+     "default": 180,
+     "help": "",
+     "choices": [],
+     "min": 80,
+     "max": 1000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "anchor_padding",
+     "label": "Anchor padding (px from screen edge)",
+     "type": "int",
+     "default": 10,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 200,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "doodle",
+   "title": "Screen Doodle",
+   "icon": "✏",
+   "description": "Draw on top of everything on screen.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Doodle",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Draw hotkey",
+     "type": "hotkey",
+     "default": "alt",
+     "help": "Hold mode: draw while this is held. Toggle mode: press to start/stop drawing. A bare modifier like alt works well with the two options below.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "mode",
+     "label": "Mode",
+     "type": "choice",
+     "default": "hold",
+     "help": "",
+     "choices": [
+      [
+       "hold",
+       "Hold to draw"
+      ],
+      [
+       "toggle",
+       "Toggle on/off"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "solo_only",
+     "label": "Only draw when the key is held on its own",
+     "type": "bool",
+     "default": true,
+     "help": "Alt+N, Alt+T, Ctrl+Alt+... no longer flash the drawing overlay on: drawing starts after the key has been held alone for the delay below, and Luminescent's own Alt hotkeys cancel it.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "solo_delay_ms",
+     "label": "Hold delay before drawing starts (ms)",
+     "type": "int",
+     "default": 120,
+     "help": "0 = instant. 100-150 ms is barely noticeable when you hold the key to draw.",
+     "choices": [],
+     "min": 0,
+     "max": 1000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "clear_on_release",
+     "label": "Clear drawing when the key is released (hold mode)",
+     "type": "bool",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "clear_hotkey",
+     "label": "Clear hotkey",
+     "type": "hotkey",
+     "default": "alt+x",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "undo_hotkey",
+     "label": "Undo hotkey",
+     "type": "hotkey",
+     "default": "alt+f",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_hotkey",
+     "label": "Toggle blackboard background hotkey",
+     "type": "hotkey",
+     "default": "alt+g",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "exit_hotkey",
+     "label": "Panic hotkey (clear + stop drawing)",
+     "type": "hotkey",
+     "default": "alt+shift+q",
+     "help": "Esc also stops drawing at any time.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "copy_hotkey",
+     "label": "Copy screen + drawing hotkey",
+     "type": "hotkey",
+     "default": "alt+c",
+     "help": "Copies a screenshot of every screen with your drawing on top to the clipboard.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "save_copies",
+     "label": "Also save those screenshots to ~/Pictures/Luminescent",
+     "type": "bool",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "show_tools",
+     "label": "Show the tool strip while drawing",
+     "type": "bool",
+     "default": true,
+     "help": "Pen, highlighter, line, rectangle, circle, arrow, text and the fill toggle. Hold Shift while dragging the pen for a straight line.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "start_tool",
+     "label": "Start drawing with",
+     "type": "choice",
+     "default": "last",
+     "help": "The tool picked every time you hold (or toggle) the draw key.",
+     "choices": [
+      [
+       "last",
+       "The tool I used last"
+      ],
+      [
+       "pen",
+       "Pen"
+      ],
+      [
+       "hl",
+       "Highlighter"
+      ],
+      [
+       "line",
+       "Line"
+      ],
+      [
+       "rect",
+       "Rectangle"
+      ],
+      [
+       "ellipse",
+       "Circle / ellipse"
+      ],
+      [
+       "arrow",
+       "Arrow"
+      ],
+      [
+       "text",
+       "Text"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "highlighter_opacity",
+     "label": "Highlighter opacity",
+     "type": "opacity",
+     "default": 0.35,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "text_size",
+     "label": "Text tool font size",
+     "type": "int",
+     "default": 28,
+     "help": "",
+     "choices": [],
+     "min": 8,
+     "max": 200,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "wheel_size",
+     "label": "Mouse wheel changes the brush size while drawing",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "brush_style",
+     "label": "Brush",
+     "type": "choice",
+     "default": "smooth",
+     "help": "",
+     "choices": [
+      [
+       "smooth",
+       "Smooth (anti-aliased)"
+      ],
+      [
+       "pixel",
+       "Pixel (MS Paint style)"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "colour",
+     "label": "Colour",
+     "type": "color",
+     "default": "#FF0000",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "brush_size",
+     "label": "Brush size",
+     "type": "int",
+     "default": 4,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 60,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "pixel_size",
+     "label": "Pixel size",
+     "type": "int",
+     "default": 4,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 60,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Blackboard opacity",
+     "type": "opacity",
+     "default": 1.0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "passive_opacity",
+     "label": "Tint while drawing",
+     "type": "opacity",
+     "default": 0.01,
+     "help": "A very faint tint so you can tell drawing mode is on.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "undo_levels",
+     "label": "Undo levels",
+     "type": "int",
+     "default": 30,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 200,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "timer",
+   "title": "Timer / Stopwatch",
+   "icon": "⏱",
+   "description": "Floating timers and stopwatches.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Timer",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "new_hotkey",
+     "label": "New timer hotkey",
+     "type": "hotkey",
+     "default": "alt+t",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "edit_hotkey",
+     "label": "Edit mode hotkey",
+     "type": "hotkey",
+     "default": "alt+r",
+     "help": "Edit mode shows reset / switch-mode buttons and the anchor bar.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "lap_hotkey",
+     "label": "Lap hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "Records a lap on the stopwatch you started most recently.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "finish_sound",
+     "label": "Sound when a timer finishes",
+     "type": "choice",
+     "default": "alarm",
+     "help": "",
+     "choices": [
+      [
+       "none",
+       "No sound"
+      ],
+      [
+       "chime",
+       "Chime"
+      ],
+      [
+       "alarm",
+       "Alarm"
+      ],
+      [
+       "custom",
+       "Custom sound file"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "finish_sound_file",
+     "label": "Custom sound file",
+     "type": "file",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "Audio (*.wav *.mp3 *.ogg *.flac *.m4a);;All files (*)",
+     "restart": false
+    },
+    {
+     "key": "flash_on_finish",
+     "label": "Flash the panel when a timer finishes",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "progress",
+     "label": "Countdown progress",
+     "type": "choice",
+     "default": "ring",
+     "help": "",
+     "choices": [
+      [
+       "ring",
+       "A ring beside the time"
+      ],
+      [
+       "bar",
+       "A thin bar along the bottom"
+      ],
+      [
+       "none",
+       "None"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "restore_on_start",
+     "label": "Restore open timers on start",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.85,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "default_width",
+     "label": "Default width",
+     "type": "int",
+     "default": 260,
+     "help": "",
+     "choices": [],
+     "min": 120,
+     "max": 2000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "default_height",
+     "label": "Default height",
+     "type": "int",
+     "default": 160,
+     "help": "",
+     "choices": [],
+     "min": 80,
+     "max": 2000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "min_width",
+     "label": "Minimum width",
+     "type": "int",
+     "default": 180,
+     "help": "",
+     "choices": [],
+     "min": 100,
+     "max": 1000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "min_height",
+     "label": "Minimum height",
+     "type": "int",
+     "default": 120,
+     "help": "",
+     "choices": [],
+     "min": 60,
+     "max": 1000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "anchor_padding",
+     "label": "Anchor padding",
+     "type": "int",
+     "default": 12,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 200,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "calculator",
+   "title": "Calculator",
+   "icon": "🧮",
+   "description": "A floating calculator with history. Pin a result and give it a name, then use that name in other sums (e.g. pin 950*12 as rent, then type rent/4).",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Calculator",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Show / hide hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+=",
+     "help": "Tip: Enter calculates, Ctrl+Enter calculates, copies and closes, ↑/↓ walk through history. Try 5 km to mi, 20 usd to eur, today + 45 days or 0xff.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.92,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "decimals",
+     "label": "Maximum decimal places",
+     "type": "int",
+     "default": 10,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 15,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "thousands",
+     "label": "Show thousands separators (1,234,567)",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "angle",
+     "label": "Angles",
+     "type": "choice",
+     "default": "deg",
+     "help": "",
+     "choices": [
+      [
+       "deg",
+       "Degrees"
+      ],
+      [
+       "rad",
+       "Radians"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "history_limit",
+     "label": "History length",
+     "type": "int",
+     "default": 200,
+     "help": "",
+     "choices": [],
+     "min": 10,
+     "max": 2000,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "currency",
+     "label": "Fetch currency rates once a day",
+     "type": "bool",
+     "default": true,
+     "help": "For sums like 20 usd to eur. Rates come from the European Central Bank (frankfurter.app); nothing else is sent.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "colorpicker",
+   "title": "Colour Picker",
+   "icon": "🎯",
+   "description": "Freeze the screen, zoom in with a loupe and click a pixel to copy its colour. Arrow keys nudge the cursor 1 px, Esc or right-click cancels.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Colour Picker",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Pick a colour hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+c",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "format",
+     "label": "Copy as",
+     "type": "choice",
+     "default": "hex",
+     "help": "",
+     "choices": [
+      [
+       "hex",
+       "HEX  #7B6CF6"
+      ],
+      [
+       "rgb",
+       "RGB  rgb(123, 108, 246)"
+      ],
+      [
+       "hsl",
+       "HSL  hsl(246, 89%, 69%)"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "uppercase",
+     "label": "Upper-case hex",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "textgrab",
+   "title": "Screen Text Grab",
+   "icon": "🔤",
+   "description": "Drag a box around any text on screen and it is copied to the clipboard. Uses Windows' own text recognition (the languages you have in Windows Settings).",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Text Grab",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Grab text hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+o",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "keep_lines",
+     "label": "Keep line breaks",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "upscale",
+     "label": "Enlarge small selections first (better accuracy)",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "review",
+     "label": "Show the text in an editable box before copying",
+     "type": "bool",
+     "default": false,
+     "help": "Fix OCR mistakes first, then Copy (Ctrl+Enter).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "promptlog",
+   "title": "Prompt Log",
+   "icon": "⌨",
+   "description": "Browse, search and delete your PowerShell command history, plus everything the Dashboard launched.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Prompt Log",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "dedupe",
+     "label": "Hide repeated commands (newest kept)",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "keybinds",
+   "title": "Keybinds",
+   "icon": "⌨",
+   "description": "Every Luminescent hotkey in one list, clashes in red.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Keybinds",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+k",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "custom",
+     "label": "",
+     "type": "hidden",
+     "default": [],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "vault",
+   "title": "Ghost Vault",
+   "icon": "🔒",
+   "description": "Encrypted file storage with a real password, a decoy password and a recovery key.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Vault",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+q",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "storage_path",
+     "label": "Vault folder (encrypted blobs live here)",
+     "type": "dir",
+     "default": "<HOME>/AppData/Local/Microsoft/Windows/Caches/.idx",
+     "help": "Must be writable without administrator rights.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "decrypt_output",
+     "label": "Decrypted files go to",
+     "type": "dir",
+     "default": "<HOME>/Documents/VaultDecrypted",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "lock_minutes",
+     "label": "Auto-lock after (minutes of inactivity)",
+     "type": "int",
+     "default": 5,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 240,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "secure_delete_passes",
+     "label": "Overwrite passes on secure delete",
+     "type": "int",
+     "default": 3,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 10,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "thumbnails",
+     "label": "Show picture thumbnails",
+     "type": "bool",
+     "default": true,
+     "help": "Pictures are decrypted in memory only to draw their thumbnail; nothing is written to disk.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "metadata",
+   "title": "Metadata Stripper",
+   "icon": "🧹",
+   "description": "View and remove metadata from images and videos.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Metadata Stripper",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "ctrl+shift+m",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "save_dir",
+     "label": "Save stripped files to",
+     "type": "dir",
+     "default": "<HOME>/Documents/MetaStripped",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "jpeg_quality",
+     "label": "JPEG quality when re-saving",
+     "type": "int",
+     "default": 95,
+     "help": "",
+     "choices": [],
+     "min": 50,
+     "max": 100,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "dolphin_menu",
+     "label": "Right-click → Strip metadata in Explorer",
+     "type": "bool",
+     "default": false,
+     "help": "Adds Strip metadata (Luminescent) to the right-click menu of pictures, videos and folders (on Windows 11 it is under Show more options). Clean copies go to the folder above.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "hearing",
+   "title": "Hearing Guard",
+   "icon": "🎧",
+   "description": "Estimates how loud your audio is at the ear (A-weighted, like a sound-level meter), keeps it under a dB limit, and tracks your daily safe listening allowance (NIOSH: 85 dB(A) for 8 h; every +3 dB halves the time).",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Hearing Guard",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Show / hide panel hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+h",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "mode",
+     "label": "Mode",
+     "type": "choice",
+     "default": "limit",
+     "help": "",
+     "choices": [
+      [
+       "limit",
+       "Limit: dip the volume while over the limit"
+      ],
+      [
+       "monitor",
+       "Monitor: only warn"
+      ],
+      [
+       "log",
+       "Record only: keep the readings, never warn or change the volume"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "limit_db",
+     "label": "Limit (estimated dB)",
+     "type": "int",
+     "default": 85,
+     "help": "85 dB(A) is the NIOSH recommended maximum for 8 hours a day.",
+     "choices": [],
+     "min": 60,
+     "max": 110,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "restore_volume",
+     "label": "Dip the apps, then bring them back when the loud part is over",
+     "type": "bool",
+     "default": true,
+     "help": "On: the apps playing (not the master volume, so no volume pop-up) are turned down only while something is over the limit, and come back a second or two later, never above the volume you set. Off: Hearing Guard never turns anything up: it lowers the master volume and leaves it there until you turn it up yourself.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "max_volume",
+     "label": "Never let master volume go above (%)",
+     "type": "int",
+     "default": 100,
+     "help": "A hard cap that needs no calibration. Over 100 % only matters if your system lets the volume go past 100 % (PipeWire can).",
+     "choices": [],
+     "min": 5,
+     "max": 150,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "calibration",
+     "label": "Default calibration: dB at 100 % volume with a full-scale tone",
+     "type": "int",
+     "default": 105,
+     "help": "Used for output devices you have not calibrated. Calibrate… in the panel measures against a phone sound-meter app and stores a value for each device; 100-115 is typical for headphones.",
+     "choices": [],
+     "min": 60,
+     "max": 140,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "warn_dose",
+     "label": "Notify at 50 %, 80 % and 100 % of the daily allowance",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "headset_scale",
+     "label": "How your headset's own volume works",
+     "type": "choice",
+     "default": "cubic",
+     "help": "Only used when you type the volume your headphones show into the panel (Headset's own volume). If halving it there makes the estimate drop far more than you hear, pick the other one.",
+     "choices": [
+      [
+       "cubic",
+       "Like the PC's volume (most headsets and their apps)"
+      ],
+      [
+       "linear",
+       "Straight percentage of loudness"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "meter_includes_volume",
+     "label": "Captured audio already includes the master volume",
+     "type": "bool",
+     "default": false,
+     "help": "Leave off. PipeWire records the output's monitor before the master volume, so the volume is added on top. Turn on only if lowering the volume by 6 dB makes the estimate drop by about 12 dB (PipeWire set up with monitor.channel-volumes = true).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "reminders",
+   "title": "Reminders",
+   "icon": "⏰",
+   "description": "Pop-ups, sounds, notifications and theme switches at a set time: once, daily, weekly or every N minutes.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Reminders",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "items",
+     "label": "Reminders",
+     "type": "custom",
+     "default": [],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "popup_position",
+     "label": "Default pop-up position",
+     "type": "choice",
+     "default": "br",
+     "help": "",
+     "choices": [
+      [
+       "tl",
+       "Top left"
+      ],
+      [
+       "tc",
+       "Top centre"
+      ],
+      [
+       "tr",
+       "Top right"
+      ],
+      [
+       "ml",
+       "Middle left"
+      ],
+      [
+       "mc",
+       "Centre of screen"
+      ],
+      [
+       "mr",
+       "Middle right"
+      ],
+      [
+       "bl",
+       "Bottom left"
+      ],
+      [
+       "bc",
+       "Bottom centre"
+      ],
+      [
+       "br",
+       "Bottom right"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "popup_screen",
+     "label": "Show pop-ups on",
+     "type": "choice",
+     "default": "primary",
+     "help": "",
+     "choices": [
+      [
+       "primary",
+       "Primary screen"
+      ],
+      [
+       "cursor",
+       "Screen with the mouse cursor"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "snooze_minutes",
+     "label": "Snooze length (minutes)",
+     "type": "int",
+     "default": 10,
+     "help": "",
+     "choices": [],
+     "min": 1,
+     "max": 240,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "popup_timeout",
+     "label": "Auto-close pop-ups after (seconds, 0 = stay until dismissed)",
+     "type": "int",
+     "default": 0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 3600,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "default_sound",
+     "label": "Default sound",
+     "type": "choice",
+     "default": "chime",
+     "help": "",
+     "choices": [
+      [
+       "none",
+       "No sound"
+      ],
+      [
+       "chime",
+       "Chime"
+      ],
+      [
+       "alarm",
+       "Alarm"
+      ],
+      [
+       "custom",
+       "Custom sound file"
+      ]
+     ],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "default_sound_file",
+     "label": "Default custom sound file",
+     "type": "file",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "Audio (*.wav *.mp3 *.ogg *.flac *.m4a);;All files (*)",
+     "restart": false
+    },
+    {
+     "key": "catch_up_minutes",
+     "label": "Fire missed reminders if less than (minutes) late",
+     "type": "int",
+     "default": 120,
+     "help": "If the PC was asleep or off when a reminder was due, it still fires on wake unless it is later than this.",
+     "choices": [],
+     "min": 0,
+     "max": 1440,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "snapper",
+   "title": "Window Snapper",
+   "icon": "▣",
+   "description": "Hotkeys that put the active window in a half, a third or a corner of its screen. The window floats while it is snapped; press a direction again for the next size (half, third, two thirds).",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Window Snapper",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "left_hotkey",
+     "label": "Left (half, third, two thirds)",
+     "type": "hotkey",
+     "default": "super+alt+left",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "right_hotkey",
+     "label": "Right (half, third, two thirds)",
+     "type": "hotkey",
+     "default": "super+alt+right",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "up_hotkey",
+     "label": "Up (top half, fill the screen)",
+     "type": "hotkey",
+     "default": "super+alt+up",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "down_hotkey",
+     "label": "Down (bottom half, centred)",
+     "type": "hotkey",
+     "default": "super+alt+down",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "top_left_hotkey",
+     "label": "Top-left quarter",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "top_right_hotkey",
+     "label": "Top-right quarter",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bottom_left_hotkey",
+     "label": "Bottom-left quarter",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bottom_right_hotkey",
+     "label": "Bottom-right quarter",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "centre_third_hotkey",
+     "label": "Centre third",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "tile_hotkey",
+     "label": "Undo (back into tiling on Linux, back where it was on Windows)",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "gap",
+     "label": "Gap around snapped windows (px)",
+     "type": "int",
+     "default": 8,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 100,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "ruler",
+   "title": "Screen Ruler",
+   "icon": "📏",
+   "description": "Freeze the screen and drag between two points to measure them in pixels. Shift keeps the line level, click copies W×H, Ctrl+click the distance.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Screen Ruler",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Measure hotkey",
+     "type": "hotkey",
+     "default": "ctrl+alt+r",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "media",
+   "title": "Media Controls",
+   "icon": "♪",
+   "description": "What is playing in any player (Spotify, Firefox, mpv…) with previous / play-pause / next. Uses Windows' media sessions.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Media Controls",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Show / hide the panel",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "play_hotkey",
+     "label": "Play / pause",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "next_hotkey",
+     "label": "Next track",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "previous_hotkey",
+     "label": "Previous track",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.92,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "qr",
+   "title": "QR Code",
+   "icon": "▦",
+   "description": "Shows the text or link on the clipboard as a QR code to scan with a phone. Copy it as a picture or save it as PNG or SVG.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable QR codes",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "QR code of the clipboard",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "sysmon",
+   "title": "System Monitor",
+   "icon": "📈",
+   "description": "CPU, memory, GPU and network with a minute of history in a small floating panel. Only measures while it is on screen.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable System Monitor",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Show / hide hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.88,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "syscontrol",
+   "title": "System Settings",
+   "icon": "🖥",
+   "description": "The computer's own settings: where your monitors are (drag them), resolution, refresh rate, scale and rotation, brightness and night light, the mouse, touchpad and keyboard, File Explorer and the taskbar, dark mode, power, sound devices and what the computer is.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable System Settings",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "displays_hotkey",
+     "label": "Open on Displays hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "night_hotkey",
+     "label": "Night light on / off hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "keep",
+     "label": "Keep my changes",
+     "type": "bool",
+     "default": true,
+     "help": "Windows keeps every change by itself; this only matters on Linux.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.96,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "saved",
+     "label": "",
+     "type": "hidden",
+     "default": {},
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "monitors",
+     "label": "",
+     "type": "hidden",
+     "default": [],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "night_kelvin",
+     "label": "",
+     "type": "hidden",
+     "default": 4000,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "night_on",
+     "label": "",
+     "type": "hidden",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "workspaces",
+     "label": "",
+     "type": "hidden",
+     "default": {},
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "performance",
+   "title": "Performance",
+   "icon": "📊",
+   "description": "Widgets for the CPU, GPU, VRAM, memory, disks, network and temperatures; every app with its CPU, memory, GPU and VRAM; speed settings, Game mode, alerts, startup apps and a gaming HUD. Only measures while it is on screen (or while alerts, rules or automatic Game mode need it).",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Performance",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open Performance",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "game_hotkey",
+     "label": "Game mode on / off",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hud_hotkey",
+     "label": "Gaming HUD on / off",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "bg_opacity",
+     "label": "Panel opacity",
+     "type": "opacity",
+     "default": 0.95,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "atlas_sync",
+   "title": "Atlas Sync",
+   "icon": "⇄",
+   "description": "Swaps notes and timer time with the Atlas app on your phone over Wi-Fi. Press Let Atlas connect, then type the address and code into Atlas → Sync. Atlas shows every change before anything is written.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Atlas Sync",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open Atlas Sync",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "share_theme",
+     "label": "Send my theme to Atlas",
+     "type": "bool",
+     "default": true,
+     "help": "Your current Luminescent theme shows up in Atlas as \"Luminescent: …\". Turn on Settings → Themes → Follow Luminescent in Atlas and it switches to it after every sync.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "take_themes",
+     "label": "Bring Atlas's own themes here",
+     "type": "bool",
+     "default": true,
+     "help": "Themes you made in Atlas become Luminescent themes named \"Atlas: …\".",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "notify_calendar",
+     "label": "Notifications for Atlas events and tasks",
+     "type": "bool",
+     "default": true,
+     "help": "Atlas's calendar events and tasks come over with every sync; this PC then reminds you of them like your phone does. They are also on the Calendar page.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "lead_minutes",
+     "label": "Remind me this many minutes before an event",
+     "type": "int",
+     "default": 15,
+     "help": "Used when the event has no reminder time of its own in Atlas.",
+     "choices": [],
+     "min": 0,
+     "max": 1440,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "task_hour",
+     "label": "Remind me of tasks due today at (hour)",
+     "type": "int",
+     "default": 9,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 23,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  },
+  {
+   "key": "caelestia",
+   "title": "Caelestia & Glass",
+   "icon": "◐",
+   "description": "The Caelestia shell's config files as forms you can edit (with a backup on every save), its colours and wallpaper, and see-through glass windows per app (focused and unfocused) with the blur strength.",
+   "fields": [
+    {
+     "key": "enabled",
+     "label": "Enable Caelestia & Glass",
+     "type": "bool",
+     "default": true,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "hotkey",
+     "label": "Open hotkey",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "lock_hotkey",
+     "label": "Lock the screen hotkey (Caelestia's lock screen)",
+     "type": "hotkey",
+     "default": "",
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "extras",
+     "label": "Caelestia extras: pictures in place of the lyrics and behind the lock screen",
+     "type": "hidden",
+     "default": false,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "glass",
+     "label": "",
+     "type": "hidden",
+     "default": [],
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "all_active",
+     "label": "",
+     "type": "hidden",
+     "default": 0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "all_inactive",
+     "label": "",
+     "type": "hidden",
+     "default": 0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "before_shell",
+     "label": "",
+     "type": "hidden",
+     "default": {},
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "blur_size",
+     "label": "",
+     "type": "hidden",
+     "default": 0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "blur_passes",
+     "label": "",
+     "type": "hidden",
+     "default": 0,
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "scheme_colours",
+     "label": "",
+     "type": "hidden",
+     "default": {},
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "before_theme",
+     "label": "",
+     "type": "hidden",
+     "default": {},
+     "help": "",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "keep_scheme_colours",
+     "label": "Put my colours back when Caelestia rewrites its scheme",
+     "type": "bool",
+     "default": true,
+     "help": "Colours you saved for a Caelestia scheme (Caelestia & Glass → Colours) come back whenever Caelestia switches to that scheme again or makes it anew (for example from a new wallpaper).",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    },
+    {
+     "key": "theme_apps",
+     "label": "Re-theme Caelestia's apps when Luminescent changes its colours",
+     "type": "bool",
+     "default": true,
+     "help": "After a theme gives Caelestia its colours, Caelestia also re-colours the apps it themes (terminals, btop, GTK and Qt apps, Discord, Spotify...), the same as when it switches scheme itself. Off: only the shell changes.",
+     "choices": [],
+     "min": 0,
+     "max": 9999,
+     "step": 1,
+     "file_filter": "",
+     "restart": false
+    }
+   ]
+  }
+ ]
+}

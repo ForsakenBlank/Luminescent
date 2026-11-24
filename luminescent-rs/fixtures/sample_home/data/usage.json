@@ -1,0 +1,27 @@
+{
+ "items": {
+  "ff": {
+   "label": "Firefox",
+   "n": 12,
+   "last": "2026-11-23T09:01:00"
+  }
+ },
+ "hotkeys": {
+  "ctrl+shift+space": {
+   "label": "Open Luminescent",
+   "n": 40,
+   "last": "2026-11-23T14:20:11"
+  }
+ },
+ "tools": {
+  "calculator": {
+   "label": "Calculator",
+   "n": 3,
+   "last": "2026-11-23T09:16:00"
+  }
+ },
+ "days": {
+  "2026-11-22": 30,
+  "2026-11-23": 25
+ }
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Focus",
+    "mode": "timer",
+    "show_ms": false,
+    "duration_ms": 1500000,
+    "x": 1500,
+    "y": 80,
+    "w": 260,
+    "h": 160,
+    "laps": [],
+    "elapsed_ms": 300000.0,
+    "running": true,
+    "finished": false,
+    "saved_at": 1795444200.0
+  },
+  {
+    "label": "",
+    "mode": "stopwatch",
+    "show_ms": true,
+    "duration_ms": 0,
+    "x": 1500,
+    "y": 260,
+    "w": 260,
+    "h": 160,
+    "laps": [
+      12345.0,
+      23456.5
+    ],
+    "elapsed_ms": 40000.0,
+    "running": false,
+    "finished": false
+  }
+]

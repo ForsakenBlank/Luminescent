@@ -1,0 +1,13 @@
+[package]
+name = "lum-automation"
+description = "The automation graph model, engine and node types (phase 10)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lum-core = { path = "../lum-core" }
+
+[lints]
+workspace = true

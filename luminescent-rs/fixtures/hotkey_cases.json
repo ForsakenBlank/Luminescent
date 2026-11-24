@@ -1,0 +1,867 @@
+{
+ "combos": [
+  {
+   "combo": "",
+   "normalize": "",
+   "pretty_linux": "(none)",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [],
+   "pretty_windows": "(none)",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+shift+space",
+   "normalize": "ctrl+shift+space",
+   "pretty_linux": "Ctrl+Shift+Space",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + SHIFT + space"
+   ],
+   "pretty_windows": "Ctrl+Shift+Space",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "Ctrl + Shift+M",
+   "normalize": "ctrl+shift+m",
+   "pretty_linux": "Ctrl+Shift+M",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + SHIFT + m"
+   ],
+   "pretty_windows": "Ctrl+Shift+M",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "CTRL+ALT+/",
+   "normalize": "ctrl+alt+/",
+   "pretty_linux": "Ctrl+Alt+/",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + ALT + slash"
+   ],
+   "pretty_windows": "Ctrl+Alt+/",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl++",
+   "normalize": "ctrl++",
+   "pretty_linux": "Ctrl++",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Use one key plus modifiers (e.g. ctrl+shift+m)",
+   "to_hyprland": [
+    "CTRL + "
+   ],
+   "pretty_windows": "Ctrl++",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+plus",
+   "normalize": "ctrl+plus",
+   "pretty_linux": "Ctrl+Plus",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Unknown key: plus",
+   "to_hyprland": [
+    "CTRL + "
+   ],
+   "pretty_windows": "Ctrl+Plus",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "alt",
+   "normalize": "alt",
+   "pretty_linux": "Alt",
+   "is_modifier": true,
+   "keysym": "",
+   "keysyms_of": [
+    "Alt_L",
+    "Alt_R"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "ALT + Alt_L",
+    "ALT + Alt_R"
+   ],
+   "pretty_windows": "Alt",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "Alt",
+   "normalize": "alt",
+   "pretty_linux": "Alt",
+   "is_modifier": true,
+   "keysym": "",
+   "keysyms_of": [
+    "Alt_L",
+    "Alt_R"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "ALT + Alt_L",
+    "ALT + Alt_R"
+   ],
+   "pretty_windows": "Alt",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "left alt",
+   "normalize": "alt",
+   "pretty_linux": "Alt",
+   "is_modifier": true,
+   "keysym": "",
+   "keysyms_of": [
+    "Alt_L",
+    "Alt_R"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "ALT + Alt_L",
+    "ALT + Alt_R"
+   ],
+   "pretty_windows": "Alt",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "right ctrl+x",
+   "normalize": "ctrl+x",
+   "pretty_linux": "Ctrl+X",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + x"
+   ],
+   "pretty_windows": "Ctrl+X",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "control+escape",
+   "normalize": "ctrl+esc",
+   "pretty_linux": "Ctrl+Esc",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Escape"
+   ],
+   "pretty_windows": "Ctrl+Esc",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "win+e",
+   "normalize": "windows+e",
+   "pretty_linux": "Super+E",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "SUPER + e"
+   ],
+   "pretty_windows": "Win+E",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "super+return",
+   "normalize": "windows+enter",
+   "pretty_linux": "Super+Enter",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "SUPER + Return"
+   ],
+   "pretty_windows": "Win+Enter",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "cmd+q",
+   "normalize": "windows+q",
+   "pretty_linux": "Super+Q",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "SUPER + q"
+   ],
+   "pretty_windows": "Win+Q",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "meta+del",
+   "normalize": "windows+delete",
+   "pretty_linux": "Super+Delete",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "SUPER + Delete"
+   ],
+   "pretty_windows": "Win+Delete",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+pgup",
+   "normalize": "ctrl+page up",
+   "pretty_linux": "Ctrl+PgUp",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Prior"
+   ],
+   "pretty_windows": "Ctrl+PgUp",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+page down",
+   "normalize": "ctrl+page down",
+   "pretty_linux": "Ctrl+PgDn",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Next"
+   ],
+   "pretty_windows": "Ctrl+PgDn",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+pageup",
+   "normalize": "ctrl+page up",
+   "pretty_linux": "Ctrl+PgUp",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Prior"
+   ],
+   "pretty_windows": "Ctrl+PgUp",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "shift+f12",
+   "normalize": "shift+f12",
+   "pretty_linux": "Shift+F12",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "SHIFT + F12"
+   ],
+   "pretty_windows": "Shift+F12",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "f24",
+   "normalize": "f24",
+   "pretty_linux": "F24",
+   "is_modifier": false,
+   "keysym": "F24",
+   "keysyms_of": [
+    "F24"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "F24"
+   ],
+   "pretty_windows": "F24",
+   "keysym_windows": "F24"
+  },
+  {
+   "combo": "f25",
+   "normalize": "f25",
+   "pretty_linux": "F25",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Unknown key: f25",
+   "to_hyprland": [
+    ""
+   ],
+   "pretty_windows": "F25",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+num 5",
+   "normalize": "ctrl+num 5",
+   "pretty_linux": "Ctrl+Num 5",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + KP_5"
+   ],
+   "pretty_windows": "Ctrl+Num 5",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "num +",
+   "normalize": "num",
+   "pretty_linux": "Num",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Unknown key: num",
+   "to_hyprland": [
+    ""
+   ],
+   "pretty_windows": "Num",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+num enter",
+   "normalize": "ctrl+num enter",
+   "pretty_linux": "Ctrl+Num Enter",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + KP_Enter"
+   ],
+   "pretty_windows": "Ctrl+Num Enter",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "mouse:275",
+   "normalize": "mouse:275",
+   "pretty_linux": "Mouse back",
+   "is_modifier": false,
+   "keysym": "mouse:275",
+   "keysyms_of": [
+    "mouse:275"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "mouse:275"
+   ],
+   "pretty_windows": "Mouse back",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+mouse:276",
+   "normalize": "ctrl+mouse:276",
+   "pretty_linux": "Ctrl+Mouse forward",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + mouse:276"
+   ],
+   "pretty_windows": "Ctrl+Mouse forward",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "code:191",
+   "normalize": "code:191",
+   "pretty_linux": "Key 191",
+   "is_modifier": false,
+   "keysym": "code:191",
+   "keysyms_of": [
+    "code:191"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "code:191"
+   ],
+   "pretty_windows": "Key 191",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+code:10",
+   "normalize": "ctrl+code:10",
+   "pretty_linux": "Ctrl+Key 10",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + code:10"
+   ],
+   "pretty_windows": "Ctrl+Key 10",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "xf86audioplay",
+   "normalize": "xf86audioplay",
+   "pretty_linux": "Audioplay",
+   "is_modifier": false,
+   "keysym": "XF86AudioPlay",
+   "keysyms_of": [
+    "XF86AudioPlay"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "XF86AudioPlay"
+   ],
+   "pretty_windows": "Audioplay",
+   "keysym_windows": "XF86AudioPlay"
+  },
+  {
+   "combo": "ctrl+alt+£",
+   "normalize": "ctrl+alt+£",
+   "pretty_linux": "Ctrl+Alt+£",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + ALT + sterling"
+   ],
+   "pretty_windows": "Ctrl+Alt+£",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+shift+a+b",
+   "normalize": "ctrl+shift+a+b",
+   "pretty_linux": "Ctrl+Shift+A+B",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Use one key plus modifiers (e.g. ctrl+shift+m)",
+   "to_hyprland": [
+    "CTRL + SHIFT + "
+   ],
+   "pretty_windows": "Ctrl+Shift+A+B",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+unknownkey",
+   "normalize": "ctrl+unknownkey",
+   "pretty_linux": "Ctrl+Unknownkey",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Unknown key: unknownkey",
+   "to_hyprland": [
+    "CTRL + "
+   ],
+   "pretty_windows": "Ctrl+Unknownkey",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+é",
+   "normalize": "ctrl+é",
+   "pretty_linux": "Ctrl+É",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + é"
+   ],
+   "pretty_windows": "Ctrl+É",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+1",
+   "normalize": "ctrl+1",
+   "pretty_linux": "Ctrl+1",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + 1"
+   ],
+   "pretty_windows": "Ctrl+1",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+shift",
+   "normalize": "ctrl+shift",
+   "pretty_linux": "Ctrl+Shift",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + SHIFT + Shift_L",
+    "CTRL + SHIFT + Shift_R"
+   ],
+   "pretty_windows": "Ctrl+Shift",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "shift+alt",
+   "normalize": "shift+alt",
+   "pretty_linux": "Shift+Alt",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "SHIFT + ALT + Alt_L",
+    "SHIFT + ALT + Alt_R"
+   ],
+   "pretty_windows": "Shift+Alt",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+alt+delete",
+   "normalize": "ctrl+alt+delete",
+   "pretty_linux": "Ctrl+Alt+Delete",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + ALT + Delete"
+   ],
+   "pretty_windows": "Ctrl+Alt+Delete",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "print screen",
+   "normalize": "print screen",
+   "pretty_linux": "Print Screen",
+   "is_modifier": false,
+   "keysym": "Print",
+   "keysyms_of": [
+    "Print"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "Print"
+   ],
+   "pretty_windows": "Print Screen",
+   "keysym_windows": "Print"
+  },
+  {
+   "combo": "ctrl+'",
+   "normalize": "ctrl+'",
+   "pretty_linux": "Ctrl+'",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + apostrophe"
+   ],
+   "pretty_windows": "Ctrl+'",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+\\",
+   "normalize": "ctrl+\\",
+   "pretty_linux": "Ctrl+\\",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + backslash"
+   ],
+   "pretty_windows": "Ctrl+\\",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+,",
+   "normalize": "ctrl+,",
+   "pretty_linux": "Ctrl+,",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + comma"
+   ],
+   "pretty_windows": "Ctrl+,",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "windows",
+   "normalize": "windows",
+   "pretty_linux": "Super",
+   "is_modifier": true,
+   "keysym": "",
+   "keysyms_of": [
+    "Super_L",
+    "Super_R"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "SUPER + Super_L",
+    "SUPER + Super_R"
+   ],
+   "pretty_windows": "Win",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+up",
+   "normalize": "ctrl+up",
+   "pretty_linux": "Ctrl+↑",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Up"
+   ],
+   "pretty_windows": "Ctrl+↑",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "  ctrl + k  ",
+   "normalize": "ctrl+k",
+   "pretty_linux": "Ctrl+K",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + k"
+   ],
+   "pretty_windows": "Ctrl+K",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+ins",
+   "normalize": "ctrl+insert",
+   "pretty_linux": "Ctrl+Insert",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Insert"
+   ],
+   "pretty_windows": "Ctrl+Insert",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+apps",
+   "normalize": "ctrl+apps",
+   "pretty_linux": "Ctrl+Apps",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Menu"
+   ],
+   "pretty_windows": "Ctrl+Apps",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "menu",
+   "normalize": "menu",
+   "pretty_linux": "Menu",
+   "is_modifier": false,
+   "keysym": "Menu",
+   "keysyms_of": [
+    "Menu"
+   ],
+   "validate": "",
+   "to_hyprland": [
+    "Menu"
+   ],
+   "pretty_windows": "Menu",
+   "keysym_windows": "Menu"
+  },
+  {
+   "combo": "ctrl+tab",
+   "normalize": "ctrl+tab",
+   "pretty_linux": "Ctrl+Tab",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + Tab"
+   ],
+   "pretty_windows": "Ctrl+Tab",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+backspace",
+   "normalize": "ctrl+backspace",
+   "pretty_linux": "Ctrl+Backspace",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + BackSpace"
+   ],
+   "pretty_windows": "Ctrl+Backspace",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+~",
+   "normalize": "ctrl+~",
+   "pretty_linux": "Ctrl+~",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + asciitilde"
+   ],
+   "pretty_windows": "Ctrl+~",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+mouse:999",
+   "normalize": "ctrl+mouse:999",
+   "pretty_linux": "Ctrl+Mouse:999",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + mouse:999"
+   ],
+   "pretty_windows": "Ctrl+Mouse:999",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+mouse:abc",
+   "normalize": "ctrl+mouse:abc",
+   "pretty_linux": "Ctrl+Mouse:Abc",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "Unknown key: mouse:abc",
+   "to_hyprland": [
+    "CTRL + "
+   ],
+   "pretty_windows": "Ctrl+Mouse:Abc",
+   "keysym_windows": ""
+  },
+  {
+   "combo": "ctrl+left windows+k",
+   "normalize": "ctrl+windows+k",
+   "pretty_linux": "Ctrl+Super+K",
+   "is_modifier": false,
+   "keysym": "",
+   "keysyms_of": [],
+   "validate": "",
+   "to_hyprland": [
+    "CTRL + SUPER + k"
+   ],
+   "pretty_windows": "Ctrl+Win+K",
+   "keysym_windows": ""
+  }
+ ],
+ "hypr_key_labels": [
+  {
+   "key": "code:10",
+   "label": "1"
+  },
+  {
+   "key": "code:19",
+   "label": "0"
+  },
+  {
+   "key": "code:86",
+   "label": "Num +"
+  },
+  {
+   "key": "code:999",
+   "label": "code:999"
+  },
+  {
+   "key": "mouse:272",
+   "label": "Left mouse"
+  },
+  {
+   "key": "mouse_down",
+   "label": "Wheel down"
+  },
+  {
+   "key": "Q",
+   "label": "Q"
+  },
+  {
+   "key": "Return",
+   "label": "Return"
+  }
+ ],
+ "hypr_mods_of": [
+  {
+   "mask": 0,
+   "mods": []
+  },
+  {
+   "mask": 1,
+   "mods": [
+    "SHIFT"
+   ]
+  },
+  {
+   "mask": 4,
+   "mods": [
+    "CTRL"
+   ]
+  },
+  {
+   "mask": 8,
+   "mods": [
+    "ALT"
+   ]
+  },
+  {
+   "mask": 64,
+   "mods": [
+    "SUPER"
+   ]
+  },
+  {
+   "mask": 65,
+   "mods": [
+    "SUPER",
+    "SHIFT"
+   ]
+  },
+  {
+   "mask": 77,
+   "mods": [
+    "SUPER",
+    "CTRL",
+    "ALT",
+    "SHIFT"
+   ]
+  },
+  {
+   "mask": 255,
+   "mods": [
+    "SUPER",
+    "CTRL",
+    "ALT",
+    "SHIFT",
+    "CAPS",
+    "MOD2",
+    "MOD3",
+    "MOD5"
+   ]
+  }
+ ]
+}

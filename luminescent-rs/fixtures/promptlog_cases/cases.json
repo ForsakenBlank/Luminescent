@@ -1,0 +1,177 @@
+{
+ "timezone": "UTC",
+ "note": "kind comes from the file name: fish_history, *zsh*, PSReadLine/*_history.txt, Luminescent's data/command_log.txt, anything else is bash",
+ "cases": [
+  {
+   "file": "fish_history",
+   "kind": "fish",
+   "entries": [
+    {
+     "command": "ls -la",
+     "raw": "- cmd: ls -la\n  when: 1763900000",
+     "time": "2025-11-23T12:13:20"
+    },
+    {
+     "command": "echo \"multi\nline\" \\ done",
+     "raw": "- cmd: echo \"multi\\nline\" \\\\ done\n  when: 1763900060\n  paths:\n    - /tmp",
+     "time": "2025-11-23T12:14:20"
+    },
+    {
+     "command": "git status",
+     "raw": "- cmd: git status\n  when: 1700000000",
+     "time": "2023-11-14T22:13:20"
+    },
+    {
+     "command": "cargo build --release",
+     "raw": "- cmd: cargo build --release",
+     "time": null
+    }
+   ],
+   "delete_odd_rows": {
+    "kept_raw": [
+     "- cmd: ls -la\n  when: 1763900000",
+     "- cmd: git status\n  when: 1700000000"
+    ],
+    "file_after": "- cmd: ls -la\n  when: 1763900000\n- cmd: git status\n  when: 1700000000\n"
+   },
+   "delete_all": ""
+  },
+  {
+   "file": "bash_history",
+   "kind": "bash",
+   "entries": [
+    {
+     "command": "ls -la",
+     "raw": "#1763900000\nls -la",
+     "time": "2025-11-23T12:13:20"
+    },
+    {
+     "command": "nohist",
+     "raw": "nohist",
+     "time": null
+    },
+    {
+     "command": "git push",
+     "raw": "#1763900060\ngit push",
+     "time": "2025-11-23T12:14:20"
+    },
+    {
+     "command": "#notanumber",
+     "raw": "#notanumber",
+     "time": null
+    },
+    {
+     "command": "echo hi",
+     "raw": "echo hi",
+     "time": null
+    }
+   ],
+   "delete_odd_rows": {
+    "kept_raw": [
+     "#1763900000\nls -la",
+     "#1763900060\ngit push",
+     "echo hi"
+    ],
+    "file_after": "#1763900000\nls -la\n#1763900060\ngit push\necho hi\n"
+   },
+   "delete_all": ""
+  },
+  {
+   "file": ".zsh_history",
+   "kind": "zsh",
+   "entries": [
+    {
+     "command": "ls -la",
+     "raw": ": 1763900000:0;ls -la",
+     "time": "2025-11-23T12:13:20"
+    },
+    {
+     "command": "echo one \ntwo",
+     "raw": ": 1763900005:2;echo one \\\ntwo",
+     "time": "2025-11-23T12:13:25"
+    },
+    {
+     "command": "plain line without stamp",
+     "raw": "plain line without stamp",
+     "time": null
+    },
+    {
+     "command": "vim ~/.zshrc",
+     "raw": ": 1763900020:0;vim ~/.zshrc",
+     "time": "2025-11-23T12:13:40"
+    }
+   ],
+   "delete_odd_rows": {
+    "kept_raw": [
+     ": 1763900000:0;ls -la",
+     "plain line without stamp"
+    ],
+    "file_after": ": 1763900000:0;ls -la\nplain line without stamp\n"
+   },
+   "delete_all": ""
+  },
+  {
+   "file": "PSReadLine__ConsoleHost_history.txt",
+   "kind": "powershell",
+   "entries": [
+    {
+     "command": "Get-Process",
+     "raw": "Get-Process",
+     "time": null
+    },
+    {
+     "command": "Write-Host \n  \"hello\"",
+     "raw": "Write-Host `\n  \"hello\"",
+     "time": null
+    },
+    {
+     "command": "ls C:\\",
+     "raw": "ls C:\\",
+     "time": null
+    },
+    {
+     "command": "cd ..`",
+     "raw": "cd ..`",
+     "time": null
+    }
+   ],
+   "delete_odd_rows": {
+    "kept_raw": [
+     "Get-Process",
+     "ls C:\\"
+    ],
+    "file_after": "Get-Process\nls C:\\\n"
+   },
+   "delete_all": ""
+  },
+  {
+   "file": "command_log.txt",
+   "kind": "log",
+   "entries": [
+    {
+     "command": "firefox",
+     "raw": "2026-11-23T10:00:00\tfirefox",
+     "time": "2026-11-23T10:00:00"
+    },
+    {
+     "command": "kitty -e htop",
+     "raw": "2026-11-23T10:05:30\tkitty -e htop",
+     "time": "2026-11-23T10:05:30"
+    },
+    {
+     "command": "broken line",
+     "raw": "broken line",
+     "time": null
+    }
+   ],
+   "delete_odd_rows": {
+    "kept_raw": [
+     "2026-11-23T10:00:00\tfirefox",
+     "broken line"
+    ],
+    "file_after": "2026-11-23T10:00:00\tfirefox\nbroken line\n"
+   },
+   "delete_all": ""
+  }
+ ]
+}

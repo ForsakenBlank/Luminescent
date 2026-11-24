@@ -1,0 +1,54 @@
+{
+  "notes": [
+    {
+      "id": "b921c60766",
+      "name": "My First Note",
+      "type": "note",
+      "content": "# Ideas\n\nTry the **Rust** build.",
+      "items": [],
+      "pinned": true,
+      "colour": "#7B6CF6",
+      "tags": [
+        "work"
+      ]
+    },
+    {
+      "id": "todo1",
+      "name": "Shopping",
+      "type": "todo",
+      "content": "",
+      "pinned": false,
+      "colour": "",
+      "tags": [],
+      "items": [
+        {
+          "id": "i1",
+          "text": "milk",
+          "checked": true,
+          "due": ""
+        },
+        {
+          "id": "i2",
+          "text": "bread",
+          "checked": false,
+          "due": "2026-11-24T09:00"
+        }
+      ]
+    }
+  ],
+  "x": 100,
+  "y": 100,
+  "w": 360,
+  "h": 460,
+  "open": "todo1",
+  "stickies": {
+    "todo1": {
+      "x": 40,
+      "y": 60,
+      "w": 280,
+      "h": 300,
+      "screen": "DP-1"
+    }
+  },
+  "preview": false
+}

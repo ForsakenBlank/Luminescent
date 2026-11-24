@@ -1,0 +1,654 @@
+{
+ "presets": {
+  "dark": {
+   "primary": "#7B6CF6",
+   "primary_hover": "#9184F8",
+   "primary_muted": "#24213B",
+   "primary_text": "#A99FFA",
+   "on_primary": "#FFFFFF",
+   "bg_base": "#131317",
+   "bg_card": "#1B1B21",
+   "bg_card_hover": "#23232A",
+   "bg_frame": "#0E0E11",
+   "bg_header": "#17171C",
+   "border": "#2A2A30",
+   "text_primary": "#ECECF1",
+   "text_secondary": "#A3A3AF",
+   "text_muted": "#6C6C78",
+   "folder_color": "#1B1B21",
+   "folder_border": "#A99FFA"
+  },
+  "light": {
+   "primary": "#F2B705",
+   "primary_hover": "#DCA704",
+   "primary_muted": "#FCF1CD",
+   "primary_text": "#8A6A00",
+   "on_primary": "#1A1600",
+   "bg_base": "#FFFFFF",
+   "bg_card": "#F6F6F3",
+   "bg_card_hover": "#EEEEEA",
+   "bg_frame": "#F1F1ED",
+   "bg_header": "#FAFAF8",
+   "border": "#E4E4E1",
+   "text_primary": "#18180F",
+   "text_secondary": "#4F4F46",
+   "text_muted": "#86867C",
+   "folder_color": "#F6F6F3",
+   "folder_border": "#F2B705"
+  }
+ },
+ "old_presets": {
+  "dark": {
+   "primary": "#7B6CF6",
+   "primary_hover": "#6656E8",
+   "primary_muted": "#28234A",
+   "on_primary": "#FFFFFF",
+   "bg_base": "#121214",
+   "bg_card": "#1C1C20",
+   "bg_card_hover": "#25252B",
+   "bg_frame": "#17171A",
+   "bg_header": "#141417",
+   "border": "#3A3466",
+   "text_primary": "#ECEAF6",
+   "text_secondary": "#9A97AE",
+   "text_muted": "#55536A",
+   "folder_color": "#221E3D",
+   "folder_border": "#A99CFF"
+  },
+  "light": {
+   "primary": "#F2B705",
+   "primary_hover": "#DDA600",
+   "primary_muted": "#FFF3C4",
+   "on_primary": "#1E1A0E",
+   "bg_base": "#FFFFFF",
+   "bg_card": "#F6F5F1",
+   "bg_card_hover": "#EEEBE1",
+   "bg_frame": "#FAF9F6",
+   "bg_header": "#F3F1EA",
+   "border": "#E3D29A",
+   "text_primary": "#1F1D18",
+   "text_secondary": "#5F5B50",
+   "text_muted": "#A29D8E",
+   "folder_color": "#FFF6D6",
+   "folder_border": "#F2B705"
+  }
+ },
+ "colour_roles": [
+  [
+   "primary",
+   "Accent"
+  ],
+  [
+   "primary_hover",
+   "Accent (hover)"
+  ],
+  [
+   "primary_muted",
+   "Accent (muted background)"
+  ],
+  [
+   "primary_text",
+   "Accent text"
+  ],
+  [
+   "on_primary",
+   "Text on accent"
+  ],
+  [
+   "bg_base",
+   "Background"
+  ],
+  [
+   "bg_card",
+   "Cards"
+  ],
+  [
+   "bg_card_hover",
+   "Cards (hover)"
+  ],
+  [
+   "bg_frame",
+   "Frames / inputs"
+  ],
+  [
+   "bg_header",
+   "Headers"
+  ],
+  [
+   "border",
+   "Borders"
+  ],
+  [
+   "text_primary",
+   "Text"
+  ],
+  [
+   "text_secondary",
+   "Text (secondary)"
+  ],
+  [
+   "text_muted",
+   "Text (muted)"
+  ],
+  [
+   "folder_color",
+   "Folder cards"
+  ],
+  [
+   "folder_border",
+   "Folder card outline"
+  ]
+ ],
+ "gradient_types": [
+  [
+   "linear",
+   "Linear"
+  ],
+  [
+   "radial",
+   "Radial"
+  ],
+  [
+   "conical",
+   "Sweep"
+  ]
+ ],
+ "palette_defaults": {
+  "primary": "#7B6CF6",
+  "primary_hover": "#9184F8",
+  "primary_muted": "#24213B",
+  "primary_text": "#A99FFA",
+  "bg_base": "#131317",
+  "bg_card": "#1B1B21",
+  "bg_card_hover": "#23232A",
+  "bg_frame": "#0E0E11",
+  "bg_header": "#17171C",
+  "border": "#2A2A30",
+  "text_primary": "#ECECF1",
+  "text_secondary": "#A3A3AF",
+  "text_muted": "#6C6C78",
+  "folder_color": "#1B1B21",
+  "folder_border": "#A99FFA",
+  "on_primary": "#FFFFFF",
+  "radius": 10,
+  "font_family": "Geist",
+  "glow": true,
+  "background_image": "",
+  "image_opacity": 0.35,
+  "gradients": {}
+ },
+ "danger": "#E8645E",
+ "mono_family": "Geist Mono",
+ "look_keys": [
+  "font_family",
+  "radius",
+  "glow",
+  "background_image",
+  "image_opacity"
+ ],
+ "pack_version": 1,
+ "pack": [
+  {
+   "name": "Caelestia",
+   "roles": {
+    "primary": "#CBA6F7",
+    "bg": "#141218",
+    "card": "#211F26",
+    "text": "#E6E0E9",
+    "muted": "#CAC4D0",
+    "border": "#36343B"
+   },
+   "radius": 14,
+   "colours": {
+    "primary": "#CBA6F7",
+    "primary_hover": "#D2B2F8",
+    "primary_muted": "#3C3248",
+    "primary_text": "#DDC5FA",
+    "on_primary": "#1A1600",
+    "bg_base": "#141218",
+    "bg_card": "#211F26",
+    "bg_card_hover": "#2D2B32",
+    "bg_frame": "#0F0E12",
+    "bg_header": "#1A181F",
+    "border": "#36343B",
+    "text_primary": "#E6E0E9",
+    "text_secondary": "#CAC4D0",
+    "text_muted": "#817D86",
+    "folder_color": "#211F26",
+    "folder_border": "#DDC5FA"
+   }
+  },
+  {
+   "name": "Catppuccin Mocha",
+   "roles": {
+    "primary": "#CBA6F7",
+    "bg": "#1E1E2E",
+    "card": "#313244",
+    "text": "#CDD6F4",
+    "muted": "#A6ADC8",
+    "border": "#45475A"
+   },
+   "radius": 12,
+   "colours": {
+    "primary": "#CBA6F7",
+    "primary_hover": "#D2B2F8",
+    "primary_muted": "#3C3248",
+    "primary_text": "#DDC5FA",
+    "on_primary": "#1A1600",
+    "bg_base": "#1E1E2E",
+    "bg_card": "#313244",
+    "bg_card_hover": "#3A3C4F",
+    "bg_frame": "#161622",
+    "bg_header": "#282839",
+    "border": "#45475A",
+    "text_primary": "#CDD6F4",
+    "text_secondary": "#A6ADC8",
+    "text_muted": "#70748A",
+    "folder_color": "#313244",
+    "folder_border": "#DDC5FA"
+   }
+  },
+  {
+   "name": "Catppuccin Latte",
+   "roles": {
+    "primary": "#8839EF",
+    "bg": "#EFF1F5",
+    "card": "#E6E9EF",
+    "text": "#4C4F69",
+    "muted": "#6C6F85",
+    "border": "#CCD0DA"
+   },
+   "radius": 12,
+   "colours": {
+    "primary": "#8839EF",
+    "primary_hover": "#7832D2",
+    "primary_muted": "#E6D7FB",
+    "primary_text": "#4B1F83",
+    "on_primary": "#FFFFFF",
+    "bg_base": "#EFF1F5",
+    "bg_card": "#E6E9EF",
+    "bg_card_hover": "#DDE0E7",
+    "bg_frame": "#F3F4F8",
+    "bg_header": "#EAEDF2",
+    "border": "#CCD0DA",
+    "text_primary": "#4C4F69",
+    "text_secondary": "#6C6F85",
+    "text_muted": "#A0A3B2",
+    "folder_color": "#E6E9EF",
+    "folder_border": "#4B1F83"
+   }
+  },
+  {
+   "name": "Tokyo Night",
+   "roles": {
+    "primary": "#7AA2F7",
+    "bg": "#1A1B26",
+    "card": "#24283B",
+    "text": "#C0CAF5",
+    "muted": "#A9B1D6",
+    "border": "#3B4261"
+   },
+   "radius": 10,
+   "colours": {
+    "primary": "#7AA2F7",
+    "primary_hover": "#8DAFF8",
+    "primary_muted": "#283249",
+    "primary_text": "#A9C3FA",
+    "on_primary": "#1A1600",
+    "bg_base": "#1A1B26",
+    "bg_card": "#24283B",
+    "bg_card_hover": "#2D3246",
+    "bg_frame": "#14141C",
+    "bg_header": "#1F2230",
+    "border": "#3B4261",
+    "text_primary": "#C0CAF5",
+    "text_secondary": "#A9B1D6",
+    "text_muted": "#707590",
+    "folder_color": "#24283B",
+    "folder_border": "#A9C3FA"
+   }
+  },
+  {
+   "name": "Gruvbox",
+   "roles": {
+    "primary": "#FE8019",
+    "bg": "#282828",
+    "card": "#3C3836",
+    "text": "#EBDBB2",
+    "muted": "#BDAE93",
+    "border": "#504945"
+   },
+   "radius": 6,
+   "colours": {
+    "primary": "#FE8019",
+    "primary_hover": "#FE9239",
+    "primary_muted": "#4B2C13",
+    "primary_text": "#FEAC6A",
+    "on_primary": "#1A1600",
+    "bg_base": "#282828",
+    "bg_card": "#3C3836",
+    "bg_card_hover": "#46423D",
+    "bg_frame": "#1E1E1E",
+    "bg_header": "#32302F",
+    "border": "#504945",
+    "text_primary": "#EBDBB2",
+    "text_secondary": "#BDAE93",
+    "text_muted": "#817868",
+    "folder_color": "#3C3836",
+    "folder_border": "#FEAC6A"
+   }
+  },
+  {
+   "name": "Nord",
+   "roles": {
+    "primary": "#88C0D0",
+    "bg": "#2E3440",
+    "card": "#3B4252",
+    "text": "#ECEFF4",
+    "muted": "#D8DEE9",
+    "border": "#4C566A"
+   },
+   "radius": 8,
+   "colours": {
+    "primary": "#88C0D0",
+    "primary_hover": "#99C9D7",
+    "primary_muted": "#2D3B3F",
+    "primary_text": "#B2D6E0",
+    "on_primary": "#1A1600",
+    "bg_base": "#2E3440",
+    "bg_card": "#3B4252",
+    "bg_card_hover": "#464C5C",
+    "bg_frame": "#222730",
+    "bg_header": "#343B49",
+    "border": "#4C566A",
+    "text_primary": "#ECEFF4",
+    "text_secondary": "#D8DEE9",
+    "text_muted": "#949AA5",
+    "folder_color": "#3B4252",
+    "folder_border": "#B2D6E0"
+   }
+  },
+  {
+   "name": "Rosé Pine",
+   "roles": {
+    "primary": "#EBBCBA",
+    "bg": "#191724",
+    "card": "#26233A",
+    "text": "#E0DEF4",
+    "muted": "#908CAA",
+    "border": "#403D52"
+   },
+   "radius": 14,
+   "colours": {
+    "primary": "#EBBCBA",
+    "primary_hover": "#EEC5C4",
+    "primary_muted": "#453837",
+    "primary_text": "#F2D3D2",
+    "on_primary": "#1A1600",
+    "bg_base": "#191724",
+    "bg_card": "#26233A",
+    "bg_card_hover": "#312E45",
+    "bg_frame": "#13111B",
+    "bg_header": "#201D2F",
+    "border": "#403D52",
+    "text_primary": "#E0DEF4",
+    "text_secondary": "#908CAA",
+    "text_muted": "#605D74",
+    "folder_color": "#26233A",
+    "folder_border": "#F2D3D2"
+   }
+  },
+  {
+   "name": "Dracula",
+   "roles": {
+    "primary": "#BD93F9",
+    "bg": "#282A36",
+    "card": "#343746",
+    "text": "#F8F8F2",
+    "muted": "#BFBFBF",
+    "border": "#44475A"
+   },
+   "radius": 10,
+   "colours": {
+    "primary": "#BD93F9",
+    "primary_hover": "#C6A2FA",
+    "primary_muted": "#392E4A",
+    "primary_text": "#D4B9FB",
+    "on_primary": "#1A1600",
+    "bg_base": "#282A36",
+    "bg_card": "#343746",
+    "bg_card_hover": "#404350",
+    "bg_frame": "#1E2028",
+    "bg_header": "#2E303E",
+    "border": "#44475A",
+    "text_primary": "#F8F8F2",
+    "text_secondary": "#BFBFBF",
+    "text_muted": "#838388",
+    "folder_color": "#343746",
+    "folder_border": "#D4B9FB"
+   }
+  },
+  {
+   "name": "Everforest",
+   "roles": {
+    "primary": "#A7C080",
+    "bg": "#2D353B",
+    "card": "#343F44",
+    "text": "#D3C6AA",
+    "muted": "#9DA9A0",
+    "border": "#475258"
+   },
+   "radius": 10,
+   "colours": {
+    "primary": "#A7C080",
+    "primary_hover": "#B3C992",
+    "primary_muted": "#353B2B",
+    "primary_text": "#C6D6AC",
+    "on_primary": "#1A1600",
+    "bg_base": "#2D353B",
+    "bg_card": "#343F44",
+    "bg_card_hover": "#3E474A",
+    "bg_frame": "#22282C",
+    "bg_header": "#303A40",
+    "border": "#475258",
+    "text_primary": "#D3C6AA",
+    "text_secondary": "#9DA9A0",
+    "text_muted": "#707B78",
+    "folder_color": "#343F44",
+    "folder_border": "#C6D6AC"
+   }
+  },
+  {
+   "name": "Material You",
+   "roles": {
+    "primary": "#D0BCFF",
+    "bg": "#1C1B1F",
+    "card": "#2B2930",
+    "text": "#E6E1E5",
+    "muted": "#CAC4D0",
+    "border": "#49454F"
+   },
+   "radius": 18,
+   "colours": {
+    "primary": "#D0BCFF",
+    "primary_hover": "#D7C5FF",
+    "primary_muted": "#3D374B",
+    "primary_text": "#E0D3FF",
+    "on_primary": "#1A1600",
+    "bg_base": "#1C1B1F",
+    "bg_card": "#2B2930",
+    "bg_card_hover": "#36343B",
+    "bg_frame": "#151417",
+    "bg_header": "#242228",
+    "border": "#49454F",
+    "text_primary": "#E6E1E5",
+    "text_secondary": "#CAC4D0",
+    "text_muted": "#848089",
+    "folder_color": "#2B2930",
+    "folder_border": "#E0D3FF"
+   }
+  }
+ ],
+ "tones_harmonies": [
+  [
+   "matching",
+   "Matching",
+   "Neighbours on the colour wheel: calm and close together."
+  ],
+  [
+   "opposite",
+   "Opposites",
+   "The colour across the wheel: lively, high contrast."
+  ],
+  [
+   "triad",
+   "Three-way",
+   "Three colours evenly around the wheel: bright and playful."
+  ],
+  [
+   "split",
+   "Split",
+   "The two colours either side of the opposite: bold but balanced."
+  ],
+  [
+   "mono",
+   "One colour",
+   "Only shades of the accent: tidy and quiet."
+  ],
+  [
+   "pastel",
+   "Pastel",
+   "Soft, light versions of matching colours."
+  ],
+  [
+   "neon",
+   "Neon",
+   "As colourful as a screen can show."
+  ]
+ ],
+ "tones_main": [
+  [
+   "accent",
+   "Accent"
+  ],
+  [
+   "accent2",
+   "Second accent"
+  ],
+  [
+   "accent3",
+   "Third accent"
+  ],
+  [
+   "background",
+   "Background"
+  ],
+  [
+   "text",
+   "Text"
+  ],
+  [
+   "success",
+   "Good (success)"
+  ],
+  [
+   "error",
+   "Bad (error)"
+  ]
+ ],
+ "tones_families": {
+  "reds": [
+   "Reds and pinks",
+   [
+    [
+     345,
+     360
+    ],
+    [
+     0,
+     40
+    ]
+   ]
+  ],
+  "oranges": [
+   "Oranges and browns",
+   [
+    [
+     40,
+     75
+    ]
+   ]
+  ],
+  "yellows": [
+   "Yellows",
+   [
+    [
+     75,
+     115
+    ]
+   ]
+  ],
+  "greens": [
+   "Greens",
+   [
+    [
+     115,
+     175
+    ]
+   ]
+  ],
+  "cyans": [
+   "Teals and cyans",
+   [
+    [
+     175,
+     225
+    ]
+   ]
+  ],
+  "blues": [
+   "Blues",
+   [
+    [
+     225,
+     275
+    ]
+   ]
+  ],
+  "purples": [
+   "Purples and violets",
+   [
+    [
+     275,
+     345
+    ]
+   ]
+  ]
+ },
+ "calculator_pin_colours": [
+  [
+   "Red",
+   "#E5484D"
+  ],
+  [
+   "Orange",
+   "#F76B15"
+  ],
+  [
+   "Yellow",
+   "#FFC53D"
+  ],
+  [
+   "Green",
+   "#30A46C"
+  ],
+  [
+   "Blue",
+   "#3E63DD"
+  ],
+  [
+   "Purple",
+   "#8E4EC6"
+  ]
+ ]
+}

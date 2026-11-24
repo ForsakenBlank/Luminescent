@@ -1,0 +1,17 @@
+[package]
+name = "lum-hypr"
+description = "Hyprland sockets, the LUMI Lua bootstrap, binds, window rules and workspace sets."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

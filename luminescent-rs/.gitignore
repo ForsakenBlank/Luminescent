@@ -1,0 +1,7 @@
+/target/
+
+# The repo root ignores settings.json and data/ (the Python app's own setup), but the sample data folder is a
+# test fixture and must be committed whole.
+!/fixtures/sample_home/settings.json
+!/fixtures/sample_home/data/
+!/fixtures/sample_home/data/**

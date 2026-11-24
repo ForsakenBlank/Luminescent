@@ -1,0 +1,5272 @@
+{
+ "shared_sections": [
+  "animations",
+  "automation",
+  "dashboard",
+  "general",
+  "ui"
+ ],
+ "steps": [
+  {
+   "step": "first start",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": true,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#FF0000",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "created Work (a copy of the current settings)",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    },
+    {
+     "id": "52274616cc",
+     "name": "Work"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": true,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#FF0000",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "default",
+     "profiles": [
+      {
+       "id": "default",
+       "name": "Default"
+      },
+      {
+       "id": "52274616cc",
+       "name": "Work"
+      }
+     ]
+    },
+    "data/profiles/52274616cc.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#FF0000",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "changed doodle.colour (own) and general.tray_messages (shared)",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    },
+    {
+     "id": "52274616cc",
+     "name": "Work"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": false,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "default",
+     "profiles": [
+      {
+       "id": "default",
+       "name": "Default"
+      },
+      {
+       "id": "52274616cc",
+       "name": "Work"
+      }
+     ]
+    },
+    "data/profiles/52274616cc.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#FF0000",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "switched to Work",
+   "active": "52274616cc",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    },
+    {
+     "id": "52274616cc",
+     "name": "Work"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": false,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#FF0000",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "52274616cc",
+     "profiles": [
+      {
+       "id": "default",
+       "name": "Default"
+      },
+      {
+       "id": "52274616cc",
+       "name": "Work"
+      }
+     ]
+    },
+    "data/profiles/52274616cc.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#FF0000",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles/default.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "changed doodle.colour in Work, back to Default",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    },
+    {
+     "id": "52274616cc",
+     "name": "Work"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": false,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "default",
+     "profiles": [
+      {
+       "id": "default",
+       "name": "Default"
+      },
+      {
+       "id": "52274616cc",
+       "name": "Work"
+      }
+     ]
+    },
+    "data/profiles/52274616cc.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#123456",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles/default.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "renamed Work to Office; switching to a missing profile does nothing",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    },
+    {
+     "id": "52274616cc",
+     "name": "Office"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": false,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "default",
+     "profiles": [
+      {
+       "id": "default",
+       "name": "Default"
+      },
+      {
+       "id": "52274616cc",
+       "name": "Office"
+      }
+     ]
+    },
+    "data/profiles/52274616cc.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#123456",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles/default.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "deleted the active profile: back on Default",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": false,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "default",
+     "profiles": [
+      {
+       "id": "default",
+       "name": "Default"
+      }
+     ]
+    },
+    "data/profiles/default.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  },
+  {
+   "step": "profiles.json without Default and a missing active profile",
+   "active": "default",
+   "profiles": [
+    {
+     "id": "default",
+     "name": "Default"
+    },
+    {
+     "id": "x",
+     "name": "X"
+    }
+   ],
+   "files": {
+    "settings.json": {
+     "general": {
+      "run_at_startup": false,
+      "force_quit_hotkey": "ctrl+u",
+      "settings_hotkey": "ctrl+alt+s",
+      "tray_messages": false,
+      "notify_style": "luminescent",
+      "toast_position": "tr",
+      "toast_style": "glow",
+      "toast_width": 360,
+      "toast_time": 1.0,
+      "toast_max": 5,
+      "toast_opacity": 1.0,
+      "toast_text": 1.0,
+      "toast_icon": true,
+      "start_panels": [
+       "notes"
+      ],
+      "tray_items": [
+       "open",
+       "palette",
+       "dashboard",
+       "automation",
+       "modules",
+       "actions",
+       "colours",
+       "keepawake",
+       "reset",
+       "settings",
+       "log",
+       "restart",
+       "quit"
+      ],
+      "desktop_entry": true,
+      "check_updates": true,
+      "whats_new": true,
+      "seen_version": "",
+      "keep_awake_hotkey": "",
+      "auto_backup": true,
+      "pass_keys": true,
+      "log_to_file": true
+     },
+     "ui": {
+      "overlay_hotkey": "ctrl+shift+space",
+      "palette_hotkey": "ctrl+alt+space",
+      "cheatsheet_hotkey": "ctrl+alt+/",
+      "cheatsheet_toggle": false,
+      "hotkey_dashboard": "",
+      "hotkey_automation": "",
+      "hotkey_themes": "",
+      "hotkey_clipboard": "",
+      "hotkey_settings_page": "",
+      "nav_order": [
+       "dashboard",
+       "automation",
+       "themes",
+       "clipboard",
+       "settings"
+      ],
+      "text_scale": 1.0,
+      "remember_page": false,
+      "last_page": "dashboard",
+      "settings_search_only": false,
+      "panel_place_v": 1,
+      "settings_pinned": [],
+      "chrome_items": [],
+      "overlay_screen": "cursor",
+      "panel_place": "centre",
+      "type_to_search": true,
+      "show_clock": true,
+      "show_status": true,
+      "blur": true,
+      "panel_glass": false,
+      "glass_parts": [
+       "panels",
+       "notes",
+       "notifications"
+      ],
+      "glass_amount": 0.82,
+      "theme_cycle_hotkey": "",
+      "theme_prev_hotkey": "",
+      "overlay_dim": 0.64,
+      "click_outside_closes": true,
+      "apps_over_overlay": true,
+      "performance_mode": false,
+      "tray_timers": true,
+      "wallpaper_engine_exe": "",
+      "wallpaper_command": "",
+      "terminal_scheme": true,
+      "own_terminal": false,
+      "fastfetch_before": null,
+      "terminal_pushed": false
+     },
+     "animations": {
+      "enabled": true,
+      "speed": "normal",
+      "style": "smooth",
+      "hover": true,
+      "overlay": true,
+      "pages": true,
+      "nav": true,
+      "boxes": true,
+      "theme": true,
+      "toasts": true,
+      "panels": true,
+      "zoom": true,
+      "pulses": true
+     },
+     "dashboard": {
+      "use_terminal": true,
+      "terminal": "",
+      "keep_open": true,
+      "python_path": "",
+      "show_in_tray": true,
+      "show_icons": true,
+      "group_delay_ms": 400,
+      "tidy_style": "columns",
+      "tidy_order": "position",
+      "snap": 8
+     },
+     "automation": {
+      "enabled": true,
+      "pause_hotkey": "",
+      "max_rate": 200,
+      "command_timeout": 0,
+      "shell": "bash"
+     },
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    },
+    "data/profiles.json": {
+     "active": "gone",
+     "profiles": [
+      {
+       "id": "x",
+       "name": "X"
+      }
+     ]
+    },
+    "data/profiles/default.json": {
+     "snippets": {
+      "enabled": true,
+      "hotkey": "ctrl+b",
+      "base_path": "<HOME>/Pictures/Clipboard",
+      "auto_paste": true,
+      "placeholders": false,
+      "window_width": 960,
+      "window_height": 560,
+      "card_cols": 4,
+      "name_limit": 20,
+      "overlay_dim": 0.35
+     },
+     "notes": {
+      "enabled": true,
+      "hotkey": "alt+n",
+      "edit_hotkey": "alt+e",
+      "open_pinned": true,
+      "bg_opacity": 0.85,
+      "overlay_dim": 0.35,
+      "markdown": true,
+      "font_size": 16,
+      "todo_font_size": 12,
+      "default_width": 360,
+      "default_height": 460,
+      "min_width": 250,
+      "min_height": 180,
+      "anchor_padding": 10
+     },
+     "doodle": {
+      "enabled": true,
+      "hotkey": "alt",
+      "mode": "hold",
+      "solo_only": true,
+      "solo_delay_ms": 120,
+      "clear_on_release": false,
+      "clear_hotkey": "alt+x",
+      "undo_hotkey": "alt+f",
+      "bg_hotkey": "alt+g",
+      "exit_hotkey": "alt+shift+q",
+      "copy_hotkey": "alt+c",
+      "save_copies": false,
+      "show_tools": true,
+      "start_tool": "last",
+      "highlighter_opacity": 0.35,
+      "text_size": 28,
+      "wheel_size": true,
+      "brush_style": "smooth",
+      "colour": "#00FF00",
+      "brush_size": 4,
+      "pixel_size": 4,
+      "bg_opacity": 1.0,
+      "passive_opacity": 0.01,
+      "undo_levels": 30
+     },
+     "timer": {
+      "enabled": true,
+      "new_hotkey": "alt+t",
+      "edit_hotkey": "alt+r",
+      "lap_hotkey": "",
+      "finish_sound": "alarm",
+      "finish_sound_file": "",
+      "flash_on_finish": true,
+      "progress": "ring",
+      "restore_on_start": true,
+      "bg_opacity": 0.85,
+      "default_width": 260,
+      "default_height": 160,
+      "min_width": 180,
+      "min_height": 120,
+      "anchor_padding": 12
+     },
+     "calculator": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+=",
+      "bg_opacity": 0.92,
+      "decimals": 10,
+      "thousands": true,
+      "angle": "deg",
+      "history_limit": 200,
+      "currency": true
+     },
+     "colorpicker": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+c",
+      "format": "hex",
+      "uppercase": true
+     },
+     "textgrab": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+o",
+      "keep_lines": true,
+      "upscale": true,
+      "review": false
+     },
+     "promptlog": {
+      "enabled": true,
+      "hotkey": "",
+      "dedupe": true
+     },
+     "keybinds": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+k",
+      "custom": []
+     },
+     "vault": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+q",
+      "storage_path": "<HOME>/.local/share/.idx",
+      "decrypt_output": "<HOME>/Documents/VaultDecrypted",
+      "lock_minutes": 5,
+      "secure_delete_passes": 3,
+      "thumbnails": true
+     },
+     "metadata": {
+      "enabled": true,
+      "hotkey": "ctrl+shift+m",
+      "save_dir": "<HOME>/Documents/MetaStripped",
+      "jpeg_quality": 95,
+      "dolphin_menu": false
+     },
+     "hearing": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+h",
+      "mode": "limit",
+      "limit_db": 85,
+      "restore_volume": true,
+      "max_volume": 100,
+      "calibration": 105,
+      "warn_dose": true,
+      "headset_scale": "cubic",
+      "meter_includes_volume": false
+     },
+     "reminders": {
+      "enabled": true,
+      "items": [],
+      "popup_position": "br",
+      "popup_screen": "primary",
+      "snooze_minutes": 10,
+      "popup_timeout": 0,
+      "default_sound": "chime",
+      "default_sound_file": "",
+      "catch_up_minutes": 120
+     },
+     "snapper": {
+      "enabled": true,
+      "left_hotkey": "super+alt+left",
+      "right_hotkey": "super+alt+right",
+      "up_hotkey": "super+alt+up",
+      "down_hotkey": "super+alt+down",
+      "top_left_hotkey": "",
+      "top_right_hotkey": "",
+      "bottom_left_hotkey": "",
+      "bottom_right_hotkey": "",
+      "centre_third_hotkey": "",
+      "tile_hotkey": "",
+      "gap": 8
+     },
+     "ruler": {
+      "enabled": true,
+      "hotkey": "ctrl+alt+r"
+     },
+     "media": {
+      "enabled": true,
+      "hotkey": "",
+      "play_hotkey": "",
+      "next_hotkey": "",
+      "previous_hotkey": "",
+      "bg_opacity": 0.92
+     },
+     "qr": {
+      "enabled": true,
+      "hotkey": ""
+     },
+     "sysmon": {
+      "enabled": true,
+      "hotkey": "",
+      "bg_opacity": 0.88
+     },
+     "syscontrol": {
+      "enabled": true,
+      "hotkey": "",
+      "displays_hotkey": "",
+      "night_hotkey": "",
+      "keep": true,
+      "bg_opacity": 0.96,
+      "saved": {},
+      "monitors": [],
+      "night_kelvin": 4000,
+      "night_on": false,
+      "workspaces": {}
+     },
+     "performance": {
+      "enabled": true,
+      "hotkey": "",
+      "game_hotkey": "",
+      "hud_hotkey": "",
+      "bg_opacity": 0.95
+     },
+     "atlas_sync": {
+      "enabled": true,
+      "hotkey": "",
+      "share_theme": true,
+      "take_themes": true,
+      "notify_calendar": true,
+      "lead_minutes": 15,
+      "task_hour": 9
+     },
+     "caelestia": {
+      "enabled": true,
+      "hotkey": "",
+      "lock_hotkey": "",
+      "extras": false,
+      "glass": [],
+      "all_active": 0,
+      "all_inactive": 0,
+      "before_shell": {},
+      "blur_size": 0,
+      "blur_passes": 0,
+      "scheme_colours": {},
+      "before_theme": {},
+      "keep_scheme_colours": true,
+      "theme_apps": true
+     }
+    }
+   }
+  }
+ ]
+}

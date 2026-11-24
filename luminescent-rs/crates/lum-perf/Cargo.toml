@@ -1,0 +1,13 @@
+[package]
+name = "lum-perf"
+description = "System sampling and tweaks (phase 11)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lum-core = { path = "../lum-core" }
+
+[lints]
+workspace = true

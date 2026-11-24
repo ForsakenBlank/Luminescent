@@ -1,0 +1,13 @@
+{
+  "active": "default",
+  "profiles": [
+    {
+      "id": "default",
+      "name": "Default"
+    },
+    {
+      "id": "c749664795",
+      "name": "Gaming"
+    }
+  ]
+}

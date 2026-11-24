@@ -1,0 +1,191 @@
+{
+  "layout": 3,
+  "active": "main",
+  "boards": [
+    {
+      "id": "main",
+      "name": "Main",
+      "tabs": [
+        {
+          "id": "tools",
+          "kind": "items",
+          "title": "Tools",
+          "x": 96,
+          "y": 136,
+          "w": 264,
+          "h": 520,
+          "collapsed": false,
+          "screen": "",
+          "items": [
+            {
+              "id": "dbe3259477",
+              "kind": "item",
+              "name": "Open Snippets",
+              "path": "",
+              "args": "",
+              "hotkey": "",
+              "action": "snippets:open",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": []
+            },
+            {
+              "id": "7b2029af1f",
+              "kind": "item",
+              "name": "Save the clipboard to Snippets",
+              "path": "",
+              "args": "",
+              "hotkey": "",
+              "action": "snippets:save_clipboard",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": []
+            },
+            {
+              "id": "59b1a46047",
+              "kind": "item",
+              "name": "Show / hide Notes",
+              "path": "",
+              "args": "",
+              "hotkey": "",
+              "action": "notes:toggle",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": []
+            }
+          ]
+        },
+        {
+          "id": "apps",
+          "kind": "items",
+          "title": "Apps",
+          "x": 392,
+          "y": 136,
+          "w": 264,
+          "h": 520,
+          "collapsed": false,
+          "screen": "",
+          "items": [
+            {
+              "id": "ff",
+              "kind": "item",
+              "name": "Firefox",
+              "path": "/usr/bin/firefox",
+              "args": "--private-window",
+              "hotkey": "ctrl+alt+f",
+              "action": "",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": []
+            },
+            {
+              "id": "h1",
+              "kind": "heading",
+              "name": "Work",
+              "path": "",
+              "args": "",
+              "hotkey": "",
+              "action": "",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": []
+            },
+            {
+              "id": "grp",
+              "kind": "group",
+              "name": "Morning",
+              "path": "",
+              "args": "",
+              "hotkey": "",
+              "action": "",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": [
+                "ff",
+                "htop"
+              ]
+            },
+            {
+              "id": "htop",
+              "kind": "item",
+              "name": "htop",
+              "path": "htop",
+              "args": "",
+              "hotkey": "",
+              "action": "",
+              "cwd": "~",
+              "admin": false,
+              "ask_args": true,
+              "terminal": true,
+              "group": []
+            },
+            {
+              "id": "sep",
+              "kind": "separator",
+              "name": "",
+              "path": "",
+              "args": "",
+              "hotkey": "",
+              "action": "",
+              "cwd": "",
+              "admin": false,
+              "ask_args": false,
+              "terminal": false,
+              "group": []
+            }
+          ]
+        },
+        {
+          "id": "notes-box",
+          "kind": "page",
+          "title": "Notes",
+          "x": 688,
+          "y": 136,
+          "w": 420,
+          "h": 360,
+          "collapsed": false,
+          "screen": "DP-1",
+          "page": "notes",
+          "state": {},
+          "items": []
+        },
+        {
+          "id": "pic",
+          "kind": "picture",
+          "title": "Cat",
+          "x": 688,
+          "y": 520,
+          "w": 300,
+          "h": 200,
+          "collapsed": true,
+          "screen": "",
+          "path": "/home/me/Pictures/cat.png",
+          "frame": "border",
+          "fit": "fill",
+          "items": []
+        }
+      ]
+    },
+    {
+      "id": "b-games",
+      "name": "Games",
+      "tabs": []
+    }
+  ],
+  "locked": false,
+  "screens": {
+    "HDMI-A-1": "b-games"
+  }
+}

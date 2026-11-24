@@ -1,0 +1,1 @@
+{"days": {"2026-11-22": {"dose": 0.412345, "listen": 7260.0, "minutes": {"600": [72.4, 60.0], "601": [68.1, 45.5]}}, "2026-11-23": {"dose": 0.05, "listen": 900.0, "minutes": {"540": [70.0, 60.0]}}}, "calibrations": {"alsa_output.usb-Headphones": {"offset": -6.5, "name": "Headphones"}}}

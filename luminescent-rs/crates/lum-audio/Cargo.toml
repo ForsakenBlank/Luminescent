@@ -1,0 +1,13 @@
+[package]
+name = "lum-audio"
+description = "Hearing Guard capture and DSP, media sessions, sounds and speech (phase 12)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lum-core = { path = "../lum-core" }
+
+[lints]
+workspace = true

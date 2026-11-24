@@ -1,0 +1,29 @@
+[package]
+name = "luminescent"
+description = "Luminescent: small tools a hotkey away."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+# the second renderer, for the phase 2 spike's comparison
+wgpu = ["eframe/wgpu"]
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+crossbeam-channel.workspace = true
+eframe.workspace = true
+egui.workspace = true
+jiff.workspace = true
+lum-core.workspace = true
+lum-platform.workspace = true
+lum-ui.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

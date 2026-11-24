@@ -141,7 +141,13 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
                 options,
                 Box::new(move |cc| {
                     *flag.borrow_mut() = true;
-                    lum_ui::setup(&cc.egui_ctx, lum_ui::Tokens::dark());
+                    {
+                        let core = app.borrow();
+                        // Dark until phase 4 brings the theme store; text size and motion come from settings
+                        let tokens = lum_ui::Tokens::with_settings(lum_ui::Palette::dark(), &core.settings);
+                        lum_ui::setup(&cc.egui_ctx, tokens);
+                        lum_ui::Motion::from_settings(&core.settings).install(&cc.egui_ctx);
+                    }
                     let gpu = Gpu::of(cc);
                     tracing::info!("drawing with {} on {}", renderer.name(), gpu.describe());
                     let mut core = app.borrow_mut();
@@ -193,8 +199,11 @@ impl eframe::App for Shell {
         }
     }
 
-    fn ui(&mut self, _ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.app.borrow().passes.ui.fetch_add(1, Ordering::Relaxed);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let mut app = self.app.borrow_mut();
+        app.passes.ui.fetch_add(1, Ordering::Relaxed);
+        // every window of ours is drawn from here, so a repaint of any of them runs this
+        app.show_modules(ui.ctx());
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {

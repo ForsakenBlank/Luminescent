@@ -222,6 +222,8 @@ pub struct Tokens {
     pub text_scale: f32,
     /// Settings → Animations → Hover effects.
     pub hover: bool,
+    /// Settings → Overlay & Interface → Performance mode: no glow, no background image, no animation.
+    pub performance: bool,
 }
 
 /// The colour a label takes, as the `tone` property in the Python stylesheet.
@@ -245,7 +247,20 @@ fn tokens_id() -> egui::Id {
 impl Tokens {
     pub fn new(p: Palette, text_scale: f32) -> Tokens {
         let text_scale = if text_scale.is_finite() { text_scale.clamp(0.8, 1.6) } else { 1.0 };
-        Tokens { p, text_scale, hover: true }
+        Tokens { p, text_scale, hover: true, performance: false }
+    }
+
+    /// The palette with the Text size, Hover effects and Performance mode settings applied.
+    pub fn with_settings(p: Palette, settings: &lum_core::settings::Settings) -> Tokens {
+        let mut tokens = Tokens::new(p, settings.get_f64("ui.text_scale").unwrap_or(1.0) as f32);
+        tokens.hover = settings.get_bool("animations.hover", true);
+        tokens.performance = settings.get_bool("ui.performance_mode", false);
+        tokens
+    }
+
+    /// The accent glow around the overlay and panels is wanted.
+    pub fn glow(&self) -> bool {
+        self.p.glow && !self.performance
     }
 
     pub fn dark() -> Tokens {
@@ -311,6 +326,11 @@ impl Tokens {
     /// The tint of a dimmed screen: near-black on dark themes, a pale paper colour on light ones.
     pub fn scrim(&self) -> Color32 {
         if self.p.is_light() { Color32::from_rgb(236, 236, 230) } else { Color32::from_rgb(6, 6, 10) }
+    }
+
+    /// A border that leans towards the accent: hovered cards and boxes.
+    pub fn hover_border(&self, amount: f32) -> Color32 {
+        mix(self.p.border, self.p.primary, amount)
     }
 
     pub fn glow_alpha(&self) -> f32 {

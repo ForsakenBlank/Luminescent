@@ -19,6 +19,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("actions", actions),
     ("backup", backup_zip),
     ("ctl socket", ctl_socket),
+    ("widget kit in Dark and Light", widget_kit),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -95,6 +96,12 @@ fn backup_zip(app: &mut App) -> Result<(), String> {
         return Err(format!("wrote {count} files but the zip lists {}", members.len()));
     }
     Ok(())
+}
+
+/// Builds every widget, the panel and each dialog on a context with no window, so it passes in CI on both
+/// systems with no display.
+fn widget_kit(_app: &mut App) -> Result<(), String> {
+    lum_ui::gallery::build_headless()
 }
 
 /// Talks to its own ctl socket. The answer comes from this thread, so the request goes from another one.

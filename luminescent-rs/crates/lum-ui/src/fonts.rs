@@ -1,5 +1,9 @@
 //! Geist for the UI and Geist Mono for hotkeys, counts and labels, bundled in the binary (the same files as
 //! `assets/fonts`). egui has no font weights, so each weight is a family of its own.
+//!
+//! Qt finds symbols Geist lacks (✕, ✓, ✦, ⚙) in the system's fonts; egui only has what it is given. So every
+//! family falls back to Luminescent Symbols (a subset of DejaVu Sans, `luminescent-rs/assets/fonts`), then to
+//! egui's own fonts with their black and white emoji, which cover the emoji the Python app uses as icons.
 
 use std::sync::Arc;
 
@@ -55,10 +59,15 @@ pub fn font(px: f32, weight: Weight, mono: bool) -> FontId {
     FontId::new(px, family(weight, mono))
 }
 
-/// The fonts with egui's own after them, which fill in symbols Geist lacks (arrows, ✕, ✓).
+const SYMBOLS: (&str, &[u8]) =
+    ("Luminescent Symbols", include_bytes!("../../../assets/fonts/LuminescentSymbols.ttf"));
+
+/// The fonts, each falling back to the symbols and then to egui's own fonts.
 pub fn definitions() -> FontDefinitions {
     let mut fonts = FontDefinitions::default();
-    let fallbacks = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
+    fonts.font_data.insert(SYMBOLS.0.to_owned(), Arc::new(FontData::from_static(SYMBOLS.1)));
+    let mut fallbacks = vec![SYMBOLS.0.to_owned()];
+    fallbacks.extend(fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default());
     for (list, mono) in [(&GEIST, false), (&GEIST_MONO, true)] {
         for (i, (name, bytes)) in list.iter().enumerate() {
             fonts.font_data.insert((*name).to_owned(), Arc::new(FontData::from_static(bytes)));
@@ -90,7 +99,8 @@ mod tests {
             for weight in [Weight::Regular, Weight::Medium, Weight::SemiBold] {
                 let chain = &defs.families[&family(weight, mono)];
                 assert!(chain[0].starts_with(if mono { "Geist Mono" } else { "Geist" }), "{chain:?}");
-                assert!(chain.len() > 2, "egui's fonts fill in the symbols: {chain:?}");
+                assert!(chain.contains(&SYMBOLS.0.to_owned()), "the symbols fill in: {chain:?}");
+                assert!(chain.len() > 3, "egui's fonts come last: {chain:?}");
             }
         }
         assert_eq!(Weight::from_css(400), Weight::Regular);

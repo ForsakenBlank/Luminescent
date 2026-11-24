@@ -4,6 +4,7 @@
 //!
 //! The spikes run without the app's data, lock or ctl socket, so they can run next to a real copy.
 
+mod gallery;
 mod perf;
 mod stats;
 mod windows;
@@ -29,6 +30,7 @@ const LIST: &[(&str, &str)] = &[
     ("form", "6. a 300-field form scrolling by itself, then by you"),
     ("wires", "7. 400 bezier wires and 100 moving pulses"),
     ("note", "8. typing into a 50 000 character note"),
+    ("gallery", "every widget in Dark and Light; idle is measured first, then try everything"),
 ];
 
 pub fn run(name: &str, renderer: Renderer, secs: Option<u64>) -> u8 {
@@ -41,6 +43,7 @@ pub fn run(name: &str, renderer: Renderer, secs: Option<u64>) -> u8 {
         "form" => perf::form(renderer, secs.unwrap_or(30)),
         "wires" => perf::wires(renderer, secs.unwrap_or(10)),
         "note" => perf::note(renderer, secs.unwrap_or(30)),
+        "gallery" => gallery::run(renderer, secs.unwrap_or(10)),
         "list" | "" => {
             println!("The UI checks (luminescent --spike <name> [--renderer glow|wgpu] [--secs N]):");
             for (name, what) in LIST {

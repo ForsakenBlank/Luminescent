@@ -74,22 +74,29 @@ pub trait Module {
     fn on_event(&mut self, _cx: &mut ModuleCx<'_>, _event: &Event) {}
 }
 
-struct Slot {
-    module: Box<dyn Module>,
+struct Slot<M: ?Sized> {
+    module: Box<M>,
     running: bool,
     /// Whether settings wanted it on at the last apply, so only a change starts or stops it.
     wanted: bool,
     error: Option<String>,
 }
 
-#[derive(Default)]
-pub struct ModuleHost {
-    slots: Vec<Slot>,
+/// Runs a list of modules. `M` is the kind of module it holds: plain [`Module`]s here, modules that also draw
+/// (lum-ui's `UiModule`) in the app, so the host can hand them back for drawing.
+pub struct ModuleHost<M: ?Sized + Module = dyn Module> {
+    slots: Vec<Slot<M>>,
     faults: Faults,
 }
 
-impl ModuleHost {
-    pub fn new(modules: Vec<Box<dyn Module>>) -> ModuleHost {
+impl<M: ?Sized + Module> Default for ModuleHost<M> {
+    fn default() -> Self {
+        ModuleHost { slots: Vec::new(), faults: Faults::default() }
+    }
+}
+
+impl<M: ?Sized + Module> ModuleHost<M> {
+    pub fn new(modules: Vec<Box<M>>) -> ModuleHost<M> {
         let slots = modules
             .into_iter()
             .map(|module| Slot { module, running: false, wanted: false, error: None })
@@ -118,7 +125,7 @@ impl ModuleHost {
         self.slots.iter().filter_map(|s| Some((s.module.key(), s.error.clone()?))).collect()
     }
 
-    fn slot(&self, key: &str) -> Option<&Slot> {
+    fn slot(&self, key: &str) -> Option<&Slot<M>> {
         self.slots.iter().find(|s| s.module.key() == key)
     }
 
@@ -134,7 +141,7 @@ impl ModuleHost {
     pub fn start_enabled(&mut self, cx: &mut ModuleCx<'_>, actions: &mut ActionRegistry) {
         for i in 0..self.slots.len() {
             let key = self.slots[i].module.key();
-            let wanted = ModuleHost::enabled(cx.settings, key);
+            let wanted = Self::enabled(cx.settings, key);
             self.slots[i].wanted = wanted;
             if wanted && !cx.safe_mode {
                 self.start_at(i, cx, actions);
@@ -203,7 +210,7 @@ impl ModuleHost {
     pub fn apply_settings(&mut self, cx: &mut ModuleCx<'_>, actions: &mut ActionRegistry) {
         for i in 0..self.slots.len() {
             let key = self.slots[i].module.key();
-            let want = ModuleHost::enabled(cx.settings, key);
+            let want = Self::enabled(cx.settings, key);
             let had = self.slots[i].wanted;
             if want && !had {
                 self.start_at(i, cx, actions);
@@ -229,6 +236,19 @@ impl ModuleHost {
                 cx.notifier.notify(slot.module.title(), "Could not apply settings (see the log).", 4000);
             }
         }
+    }
+
+    /// Calls `step` on every running module, each inside its own panic guard. Gives back the keys of the ones
+    /// that panicked; the caller counts those with [`ModuleHost::report_fault`].
+    pub fn each_running(&mut self, what: &str, mut step: impl FnMut(&mut M)) -> Vec<&'static str> {
+        let mut failed = Vec::new();
+        for slot in self.slots.iter_mut().filter(|s| s.running) {
+            let key = slot.module.key();
+            if safely(&format!("{key} {what}"), || step(&mut slot.module)).is_none() {
+                failed.push(key);
+            }
+        }
+        failed
     }
 
     /// Hands an event to every running module; one that panics counts a fault.
@@ -355,7 +375,7 @@ mod tests {
         let log = Rc::new(RefCell::new(Vec::new()));
         let broken =
             Box::new(Fake { key: "vault", fail_start: true, panic_on_event: false, log: log.clone() });
-        let mut host = ModuleHost::new(vec![broken, fake("notes", &log)]);
+        let mut host: ModuleHost = ModuleHost::new(vec![broken, fake("notes", &log)]);
         let events = EventBus::new();
         let mut actions = ActionRegistry::new();
         let mut cx =
@@ -377,7 +397,7 @@ mod tests {
         let log = Rc::new(RefCell::new(Vec::new()));
         let flaky =
             Box::new(Fake { key: "media", fail_start: false, panic_on_event: true, log: log.clone() });
-        let mut host = ModuleHost::new(vec![flaky]);
+        let mut host: ModuleHost = ModuleHost::new(vec![flaky]);
         let events = EventBus::new();
         let mut actions = ActionRegistry::new();
         let mut cx =

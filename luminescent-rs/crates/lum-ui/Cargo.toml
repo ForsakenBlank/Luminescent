@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 egui.workspace = true
 lum-core.workspace = true
+lum-platform.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]

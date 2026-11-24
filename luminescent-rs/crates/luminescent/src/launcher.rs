@@ -15,12 +15,13 @@ use lum_core::actions::ActionRegistry;
 use lum_core::clock::{Clock, SystemClock};
 use lum_core::events::EventBus;
 use lum_core::guard::{self, StartGuard};
-use lum_core::module::{LogNotifier, Module, ModuleCx, ModuleHost};
+use lum_core::module::{LogNotifier, ModuleCx, ModuleHost, Notifier};
 use lum_core::settings::Settings;
 use lum_core::usage::{self, Usage};
 use lum_core::{APP_NAME, Paths, VERSION, backup, logging};
 use lum_platform::instance;
 use lum_platform::ipc::{self, CtlEndpoint, CtlRequest};
+use lum_ui::UiModule;
 use serde_json::json;
 use tokio::runtime::Runtime;
 
@@ -96,7 +97,7 @@ impl Passes {
 }
 
 /// The modules, in the order `modules/__init__.py` lists them. Each phase adds the ones it ports.
-fn modules() -> Vec<Box<dyn Module>> {
+fn modules() -> Vec<Box<dyn UiModule>> {
     Vec::new()
 }
 
@@ -167,7 +168,7 @@ pub struct App {
     pub events: EventBus,
     pub actions: ActionRegistry,
     pub usage: Usage,
-    pub host: ModuleHost,
+    pub host: ModuleHost<dyn UiModule>,
     pub endpoint: CtlEndpoint,
     pub ctl_requests: Receiver<CtlRequest>,
     pub safe_mode: bool,
@@ -313,7 +314,7 @@ impl App {
 
     pub fn with_modules<T>(
         &mut self,
-        f: impl FnOnce(&mut ModuleHost, &mut ModuleCx<'_>, &mut ActionRegistry) -> T,
+        f: impl FnOnce(&mut ModuleHost<dyn UiModule>, &mut ModuleCx<'_>, &mut ActionRegistry) -> T,
     ) -> T {
         let mut cx = ModuleCx {
             settings: &mut self.settings,
@@ -399,6 +400,19 @@ impl App {
                 tracing::info!("{}", text.lines().next().unwrap_or_default());
                 self.exit_code = u8::from(!numbers.ok());
                 self.quitting = true;
+            }
+        }
+    }
+
+    /// Lets every running module draw its windows for this frame. A module that panics while drawing counts a
+    /// fault, and one that keeps failing is switched off for the session.
+    pub fn show_modules(&mut self, ctx: &egui::Context) {
+        let App { host, settings, .. } = self;
+        let mut cx = lum_ui::UiCx::new(ctx, settings);
+        let failed = host.each_running("drawing", |module| module.show(&mut cx));
+        for key in failed {
+            if let Some(text) = self.with_modules(|host, cx, actions| host.report_fault(key, cx, actions)) {
+                self.notifier.toast("Luminescent error", &text, 6000);
             }
         }
     }

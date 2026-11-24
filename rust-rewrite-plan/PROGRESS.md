@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 %
+Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 % (100 % built; Hello tray waits on your check)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -17,7 +17,7 @@ Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 %
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
-| 3 | Platform layer | 9 % | 14 % | 23 % | 75 % | in progress |
+| 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
@@ -142,6 +142,45 @@ Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 %
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-24, Phase 3 built to 100 %, the Hello tray check waits on you (overall 20.75 %)
+
+Everything in the phase is built, green and pushed (fmt, clippy on Linux and the Windows target, all tests,
+`--smoke`, the Xvfb instance tests, `cargo deny`, `--idle-check` under Xvfb: 0 % CPU, 0.3 wake-ups/s, nothing
+painted). The 100 % checkpoint is ticked only after your Hyprland and Windows 11 results (steps under "Waiting on
+the user"); then the phase is at 100 % and overall at 23 %.
+
+**Done since 75 %.** lum-platform: `terminal` (find, the command for nine Linux terminals and Windows Terminal
+tabs; every `terminal_cases` command passes), `runner` (every launch rule of `core/runner.py` on both systems,
+pkexec / sudo / UAC, working folder, keep open, Stop by process group or taskkill, `command_log.txt`, open a
+terminal), `apps` (installed apps from `.desktop` files, real icons: freedesktop icon themes and MIME icons on
+Linux, `SHGetFileInfoW` pixels on Windows; reveal in the file manager through `FileManager1` with fallbacks).
+lum-ui: `overlay` (the empty backdrop on every screen: scrim at `ui.overlay_dim`, dot grid, top halo; the first
+screen takes the keyboard; Esc or a click closes). The app: tray icon and menu from `general.tray_items` (Open,
+Command palette as a stub, Keep awake, Reset stuck keys, Open log file, Quit everything), tooltip, tray click
+toggles the overlay; the launcher's hotkeys (overlay, palette, keep awake) with the Python labels and the
+"hotkey not registered" notification; keep awake; desktop notifications for module messages; `ctl overlay`
+opens it; `ctl status` shows `hotkey_latency_p99_ms`; `--spike hotkeys` for the latency and stuck-key checks.
+
+**Left out on purpose (written down so the next phases pick them up).**
+* Tray → Restart and Settings, and "Quit all" (`general.force_quit_hotkey`, Ctrl+U by default) need the
+  confirmation dialog and the settings page: phase 5 and 7. Quit everything in the tray quits at once for now.
+* The launcher's own `.desktop` entry and icons, and autostart sync at start: phase 15 (D30), since the Python app
+  writes the same files.
+* Clipboard change watching: phase 8 (D30). Terminal colours on the command line: phase 14 (callers pass them).
+* The Windows hook re-install watchdog from R4 is not built: the callback only forwards, so Windows has no reason
+  to drop it. Add it if the Windows check ever shows hotkeys going dead.
+
+**Surprising.**
+* winit's `set_cursor_hittest` sets the Wayland input region without committing the surface, so click-through
+  only takes effect with the next painted frame; the dim now repaints once after a change (D26).
+* zbus 6 dropped its blocking API; ksni still uses zbus 5. Keep awake and reveal use zbus 5 inside a small tokio
+  runtime on their own threads.
+* rodio 0.23 renamed its types (`DeviceSinkBuilder::open_default_sink`, `Player`).
+* ksni is Unlicense: one `cargo deny` exception, for that crate only. rodio needs `libasound2-dev` (CI installs it).
+* A Unix path test ran on Windows CI (lum-hypr's code is built everywhere): it is now `cfg(unix)`.
+* Building the Python `.venv` here for `make_fixtures.py` needs `libegl1 libgl1 libxkbcommon0 libfontconfig1
+  libdbus-1-3` first; then the generator reproduces every committed fixture exactly.
 
 ### 2026-11-24, Phase 3 at 75 % (overall 20.75 %)
 
@@ -420,6 +459,16 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 3 (blocks the 100 % checkpoint and the Hello tray milestone):** the Hello tray steps for Hyprland and
+  Windows 11, as given in the session's final message (also below in short). Quit the Python app first: both use
+  Ctrl+Shift+Space. Build with `cd luminescent-rs && cargo build --release -p luminescent`, run
+  `./target/release/luminescent` with a throw-away `LUMINESCENT_HOME`, then check: the sparkle in the tray, its
+  tooltip and menu; Ctrl+Shift+Space dims every monitor and Esc (or a click) closes it; a tray click toggles it;
+  `luminescent ctl overlay` opens it; Keep awake shows up in `systemd-inhibit --list` (Hyprland) or
+  `powercfg /requests` (Windows); after `hyprctl reload` the hotkey still works; then `--spike hotkeys` (latency
+  and the F8 stuck-key check, which is the "kill focus mid-hold" test on Windows) and `--spike clickthrough
+  --renderer glow` with the mouse moving (D26). Paste the output and say what you saw.
 
 * **Phase 2 leftovers (fold into the phase 3 Hello tray check):** the open spike checks (Hyprland: overlay, no
   focus, drop, idle, form, wires, note and click-through again on glow; Windows 11: all of them) and one pass

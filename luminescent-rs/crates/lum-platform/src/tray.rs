@@ -13,9 +13,20 @@ use tiny_skia::{FillRule, Paint, PathBuilder, Pixmap, Transform};
 pub enum MenuItem {
     /// Greyed-out text (the heading with the version).
     Label(String),
-    Action { id: String, text: String, enabled: bool },
-    Check { id: String, text: String, checked: bool },
-    Sub { text: String, items: Vec<MenuItem> },
+    Action {
+        id: String,
+        text: String,
+        enabled: bool,
+    },
+    Check {
+        id: String,
+        text: String,
+        checked: bool,
+    },
+    Sub {
+        text: String,
+        items: Vec<MenuItem>,
+    },
     Separator,
 }
 
@@ -155,7 +166,8 @@ mod imp {
         list.iter()
             .map(|item| match item {
                 MenuItem::Label(text) => {
-                    ksni::menu::StandardItem { label: text.clone(), enabled: false, ..Default::default() }.into()
+                    ksni::menu::StandardItem { label: text.clone(), enabled: false, ..Default::default() }
+                        .into()
                 }
                 MenuItem::Action { id, text, enabled } => {
                     let id = id.clone();
@@ -178,7 +190,8 @@ mod imp {
                     .into()
                 }
                 MenuItem::Sub { text, items: sub } => {
-                    ksni::menu::SubMenu { label: text.clone(), submenu: items(sub), ..Default::default() }.into()
+                    ksni::menu::SubMenu { label: text.clone(), submenu: items(sub), ..Default::default() }
+                        .into()
                 }
                 MenuItem::Separator => ksni::MenuItem::Separator,
             })
@@ -292,12 +305,22 @@ mod imp {
         menu
     }
 
-    pub fn start(tooltip: String, icons: Vec<Icon>, items: Vec<MenuItem>, sink: Sink) -> Result<Tray, String> {
+    pub fn start(
+        tooltip: String,
+        icons: Vec<Icon>,
+        items: Vec<MenuItem>,
+        sink: Sink,
+    ) -> Result<Tray, String> {
         let (tx, rx) = crossbeam_channel::unbounded::<Cmd>();
         let (ready_tx, ready_rx) = crossbeam_channel::bounded(1);
         let clicks = sink.clone();
         TrayIconEvent::set_event_handler(Some(move |e: TrayIconEvent| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = e {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = e
+            {
                 clicks(TrayEvent::Activated);
             }
         }));
@@ -354,7 +377,12 @@ mod imp {
 mod imp {
     use super::{Icon, MenuItem, Sink, Tray};
 
-    pub fn start(_tooltip: String, _icons: Vec<Icon>, _menu: Vec<MenuItem>, _sink: Sink) -> Result<Tray, String> {
+    pub fn start(
+        _tooltip: String,
+        _icons: Vec<Icon>,
+        _menu: Vec<MenuItem>,
+        _sink: Sink,
+    ) -> Result<Tray, String> {
         Err("no tray on this system".to_owned())
     }
 }
@@ -376,7 +404,10 @@ mod tests {
 
     #[test]
     fn long_tooltips_are_cut() {
-        assert_eq!(tooltip_text(&["Luminescent".into(), "Keep awake is on".into()]), "Luminescent\nKeep awake is on");
+        assert_eq!(
+            tooltip_text(&["Luminescent".into(), "Keep awake is on".into()]),
+            "Luminescent\nKeep awake is on"
+        );
         let long = tooltip_text(&["x".repeat(200)]);
         assert_eq!(long.chars().count(), 127);
         assert!(long.ends_with('…'));

@@ -9,8 +9,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 const SOUND_DIRS: [&str; 2] = ["/usr/share/sounds/freedesktop/stereo", "/usr/share/sounds/ocean/stereo"];
-const SYSTEM: [(&str, [&str; 3]); 2] =
-    [("chime", ["complete", "message", "bell"]), ("alarm", ["alarm-clock-elapsed", "dialog-warning", "bell"])];
+const SYSTEM: [(&str, [&str; 3]); 2] = [
+    ("chime", ["complete", "message", "bell"]),
+    ("alarm", ["alarm-clock-elapsed", "dialog-warning", "bell"]),
+];
 
 static PLAYING: Mutex<Vec<Arc<rodio::Player>>> = Mutex::new(Vec::new());
 
@@ -19,7 +21,10 @@ pub fn system_file(kind: &str) -> Option<PathBuf> {
     let (_, names) = SYSTEM.iter().find(|(k, _)| *k == kind)?;
     names.iter().find_map(|name| {
         SOUND_DIRS.iter().find_map(|dir| {
-            ["oga", "ogg", "wav"].iter().map(|ext| Path::new(dir).join(format!("{name}.{ext}"))).find(|p| p.is_file())
+            ["oga", "ogg", "wav"]
+                .iter()
+                .map(|ext| Path::new(dir).join(format!("{name}.{ext}")))
+                .find(|p| p.is_file())
         })
     })
 }

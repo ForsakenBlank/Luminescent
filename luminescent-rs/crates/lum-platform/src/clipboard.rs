@@ -52,7 +52,8 @@ pub fn text() -> Option<String> {
 pub fn contents() -> Contents {
     let Ok(mut c) = open() else { return Contents::default() };
     let files = c.get().file_list().unwrap_or_default();
-    let picture = c.get_image().ok().map(|i| Picture { width: i.width, height: i.height, rgba: i.bytes.into_owned() });
+    let picture =
+        c.get_image().ok().map(|i| Picture { width: i.width, height: i.height, rgba: i.bytes.into_owned() });
     let text = c.get_text().ok();
     Contents { files, picture, text }
 }

@@ -42,7 +42,9 @@ impl IdleClock {
             let pos = cursor();
             let now = Instant::now();
             match (&self.last, pos) {
-                (Some((was, since)), Some(p)) if *was == p => return now.duration_since(*since).as_secs_f64(),
+                (Some((was, since)), Some(p)) if *was == p => {
+                    return now.duration_since(*since).as_secs_f64();
+                }
                 (_, Some(p)) => self.last = Some((p, now)),
                 _ => {}
             }

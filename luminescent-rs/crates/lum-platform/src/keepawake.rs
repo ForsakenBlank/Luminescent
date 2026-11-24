@@ -124,7 +124,8 @@ mod imp {
     impl Lock {
         pub fn take(_why: &str) -> Result<Lock, String> {
             // SAFETY: no preconditions; the request belongs to this thread, which lives as long as the lock.
-            let was = unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED) };
+            let was =
+                unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED) };
             if was == 0 { Err("Windows said no".to_owned()) } else { Ok(Lock) }
         }
     }

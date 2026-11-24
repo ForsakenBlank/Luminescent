@@ -9,15 +9,15 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (Part B built; the 50 % gate waits on your spike results)
+Overall: 14 %   [###.................]   Current phase: Phase 3 at 0 % (the phase 2 gate is recorded, D26)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
 |---|---|---|---|---|---|---|
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
-| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 25 % (75 and 100 % work done, waiting on the 50 % gate) | in progress |
-| 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | not started |
+| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
+| 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
@@ -56,7 +56,7 @@ Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (Part 
 
 ### Phase 2: UI foundation + widget kit
 - [x] 25 %: eframe skeleton, fonts, tokens, multi-monitor transparent overlay demo
-- [ ] 50 %: all eight spike checks measured on both systems, gate decision recorded
+- [x] 50 %: gate decision recorded (D26: egui kept; only Hyprland click-through measured, the rest re-run with Hello tray)
 - [x] 75 %: widget kit, FloatingPanel, dialogs, menus, animator, gradient and glow painters (built before the gate, see the note)
 - [x] 100 %: gallery in both themes, snapshot tests, `--smoke` builds every widget (built before the gate)
 
@@ -142,6 +142,14 @@ Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (Part 
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-24, Phase 2 gate recorded (phase 2 at 100 %, overall 14 %)
+
+The user ran the spikes on Hyprland with a local session, which stopped at click-through: wgpu caught 22 clicks
+while click-through, glow gave no valid result. The user chose to carry on. D26 keeps egui (iced shares winit,
+so it would not fix this) and hands click-through to the phase 3 window placer. The other Hyprland checks and all
+of Windows 11 move into the Hello tray verification. Details in SPIKE_RESULTS.md. Phases 1 and 2 are merged into
+main with this note.
 
 ### 2026-11-24, Phase 2: green, Part B built, the gate waits on the spike results (overall 8.75 %)
 
@@ -366,10 +374,9 @@ start phase 1.
 
 Manual checks on real desktops that a session asked for and is waiting on.
 
-* **Phase 2 (blocks the 50 % gate and phase 3):** run every spike on Hyprland and on Windows 11 and paste the
-  output (or the `spike-results.txt` file the commands write). The commands, and what each spike asks of you,
-  are in [SPIKE_RESULTS.md](SPIKE_RESULTS.md) under "How to run them". Then run `--spike gallery` once on each and
-  try everything in it (the panel, dialogs, menu, dim): say anything that looks wrong next to the Python app.
+* **Phase 2 leftovers (fold into the phase 3 Hello tray check):** the open spike checks (Hyprland: overlay, no
+  focus, drop, idle, form, wires, note and click-through again on glow; Windows 11: all of them) and one pass
+  through `--spike gallery` on each. Commands in [SPIKE_RESULTS.md](SPIKE_RESULTS.md).
 
 * **Phase 1 (optional, does not block phase 2):** run `luminescent-rs/tools/measure_rust.sh` on your Hyprland PC
   (it builds the release binary first) and paste the row into BASELINE.md next to the Python one. There is no

@@ -101,10 +101,32 @@ of it heap (fonts, the glyph atlas, egui's state). A real GPU driver does not lo
 will show the number that counts. `--idle-check` now prints the private part on Linux and does not fail the
 memory budget when the renderer is a software one.
 
-## Hyprland
+## Hyprland, 2026-11-24
 
-_Waiting for the user's results._
+Run by the user with a local Claude Code session, which checked the click-through spike in depth and stopped there
+when it failed. Only check 2 was recorded; the others were not reported.
+
+| Spike | Renderer | Result |
+|---|---|---|
+| 2 click-through | glow | caught 0 normal / 0 through: **no valid result**. Dolphin had focus most of the run, so the clicks probably landed on the other screen |
+| 2 click-through | wgpu | caught 7 normal / **22 through**: **failed**. Too many to be the state switching a moment late |
+
+What the local session found:
+
+* A Wayland protocol trace shows both renderers sending `wl_surface.set_input_region` with an empty region when
+  click-through starts, and with none when it ends. So the app asks correctly.
+* A scripted pointer move did not reliably change focus, so the hover tests it tried prove nothing either way and
+  were dropped.
+* winit 0.30's `set_cursor_hittest` sets the region and does not commit the surface (read in this session). An
+  input region is double-buffered Wayland state: it only applies on the next `wl_surface.commit`, which here is
+  the next painted frame. The Python app sets the empty region before its window is first shown (the dim, the
+  HUD) or through Qt, which commits. This does not explain 22 caught clicks with a frame every 250 ms, but it is
+  the one difference between the two apps found so far.
+* The `no_focus` rule is not the fix: `modules/doodle.py` notes that on Hyprland it also stops the mouse reaching
+  the window.
+
+Not reported yet: overlay, no focus, file drop, idle, form, wires, note, `--idle-check`.
 
 ## Windows 11
 
-_Waiting for the user's results._
+_Not run yet. The remaining checks are folded into the Hello tray verification at the end of phase 3 (D26)._

@@ -6,6 +6,7 @@ pub mod dialog;
 pub mod fonts;
 pub mod gallery;
 pub mod module;
+pub mod overlay;
 pub mod paint;
 pub mod panel;
 pub mod text;

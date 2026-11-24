@@ -15,14 +15,16 @@ use lum_core::actions::ActionRegistry;
 use lum_core::clock::{Clock, SystemClock};
 use lum_core::events::EventBus;
 use lum_core::guard::{self, StartGuard};
-use lum_core::module::{LogNotifier, ModuleCx, ModuleHost, Notifier};
+use lum_core::module::{ModuleCx, ModuleHost, Notifier};
 use lum_core::settings::Settings;
 use lum_core::usage::{self, Usage};
 use lum_core::{APP_NAME, Paths, VERSION, backup, logging};
 use lum_platform::desktop::{Desktop, DesktopEvent};
-use lum_platform::hotkeys::{HotkeyEvent, HotkeyManager};
+use lum_platform::hotkeys::{self, HotkeyEvent, HotkeyManager};
 use lum_platform::instance;
 use lum_platform::ipc::{self, CtlEndpoint, CtlRequest};
+use lum_platform::keepawake::KeepAwake;
+use lum_platform::tray::{self, MenuItem, Tray, TrayEvent};
 use lum_ui::UiModule;
 use serde_json::json;
 use tokio::runtime::Runtime;
@@ -52,6 +54,38 @@ pub enum AppMsg {
     /// `--idle-check` is done.
     IdleReport(idle::Numbers),
     Desktop(DesktopEvent),
+    Tray(TrayEvent),
+    /// Keep awake changed (or could not), with the error text.
+    KeepAwake(bool, Option<String>),
+}
+
+/// The accent of the built-in Dark theme, for the tray icon until phase 4 brings the theme store.
+const ACCENT: [u8; 3] = [0x7B, 0x6C, 0xF6];
+
+/// Notifications go to the log, and to the desktop once windows run and Settings → General allows them.
+/// Phase 5 adds Luminescent's own cards (`general.notify_style`).
+#[derive(Debug, Default)]
+struct AppNotifier {
+    /// The app runs with windows, so there is a desktop to show them on.
+    running: bool,
+    /// Settings → General → Show notifications.
+    desktop: bool,
+}
+
+impl Notifier for AppNotifier {
+    fn notify(&self, title: &str, message: &str, ms: u32) {
+        tracing::info!("notify: {title} - {message}");
+        if self.running && self.desktop {
+            lum_platform::notify::show(title, message, ms, None);
+        }
+    }
+
+    fn toast(&self, title: &str, message: &str, ms: u32) {
+        tracing::info!("toast: {title} - {message}");
+        if self.running {
+            lum_platform::notify::show(title, message, ms, None);
+        }
+    }
 }
 
 /// Wakes the UI thread from any thread. Until eframe has made its context there is nothing to wake: the first
@@ -186,13 +220,18 @@ pub struct App {
     pub mode: String,
     /// The pixels are drawn by the CPU, whose driver memory then shows up in ours.
     pub software_renderer: bool,
-    notifier: LogNotifier,
+    notifier: AppNotifier,
     clock: Arc<dyn Clock>,
     start_guard: Option<Arc<StartGuard>>,
     runtime: Option<Runtime>,
     /// Where the window rules, the placer and desktop events come from. Nothing until windows start.
     pub desktop: Desktop,
     pub hotkeys: HotkeyManager,
+    /// The empty overlay of the Hello tray milestone; phase 5 brings the real one.
+    pub overlay: lum_ui::overlay::Overlay,
+    pub overlay_open: bool,
+    tray: Option<Tray>,
+    keep_awake: Option<KeepAwake>,
     mailbox: Mailbox,
     messages: Receiver<AppMsg>,
     flush_at: Option<Instant>,
@@ -241,7 +280,7 @@ impl App {
             host: ModuleHost::new(modules()),
             events: EventBus::new(),
             actions: ActionRegistry::new(),
-            notifier: LogNotifier,
+            notifier: AppNotifier::default(),
             endpoint,
             ctl_requests,
             safe_mode,
@@ -256,6 +295,10 @@ impl App {
             runtime: None,
             desktop: Desktop::none(),
             hotkeys: HotkeyManager::dry(),
+            overlay: lum_ui::overlay::Overlay::default(),
+            overlay_open: false,
+            tray: None,
+            keep_awake: None,
             mailbox: mailbox.clone(),
             messages,
             flush_at: None,
@@ -327,13 +370,159 @@ impl App {
     /// Sets the desktop up for our windows (Hyprland's rules and the placer) and starts listening to it.
     /// Call it before the first window opens.
     pub fn start_desktop(&mut self) {
-        self.desktop = Desktop::start(&[lum_ui::widgets::dim::COVER_PREFIX]);
+        self.desktop = Desktop::start(&[lum_ui::widgets::dim::COVER_PREFIX, lum_ui::overlay::COVER_PREFIX]);
         tracing::info!("windows placed by {}", self.desktop.describe());
         let waker = self.waker.clone();
         self.hotkeys = HotkeyManager::start(&self.desktop, Arc::new(move || waker.wake()));
         if let Some(runtime) = &self.runtime {
             let mailbox = self.mailbox.clone();
             self.desktop.listen(runtime.handle(), move |event| mailbox.send(AppMsg::Desktop(event)));
+        }
+        self.notifier.running = true;
+        self.notifier.desktop = self.settings.get_bool("general.tray_messages", true);
+        self.overlay.dim =
+            self.settings.get("ui.overlay_dim").and_then(serde_json::Value::as_f64).unwrap_or(0.64) as f32;
+        self.register_hotkeys();
+        let mailbox = self.mailbox.clone();
+        self.keep_awake =
+            Some(KeepAwake::start(Arc::new(move |on, err| mailbox.send(AppMsg::KeepAwake(on, err)))));
+        let mailbox = self.mailbox.clone();
+        let sink: tray::Sink = Arc::new(move |event| mailbox.send(AppMsg::Tray(event)));
+        match Tray::start(self.tooltip(), tray::sparkle_icons(ACCENT), self.tray_menu(), sink) {
+            Ok(t) => self.tray = Some(t),
+            // the palette, the hotkeys and `luminescent ctl` still work without a tray (R16)
+            Err(e) => tracing::warn!("no tray icon: {e}"),
+        }
+    }
+
+    /// The launcher's own hotkeys, with the Python labels. "Quit all" comes with its confirmation in phase 5.
+    fn register_hotkeys(&mut self) {
+        let binds = [
+            ("ui.overlay_hotkey", "overlay"),
+            ("ui.palette_hotkey", "command palette"),
+            ("general.keep_awake_hotkey", "keep awake"),
+        ];
+        for (key, label) in binds {
+            let combo = self.settings.get_str(key).unwrap_or_default().to_owned();
+            if let Err(e) =
+                self.hotkeys.register("launcher", &combo, label, label, hotkeys::Options::default())
+                && !combo.is_empty()
+            {
+                self.hotkey_refused(label, &e);
+            }
+        }
+    }
+
+    fn hotkey_refused(&self, label: &str, error: &str) {
+        let mut chars = label.chars();
+        let label: String = chars.next().map(|c| c.to_uppercase().chain(chars).collect()).unwrap_or_default();
+        self.notifier.notify(APP_NAME, &format!("{label} hotkey not registered: {error}"), 4000);
+    }
+
+    fn tooltip(&self) -> String {
+        let mut lines = vec![APP_NAME.to_owned()];
+        if self.keep_awake.as_ref().is_some_and(KeepAwake::is_on) {
+            lines.push("Keep awake is on".to_owned());
+        }
+        tray::tooltip_text(&lines)
+    }
+
+    /// The tray menu, from Settings → General → Tray menu. Entries for parts that come in later phases are
+    /// left out until then.
+    pub(crate) fn tray_menu(&self) -> Vec<MenuItem> {
+        let shown = self.settings.get_str_list("general.tray_items");
+        let has = |item: &str| shown.iter().any(|s| s == item);
+        let pretty = |key: &str| {
+            hotkeys::pretty(self.settings.get_str(key).unwrap_or_default(), hotkeys::Os::current())
+        };
+        let safe = if self.safe_mode { "   (safe mode)" } else { "" };
+        let mut menu = vec![MenuItem::Label(format!("{APP_NAME} {VERSION}{safe}"))];
+        if has("open") {
+            menu.push(MenuItem::action(
+                "open",
+                format!("✦  Open {APP_NAME}   ({})", pretty("ui.overlay_hotkey")),
+            ));
+        }
+        if has("palette") {
+            menu.push(MenuItem::action(
+                "palette",
+                format!("⌕  Command palette   ({})", pretty("ui.palette_hotkey")),
+            ));
+        }
+        menu.push(MenuItem::Separator);
+        if has("keepawake") {
+            let combo = self.settings.get_str("general.keep_awake_hotkey").unwrap_or_default();
+            let hint = if combo.is_empty() {
+                String::new()
+            } else {
+                format!("   ({})", pretty("general.keep_awake_hotkey"))
+            };
+            let checked = self.keep_awake.as_ref().is_some_and(KeepAwake::is_on);
+            menu.push(MenuItem::Check {
+                id: "keepawake".into(),
+                text: format!("☕  Keep awake{hint}"),
+                checked,
+            });
+        }
+        if has("reset") {
+            menu.push(MenuItem::action("reset", "⌨  Reset stuck keys"));
+        }
+        if has("log") {
+            menu.push(MenuItem::action("log", "📄  Open log file"));
+        }
+        if has("quit") || shown.is_empty() {
+            menu.push(MenuItem::Separator);
+            menu.push(MenuItem::action("quit", "⏻  Quit everything"));
+        }
+        menu
+    }
+
+    fn refresh_tray(&self) {
+        if let Some(t) = &self.tray {
+            t.set_menu(self.tray_menu());
+            t.set_tooltip(self.tooltip());
+        }
+    }
+
+    /// Opens the overlay, or closes it when it is open (the overlay hotkey and a tray click toggle it).
+    pub fn toggle_overlay(&mut self) {
+        self.set_overlay(!self.overlay_open);
+    }
+
+    pub fn set_overlay(&mut self, open: bool) {
+        if open && !self.overlay_open {
+            self.overlay.opened();
+        }
+        self.overlay_open = open;
+        self.waker.wake();
+    }
+
+    fn tray_event(&mut self, event: TrayEvent) {
+        match event {
+            TrayEvent::Activated => self.toggle_overlay(),
+            TrayEvent::Menu(id) => match id.as_str() {
+                "open" => self.set_overlay(true),
+                "palette" => tracing::info!("the command palette comes in phase 5"),
+                "keepawake" => self.toggle_keep_awake(),
+                "reset" => self.hotkeys.reset_keys(),
+                "log" => {
+                    if let Err(e) = lum_platform::runner::open_path(&self.paths.log_file().to_string_lossy())
+                    {
+                        tracing::warn!("could not open the log: {e}");
+                    }
+                }
+                "quit" => {
+                    tracing::info!("quitting: asked to from the tray");
+                    self.quitting = true;
+                }
+                other => tracing::debug!("tray: {other}"),
+            },
+        }
+    }
+
+    fn toggle_keep_awake(&mut self) {
+        if let Some(k) = &mut self.keep_awake {
+            k.toggle("");
         }
     }
 
@@ -399,9 +588,20 @@ impl App {
                     self.usage.record("hotkeys", &combo, &what);
                 }
                 tracing::debug!("hotkey {combo}: {owner} {id}");
+                if owner == "launcher" {
+                    match id.as_str() {
+                        "overlay" => self.toggle_overlay(),
+                        "keep awake" => self.toggle_keep_awake(),
+                        "command palette" => tracing::info!("the command palette comes in phase 5"),
+                        _ => {}
+                    }
+                }
             }
             HotkeyEvent::Refused { owner, combo, reason } => {
                 tracing::warn!("{owner}: {combo} was refused: {reason}");
+                if owner == "launcher" {
+                    self.hotkey_refused(&combo, &reason);
+                }
             }
             other => tracing::debug!("hotkey: {other:?}"),
         }
@@ -449,12 +649,37 @@ impl App {
                 tracing::debug!("desktop: {event:?}");
                 self.hotkeys.desktop_event(&event);
             }
+            AppMsg::Tray(event) => self.tray_event(event),
+            AppMsg::KeepAwake(on, error) => {
+                if let Some(k) = &mut self.keep_awake {
+                    k.reported(on);
+                }
+                if let Some(e) = error {
+                    self.notifier.notify("Keep awake", &format!("Could not keep the PC awake: {e}"), 4000);
+                }
+                self.refresh_tray();
+            }
         }
     }
 
     /// Lets every running module draw its windows for this frame. A module that panics while drawing counts a
     /// fault, and one that keeps failing is switched off for the session.
     pub fn show_modules(&mut self, ctx: &egui::Context) {
+        if self.overlay_open {
+            let mut screens = lum_ui::window::screens();
+            if screens.is_empty() {
+                // the system did not list them (X11 without Hyprland): the screen the main window is on
+                let size = ctx.input(|i| i.viewport().monitor_size).unwrap_or(egui::vec2(1280.0, 800.0));
+                screens.push(lum_ui::window::Screen::new(
+                    "screen",
+                    egui::Rect::from_min_size(egui::Pos2::ZERO, size),
+                ));
+            }
+            if self.overlay.show(ctx, &screens).close {
+                self.overlay_open = false;
+                ctx.request_repaint();
+            }
+        }
         let App { host, settings, .. } = self;
         let mut cx = lum_ui::UiCx::new(ctx, settings);
         let failed = host.each_running("drawing", |module| module.show(&mut cx));
@@ -480,9 +705,19 @@ impl App {
         let answer = match command {
             CtlCommand::Ping => "pong".to_owned(),
             CtlCommand::Status => self.status(),
-            CtlCommand::Overlay(_) | CtlCommand::Palette | CtlCommand::Settings(_) => {
-                tracing::info!("asked to open: {line} (the overlay is not in this build yet)");
-                "ok: the overlay is not in this build yet".to_owned()
+            CtlCommand::Overlay(page) => {
+                tracing::info!("asked to open: {line}");
+                self.set_overlay(true);
+                match page {
+                    Some(page) => {
+                        format!("ok: the overlay is empty in this build, so {page} is not there yet")
+                    }
+                    None => "ok".to_owned(),
+                }
+            }
+            CtlCommand::Palette | CtlCommand::Settings(_) => {
+                tracing::info!("asked to open: {line} (that comes in phase 5)");
+                "ok: the palette and the settings page come in a later build".to_owned()
             }
             CtlCommand::Action(id) => self.run_action(&id),
             CtlCommand::Quit => return ("bye".to_owned(), true),
@@ -500,6 +735,7 @@ impl App {
             "safe_mode": self.safe_mode,
             "modules": self.host.running(),
             "module_errors": errors,
+            "hotkey_latency_p99_ms": self.hotkeys.latency_p99_ms(),
         })
         .to_string()
     }
@@ -534,6 +770,12 @@ impl App {
             start_guard.ok();
         }
         self.hotkeys.shutdown();
+        if let Some(k) = &self.keep_awake {
+            k.shutdown();
+        }
+        if let Some(t) = &self.tray {
+            t.stop();
+        }
         self.desktop.shutdown();
         // dropping the runtime drops the listener, which removes the socket file
         if let Some(runtime) = self.runtime.take() {

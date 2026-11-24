@@ -9,14 +9,14 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (spike results from the user pending)
+Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (Part B built; the 50 % gate waits on your spike results)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
 |---|---|---|---|---|---|---|
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
-| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 25 % | in progress |
+| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 25 % (75 and 100 % work done, waiting on the 50 % gate) | in progress |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | not started |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
@@ -57,8 +57,8 @@ Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (spike
 ### Phase 2: UI foundation + widget kit
 - [x] 25 %: eframe skeleton, fonts, tokens, multi-monitor transparent overlay demo
 - [ ] 50 %: all eight spike checks measured on both systems, gate decision recorded
-- [ ] 75 %: widget kit, FloatingPanel, dialogs, menus, animator, gradient and glow painters
-- [ ] 100 %: gallery in both themes, snapshot tests, `--smoke` builds every widget
+- [x] 75 %: widget kit, FloatingPanel, dialogs, menus, animator, gradient and glow painters (built before the gate, see the note)
+- [x] 100 %: gallery in both themes, snapshot tests, `--smoke` builds every widget (built before the gate)
 
 ### Phase 3: Platform layer
 - [ ] 25 %: lum-hypr and the Hyprland WindowPlacer, tested against a fake socket
@@ -142,6 +142,66 @@ Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (spike
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-24, Phase 2: green, Part B built, the gate waits on the spike results (overall 8.75 %)
+
+Checkpoint 25 % is ticked. The 75 % and 100 % work (Part B) is built and ticked, but the phase stays at 25 % until
+the user runs the spikes on Hyprland and Windows 11 and the 50 % gate (egui or iced, glow or wgpu) is recorded.
+Part B was started while waiting, as the prompt allowed; if the gate went to iced it would be redone. Once the
+results are in and egui passes, the phase is at 100 % and overall at 14 %.
+
+**Done.**
+* Green: fmt, clippy (Linux and the Windows cross-target), all tests, `--smoke`, `cargo deny` (egui's fallback
+  fonts are OFL / Ubuntu Font licence: an exception for `epaint_default_fonts` only). CI green on both systems.
+  `rust.yml` installs `libxkbcommon-x11-0 xvfb libegl1 libgl1-mesa-dri mesa-vulkan-drivers` on Ubuntu, runs
+  `tests/instance.rs` again under Xvfb (so start, hand-over, `ctl quit` and Ctrl+C are tested inside eframe), and
+  runs `--idle-check 20` without and with a window.
+* Every spike runs to the end under Xvfb with glow and wgpu (numbers in SPIKE_RESULTS.md). Fixed on the way: each
+  report printed twice, `overlay` and `note` never ended (a deadline nobody woke up for; a repaint asked for in
+  `raw_input_hook` is dropped when the pass starts), `nofocus` panicked (below).
+* `tests/instance.rs` checks a clean shutdown for `ctl quit` and for Ctrl+C, and with a display that it really
+  ran inside eframe.
+* lum-ui: `text` (tones, mono caps with letter spacing), `widgets/` (buttons in seven variants plus the round
+  icon button, text input and area, combo, spin box, slider, opacity slider, check box, switch, colour button,
+  hotkey field (look only), cards and surfaces, section headers, rules, tooltips, menu entries, list rows,
+  virtualised lists, the 9-way anchor bar, the dim), `panel.rs` (FloatingPanel), `dialog.rs` (message, error,
+  confirm, choose, ask text), `anim.rs` (the Animator), `paint.rs` (gradient meshes, cached glow, halo, dot grid,
+  sparkle), `module.rs` (`UiModule`, `UiCx`), `gallery.rs`. Painted widgets report their role and name to
+  accessibility (kittest checks it).
+* `--spike gallery`; snapshots `crates/lum-ui/tests/snapshots/` (gallery and two dialogs, Dark and Light);
+  `--smoke` builds the gallery headless in both themes with the panel and every dialog open.
+* The app draws its modules: `App::show_modules` runs `UiModule::show` for each running module in the main
+  window's pass; tokens (text size, hover, performance mode) and motion come from settings at start.
+
+**Surprising, worth knowing.**
+* **eframe paints a hidden main window from outside the event loop** (`new_events` → `check_redraw_requests`), so
+  an immediate viewport first opened from that pass has no event loop to make its window with and egui panics
+  ("the user callback was never called"). And a repaint of an immediate viewport is redirected to its parent. So
+  the main window must stay "visible" to winit: it is now a transparent, click-through 1x1 window off screen
+  (D18). On Hyprland the rule no longer sets opacity 0, so Hyprland keeps sending it frame callbacks (R20).
+* **The 114 MB** was llvmpipe: 47 MB of `libLLVM` and 10 MB of `libgallium` mapped into the process. Release with
+  glow: 99 MB RSS, 35 MB private; wgpu: 137 MB, 41 MB private; no window: 7 MB. `--idle-check` now names the
+  adapter, prints private memory and does not fail memory on a software renderer (D24).
+* **Tessellating 400 wires takes about 3 ms**; under llvmpipe the frame takes 40 ms, all of it rasterising on the
+  CPU. The wires spike now prints tessellation alone, so the real desktops' numbers separate the two.
+* **egui 0.37's default fonts lack ✕ ✓ ✦ and most symbols**, and egui only enables them with `default_fonts`
+  (it came in through eframe before). lum-ui bundles a DejaVu subset as "Luminescent Symbols"
+  (`luminescent-rs/assets/fonts`, made with fontTools from DejaVuSans.ttf: every symbol the Python UI uses plus
+  the Arrows, Math, Technical, Enclosed, Box, Block, Shapes, Misc Symbols, Dingbats and Misc Arrows blocks) and
+  turns on egui's monochrome emoji fonts (D20). Not covered by any free font: `＋ ⌕ ⌗ ⏯ ⏲ ⏻ ␟ ⓘ ⤢ ⧉ 🗂 🗜 🛟 🧮 🧹`.
+* egui 0.37: `TextEdit::margin` is ignored once you give it a `frame`, put the margin on the frame; `ui.put`
+  moves the cursor, `ui.place` does not; `WidgetType` is now `egui::Role` (accesskit); a pass's
+  `textures_delta` must be applied or cleared (`lum_ui::headless_pass` does it); egui runs one extra frame after
+  the last repaint request, so "quiet" means quiet on the pass after; a horizontal layout in a child of endless
+  height works out NaN. `Id::unique` is deterministic (hashes its argument), despite the name.
+* kittest needs every widget to have an accessible name: give inputs a hint or `.name(...)`.
+* Under Xvfb there is no window manager or compositor: nothing ever has the keyboard (so `nofocus` "fails"),
+  click-through and drops can not be tried, and a transparent dim draws black.
+* There is no toggle switch in the Python app; `Switch` exists because the phase list asked for one.
+
+**Left for phase 2.** The user's spike results (commands in SPIKE_RESULTS.md and under "Waiting on the user"); record them in
+SPIKE_RESULTS.md, write the gate decision as D26, tick 50 %, set the phase to 100 % and overall to 14 %. If a hard
+check fails on egui, say which and stop before switching. If Hyprland lags opening the dims or the panel, see R20.
 
 ### 2026-11-23, Phase 2 started (work in progress, no checkpoint ticked yet, overall 7 %)
 
@@ -305,6 +365,11 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 2 (blocks the 50 % gate and phase 3):** run every spike on Hyprland and on Windows 11 and paste the
+  output (or the `spike-results.txt` file the commands write). The commands, and what each spike asks of you,
+  are in [SPIKE_RESULTS.md](SPIKE_RESULTS.md) under "How to run them". Then run `--spike gallery` once on each and
+  try everything in it (the panel, dialogs, menu, dim): say anything that looks wrong next to the Python app.
 
 * **Phase 1 (optional, does not block phase 2):** run `luminescent-rs/tools/measure_rust.sh` on your Hyprland PC
   (it builds the release binary first) and paste the row into BASELINE.md next to the Python one. There is no

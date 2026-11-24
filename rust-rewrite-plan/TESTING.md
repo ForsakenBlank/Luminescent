@@ -57,9 +57,13 @@ Runs on `ubuntu-22.04` and `windows-latest` for changes under `luminescent-rs/`:
 * `cargo fmt --check`
 * `cargo clippy --workspace --all-targets -- -D warnings`
 * `cargo test --workspace`
-* `luminescent --smoke` with a temp `LUMINESCENT_HOME` (and the offscreen / headless renderer setup the phase 2
-  spike settles on)
-* `luminescent --idle-check 20` headless
+* `luminescent --smoke` with a temp `LUMINESCENT_HOME`: it builds every widget of the kit on a plain
+  `egui::Context`, so it needs no display
+* the kittest snapshots (`crates/lum-ui/tests/snapshots.rs`), compared on Linux with Mesa's lavapipe
+* `crates/luminescent/tests/instance.rs` a second time under Xvfb on Linux, so start-up, hand-over and quitting
+  are tested inside eframe too
+* `luminescent --idle-check 20` without a display, and on Linux once more under Xvfb with a window (memory is not
+  held against llvmpipe, D24)
 * `cargo deny check`
 
 The Python `check.yml` keeps running until phase 15 retires it.

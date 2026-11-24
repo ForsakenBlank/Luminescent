@@ -23,6 +23,8 @@ What could derail the rewrite, how likely it is, and what to do. Review this lis
 | R16 | **Tray on Linux** needs a StatusNotifierItem host | Low | Low | Same requirement as today; the palette and `luminescent ctl` still work without a tray |
 | R17 | **Crates going stale** (tray, battery, tts) | Medium | Low | Wrap each behind a small trait in `lum-platform`; swapping a backend touches one file |
 | R18 | **Updating from 1.9.x fails** because the archive layout changed | Low | High | Phase 15 keeps archive names and executable paths and tests the real 1.9.21 updater against the 2.0 release before publishing |
+| R19 | **eframe changes how it paints hidden or immediate windows** (D18, D19 lean on 0.37's behaviour) | Medium | Medium | The spikes and `crates/luminescent/tests/instance.rs` under Xvfb catch a regression; read eframe's `native/run.rs` and `glow_integration.rs` before upgrading egui |
+| R20 | **Hyprland withholds frame callbacks from the 1x1 main window** (it draws nothing), so windows drawn from its pass lag | Low | High | The overlay and gallery spikes show it on Hyprland at once (a dim or panel that opens late or stutters). Fallback: give the main window one visible pixel at alpha 1, or move hot windows to deferred viewports |
 
 ## Kill criteria
 

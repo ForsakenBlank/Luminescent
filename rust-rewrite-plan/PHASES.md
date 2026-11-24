@@ -424,9 +424,14 @@ throws away runtime binds on every config reload. Keep the Lua byte-identical so
 
 ```text
 We are rewriting Luminescent (a Python + PyQt6 tray app in this repo) as a native Rust app. Read
-rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 3 section), rust-rewrite-plan/PROGRESS.md,
-rust-rewrite-plan/ARCHITECTURE.md, rust-rewrite-plan/PLATFORM_MATRIX.md, rust-rewrite-plan/CRATES.md and
-luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 3 already started, continue from its handoff note.
+rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 3 section), rust-rewrite-plan/PROGRESS.md (the
+newest handoff notes first), rust-rewrite-plan/ARCHITECTURE.md (D3, D11 to D13 and D18 to D26 in the decision
+log), rust-rewrite-plan/SPIKE_RESULTS.md, rust-rewrite-plan/PLATFORM_MATRIX.md, rust-rewrite-plan/CRATES.md,
+rust-rewrite-plan/RISKS.md (R1, R4, R6, R16, R17, R19, R20) and luminescent-rs/CLAUDE.md first. If PROGRESS.md
+shows Phase 3 already started, continue from its handoff note. If luminescent-rs/crates/lum-ui/src/gallery.rs is
+missing on your branch, phases 1 and 2 are not merged yet: fetch the branch claude/gallant-hypatia-5r8le3 and work
+from it. If PROGRESS.md shows the phase 2 gate (the 50 % checkpoint, D26) not recorded, stop and ask me for the
+spike results first.
 
 This session is Phase 3: the platform layer. The spec is the Python code: core/hypr.py, core/hotkeys.py,
 core/hotkeys_win.py, core/clip.py, core/runner.py, core/terminal.py (terminal detection), core/desktop.py,
@@ -434,23 +439,49 @@ core/desktop_win.py, core/autostart.py, core/autostart_win.py, core/keepawake.py
 core/sounds.py and the tray parts of Launcher.py. Read them closely; the stuck-key and config-reload handling in
 them came from real bugs.
 
+What phase 2 left for you:
+- Every window of ours is an immediate egui viewport drawn from the main window's pass (D19): App::show_modules
+  in crates/luminescent/src/launcher.rs calls UiModule::show for each running module. The main window must stay
+  "visible" to winit (D18). Where there are no viewports (tests, --smoke) the same code draws areas instead.
+- lum-platform::desktop already has the screens (Hyprland JSON / EnumDisplayMonitors), the title markers
+  (NO_ACTIVATE, NO_FOCUS), a small rule set in a Lua table LUMRS (kept apart from the Python app's LUMI so both
+  apps can run at once), the main window's rule and describe_windows(). lum-hypr::socket has request, j/ queries
+  and eval. Replace them with the full bootstrap and WindowPlacer; keep the Python Lua byte-identical, decide
+  (and record) whether the Rust app's table is LUMI or its own name while both apps may run.
+- lum-ui's FloatingPanel and DimOverlay already put the markers in their titles and pass a position and size;
+  on Hyprland the placer has to move them (a Wayland window can not place itself). The overlay demo for Hello
+  tray can use widgets::dim::scrim, paint::dot_grid, paint::top_halo and paint::panel_glow.
+- The tray sparkle is the same path as lum_ui::paint::sparkle (theme.sparkle_path); draw it with tiny-skia.
+- The ctl commands overlay, palette, settings and action are parsed already (crates/luminescent/src/ctl.rs).
+- Check Windows-only lint errors with the x86_64-pc-windows-gnu clippy target, run windowed tests under Xvfb
+  (xvfb-run -a, libxkbcommon-x11-0 installed), and run cargo deny for every new crate (ksni, tray-icon,
+  notify-rust, rodio, the clipboard crate): add licence exceptions per crate only, never globally.
+- If Hyprland shows the dims or panels opening late or stuttering in the spikes, see R20 before building on it.
+
 Build everything in the Phase 3 Deliverables list: lum-hypr (socket, event socket, FIFO, the LUMI Lua bootstrap
 copied verbatim, rules and title markers, reinstall after reload), the WindowPlacer trait with Hyprland and
 Windows backends, the HotkeyManager trait with Hyprland and Windows (WH_KEYBOARD_LL on its own thread) backends
-passing luminescent-rs/fixtures key cases, tray (ksni / tray-icon), notifications, clipboard, autostart, keep
-awake, idle time, process list, sounds, the runner with every launch rule, terminal detection, desktop entries
-and icons, and the ctl socket commands. Test lum-hypr against a fake Hyprland socket.
+passing luminescent-rs/fixtures key cases (then replace the stand-in widgets::hotkey::pretty_parts with the real
+key names), tray (ksni / tray-icon), notifications, clipboard, autostart, keep awake, idle time, process list,
+sounds, the runner with every launch rule, terminal detection, desktop entries and icons, and the ctl socket
+commands. Test lum-hypr against a fake Hyprland socket.
 
 End with the Hello tray milestone: tray icon, and Ctrl+Shift+Space opens an empty dimmed overlay on every
 monitor that Esc closes. This container has no desktop, so give me exact steps to verify it on Hyprland and
 Windows 11 and wait for my results before ticking the last checkpoint.
 
 Rules: follow luminescent-rs/CLAUDE.md. Unsafe Win32 code gets a short comment saying why it is sound. The hook
-callback only forwards events. Never use em dashes anywhere. Code should read like a careful human wrote it.
-Commit after each checkpoint.
+callback only forwards events. Code should read like a careful human Rust developer wrote it: comments only where
+they explain why, no banner comments, no emoji. Never use em dashes anywhere. Nothing may poll or repaint while
+nothing changes. Commit after each checkpoint with a short plain message and push.
 
-Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md (checkpoints,
-percentages, handoff note) and the decision log if you made decisions. Stop at a checkpoint boundary if needed.
+Finish: fmt, clippy -D warnings (Linux and the Windows target), tests and --smoke pass, CI green on both systems.
+Update rust-rewrite-plan/PROGRESS.md (checkpoints, percentages, handoff note) and the decision log. Stop at a
+checkpoint boundary if you run low on room, and write the handoff note first.
+
+Last, give me the prompt for the next phase (Phase 4 from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---

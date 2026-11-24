@@ -18,7 +18,15 @@ cargo run --release -p luminescent -- --bench-startup                 # prints t
 LUMINESCENT_HOME=/tmp/lumhome cargo run -p luminescent                # runs until Ctrl+C or `ctl quit`
 LUMINESCENT_HOME=/tmp/lumhome cargo run -p luminescent -- ctl ping    # talks to the running copy
 cargo deny check                                                      # licences and advisories (CI runs it)
+cargo run --release -p luminescent -- --idle-check 20                 # idle CPU, wake-ups, memory and painted frames
+cargo run -p luminescent -- --spike list                              # the UI checks; --spike gallery shows every widget
+UPDATE_SNAPSHOTS=1 cargo test -p lum-ui --test snapshots              # after a deliberate change to the look
 ```
+
+To catch Windows-only lint errors before CI: `rustup target add x86_64-pc-windows-gnu` and
+`cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings`. To try windows in this
+container: `xvfb-run -a cargo run -p luminescent -- --spike gallery` (it needs `libxkbcommon-x11-0`; snapshots
+need `mesa-vulkan-drivers`).
 
 The golden fixtures come from the Python app. From the repo root, with the `.venv` from the main README (it
 needs Qt's system libraries, see `check.yml`):
@@ -26,8 +34,6 @@ needs Qt's system libraries, see `check.yml`):
 ```
 .venv/bin/python luminescent-rs/tools/make_fixtures.py
 ```
-
-`--idle-check` arrives in phase 2, with the UI.
 
 ## How to work
 
@@ -70,6 +76,17 @@ needs Qt's system libraries, see `check.yml`):
 * The same labels, wording and hotkey names as the Python app. Help texts come from the settings schema dump.
 * Plain, friendly British English ("colour", "favourite", "centre"), short sentences, no jargon.
 * Every behaviour change gets a Settings toggle.
+
+## The UI (lum-ui)
+
+* Build screens from the kit in `crates/lum-ui/src/widgets/`, `panel.rs` and `dialog.rs`; colours and sizes come
+  from `Tokens::of(ctx)` every frame, never hard-coded. New widgets go into the gallery (`gallery.rs`) so the
+  snapshots and `--smoke` cover them.
+* Animate with `lum_ui::anim::value` / `value_from` (a kind from Settings → Animations) or `anim::small`; they
+  repaint only while moving. Never ask for repaints on a timer to poll for changes.
+* Long lists use `widgets::virtual_list`. Expensive pictures are cached (`paint.rs` shows how).
+* egui centres rows inside the height it is given: a horizontal or right-to-left layout in an unbounded child
+  works out NaN. Wrap such rows in `ui.horizontal` or give the child a finite height.
 
 ## Performance rules
 

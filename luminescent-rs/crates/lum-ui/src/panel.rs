@@ -359,6 +359,12 @@ impl FloatingPanel {
                 drawn = Some(self.draw(ui, rect, fade_out, header, body));
             }
         });
+        crate::window::shown(
+            ctx,
+            &format!("Luminescent {title}"),
+            Some(pos2(g.x, g.y)),
+            self.activate_on_show,
+        );
         drawn
     }
 

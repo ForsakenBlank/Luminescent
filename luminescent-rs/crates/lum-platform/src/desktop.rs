@@ -1,19 +1,18 @@
-//! Screens and the window rules our windows need, in the small form the UI spike and the hidden main window
-//! use. Phase 3 replaces the Hyprland half with the full LUMI bootstrap and the WindowPlacer.
+//! Screens, the window rules our windows need and the desktop session the app runs in.
 //!
 //! Wayland lets no program place its own windows or keep them from taking the focus, so on Hyprland each
-//! window carries an invisible marker in its title and window rules (run as Lua inside Hyprland) do the rest,
-//! the same way `core/hypr.py` does it. Everywhere else the functions here do nothing.
+//! window carries an invisible marker in its title and window rules (run as Lua inside Hyprland, from
+//! lum-hypr) do the rest, the same way `core/hypr.py` does it. Everywhere else most of this does nothing.
+
+use crate::window::{self, WindowPlacer};
+use std::sync::Arc;
 
 /// The Wayland app id, which Hyprland calls the window class.
 pub const APP_ID: &str = "luminescent";
 
 /// Title markers, the same characters as the Python app. They are invisible in a title.
 pub mod marker {
-    /// Do not focus it when it opens.
-    pub const NO_ACTIVATE: char = '\u{200b}';
-    /// Never give it the keyboard (Hyprland then sends it no mouse input either).
-    pub const NO_FOCUS: char = '\u{200c}';
+    pub use lum_hypr::marker::*;
 }
 
 /// The unseen main window's title. It is a transparent pixel; on Hyprland a rule keeps it small, unfocused and
@@ -39,6 +38,12 @@ pub struct Cover {
     pub monitor: String,
 }
 
+/// The title of the window a cover prefix opens on `monitor` (see [`Desktop::start`]). The space at the end
+/// keeps `DP-1` from also matching `DP-10`.
+pub fn cover_title(prefix: &str, monitor: &str) -> String {
+    format!("{prefix} on {monitor} ")
+}
+
 /// Every screen, the primary one first. Empty when the system can not say (other Linux desktops).
 pub fn monitors() -> Vec<Monitor> {
     let mut list = imp::monitors();
@@ -49,14 +54,13 @@ pub fn monitors() -> Vec<Monitor> {
 /// The compositor places our windows through rules (Hyprland), so a window's own position means nothing.
 pub fn places_windows_by_rule() -> bool {
     #[cfg(target_os = "linux")]
-    return lum_hypr::socket::available();
+    return lum_hypr::Hypr::from_env().is_some();
     #[cfg(not(target_os = "linux"))]
     return false;
 }
 
-/// Installs the rules for windows with this app id: floating, on top, no borders, the title markers, the
-/// hidden main window and `covers`. Call it before the windows open. `Ok(false)` means there is nothing to
-/// do here (not Hyprland).
+/// Installs the rules for a separate app id (the spikes'): the same rules as the app's, the hidden main
+/// window and `covers`, in a table of their own. `Ok(false)` means there is nothing to do here.
 pub fn install_rules(app_id: &str, covers: &[Cover]) -> Result<bool, String> {
     imp::install_rules(app_id, covers)
 }
@@ -72,139 +76,276 @@ pub fn describe_windows() -> Vec<String> {
     imp::describe_windows()
 }
 
+/// Something the desktop told us.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DesktopEvent {
+    /// A bind of ours fired; the text is its id.
+    Bind(String),
+    /// The compositor reloaded its config. Our rules are back already; binds must be made again.
+    Reloaded,
+    /// A monitor was plugged in or pulled out.
+    MonitorsChanged,
+    /// Another program opened a window.
+    ForeignWindow { addr: String, class: String },
+}
+
+/// The desktop the app runs in: who places the windows and where desktop events come from.
+pub struct Desktop {
+    placer: Arc<dyn WindowPlacer>,
+    #[cfg(target_os = "linux")]
+    hyprland: Option<hyprland::Session>,
+}
+
+impl Desktop {
+    /// Sets the desktop up for our windows; call it before the first one opens. Each of `cover_prefixes`
+    /// opens full size on a monitor when its title is [`cover_title`] (the dims and the overlay backdrops).
+    pub fn start(cover_prefixes: &[&str]) -> Desktop {
+        #[cfg(target_os = "linux")]
+        if let Some(session) = hyprland::Session::start(cover_prefixes) {
+            return Desktop { placer: session.placer(), hyprland: Some(session) };
+        }
+        let _ = cover_prefixes;
+        #[cfg(windows)]
+        return Desktop { placer: window::windows() };
+        #[cfg(not(windows))]
+        Desktop::none()
+    }
+
+    /// Nothing to place or listen to (tests, `--smoke`, no display).
+    pub fn none() -> Desktop {
+        Desktop {
+            placer: window::none(),
+            #[cfg(target_os = "linux")]
+            hyprland: None,
+        }
+    }
+
+    pub fn placer(&self) -> Arc<dyn WindowPlacer> {
+        self.placer.clone()
+    }
+
+    /// Plain words for the log and `ctl status`.
+    pub fn describe(&self) -> &'static str {
+        #[cfg(target_os = "linux")]
+        if self.hyprland.is_some() {
+            return "Hyprland";
+        }
+        if cfg!(windows) { "Windows" } else { "no window placement" }
+    }
+
+    /// Starts listening for desktop events on `runtime`; each one goes to `sink`.
+    pub fn listen(
+        &self,
+        runtime: &tokio::runtime::Handle,
+        sink: impl Fn(DesktopEvent) + Send + Sync + 'static,
+    ) {
+        #[cfg(target_os = "linux")]
+        if let Some(session) = &self.hyprland {
+            session.listen(runtime, Arc::new(sink));
+        }
+        #[cfg(not(target_os = "linux"))]
+        let _ = (runtime, sink);
+    }
+
+    /// Our binds go quiet; call it on the way out.
+    pub fn shutdown(&self) {
+        #[cfg(target_os = "linux")]
+        if let Some(session) = &self.hyprland {
+            session.shutdown();
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod hyprland {
+    use super::{DesktopEvent, ROOT_TITLE, cover_title};
+    use crate::window::WindowPlacer;
+    use crate::window::hyprland::HyprPlacer;
+    use lum_hypr::events::{self, Event};
+    use lum_hypr::lua::Cover;
+    use lum_hypr::sync::WindowSync;
+    use lum_hypr::{Hypr, fifo};
+    use std::sync::Arc;
+
+    pub struct Session {
+        pub hypr: Hypr,
+        sync: WindowSync,
+        placer: Arc<HyprPlacer>,
+        covers: Arc<Vec<String>>,
+    }
+
+    impl Session {
+        pub fn start(cover_prefixes: &[&str]) -> Option<Session> {
+            let hypr = Hypr::from_env()?;
+            // a test copy (LUMINESCENT_NO_HOOK) must not wipe the binds of the real one
+            if std::env::var_os("LUMINESCENT_NO_HOOK").is_none()
+                && let Err(e) = hypr.bootstrap()
+            {
+                tracing::warn!("could not install the Hyprland helpers: {e}");
+            }
+            let covers: Arc<Vec<String>> = Arc::new(cover_prefixes.iter().map(|p| (*p).to_owned()).collect());
+            install_extras(&hypr, &covers);
+            let (sync, _thread) = WindowSync::start(hypr.clone());
+            let placer = Arc::new(HyprPlacer::new(sync.clone()));
+            Some(Session { hypr, sync, placer, covers })
+        }
+
+        pub fn placer(&self) -> Arc<dyn WindowPlacer> {
+            self.placer.clone()
+        }
+
+        pub fn listen(
+            &self,
+            runtime: &tokio::runtime::Handle,
+            sink: Arc<dyn Fn(DesktopEvent) + Send + Sync>,
+        ) {
+            let (hypr, sync, placer, covers) =
+                (self.hypr.clone(), self.sync.clone(), self.placer.clone(), self.covers.clone());
+            let app_id = hypr.names().app_id.clone();
+            let to_app = sink.clone();
+            let again = hypr.clone();
+            runtime.spawn(events::listen(hypr, move |event| {
+                sync.event(&event);
+                match event {
+                    Event::OpenWindow { addr, class, .. } if class != app_id => {
+                        to_app(DesktopEvent::ForeignWindow { addr, class })
+                    }
+                    Event::CloseWindow { .. } => placer.forget_all(),
+                    Event::MonitorsChanged => {
+                        install_extras(&again, &covers);
+                        to_app(DesktopEvent::MonitorsChanged);
+                    }
+                    Event::ConfigReloaded => {
+                        install_extras(&again, &covers);
+                        to_app(DesktopEvent::Reloaded);
+                    }
+                    _ => {}
+                }
+            }));
+            let path = self.hypr.names().fifo.clone();
+            runtime.spawn(async move {
+                if let Err(e) = fifo::listen(&path, move |id| sink(DesktopEvent::Bind(id))).await {
+                    tracing::error!("could not read {}: {e}", path.display());
+                }
+            });
+        }
+
+        pub fn shutdown(&self) {
+            self.sync.stop();
+            self.hypr.shutdown();
+        }
+    }
+
+    /// The rules the Python app does not have: the hidden main window's, and a cover rule per prefix and
+    /// monitor. They go after the bootstrap and again whenever monitors change or the config reloads.
+    fn install_extras(hypr: &Hypr, prefixes: &[String]) {
+        if let Err(e) = hypr.root_rule(ROOT_TITLE) {
+            tracing::warn!("could not set the main window's rule: {e}");
+        }
+        let covers: Vec<Cover> = hypr
+            .monitors()
+            .iter()
+            .flat_map(|m| {
+                let (width, height) = m.logical_size();
+                prefixes.iter().map(move |p| Cover {
+                    title: cover_title(p, &m.name),
+                    monitor: m.name.clone(),
+                    width,
+                    height,
+                })
+            })
+            .collect();
+        if let Err(e) = hypr.cover_monitors(&covers) {
+            tracing::warn!("could not set the cover rules: {e}");
+        }
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod imp {
-    use super::{Cover, Monitor, ROOT_TITLE, marker};
-    use lum_hypr::socket::{self, lstr};
-    use serde_json::Value;
+    use super::{Cover, Monitor, ROOT_TITLE};
+    use lum_hypr::lua::{self, Names};
+    use lum_hypr::{Hypr, marker};
 
     pub fn monitors() -> Vec<Monitor> {
-        let Some(Value::Array(list)) = socket::query("monitors") else {
-            return Vec::new();
-        };
-        list.iter()
-            .filter_map(|m| {
-                let scale = m.get("scale")?.as_f64()?.max(0.1);
-                let int = |key: &str| m.get(key).and_then(Value::as_i64);
-                // Hyprland reports the mode in pixels; the layout uses them divided by the scale
-                let (w, h) = (int("width")? as f64, int("height")? as f64);
-                let turned = int("transform").is_some_and(|t| t % 2 == 1);
-                let (w, h) = if turned { (h, w) } else { (w, h) };
-                Some(Monitor {
-                    name: m.get("name")?.as_str()?.to_owned(),
-                    x: int("x")? as i32,
-                    y: int("y")? as i32,
-                    width: (w / scale).round() as u32,
-                    height: (h / scale).round() as u32,
-                    scale: scale as f32,
-                    primary: m.get("focused").and_then(Value::as_bool).unwrap_or(false),
-                })
+        let Some(hypr) = Hypr::from_env() else { return Vec::new() };
+        hypr.monitors()
+            .into_iter()
+            .map(|m| {
+                let (width, height) = m.logical_size();
+                Monitor {
+                    name: m.name,
+                    x: m.x,
+                    y: m.y,
+                    width,
+                    height,
+                    scale: m.scale.max(0.1) as f32,
+                    primary: m.focused,
+                }
             })
             .collect()
     }
 
-    fn table(app_id: &str) -> String {
-        // the Python app keeps its rules in LUMI; ours live apart so the two never switch off each other's
-        format!("LUMRS[{}]", lstr(app_id))
+    fn spike(app_id: &str) -> Option<Hypr> {
+        let runtime = lum_hypr::socket::runtime_dir()?;
+        let hypr = Hypr::from_env()?;
+        // its own table and class, so it never touches a running Luminescent
+        let names = Names {
+            table: "LUMSPIKE".to_owned(),
+            app_id: app_id.to_owned(),
+            fifo: runtime.join("luminescent").join("spike.fifo"),
+        };
+        Some(Hypr::at(hypr.socket_path().parent()?, names))
     }
 
     pub fn install_rules(app_id: &str, covers: &[Cover]) -> Result<bool, String> {
-        if !socket::available() {
-            return Ok(false);
-        }
-        let class = lstr(&format!("^{app_id}$"));
-        let title = |pattern: &str| lstr(&format!("^{pattern}$"));
-        let mut rules = vec![
-            format!(
-                "{{ match = {{ class = {class} }}, float = true, pin = true, decorate = false, no_anim = true, \
-                 no_shadow = true, no_blur = true, no_dim = true, border_size = 0, rounding = 0, \
-                 opacity = \"1 override 1 override\" }}"
-            ),
-            format!(
-                "{{ match = {{ class = {class}, title = {} }}, no_initial_focus = true }}",
-                title(&format!(".*{}.*", marker::NO_ACTIVATE))
-            ),
-            format!(
-                "{{ match = {{ class = {class}, title = {} }}, no_initial_focus = true, no_focus = true }}",
-                title(&format!(".*{}.*", marker::NO_FOCUS))
-            ),
-            // the main window has to exist for the UI to run, but nobody should ever see it. It draws nothing
-            // (fully transparent), so it needs no opacity rule, and a window Hyprland sees as shown keeps getting
-            // frame callbacks, which every other window of ours depends on (they are drawn in its pass)
-            format!(
-                "{{ match = {{ class = {class}, title = {} }}, no_initial_focus = true, no_focus = true, \
-                 pin = false, size = \"1 1\", move = \"0 0\" }}",
-                title(&format!("{ROOT_TITLE}.*"))
-            ),
-        ];
-        let screens = monitors();
-        for cover in covers {
-            let Some(m) = screens.iter().find(|m| m.name == cover.monitor) else { continue };
-            // move is measured from the monitor's own corner
-            rules.push(format!(
-                "{{ match = {{ class = {class}, title = {} }}, monitor = {}, move = \"0 0\", size = \"{} {}\" }}",
-                title(&format!("{}.*", cover.title)),
-                lstr(&m.name),
-                m.width,
-                m.height
-            ));
-        }
-        let t = table(app_id);
-        let code = format!(
-            "LUMRS = LUMRS or {{}} for _, r in pairs({t} or {{}}) do pcall(function() r:set_enabled(false) end) end \
-             {t} = {{}} {}",
-            rules
-                .iter()
-                .map(|r| format!("{t}[#{t} + 1] = hl.window_rule({r})"))
-                .collect::<Vec<_>>()
-                .join(" ")
-        );
-        socket::lua(&code).map(|()| true)
+        let Some(hypr) = spike(app_id) else { return Ok(false) };
+        hypr.bootstrap()?;
+        hypr.root_rule(ROOT_TITLE)?;
+        let screens = hypr.monitors();
+        let covers: Vec<lua::Cover> = covers
+            .iter()
+            .filter_map(|c| {
+                let m = screens.iter().find(|m| m.name == c.monitor)?;
+                let (width, height) = m.logical_size();
+                Some(lua::Cover { title: c.title.clone(), monitor: c.monitor.clone(), width, height })
+            })
+            .collect();
+        hypr.cover_monitors(&covers)?;
+        Ok(true)
     }
 
     pub fn remove_rules(app_id: &str) {
-        if !socket::available() {
-            return;
-        }
-        let t = table(app_id);
+        let Some(hypr) = spike(app_id) else { return };
+        let t = &hypr.names().table;
         let code = format!(
-            "if LUMRS then for _, r in pairs({t} or {{}}) do pcall(function() r:set_enabled(false) end) end \
-             {t} = nil end"
+            "if {t} then for _, r in pairs({t}.rules or {{}}) do pcall(function() r:set_enabled(false) end) end \
+             {t}.rules_version = nil if {t}.root_rule then pcall(function() {t}.root_rule:set_enabled(false) end) end end"
         );
-        if let Err(e) = socket::lua(&code) {
+        let cleared = hypr.lua(&code).and_then(|()| hypr.lua(&lua::clear_cover_rules(hypr.names())));
+        if let Err(e) = cleared {
             tracing::warn!("could not switch off the window rules: {e}");
         }
     }
 
     pub fn describe_windows() -> Vec<String> {
-        let Some(Value::Array(clients)) = socket::query("clients") else {
-            return Vec::new();
-        };
+        let Some(hypr) = Hypr::from_env() else { return Vec::new() };
         let me = i64::from(std::process::id());
-        clients
-            .iter()
-            .filter(|c| c.get("pid").and_then(Value::as_i64) == Some(me))
+        hypr.clients()
+            .into_iter()
+            .filter(|c| c.pid == me)
             .map(|c| {
-                let pair = |key: &str| {
-                    let v = c.get(key).and_then(Value::as_array);
-                    let n = |i: usize| v.and_then(|v| v.get(i)).and_then(Value::as_i64).unwrap_or(0);
-                    (n(0), n(1))
-                };
-                let ((x, y), (w, h)) = (pair("at"), pair("size"));
-                let title: String = c
-                    .get("title")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .chars()
-                    .filter(|ch| !matches!(ch, '\u{200b}'..='\u{2064}'))
-                    .collect();
-                let flag = |key: &str| c.get(key).and_then(Value::as_bool).unwrap_or(false);
-                let focused = c.get("focusHistoryID").and_then(Value::as_i64) == Some(0);
+                let title = marker::strip(&c.title);
                 format!(
-                    "\"{title}\" at {x},{y} size {w}x{h} on monitor {} floating={} pinned={} focused={focused}",
-                    c.get("monitor").and_then(Value::as_i64).unwrap_or(-1),
-                    flag("floating"),
-                    flag("pinned"),
+                    "\"{title}\" at {},{} size {}x{} on monitor {} floating={} pinned={} focused={}",
+                    c.at.0,
+                    c.at.1,
+                    c.size.0,
+                    c.size.1,
+                    c.monitor,
+                    c.floating,
+                    c.pinned,
+                    c.focus_history_id == 0
                 )
             })
             .collect()

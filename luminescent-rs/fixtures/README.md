@@ -18,6 +18,7 @@ Numbers that must survive exactly (calculator values, units) are written as `{"i
 | `events.json` | core/events.py NAMES | the event names the bus carries and what the Automation page calls them |
 | `gradient_cases.json` | core/theme.py gradients, generate, accent_roles, clean_section, section_palette; core/themes.py colours_from_roles | gradient cleaning and sampling, the Qt brush text, generated themes from one accent, per-module looks |
 | `hotkey_cases.json` | core/hotkeys.py normalize, pretty (Linux and Windows names), keysym, to_hyprland, validate; core/hyprbinds.py key_label, mods_of | how a typed combo is stored, shown, bound in Hyprland and checked |
+| `hypr_cases.json` | core/hypr.py _bootstrap_code, bind, unbind, move_window, set_glass_rule, send_shortcut, lstr | the LUMI Lua and dispatcher text, byte for byte |
 | `hyprbinds_cases/cases.json` | core/hyprbinds.py tokenize, parse_file, load, edit, change_keys, delete, add with Hyprland stubbed | Lua config parsing, binds matched to their hl.bind line, readable actions, and the exact text every edit writes (or the error it gives) |
 | `hyprbinds_cases/runtime_binds.json` | hand-written: what Hyprland reports for the sample config | the input load() combines with the files |
 | `keys.json` | core/hotkeys.py and core/hyprbinds.py key tables | key name aliases, xkb keysyms, modifier masks, mouse buttons, Hyprland dispatcher labels |

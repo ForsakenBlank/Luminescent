@@ -19,6 +19,7 @@ use lum_core::module::{LogNotifier, ModuleCx, ModuleHost, Notifier};
 use lum_core::settings::Settings;
 use lum_core::usage::{self, Usage};
 use lum_core::{APP_NAME, Paths, VERSION, backup, logging};
+use lum_platform::desktop::{Desktop, DesktopEvent};
 use lum_platform::instance;
 use lum_platform::ipc::{self, CtlEndpoint, CtlRequest};
 use lum_ui::UiModule;
@@ -49,6 +50,7 @@ pub enum AppMsg {
     },
     /// `--idle-check` is done.
     IdleReport(idle::Numbers),
+    Desktop(DesktopEvent),
 }
 
 /// Wakes the UI thread from any thread. Until eframe has made its context there is nothing to wake: the first
@@ -135,6 +137,7 @@ pub fn run(options: Options, started: Instant) -> anyhow::Result<u8> {
         app.run_headless();
         app.exit_code
     } else {
+        app.start_desktop();
         let (back, code) = shell::run(app, options.renderer);
         app = back;
         code
@@ -186,6 +189,9 @@ pub struct App {
     clock: Arc<dyn Clock>,
     start_guard: Option<Arc<StartGuard>>,
     runtime: Option<Runtime>,
+    /// Where the window rules, the placer and desktop events come from. Nothing until windows start.
+    pub desktop: Desktop,
+    mailbox: Mailbox,
     messages: Receiver<AppMsg>,
     flush_at: Option<Instant>,
     shut_down: bool,
@@ -226,6 +232,8 @@ impl App {
         let (messages_tx, messages) = crossbeam_channel::unbounded();
         let (ctl_tx, ctl_requests) = crossbeam_channel::unbounded();
         let endpoint = CtlEndpoint::for_home(&paths);
+        let waker = Waker::default();
+        let mailbox = Mailbox { tx: messages_tx, waker: waker.clone() };
         let mut app = App {
             usage: Usage::new(&paths, clock.clone()),
             host: ModuleHost::new(modules()),
@@ -235,7 +243,7 @@ impl App {
             endpoint,
             ctl_requests,
             safe_mode,
-            waker: Waker::default(),
+            waker,
             passes: Arc::new(Passes::default()),
             exit_code: 0,
             quitting: false,
@@ -244,6 +252,8 @@ impl App {
             clock,
             start_guard,
             runtime: None,
+            desktop: Desktop::none(),
+            mailbox: mailbox.clone(),
             messages,
             flush_at: None,
             shut_down: false,
@@ -251,7 +261,6 @@ impl App {
             paths,
         };
         app.with_modules(|host, cx, actions| host.start_enabled(cx, actions));
-        let mailbox = Mailbox { tx: messages_tx, waker: app.waker.clone() };
         app.start_services(mailbox, ctl_tx, options)?;
         let running = app.host.running();
         let running = if running.is_empty() { "no modules running".to_owned() } else { running.join(", ") };
@@ -310,6 +319,17 @@ impl App {
         }
         self.runtime = Some(runtime);
         Ok(())
+    }
+
+    /// Sets the desktop up for our windows (Hyprland's rules and the placer) and starts listening to it.
+    /// Call it before the first window opens.
+    pub fn start_desktop(&mut self) {
+        self.desktop = Desktop::start(&[lum_ui::widgets::dim::COVER_PREFIX]);
+        tracing::info!("windows placed by {}", self.desktop.describe());
+        if let Some(runtime) = &self.runtime {
+            let mailbox = self.mailbox.clone();
+            self.desktop.listen(runtime.handle(), move |event| mailbox.send(AppMsg::Desktop(event)));
+        }
     }
 
     pub fn with_modules<T>(
@@ -401,6 +421,7 @@ impl App {
                 self.exit_code = u8::from(!numbers.ok());
                 self.quitting = true;
             }
+            AppMsg::Desktop(event) => tracing::debug!("desktop: {event:?}"),
         }
     }
 
@@ -485,6 +506,7 @@ impl App {
         if let Some(start_guard) = &self.start_guard {
             start_guard.ok();
         }
+        self.desktop.shutdown();
         // dropping the runtime drops the listener, which removes the socket file
         if let Some(runtime) = self.runtime.take() {
             runtime.shutdown_timeout(Duration::from_secs(1));

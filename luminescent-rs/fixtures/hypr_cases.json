@@ -1,0 +1,117 @@
+{
+ "fifo": "/run/user/1000/luminescent/events.fifo",
+ "markers": {
+  "no_activate": "​",
+  "no_focus": "‌",
+  "no_pin": "⁠",
+  "blur": "⁡",
+  "glass": "⁢"
+ },
+ "rules_version": 3,
+ "bind_desc": "Luminescent",
+ "bootstrap": "LUMI = LUMI or {} LUMI.slots = LUMI.slots or {} for _, s in pairs(LUMI.slots) do s.id = nil pcall(function() s.bind:set_enabled(false) end) end LUMI.fifo = \"/run/user/1000/luminescent/events.fifo\" function LUMI.send(msg) hl.exec_cmd(\"test -p '\" .. LUMI.fifo .. \"' && printf '%s\\\\n' '\" .. msg .. \"' 1<>'\" .. LUMI.fifo .. \"'\") end function LUMI.bind(slot, id, keys, opts) local s = LUMI.slots[slot] if s then s.id = id s.bind:set_enabled(true) return end s = { id = id } s.bind = hl.bind(keys, function() if s.id then LUMI.send(s.id) end end, opts) LUMI.slots[slot] = s end function LUMI.unbind(id) for _, s in pairs(LUMI.slots) do if s.id == id then s.id = nil s.bind:set_enabled(false) end end end function LUMI.unbind_all() for _, s in pairs(LUMI.slots) do if s.id then s.id = nil s.bind:set_enabled(false) end end end if LUMI.rules_version ~= 3 then for _, r in pairs(LUMI.rules or {}) do pcall(function() r:set_enabled(false) end) end LUMI.rules = {} LUMI.rules_version = 3 LUMI.rules[#LUMI.rules + 1] = hl.window_rule({ match = { class = \"^luminescent$\" }, float = true, pin = true, decorate = false, no_anim = true, no_shadow = true, no_blur = true, no_dim = true, border_size = 0, rounding = 0, opacity = \"1 override 1 override\" }) LUMI.rules[#LUMI.rules + 1] = hl.window_rule({ match = { class = \"^luminescent$\", title = \"^.*​.*$\" }, no_initial_focus = true }) LUMI.rules[#LUMI.rules + 1] = hl.window_rule({ match = { class = \"^luminescent$\", title = \"^.*‌.*$\" }, no_initial_focus = true, no_focus = true }) LUMI.rules[#LUMI.rules + 1] = hl.window_rule({ match = { class = \"^luminescent$\", title = \"^.*⁠.*$\" }, pin = false }) LUMI.rules[#LUMI.rules + 1] = hl.window_rule({ match = { class = \"^luminescent$\", title = \"^.*⁡.*$\" }, no_blur = false }) end",
+ "binds": [
+  {
+   "id": "hk3",
+   "keys": "CTRL + SHIFT + space",
+   "sent": [
+    "eval LUMI.bind(\"CTRL + SHIFT + space|0|0\", \"hk3\", \"CTRL + SHIFT + space\", { description = \"Luminescent\" })"
+   ]
+  },
+  {
+   "id": "hk3",
+   "keys": "ALT + Alt_L",
+   "release": true,
+   "non_consuming": true,
+   "sent": [
+    "eval LUMI.bind(\"ALT + Alt_L|1|1\", \"hk3\", \"ALT + Alt_L\", { description = \"Luminescent\", release = true, non_consuming = true })"
+   ]
+  },
+  {
+   "id": "hk3",
+   "keys": "mouse:275",
+   "ignore_mods": true,
+   "sent": [
+    "eval LUMI.bind(\"mouse:275|0|0|i\", \"hk3\", \"mouse:275\", { description = \"Luminescent\", ignore_mods = true })"
+   ]
+  },
+  {
+   "id": "hk3",
+   "keys": "SUPER + \"",
+   "non_consuming": true,
+   "sent": [
+    "eval LUMI.bind(\"SUPER + \\\"|0|1\", \"hk3\", \"SUPER + \\\"\", { description = \"Luminescent\", non_consuming = true })"
+   ]
+  }
+ ],
+ "unbind": [
+  "eval LUMI.unbind(\"hk3\")"
+ ],
+ "unbind_all": [
+  "eval LUMI.unbind_all()"
+ ],
+ "move_window": [
+  {
+   "addr": "0x55d1",
+   "x": 10,
+   "y": 20,
+   "pinned": true,
+   "sent": [
+    "eval hl.dispatch(hl.dsp.window.pin({ action = \"disable\", window = \"address:0x55d1\" })) hl.dispatch(hl.dsp.window.move({ x = 10, y = 20, window = \"address:0x55d1\" })) hl.dispatch(hl.dsp.window.pin({ action = \"enable\", window = \"address:0x55d1\" }))"
+   ]
+  },
+  {
+   "addr": "0x55d1",
+   "x": -1920,
+   "y": 0,
+   "pinned": false,
+   "sent": [
+    "eval hl.dispatch(hl.dsp.window.move({ x = -1920, y = 0, window = \"address:0x55d1\" }))"
+   ]
+  }
+ ],
+ "glass_rule": [
+  {
+   "rounding": 12,
+   "sent": [
+    "eval LUMI = LUMI or {} if LUMI.glass_rule then pcall(function() LUMI.glass_rule:set_enabled(false) end) end LUMI.glass_rule = hl.window_rule({ match = { class = \"^luminescent$\", title = \"^.*⁢.*$\" }, no_blur = false, rounding = 12 })"
+   ]
+  },
+  {
+   "rounding": -3,
+   "sent": [
+    "eval LUMI = LUMI or {} if LUMI.glass_rule then pcall(function() LUMI.glass_rule:set_enabled(false) end) end LUMI.glass_rule = hl.window_rule({ match = { class = \"^luminescent$\", title = \"^.*⁢.*$\" }, no_blur = false, rounding = 0 })"
+   ]
+  }
+ ],
+ "clear_cover_rules": [
+  "eval for _, r in pairs((LUMI or {}).cover_rules or {}) do pcall(function() r:set_enabled(false) end) end if LUMI then LUMI.cover_rules = {} end"
+ ],
+ "send_shortcut": [
+  "eval hl.dispatch(hl.dsp.send_shortcut({ mods = \"CTRL\", key = \"V\" }))"
+ ],
+ "move_cursor": [
+  "eval hl.dispatch(hl.dsp.cursor.move({ x = 5, y = 7 }))"
+ ],
+ "shutdown_unbind": [
+  "eval if LUMI and LUMI.unbind_all then LUMI.unbind_all() end"
+ ],
+ "lstr": [
+  {
+   "in": "plain",
+   "out": "\"plain\""
+  },
+  {
+   "in": "a \"b\" \\ c",
+   "out": "\"a \\\"b\\\" \\\\ c\""
+  },
+  {
+   "in": "two\nlines",
+   "out": "\"two\\nlines\""
+  },
+  {
+   "in": "it's",
+   "out": "\"it's\""
+  }
+ ]
+}

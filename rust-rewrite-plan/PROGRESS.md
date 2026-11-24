@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 14 %   [###.................]   Current phase: Phase 3 at 0 % (the phase 2 gate is recorded, D26)
+Overall: 16.25 %   [###.................]   Current phase: Phase 3 at 25 %
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -17,7 +17,7 @@ Overall: 14 %   [###.................]   Current phase: Phase 3 at 0 % (the phas
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
-| 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | in progress |
+| 3 | Platform layer | 9 % | 14 % | 23 % | 25 % | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
@@ -61,7 +61,7 @@ Overall: 14 %   [###.................]   Current phase: Phase 3 at 0 % (the phas
 - [x] 100 %: gallery in both themes, snapshot tests, `--smoke` builds every widget (built before the gate)
 
 ### Phase 3: Platform layer
-- [ ] 25 %: lum-hypr and the Hyprland WindowPlacer, tested against a fake socket
+- [x] 25 %: lum-hypr and the Hyprland WindowPlacer, tested against a fake socket
 - [ ] 50 %: hotkeys on Hyprland and Windows, hold keys, stuck-key handling, fixtures pass
 - [ ] 75 %: tray, notifications, clipboard, autostart, keep awake, idle, sounds
 - [ ] 100 %: runner, terminals, desktop entries and icons, Hello tray verified on both systems
@@ -142,6 +142,23 @@ Overall: 14 %   [###.................]   Current phase: Phase 3 at 0 % (the phas
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-24, Phase 3 at 25 % (overall 16.25 %)
+
+**Done.** lum-hypr: `lua` (the bootstrap, binds, moves, glass, cover and root rules; byte-identical to the Python
+text, checked by the new `fixtures/hypr_cases.json`), `marker` (all five), `socket::Hypr` (request, lua, repl
+values, queries, clients, monitors with reserved space, cursor, key_down, send_shortcut, foreign binds, bind with
+the "table lost in a reload" retry), `events` (event socket on tokio, bootstrap again on `configreloaded` before
+the event is passed on, reconnect with back-off), `fifo` (mkfifo, read-write open so it never sees EOF), `sync`
+(`WindowSync`: one worker thread, the settle checks, late wishes, float on top) and `fake` (a stand-in Hyprland,
+feature `fake`). lum-platform: `window` (the `WindowPlacer` trait; Hyprland, Windows and no-op backends) and
+`desktop::Desktop` (start, placer, events as `DesktopEvent`, shutdown). lum-ui: `window` (placer in the context,
+`Screen`); the panel and the dim call the placer; dims are titled per monitor and placed by cover rules; a dim
+repaints once after click-through changes (D26). The app starts the desktop before eframe and routes its events
+through the mailbox. D27 (`LUMRS` table and FIFO), D28 (placing by title, cover rules).
+
+**Left.** Checkpoints 50 to 100 %. The `.venv` for `make_fixtures.py` builds here once `libegl1 libgl1
+libxkbcommon0 libfontconfig1 libdbus-1-3` are installed.
 
 ### 2026-11-24, Phase 2 gate recorded (phase 2 at 100 %, overall 14 %)
 

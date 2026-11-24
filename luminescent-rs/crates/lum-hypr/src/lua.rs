@@ -371,7 +371,9 @@ mod tests {
         }
     }
 
+    // the FIFO and its path only exist on Unix
     #[test]
+    #[cfg(unix)]
     fn our_own_table_changes_nothing_but_the_names() {
         let ours = Names::app("/run/user/1000");
         let code = bootstrap(&ours);

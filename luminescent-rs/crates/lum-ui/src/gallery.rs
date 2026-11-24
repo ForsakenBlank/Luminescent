@@ -9,7 +9,7 @@ use crate::fonts::Weight;
 use crate::paint;
 use crate::panel::{FloatingPanel, Geometry};
 use crate::text::{Text, caps, hint, label, mono};
-use crate::theme::{DANGER, Gradient, GradientKind, OK, Palette, Tokens, Tone, WARNING};
+use crate::theme::{DANGER, Gradient, GradientKind, OK, Palette, Role, Tokens, Tone, WARNING};
 use crate::widgets::{
     self, Anchor, Button, Checkbox, ColourButton, Combo, DimOverlay, HotkeyField, IconButton, OpacitySlider,
     Slider, SpinBox, Switch, TextArea, TextInput, Variant, menu,
@@ -145,7 +145,7 @@ impl Gallery {
         self.install_look(ui.ctx());
         let tokens = Tokens::of(ui.ctx());
         let full = ui.max_rect();
-        paint::fill(ui.painter(), full, 0.0, &tokens, crate::theme::Role::BgBase, 1.0);
+        paint::fill(ui.painter(), full, 0.0, &tokens, Role::BgBase, 1.0);
         ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
             ui.add_space(16.0);
             ui.horizontal(|ui| {
@@ -477,7 +477,7 @@ impl Gallery {
             paint::top_halo(&painter, area, &tokens);
             let panel = Rect::from_center_size(area.center() + vec2(0.0, 20.0), vec2(180.0, 90.0));
             paint::panel_glow(&painter, panel, &tokens);
-            paint::fill(&painter, panel, tokens.r(), &tokens, crate::theme::Role::BgBase, 1.0);
+            paint::fill(&painter, panel, tokens.r(), &tokens, Role::BgBase, 1.0);
             painter.rect_stroke(
                 panel,
                 tokens.r(),

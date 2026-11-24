@@ -484,8 +484,7 @@ impl<S: AsRef<str>> Widget for Combo<'_, S> {
             painter.rect_stroke(rect, radius, Stroke::new(1.0, border), StrokeKind::Inside);
             let current = self.options.get(*self.selected).map_or("", |s| s.as_ref());
             let colour = if ui.is_enabled() { p.text_primary } else { p.text_muted };
-            let job = Text::new(current).medium().colour(colour).job(&tokens);
-            let mut job = job;
+            let mut job = Text::new(current).medium().colour(colour).job(&tokens);
             job.wrap.max_width = rect.width() - 46.0;
             job.wrap.max_rows = 1;
             job.wrap.break_anywhere = true;

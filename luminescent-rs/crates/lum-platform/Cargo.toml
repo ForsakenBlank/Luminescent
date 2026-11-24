@@ -15,16 +15,28 @@ tokio.workspace = true
 tracing.workspace = true
 
 lum-hypr.workspace = true
-
+notify-rust = "4.19"
+rodio = { version = "0.23", default-features = false, features = ["playback", "wav", "vorbis", "flac", "mp3"] }
 serde_json.workspace = true
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+# the data-control protocol: the clipboard works without one of our windows having the keyboard
+arboard = { version = "3.7", features = ["wayland-data-control"] }
+ksni = { version = "0.3", features = ["blocking"] }
 libc = "0.2"
+zbus = { version = "5", default-features = false, features = ["tokio"] }
 
 [target.'cfg(windows)'.dependencies]
+arboard = "3.7"
+tray-icon = "0.26"
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Power",
+    "Win32_System_SystemInformation",
     "Win32_System_LibraryLoader",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",
@@ -32,6 +44,7 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
 ] }
+winreg = "0.56"
 
 [dev-dependencies]
 lum-fixtures.workspace = true

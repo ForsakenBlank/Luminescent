@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 18.5 %   [####................]   Current phase: Phase 3 at 50 %
+Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 %
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -17,7 +17,7 @@ Overall: 18.5 %   [####................]   Current phase: Phase 3 at 50 %
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
-| 3 | Platform layer | 9 % | 14 % | 23 % | 50 % | in progress |
+| 3 | Platform layer | 9 % | 14 % | 23 % | 75 % | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
@@ -63,7 +63,7 @@ Overall: 18.5 %   [####................]   Current phase: Phase 3 at 50 %
 ### Phase 3: Platform layer
 - [x] 25 %: lum-hypr and the Hyprland WindowPlacer, tested against a fake socket
 - [x] 50 %: hotkeys on Hyprland and Windows, hold keys, stuck-key handling, fixtures pass
-- [ ] 75 %: tray, notifications, clipboard, autostart, keep awake, idle, sounds
+- [x] 75 %: tray, notifications, clipboard, autostart, keep awake, idle, sounds
 - [ ] 100 %: runner, terminals, desktop entries and icons, Hello tray verified on both systems
 
 ### Phase 4: Themes
@@ -142,6 +142,21 @@ Overall: 18.5 %   [####................]   Current phase: Phase 3 at 50 %
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-24, Phase 3 at 75 % (overall 20.75 %)
+
+**Done.** lum-platform: `tray` (menu model, the sparkle drawn with tiny-skia from lum-ui's path with the 4 %
+margin, tooltip cut at 127 characters; ksni on Linux, tray-icon on Windows, D30), `notify` (notify-rust),
+`clipboard` (arboard with Wayland data-control: text, pictures, file lists, all three at once), `autostart`
+(XDG entry with the Python quoting; the Run key with the old `UsefulScripts` clean-up), `keepawake` (logind
+inhibitor over zbus 5; `SetThreadExecutionState` on its own thread), `sounds` (rodio; freedesktop chime and alarm,
+Windows system sounds, custom files, stop), `system` (idle time: `GetLastInputInfo`, or the pointer standing still
+through Hyprland as in Python; process names from /proc or Toolhelp). `cargo deny`: ksni is Unlicense, allowed
+for that crate only. CI installs `libasound2-dev` for rodio.
+
+**Left for 100 %.** Wire the tray, keep awake and notifications into the app (menu from `general.tray_items`,
+tooltip, click toggles the overlay), the runner, terminals, desktop entries and icons, the ctl commands, the
+Hello tray overlay and the user's check. Clipboard watching is phase 8 (D30).
 
 ### 2026-11-24, Phase 3 at 50 % (overall 18.5 %)
 

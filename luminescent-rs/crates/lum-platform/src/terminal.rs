@@ -107,6 +107,8 @@ pub fn command(term: &Path, title: &str, cwd: &Path, argv: &[String], colours: &
 mod tests {
     use super::*;
 
+    // the Linux terminals; on Windows anything but Windows Terminal gets a console of its own, as in Python
+    #[cfg(not(windows))]
     #[test]
     fn every_terminal_command_matches_python() {
         let cases = lum_fixtures::read_json("terminal_cases/cases.json");

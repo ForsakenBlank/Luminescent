@@ -9,14 +9,14 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 7 %   [#...................]   Current phase: Phase 2 started (before its 25 % checkpoint)
+Overall: 8.75 %   [##..................]   Current phase: Phase 2 at 25 % (spike results from the user pending)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
 |---|---|---|---|---|---|---|
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
-| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 0 % | in progress |
+| 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 25 % | in progress |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 0 % | not started |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
@@ -55,7 +55,7 @@ Overall: 7 %   [#...................]   Current phase: Phase 2 started (before i
 - [x] 100 %: binary with CLI, single instance, ctl socket, `--smoke`, CI green on both systems
 
 ### Phase 2: UI foundation + widget kit
-- [ ] 25 %: eframe skeleton, fonts, tokens, multi-monitor transparent overlay demo
+- [x] 25 %: eframe skeleton, fonts, tokens, multi-monitor transparent overlay demo
 - [ ] 50 %: all eight spike checks measured on both systems, gate decision recorded
 - [ ] 75 %: widget kit, FloatingPanel, dialogs, menus, animator, gradient and glow painters
 - [ ] 100 %: gallery in both themes, snapshot tests, `--smoke` builds every widget

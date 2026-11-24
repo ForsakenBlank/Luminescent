@@ -1586,6 +1586,7 @@ dependencies = [
  "interprocess",
  "libc",
  "lum-core",
+ "lum-fixtures",
  "lum-hypr",
  "serde_json",
  "tempfile",

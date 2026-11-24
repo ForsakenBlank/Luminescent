@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 16.25 %   [###.................]   Current phase: Phase 3 at 25 %
+Overall: 18.5 %   [####................]   Current phase: Phase 3 at 50 %
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -17,7 +17,7 @@ Overall: 16.25 %   [###.................]   Current phase: Phase 3 at 25 %
 | 0 | Groundwork | 2 % | 0 % | 2 % | 100 % | done |
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
-| 3 | Platform layer | 9 % | 14 % | 23 % | 25 % | in progress |
+| 3 | Platform layer | 9 % | 14 % | 23 % | 50 % | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
@@ -62,7 +62,7 @@ Overall: 16.25 %   [###.................]   Current phase: Phase 3 at 25 %
 
 ### Phase 3: Platform layer
 - [x] 25 %: lum-hypr and the Hyprland WindowPlacer, tested against a fake socket
-- [ ] 50 %: hotkeys on Hyprland and Windows, hold keys, stuck-key handling, fixtures pass
+- [x] 50 %: hotkeys on Hyprland and Windows, hold keys, stuck-key handling, fixtures pass
 - [ ] 75 %: tray, notifications, clipboard, autostart, keep awake, idle, sounds
 - [ ] 100 %: runner, terminals, desktop entries and icons, Hello tray verified on both systems
 
@@ -142,6 +142,21 @@ Overall: 16.25 %   [###.................]   Current phase: Phase 3 at 25 %
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-24, Phase 3 at 50 % (overall 18.5 %)
+
+**Done.** `lum_platform::hotkeys`: `keys` (normalise, pretty with Linux and Windows names, keysym, to_hyprland,
+validate; every case in `hotkey_cases.json` and the `keys.json` tables pass), `vk` (Windows key codes both ways,
+punctuation from the keyboard layout on Windows), `HotkeyManager` (register, register_hold, unregister_all,
+owner_of, listing, combos, set_suspended, reset_keys, send, release_modifiers, the latency counter, D29),
+`hyprland` (binds, bare modifiers on release, four binds per modifier hold key, clash with your own binds,
+`always` checks its modifiers, reinstall after a reload, binds lifted while suspended, the trusted 100 ms hold
+check) and `windows` + `matcher` (the hook thread, the stuck-key rules, auto-repeat, hold interrupts, the check
+only while a key is held, SendInput tagged so the hook skips it). lum-ui's hotkey caps use the real names. The app
+owns the manager (dry until the desktop starts) and records hotkey use like the Python app.
+
+**Not yet measured.** Hotkey latency p99 on real desktops (`HotkeyManager::latency_p99_ms`, logged at debug every
+50 hotkeys) and the "kill focus mid-hold" check on Windows: both are in the Hello tray steps.
 
 ### 2026-11-24, Phase 3 at 25 % (overall 16.25 %)
 

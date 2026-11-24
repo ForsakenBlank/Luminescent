@@ -2,6 +2,7 @@
 //! the look for now; recording keys and checking clashes arrive with the hotkey manager in phase 3.
 
 use egui::{Color32, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2};
+use lum_platform::hotkeys;
 
 use crate::fonts::Weight;
 use crate::paint;
@@ -163,27 +164,9 @@ fn record_button(ui: &mut Ui, tokens: &Tokens, recording: bool) -> Response {
     response
 }
 
-/// `ctrl+shift+space` as the caps show it: Ctrl, Shift, Space. A stand-in for `hotkeys.pretty` until phase 3
-/// brings the key name tables.
+/// `ctrl+shift+space` as the caps show it: Ctrl, Shift, Space (Win or Super, as the system calls it).
 pub fn pretty_parts(combo: &str) -> Vec<String> {
-    combo
-        .split('+')
-        .map(str::trim)
-        .filter(|part| !part.is_empty())
-        .map(|part| match part.to_ascii_lowercase().as_str() {
-            "ctrl" | "control" => "Ctrl".to_owned(),
-            "alt" => "Alt".to_owned(),
-            "shift" => "Shift".to_owned(),
-            "super" | "win" | "meta" | "cmd" => "Super".to_owned(),
-            other => {
-                let mut chars = other.chars();
-                match chars.next() {
-                    Some(first) => first.to_uppercase().chain(chars).collect(),
-                    None => String::new(),
-                }
-            }
-        })
-        .collect()
+    hotkeys::pretty_parts(combo, hotkeys::Os::current())
 }
 
 /// Lays out what a key cap looks like at the given place, for pages that list hotkeys (the cheat sheet,
@@ -208,7 +191,9 @@ mod tests {
     #[test]
     fn caps() {
         assert_eq!(pretty_parts("ctrl+shift+space"), ["Ctrl", "Shift", "Space"]);
-        assert_eq!(pretty_parts("super + m"), ["Super", "M"]);
+        let win = if cfg!(windows) { "Win" } else { "Super" };
+        assert_eq!(pretty_parts("super + m"), [win, "M"]);
+        assert_eq!(pretty_parts("ctrl+page up"), ["Ctrl", "PgUp"]);
         assert!(pretty_parts("").is_empty());
     }
 }

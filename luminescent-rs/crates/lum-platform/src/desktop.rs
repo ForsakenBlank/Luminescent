@@ -79,8 +79,8 @@ pub fn describe_windows() -> Vec<String> {
 /// Something the desktop told us.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DesktopEvent {
-    /// A bind of ours fired; the text is its id.
-    Bind(String),
+    /// A bind of ours fired: its id, and when we heard of it (for the hotkey latency counter).
+    Bind { id: String, at: std::time::Instant },
     /// The compositor reloaded its config. Our rules are back already; binds must be made again.
     Reloaded,
     /// A monitor was plugged in or pulled out.
@@ -122,6 +122,11 @@ impl Desktop {
 
     pub fn placer(&self) -> Arc<dyn WindowPlacer> {
         self.placer.clone()
+    }
+
+    #[cfg(target_os = "linux")]
+    pub(crate) fn hypr(&self) -> Option<&lum_hypr::Hypr> {
+        self.hyprland.as_ref().map(|s| &s.hypr)
     }
 
     /// Plain words for the log and `ctl status`.
@@ -224,7 +229,11 @@ mod hyprland {
             }));
             let path = self.hypr.names().fifo.clone();
             runtime.spawn(async move {
-                if let Err(e) = fifo::listen(&path, move |id| sink(DesktopEvent::Bind(id))).await {
+                if let Err(e) = fifo::listen(&path, move |id| {
+                    sink(DesktopEvent::Bind { id, at: std::time::Instant::now() })
+                })
+                .await
+                {
                     tracing::error!("could not read {}: {e}", path.display());
                 }
             });

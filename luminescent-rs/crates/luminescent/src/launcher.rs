@@ -20,6 +20,7 @@ use lum_core::settings::Settings;
 use lum_core::usage::{self, Usage};
 use lum_core::{APP_NAME, Paths, VERSION, backup, logging};
 use lum_platform::desktop::{Desktop, DesktopEvent};
+use lum_platform::hotkeys::{HotkeyEvent, HotkeyManager};
 use lum_platform::instance;
 use lum_platform::ipc::{self, CtlEndpoint, CtlRequest};
 use lum_ui::UiModule;
@@ -191,6 +192,7 @@ pub struct App {
     runtime: Option<Runtime>,
     /// Where the window rules, the placer and desktop events come from. Nothing until windows start.
     pub desktop: Desktop,
+    pub hotkeys: HotkeyManager,
     mailbox: Mailbox,
     messages: Receiver<AppMsg>,
     flush_at: Option<Instant>,
@@ -253,6 +255,7 @@ impl App {
             start_guard,
             runtime: None,
             desktop: Desktop::none(),
+            hotkeys: HotkeyManager::dry(),
             mailbox: mailbox.clone(),
             messages,
             flush_at: None,
@@ -326,6 +329,8 @@ impl App {
     pub fn start_desktop(&mut self) {
         self.desktop = Desktop::start(&[lum_ui::widgets::dim::COVER_PREFIX]);
         tracing::info!("windows placed by {}", self.desktop.describe());
+        let waker = self.waker.clone();
+        self.hotkeys = HotkeyManager::start(&self.desktop, Arc::new(move || waker.wake()));
         if let Some(runtime) = &self.runtime {
             let mailbox = self.mailbox.clone();
             self.desktop.listen(runtime.handle(), move |event| mailbox.send(AppMsg::Desktop(event)));
@@ -379,8 +384,27 @@ impl App {
                 break;
             }
         }
+        for event in self.hotkeys.poll() {
+            self.hotkey(event);
+        }
         self.flush_if_due();
         self.next_flush()
+    }
+
+    fn hotkey(&mut self, event: HotkeyEvent) {
+        match event {
+            HotkeyEvent::Fired { owner, id, label, combo } => {
+                if combo != "esc" && !combo.ends_with("+esc") {
+                    let what = if label.is_empty() { owner.clone() } else { format!("{owner}: {label}") };
+                    self.usage.record("hotkeys", &combo, &what);
+                }
+                tracing::debug!("hotkey {combo}: {owner} {id}");
+            }
+            HotkeyEvent::Refused { owner, combo, reason } => {
+                tracing::warn!("{owner}: {combo} was refused: {reason}");
+            }
+            other => tracing::debug!("hotkey: {other:?}"),
+        }
     }
 
     fn next_flush(&mut self) -> Option<Instant> {
@@ -421,7 +445,10 @@ impl App {
                 self.exit_code = u8::from(!numbers.ok());
                 self.quitting = true;
             }
-            AppMsg::Desktop(event) => tracing::debug!("desktop: {event:?}"),
+            AppMsg::Desktop(event) => {
+                tracing::debug!("desktop: {event:?}");
+                self.hotkeys.desktop_event(&event);
+            }
         }
     }
 
@@ -506,6 +533,7 @@ impl App {
         if let Some(start_guard) = &self.start_guard {
             start_guard.ok();
         }
+        self.hotkeys.shutdown();
         self.desktop.shutdown();
         // dropping the runtime drops the listener, which removes the socket file
         if let Some(runtime) = self.runtime.take() {

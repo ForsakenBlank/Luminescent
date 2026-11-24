@@ -3,6 +3,7 @@
 //! clipboard, launching and the small system services.
 
 pub mod desktop;
+pub mod hotkeys;
 pub mod instance;
 pub mod ipc;
 pub mod process;

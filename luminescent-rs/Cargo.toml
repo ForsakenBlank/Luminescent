@@ -25,10 +25,12 @@ crossbeam-channel = "0.5"
 eframe = { version = "0.37", default-features = false, features = ["glow", "wayland", "x11", "default_fonts"] }
 egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"] }
 egui_kittest = { version = "0.37", features = ["snapshot", "wgpu"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp", "gif"] }
 interprocess = { version = "2", features = ["tokio"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 tempfile = "3"
+rfd = { version = "0.18", default-features = false, features = ["xdg-portal"] }
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "signal", "io-util"] }
 tracing = "0.1"

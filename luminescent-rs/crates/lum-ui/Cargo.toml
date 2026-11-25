@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 egui.workspace = true
+image.workspace = true
 lum-core.workspace = true
 lum-platform.workspace = true
 lum-theme.workspace = true

@@ -21,6 +21,8 @@ serde_json.workspace = true
 tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
 jiff.workspace = true
 shlex = "2"
+# the system file dialogs (the desktop portal on Linux, the common dialogs on Windows)
+rfd.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # the data-control protocol: the clipboard works without one of our windows having the keyboard

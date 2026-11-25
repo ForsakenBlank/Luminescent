@@ -9,6 +9,7 @@ pub mod input;
 pub mod layout;
 pub mod list;
 pub mod menu;
+pub mod segmented;
 
 pub use anchor::{Anchor, anchor_bar};
 pub use button::{Button, IconButton, Variant};
@@ -18,3 +19,4 @@ pub use hotkey::{HotkeyField, HotkeyResponse};
 pub use input::{TextArea, TextInput};
 pub use layout::{Surface, card, rule, section_header, tip, vrule};
 pub use list::{list_frame, row, virtual_list};
+pub use segmented::segmented;

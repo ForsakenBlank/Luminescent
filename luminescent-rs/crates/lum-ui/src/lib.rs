@@ -9,8 +9,10 @@ pub mod module;
 pub mod overlay;
 pub mod paint;
 pub mod panel;
+pub mod picker;
 pub mod text;
 pub mod theme;
+pub mod themes;
 pub mod widgets;
 pub mod window;
 

@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 % (100 % built; Hello tray waits on your check)
+Overall: 24.75 %   [####................]   Current phase: Phase 4 at 50 % (phase 3 built, its Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -18,7 +18,7 @@ Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 % (100 
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
-| 4 | Themes | 8 % | 23 % | 31 % | 0 % | not started |
+| 4 | Themes | 8 % | 23 % | 31 % | 50 % (the 75 % part is half built) | in progress |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
@@ -67,8 +67,8 @@ Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 % (100 
 - [ ] 100 %: runner, terminals, desktop entries and icons, Hello tray verified on both systems
 
 ### Phase 4: Themes
-- [ ] 25 %: lum-theme engine, tones / generation / gradient fixtures pass
-- [ ] 50 %: ThemeStore, live apply, theme hotkeys, import / export, undo / redo
+- [x] 25 %: lum-theme engine, tones / generation / gradient fixtures pass
+- [x] 50 %: ThemeStore, live apply, theme hotkeys, import / export, undo / redo
 - [ ] 75 %: Themes page and the colour picker dialog with gradient mode
 - [ ] 100 %: theme editor (non-desktop pages), snapshots in three themes
 
@@ -142,6 +142,75 @@ Overall: 20.75 %   [####................]   Current phase: Phase 3 at 75 % (100 
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-25, Phase 4 at 50 % (overall 24.75 %), stopped early because the session's usage ran out
+
+Branch `claude/exciting-brown-fjwlud` (phase 3's branch `claude/hopeful-pascal-8kj34a` is merged into it). Phase 3's Hello tray
+check: the user answered "unsure" for both Hyprland and Windows 11, so phase 3's 100 % stays unticked and the check stays
+under "Waiting on the user".
+
+**Done and green** (fmt, clippy on Linux and the Windows target, all tests, `--smoke`, `cargo deny`):
+* `lum-theme`: `colour` (Rgb), `tones` (all of tones.py), `gradient`, `palette` (16 roles, presets, generate,
+  colours_from_roles, per-module `Section` looks), `picker` (parse incl. colour names, HSV, contrast, partner, ideas,
+  presets, recent picks in picker.json), `theme` (`Theme` wraps the raw JSON object so unknown keys survive), `store`
+  (`ThemeStore` over themes.json: every `_load` migration, pack, apply and previous, folders, group order and folding,
+  next / previous, from accent / colours, set_accent, reset, export / import `.lumtheme`, favourites, recent changes,
+  theme hotkeys list; saves go through `lum_core::store::Writer`, a background writer, `flush()` at quit), `history`
+  (undo / redo `History`, `Recent`, `note_change`).
+* Tests: `tests/engine.rs` (every tones, generation, gradient, section fixture) and `tests/store.rs` (all themes
+  migration cases, sample_home themes.json round trip byte for byte, `.lumtheme` Rust export equals Python's bytes, Python
+  export imports like Python). New fixtures `themes_share_cases.json` and `fixtures/lumtheme/` (made by
+  `themes_share_cases()` in tools/make_fixtures.py; the `.venv` builds here: `python3 -m venv .venv && .venv/bin/pip install
+  PyQt6 Pillow cryptography numpy segno requests psutil pulsectl`, run with `QT_QPA_PLATFORM=offscreen`).
+* App: `App.themes` (ThemeStore), `tokens()`, `restyle()` / `take_restyle()` (Shell::logic installs the new Tokens
+  into egui before the pass, so a switch is one frame), tray icon follows the accent, `theme.changed` event, settings
+  profile switch with the "Settings profile: X" notice, next / previous theme hotkeys (`ui.theme_cycle_hotkey`,
+  `ui.theme_prev_hotkey`) and per-theme hotkeys under owner "themes", Refused notices, `ctl theme next|previous|back|<name>`,
+  `status` shows the theme, smoke check "themes switch and restyle".
+* `lum-ui`: `theme.rs` now builds from `lum_theme::Palette` (re-exports `Role` and `GradientKind`; Palette gained
+  `font_family`, `background_image`, `image_opacity`; `Tokens::of_theme`, `Tokens::for_section(key)`); `picker.rs`
+  (the colour dialog with Solid / Gradient, SV square, hue strip, old / new, hex, readability, chips, gradient bar, stop
+  rows, ideas, presets, `swatch()`), `widgets/segmented.rs`, `themes/previews.rs` (overlay, panel, toast, alert and
+  `paint_luminescent` mock-ups with a `Reg` of where colours are used). These compile and pass clippy but have no
+  tests or snapshots yet and have never been drawn.
+* `lum-platform::dialogs` (rfd 0.18 with only `xdg-portal`, no wayland / gtk): `open_file` and `save_file` on a thread,
+  result by callback.
+
+**Written but NOT compiled** (not declared in `themes/mod.rs`, so the build ignores them): `lum-ui/src/themes/page.rs`
+(the Themes page: toolbar, groups with fold / drag to reorder / drop a card on a folder, cards, add tile, menus, dialogs,
+file jobs) and `themes/pictures.rs` (background-thread picture textures; needs the `image` dependency already added to
+lum-ui). page.rs needs a clean-up pass: remove the stray `unused`, `paint_hint`, empty `Outcome::Cancelled` branch and the
+nonsense `Tokens::of(ctx).p.primary.to_hex()` check in `run` (just call `ctx.request_repaint()` after acts), then declare
+both modules in `themes/mod.rs` and fix what the compiler says.
+
+**Left for phase 4** (in order):
+1. Finish and compile the Themes page; a `ThemesUi` owner in `themes/mod.rs` holding the page, a `FloatingPanel` window
+   ("Themes"), the shared `ColourDialog` (files `picker.json`, `colours.json` in the data folder) and later the editor;
+   it dispatches picker events to the page or editor by `PickerEvent.target`. The App shows it from `show_modules` and opens
+   it with `ctl overlay themes` (the overlay has no page switcher until phase 5); file asks go to
+   `lum_platform::dialogs`, answers come back as an `AppMsg` and into `page.file_chosen`; `PageOut.notify` goes to the Notifier.
+2. Theme editor (75 % to 100 %): own `FloatingPanel` window (resizable, three columns: parts list, settings, live
+   preview), General (name, font, key with clash check, radius, glow, background image + opacity, card icon), Colours
+   (role rows with ◐ gradient button, star favourites, Recently changed card, quick tools Main colours / Harmony /
+   From a picture / Surprise me / Adjust all / Follow the accent / Add variance / Light ⇄ dark with before / after, as
+   `BulkDialog` in ui/colour_tools.py lines 853 to 1230), "When it is applied" (wallpaper, settings profile), PARTS
+   (Notifications, Warnings on screen) and MODULES sections (accent, shades, backgrounds, text, own radius, Copy the look
+   of…, Match all its colours to it, Reset this part), DESKTOP pages as stubs for phase 14, Undo / redo (Ctrl+Z, Ctrl+Shift+Z,
+   Ctrl+Y) with `lum_theme::history::History` (700 ms burst = one step), Save / Cancel with "Unsaved changes" confirm, the
+   recent list saved with `store.set_recent_changes` on Save. Port `ThemeDialog` in ui/themes_page.py lines 860 to 1776.
+3. Snapshot tests in `crates/lum-ui/tests/snapshots.rs` style for the Themes page and the editor in Dark, Light and a custom
+   gradient theme (see how the gallery does `Harness`); a picker test (gradient mode); a "switch restyles in one frame" check
+   (install tokens, next headless pass already uses them).
+4. Add the page, picker and editor to `--smoke` (headless, embedded viewports like `lum_ui::gallery::build_headless`).
+5. Records: D31 (rfd with xdg-portal only, file dialogs on a thread) and D32 (`Theme` keeps the raw JSON object, store saves
+   through a background writer, `themes.changed` / `themes.applied` are `ThemeEvent`s the app drains in `poll`) into the
+   ARCHITECTURE.md decision log, FEATURE_INVENTORY.md lines for Themes, `ctl theme` in the docs, percentages, final handoff.
+   `cargo deny` passed with rfd (only a duplicate thiserror warning).
+
+**Surprising.** Python's `_load` keeps weird shapes alive (a theme without `builtin` becomes `builtin: true` through
+`setdefault` from the Dark base; the file is only rewritten on first run, a migration or the pack), so the Rust port copies that.
+Python's `clean_gradient` accepts string numbers and drops bad stops. `Ui::id()` is deprecated in egui 0.37 (use
+`Id::unique(...)`). rfd's default `wayland` feature needs `wayland-sys` and pkg-config; turn default features off.
 
 ### 2026-11-24, Phase 3 built to 100 %, the Hello tray check waits on you (overall 20.75 %)
 
@@ -460,7 +529,7 @@ start phase 1.
 
 Manual checks on real desktops that a session asked for and is waiting on.
 
-* **Phase 3 (blocks the 100 % checkpoint and the Hello tray milestone):** the Hello tray steps for Hyprland and
+* **Phase 3 (the user said "unsure" for both systems on 2026-11-25; still blocks the 100 % checkpoint and the Hello tray milestone):** the Hello tray steps for Hyprland and
   Windows 11, as given in the session's final message (also below in short). Quit the Python app first: both use
   Ctrl+Shift+Space. Build with `cd luminescent-rs && cargo build --release -p luminescent`, run
   `./target/release/luminescent` with a throw-away `LUMINESCENT_HOME`, then check: the sparkle in the tray, its

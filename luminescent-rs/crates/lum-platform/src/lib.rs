@@ -6,6 +6,7 @@ pub mod apps;
 pub mod autostart;
 pub mod clipboard;
 pub mod desktop;
+pub mod dialogs;
 pub mod hotkeys;
 pub mod instance;
 pub mod ipc;

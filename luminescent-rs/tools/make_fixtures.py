@@ -59,7 +59,7 @@ APP = QApplication([])
 
 import core  # noqa: E402
 from core import settings as settings_mod, events, hotkeys, timeparse, convert, tones, theme, themes  # noqa: E402
-from core import automation, atlas_sync, hyprbinds, terminal, backup, runner, anim  # noqa: E402
+from core import automation, atlas_sync, hyprbinds, terminal, backup, runner, anim, hypr  # noqa: E402
 from modules import calculator, reminders, vault_store, promptlog, notes as notes_mod, performance  # noqa: E402
 from ui import dashboard  # noqa: E402
 
@@ -565,6 +565,54 @@ def hotkey_cases():
                "core/hotkeys.py normalize, pretty (Linux and Windows names), keysym, to_hyprland, validate; "
                "core/hyprbinds.py key_label, mods_of",
                "how a typed combo is stored, shown, bound in Hyprland and checked")
+
+
+def hypr_cases():
+    # every Lua and dispatcher text core/hypr.py sends, caught on its way to the socket. The FIFO path is pinned
+    # so the bootstrap does not depend on the user id it was made under
+    sent = []
+
+    def catch(cmd, timeout=1.0):
+        sent.append(cmd)
+        return "ok"
+
+    real = (hypr.request, hypr.available, hypr.FIFO)
+    hypr.request, hypr.available, hypr.FIFO = catch, (lambda: True), "/run/user/1000/luminescent/events.fifo"
+    try:
+        def one(fn, *args, **kw):
+            sent.clear()
+            fn(*args, **kw)
+            return list(sent)
+
+        binds = []
+        for keys, kw in [("CTRL + SHIFT + space", {}), ("ALT + Alt_L", {"release": True, "non_consuming": True}),
+                         ("mouse:275", {"ignore_mods": True}), ('SUPER + "', {"non_consuming": True})]:
+            binds.append({"id": "hk3", "keys": keys, **kw, "sent": one(hypr.bind, "hk3", keys, **kw)})
+        cases = {
+            "fifo": hypr.FIFO,
+            "markers": {"no_activate": hypr.NO_ACTIVATE, "no_focus": hypr.NO_FOCUS, "no_pin": hypr.NO_PIN,
+                        "blur": hypr.BLUR, "glass": hypr.GLASS},
+            "rules_version": hypr.RULES_VERSION,
+            "bind_desc": hypr.BIND_DESC,
+            "bootstrap": hypr._bootstrap_code(),
+            "binds": binds,
+            "unbind": one(hypr.unbind, "hk3"),
+            "unbind_all": one(hypr.unbind_all),
+            "move_window": [{"addr": "0x55d1", "x": x, "y": y, "pinned": p, "sent": one(hypr.move_window, "0x55d1",
+                                                                                          x, y, p)}
+                            for x, y, p in [(10, 20, True), (-1920, 0, False)]],
+            "glass_rule": [{"rounding": r, "sent": one(hypr.set_glass_rule, r)} for r in (12, -3)],
+            "clear_cover_rules": one(hypr.clear_cover_rules),
+            "send_shortcut": one(hypr.send_shortcut, "CTRL", "V"),
+            "move_cursor": one(hypr.move_cursor, hypr.QPoint(5, 7)),
+            "shutdown_unbind": one(hypr.lua, "if LUMI and LUMI.unbind_all then LUMI.unbind_all() end"),
+            "lstr": [{"in": t, "out": hypr.lstr(t)} for t in ['plain', 'a "b" \\ c', "two\nlines", "it's"]],
+        }
+    finally:
+        hypr.request, hypr.available, hypr.FIFO = real
+    write_json("hypr_cases.json", cases,
+               "core/hypr.py _bootstrap_code, bind, unbind, move_window, set_glass_rule, send_shortcut, lstr",
+               "the LUMI Lua and dispatcher text, byte for byte")
 
 
 SAMPLE_COLOURS = ["#7B6CF6", "#F2B705", "#131317", "#FFFFFF", "#000000", "#808080", "#E5484D", "#30A46C",
@@ -1845,6 +1893,7 @@ def main():
         timeparse_cases()
         reminder_cases()
         hotkey_cases()
+        hypr_cases()
         tones_cases()
         gradient_cases()
         automation_cases()

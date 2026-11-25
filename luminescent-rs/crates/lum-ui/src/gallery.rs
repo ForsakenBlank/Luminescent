@@ -204,7 +204,7 @@ impl Gallery {
         if self.dim {
             let screen = ctx.content_rect();
             let dim = DimOverlay { opacity: 0.35, click_through: false };
-            if dim.show(&ctx, &[screen]) {
+            if dim.show(&ctx, &[crate::window::Screen::new("gallery", screen)]) {
                 self.dim = false;
             }
             // without separate windows the dim can not be clicked, so any click ends it

@@ -541,29 +541,62 @@ desktop pages (Caelestia look, Glass, borders, terminal) are stubs until phase 1
 
 ```text
 We are rewriting Luminescent (a Python + PyQt6 tray app in this repo) as a native Rust app. Read
-rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 4 section), rust-rewrite-plan/PROGRESS.md,
-rust-rewrite-plan/ARCHITECTURE.md (theming pipeline), rust-rewrite-plan/DATA_AND_MIGRATION.md and
-luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 4 already started, continue from its handoff note.
+rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 4 section), rust-rewrite-plan/PROGRESS.md (the
+newest handoff notes first, and "Waiting on the user"), rust-rewrite-plan/ARCHITECTURE.md (the theming pipeline
+and D18 to D30 in the decision log), rust-rewrite-plan/DATA_AND_MIGRATION.md and luminescent-rs/CLAUDE.md first.
+If PROGRESS.md shows Phase 4 already started, continue from its handoff note. If
+luminescent-rs/crates/lum-platform/src/hotkeys/ is missing on your branch, phase 3 is not merged yet: fetch the
+branch claude/hopeful-pascal-8kj34a and work from it. If PROGRESS.md shows the phase 3 Hello tray check still
+waiting, ask me for my Hyprland and Windows 11 results first, record them (tick phase 3's 100 % when they pass,
+fix what they show in lum-platform or lum-hypr first if something fails), then carry on with phase 4.
 
 This session is Phase 4: themes. The spec is core/theme.py, core/themes.py, core/tones.py, core/colourpick.py,
 ui/themes_page.py, ui/colour_tools.py and the Themes section of README.md. Read them first.
 
+What phase 3 left for you:
+- lum_ui::theme already has Palette (Dark and Light), Gradient, Tokens (installed into the egui context with
+  Tokens::install, read with Tokens::of) and the tones; phase 4 replaces the fixed Dark start in
+  crates/luminescent/src/shell.rs with the ThemeStore.
+- The tray icon is lum_platform::tray::sparkle_icons(rgb) in the accent; the app passes a fixed ACCENT
+  (crates/luminescent/src/launcher.rs) and keeps the Tray handle. When a theme applies, call
+  tray.set_icons(sparkle_icons(new accent)), as Launcher.py does.
+- Hotkeys are events, not callbacks (D29): register with HotkeyManager::register(owner, combo, id, label, opts)
+  and handle HotkeyEvent::Fired in App::hotkey. The launcher's own binds live in App::register_hotkeys; add
+  "next theme" (ui.theme_cycle_hotkey) and "previous theme" (ui.theme_prev_hotkey) there, and the per-theme
+  hotkeys under the owner "themes", with the Python labels. A Refused event means the keys are in the user's own
+  Hyprland config.
+- Desktop notifications go through the app's Notifier (lum_platform::notify); Luminescent's own cards come in
+  phase 5.
+- lum_hypr::lua::glass_rule and Hypr::glass_rule exist for phase 14; window borders are not ported yet.
+- Every viewport goes through lum_ui::window::shown (the placer, D28); new windows of ours must too.
+- Check Windows-only lint errors with the x86_64-pc-windows-gnu clippy target, run windowed tests under Xvfb
+  (xvfb-run -a; install libxkbcommon-x11-0 xvfb libegl1 libgl1-mesa-dri mesa-vulkan-drivers libasound2-dev
+  pkg-config), and run cargo deny for every new crate (licence exceptions per crate only). The Python .venv for
+  tools/make_fixtures.py builds here once libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 are installed.
+
 Build everything in the Phase 4 Deliverables list: the lum-theme engine (palette, gradients, all of tones.py,
 per-module looks), ThemeStore over themes.json with every feature listed, undo/redo with "Recently changed", the
 Themes page, the shared colour picker dialog with gradient mode, and the theme editor with its desktop pages as
-stubs for phase 14. Use the widget kit from phase 2 and the Tokens/ArcSwap pipeline from ARCHITECTURE.md so a
-theme switch restyles everything in one frame.
+stubs for phase 14. Use the widget kit from phase 2 and the Tokens pipeline so a theme switch restyles everything
+in one frame, the tray icon included.
 
 Tests: every tones, generation and gradient case in luminescent-rs/fixtures must pass; themes.json from
 fixtures/sample_home must round-trip unchanged; .lumtheme files must move both ways between the Python and Rust
 apps. Add snapshot tests of the Themes page and the editor in Dark, Light and a custom gradient theme.
 
 Rules: follow luminescent-rs/CLAUDE.md. User-facing text uses the same labels as the Python app, in its plain
-British English. Code should read like a careful human wrote it. Never use em dashes anywhere. Commit after each
-checkpoint.
+British English. Code should read like a careful human Rust developer wrote it: comments only where they explain
+why, no banner comments, no emoji. Never use em dashes anywhere. Nothing may poll or repaint while nothing
+changes. Commit after each checkpoint with a short plain message and push.
 
-Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and tick the matching lines
-in FEATURE_INVENTORY.md. Stop at a checkpoint boundary if you run low on room.
+Finish: fmt, clippy -D warnings (Linux and the Windows target), tests and --smoke pass, CI green on both systems.
+Update rust-rewrite-plan/PROGRESS.md (checkpoints, percentages, handoff note), the decision log and the matching
+lines in FEATURE_INVENTORY.md. Stop at a checkpoint boundary if you run low on room, and write the handoff note
+first.
+
+Last, give me the prompt for the next phase (Phase 5 from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---

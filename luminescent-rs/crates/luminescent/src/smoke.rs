@@ -20,6 +20,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("backup", backup_zip),
     ("ctl socket", ctl_socket),
     ("widget kit in Dark and Light", widget_kit),
+    ("hotkeys, tray menu and the overlay", hello_tray),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -118,4 +119,54 @@ fn ctl_socket(app: &mut App) -> Result<(), String> {
         Ok(Err(e)) => Err(e.to_string()),
         Err(_) => Err("the client thread panicked".into()),
     }
+}
+
+/// The Hello tray parts that need no desktop: the hotkey books, `ctl overlay`, the tray menu and icon, and the
+/// overlay drawn without windows until Esc closes it.
+fn hello_tray(app: &mut App) -> Result<(), String> {
+    use lum_platform::hotkeys::Options;
+    app.hotkeys.register("smoke", "ctrl+shift+f12", "x", "smoke", Options::default())?;
+    if app.hotkeys.owner_of("Ctrl + Shift + F12") != Some("smoke") {
+        return Err("the hotkey was not registered".into());
+    }
+    app.hotkeys.unregister_all("smoke");
+    let menu = app.tray_menu();
+    if !menu.iter().any(|m| matches!(m, lum_platform::tray::MenuItem::Action { id, .. } if id == "open")) {
+        return Err("the tray menu has no Open".into());
+    }
+    if lum_platform::tray::sparkle_icon(32, [0x7B, 0x6C, 0xF6]).rgba.iter().all(|&b| b == 0) {
+        return Err("the tray icon is empty".into());
+    }
+    let (answer, _) = app.handle_ctl("overlay");
+    if answer != "ok" || !app.overlay_open {
+        return Err(format!("ctl overlay answered {answer:?}"));
+    }
+    let ctx = egui::Context::default();
+    ctx.set_embed_viewports(true);
+    lum_ui::setup(&ctx, lum_ui::Tokens::dark());
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
+    let input = |esc: bool| egui::RawInput {
+        screen_rect: Some(screen),
+        events: if esc {
+            vec![egui::Event::Key {
+                key: egui::Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }]
+        } else {
+            Vec::new()
+        },
+        ..Default::default()
+    };
+    lum_ui::headless_pass(&ctx, input(false), |ui| app.show_modules(ui.ctx()));
+    if !app.overlay_open {
+        return Err("the overlay closed by itself".into());
+    }
+    lum_ui::headless_pass(&ctx, input(true), |ui| app.show_modules(ui.ctx()));
+    if app.overlay_open {
+        return Err("Esc did not close the overlay".into());
+    }
+    Ok(())
 }

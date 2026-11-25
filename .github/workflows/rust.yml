@@ -35,12 +35,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: luminescent-rs
-      - name: System libraries (winit needs libxkbcommon-x11; Xvfb and Mesa draw the windowed checks)
+      - name: System libraries (winit needs libxkbcommon-x11, rodio the ALSA headers; Xvfb and Mesa draw the windowed checks)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
-            libxkbcommon-x11-0 xvfb libegl1 libgl1-mesa-dri mesa-vulkan-drivers
+            libxkbcommon-x11-0 xvfb libegl1 libgl1-mesa-dri mesa-vulkan-drivers libasound2-dev pkg-config
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy

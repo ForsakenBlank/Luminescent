@@ -6,11 +6,13 @@ pub mod dialog;
 pub mod fonts;
 pub mod gallery;
 pub mod module;
+pub mod overlay;
 pub mod paint;
 pub mod panel;
 pub mod text;
 pub mod theme;
 pub mod widgets;
+pub mod window;
 
 pub use anim::Motion;
 pub use module::{UiCx, UiModule};

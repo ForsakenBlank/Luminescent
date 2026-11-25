@@ -10,6 +10,7 @@ rust-version = "1.97"
 [workspace.dependencies]
 lum-core = { path = "crates/lum-core" }
 lum-fixtures = { path = "crates/lum-fixtures" }
+lum-hypr = { path = "crates/lum-hypr" }
 lum-platform = { path = "crates/lum-platform" }
 lum-ui = { path = "crates/lum-ui" }
 

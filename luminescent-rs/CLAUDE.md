@@ -26,7 +26,7 @@ UPDATE_SNAPSHOTS=1 cargo test -p lum-ui --test snapshots              # after a 
 To catch Windows-only lint errors before CI: `rustup target add x86_64-pc-windows-gnu` and
 `cargo clippy --workspace --all-targets --target x86_64-pc-windows-gnu -- -D warnings`. To try windows in this
 container: `xvfb-run -a cargo run -p luminescent -- --spike gallery` (it needs `libxkbcommon-x11-0`; snapshots
-need `mesa-vulkan-drivers`).
+need `mesa-vulkan-drivers`). Building on Linux needs `libasound2-dev` and `pkg-config` (rodio plays the sounds).
 
 The golden fixtures come from the Python app. From the repo root, with the `.venv` from the main README (it
 needs Qt's system libraries, see `check.yml`):

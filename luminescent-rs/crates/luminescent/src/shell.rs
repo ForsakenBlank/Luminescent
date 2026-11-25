@@ -130,9 +130,6 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
     let shared = Rc::new(RefCell::new(app));
     let started = Rc::new(RefCell::new(false));
     let result = native_options(renderer, hidden_root()).and_then(|options| {
-        if let Err(e) = desktop::install_rules(desktop::APP_ID, &[]) {
-            tracing::warn!("could not set the window rules: {e}");
-        }
         let (app, flag) = (shared.clone(), started.clone());
         // a missing system library makes winit panic rather than fail, and that must not take the app down
         let ran = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -147,6 +144,7 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
                         let tokens = lum_ui::Tokens::with_settings(lum_ui::Palette::dark(), &core.settings);
                         lum_ui::setup(&cc.egui_ctx, tokens);
                         lum_ui::Motion::from_settings(&core.settings).install(&cc.egui_ctx);
+                        lum_ui::window::install_placer(&cc.egui_ctx, core.desktop.placer());
                     }
                     let gpu = Gpu::of(cc);
                     tracing::info!("drawing with {} on {}", renderer.name(), gpu.describe());
@@ -159,7 +157,6 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
                 }),
             )
         }));
-        desktop::remove_rules(desktop::APP_ID);
         match ran {
             Ok(result) => result.map_err(|e| e.to_string()),
             Err(_) => Err("the window system panicked (see crash.log)".to_owned()),

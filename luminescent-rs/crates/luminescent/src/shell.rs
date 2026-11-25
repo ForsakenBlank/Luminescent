@@ -140,9 +140,7 @@ pub fn run(app: App, renderer: Renderer) -> (App, u8) {
                     *flag.borrow_mut() = true;
                     {
                         let core = app.borrow();
-                        // Dark until phase 4 brings the theme store; text size and motion come from settings
-                        let tokens = lum_ui::Tokens::with_settings(lum_ui::Palette::dark(), &core.settings);
-                        lum_ui::setup(&cc.egui_ctx, tokens);
+                        lum_ui::setup(&cc.egui_ctx, core.tokens());
                         lum_ui::Motion::from_settings(&core.settings).install(&cc.egui_ctx);
                         lum_ui::window::install_placer(&cc.egui_ctx, core.desktop.placer());
                     }
@@ -189,6 +187,11 @@ impl eframe::App for Shell {
         let mut app = self.app.borrow_mut();
         app.passes.logic.fetch_add(1, Ordering::Relaxed);
         let next = app.poll();
+        // a theme switch: every window draws with the new tokens from this pass on
+        if let Some(tokens) = app.take_restyle() {
+            tokens.install(ctx);
+            ctx.request_repaint();
+        }
         if app.quitting {
             ctx.send_viewport_cmd_to(ViewportId::ROOT, ViewportCommand::Close);
         } else if let Some(at) = next {

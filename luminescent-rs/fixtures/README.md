@@ -22,6 +22,9 @@ Numbers that must survive exactly (calculator values, units) are written as `{"i
 | `hyprbinds_cases/cases.json` | core/hyprbinds.py tokenize, parse_file, load, edit, change_keys, delete, add with Hyprland stubbed | Lua config parsing, binds matched to their hl.bind line, readable actions, and the exact text every edit writes (or the error it gives) |
 | `hyprbinds_cases/runtime_binds.json` | hand-written: what Hyprland reports for the sample config | the input load() combines with the files |
 | `keys.json` | core/hotkeys.py and core/hyprbinds.py key tables | key name aliases, xkb keysyms, modifier masks, mouse buttons, Hyprland dispatcher labels |
+| `lumtheme/card-icon.png` | by hand | the picture inside python-export.lumtheme |
+| `lumtheme/python-export.lumtheme` | core/themes.py ThemeStore.export | a .lumtheme file as the Python app writes it, pictures inside |
+| `lumtheme/wall.png` | by hand | the picture inside python-export.lumtheme |
 | `pages.json` | core/settings.py page and tray tables, core/anim.py choices | overlay pages, which can be in the nav bar, panels that can open on start, tray menu entries |
 | `promptlog_cases/cases.json` | modules/promptlog.py kind_of, read_entries, entry_time, write_entries on the sample files next to it | fish, bash, zsh, PowerShell and command-log parsing (multi-line entries, timestamps) and what deleting rows writes back |
 | `reminder_cases.json` | modules/reminders.py next_due, describe, parse_quick, new_reminder | the next time every schedule type fires after a given moment (None = never); schedule text; quick reminders typed in the palette |
@@ -34,6 +37,7 @@ Numbers that must survive exactly (calculator values, units) are written as `{"i
 | `terminal_cases/cases.json` | core/terminal.py scheme, colour_args, write_kitty_theme, sequences, greeting_script, _fastfetch_config, set_fastfetch_logo, command, and the Windows Terminal fragment (module reloaded as Windows) | the exact text Luminescent writes into kitty, fish, fastfetch and Windows Terminal for a theme |
 | `theme_presets.json` | core/theme.py, core/themes.py, core/tones.py tables | the built-in Dark and Light colours, the pre-redesign colours they migrate from, colour roles, the 'More themes' pack with the colours it generates |
 | `themes_migration_cases.json` | core/themes.py ThemeStore._load (first run, old Appearance, pre-redesign colours, theme pack) | themes.json as it loads and as it is written back |
+| `themes_share_cases.json` | core/themes.py ThemeStore.export and import_file | the theme that was exported, and the theme Python makes from the file (its id is imported_id; pictures land in <SCRATCH>/share/theme-images as <id>-<name>) |
 | `timeparse_cases.json` | core/timeparse.py parse_duration, parse_clock, fmt_secs | typed durations to seconds (None when not a duration), clock times to the next due moment, seconds to short text |
 | `tones_cases.json` | core/tones.py (OKLCH maths, tones, harmonies, whole-set changes, Caelestia schemes) | colour maths to the last hex digit |
 | `vault_cases.json` | modules/vault_store.py with seeded randomness (salts, keys, nonces and the recovery key are fixed) | the Rust vault must open these folders with these passwords and the recovery key, decrypt every file to these bytes, and migrate the two old layouts |

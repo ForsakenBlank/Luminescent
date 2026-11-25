@@ -19,6 +19,7 @@ egui.workspace = true
 jiff.workspace = true
 lum-core.workspace = true
 lum-platform.workspace = true
+lum-theme.workspace = true
 lum-ui.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

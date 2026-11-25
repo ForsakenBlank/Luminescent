@@ -73,6 +73,79 @@ pub fn with_suffix(path: &Path, suffix: &str) -> PathBuf {
     PathBuf::from(name)
 }
 
+/// Saves files on a thread of its own, so the UI thread never waits for the disk. A newer text for the same
+/// file replaces one that has not been written yet. `flush` waits until everything queued is on disk (used at
+/// quit and by tests); dropping the writer does the same.
+#[derive(Debug)]
+pub struct Writer {
+    tx: Option<std::sync::mpsc::Sender<WriteJob>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+#[derive(Debug)]
+enum WriteJob {
+    Save(PathBuf, String),
+    Flush(std::sync::mpsc::Sender<()>),
+}
+
+impl Writer {
+    pub fn new(name: &str) -> Writer {
+        let (tx, rx) = std::sync::mpsc::channel::<WriteJob>();
+        let thread = std::thread::Builder::new()
+            .name(name.to_owned())
+            .spawn(move || {
+                while let Ok(first) = rx.recv() {
+                    let mut batch = vec![first];
+                    batch.extend(rx.try_iter());
+                    let mut latest: Vec<(PathBuf, String)> = Vec::new();
+                    let mut waiting = Vec::new();
+                    for job in batch {
+                        match job {
+                            WriteJob::Save(path, text) => match latest.iter_mut().find(|(p, _)| *p == path) {
+                                Some(slot) => slot.1 = text,
+                                None => latest.push((path, text)),
+                            },
+                            WriteJob::Flush(done) => waiting.push(done),
+                        }
+                    }
+                    for (path, text) in latest {
+                        if let Err(e) = save_text(&path, &text) {
+                            tracing::error!("{e}");
+                        }
+                    }
+                    for done in waiting {
+                        let _ = done.send(());
+                    }
+                }
+            })
+            .ok();
+        Writer { tx: Some(tx), thread }
+    }
+
+    pub fn save(&self, path: &Path, text: String) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.send(WriteJob::Save(path.to_owned(), text));
+        }
+    }
+
+    pub fn flush(&self) {
+        let Some(tx) = &self.tx else { return };
+        let (done, wait) = std::sync::mpsc::channel();
+        if tx.send(WriteJob::Flush(done)).is_ok() {
+            let _ = wait.recv();
+        }
+    }
+}
+
+impl Drop for Writer {
+    fn drop(&mut self) {
+        self.tx.take();
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

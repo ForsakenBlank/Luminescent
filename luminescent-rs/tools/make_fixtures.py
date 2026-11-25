@@ -912,6 +912,57 @@ def themes_migration_cases():
                "themes.json as it loads and as it is written back")
 
 
+def themes_share_cases():
+    """A theme exported by the Python app (with its two pictures inside), and what importing it gives."""
+    import base64
+    home = fresh_dir(os.path.join(SCRATCH, "share"))
+    png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")
+    wall, icon = os.path.join(home, "wall.png"), os.path.join(home, "card icon.png")
+    for path in (wall, icon):
+        with open(path, "wb") as f:
+            f.write(png)
+    old = (themes.PATH, themes.DATA_DIR)
+    themes.PATH, themes.DATA_DIR = os.path.join(home, "themes.json"), home
+    try:
+        with seeded("themes-share"):
+            store = themes.ThemeStore(SimpleNamespace(raw_saved={}))
+            t = themes.new_theme("Shared look", store.get("dark"))
+            t["colours"].update({"primary": "#E5484D", "bg_base": "#101018"})
+            t.update({"folder": "someone-elses-folder", "profile": "work", "radius": 14, "glow": False,
+                      "font_family": "Inter", "image_opacity": 0.5, "hotkey": "ctrl+alt+7", "icon": icon,
+                      "background_image": wall, "wallpaper": "/home/me/Pictures/wall.jpg",
+                      "gradients": {"bg_base": {"type": "linear", "angle": 135,
+                                                "stops": [[0, "#1E1B3A"], [1, "#0E0E11"]]}},
+                      "modules": {"notes": {"accent": "#3DBE96", "colours": {"bg_card": "#202428"},
+                                            "gradients": {}, "radius": 8}, "toasts": "#E5484D"},
+                      "toasts": {"style": "glow"}, "caelestia": {"colours": {"primary": "#CBA6F7"}},
+                      "terminal": {"colours": {"term1": "#FF0000"}}})
+            store.add(t)
+            out = os.path.join(home, "shared.lumtheme")
+            store.export(t["id"], out)
+            exported = read_text(out)
+            got = store.import_file(out)
+        imported = copy.deepcopy(got)
+    finally:
+        themes.PATH, themes.DATA_DIR = old
+    write_text("lumtheme/python-export.lumtheme", exported, "core/themes.py ThemeStore.export",
+               "a .lumtheme file as the Python app writes it, pictures inside")
+    for name, src in (("wall.png", wall), ("card-icon.png", icon)):
+        with open(src, "rb") as f, open(os.path.join(OUT, "lumtheme", name), "wb") as g:
+            g.write(f.read())
+        written.append((f"lumtheme/{name}", "by hand", "the picture inside python-export.lumtheme"))
+    source = {k: v for k, v in t.items()}
+    source["icon"], source["background_image"] = "<PICTURES>/card icon.png", "<PICTURES>/wall.png"
+    imported["background_image"] = imported["background_image"].replace(home, "<SCRATCH>/share")
+    imported["icon"] = imported["icon"].replace(home, "<SCRATCH>/share")
+    write_json("themes_share_cases.json",
+               {"source": source, "file": "lumtheme/python-export.lumtheme",
+                "imported_id": got["id"], "imported": imported},
+               "core/themes.py ThemeStore.export and import_file",
+               "the theme that was exported, and the theme Python makes from the file (its id is imported_id; "
+               "pictures land in <SCRATCH>/share/theme-images as <id>-<name>)")
+
+
 def dashboard_migration_cases():
     class Module:
         def __init__(self, icon, acts):
@@ -1900,6 +1951,7 @@ def main():
         settings_migration_cases()
         profile_cases()
         themes_migration_cases()
+        themes_share_cases()
         dashboard_migration_cases()
         automation_load_cases()
         vault_cases()

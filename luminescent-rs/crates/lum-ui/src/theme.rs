@@ -1,8 +1,8 @@
 //! The palette and the design tokens every widget reads, from `core/theme.py`.
 //!
-//! Dark and Light are hard-coded here until phase 4 brings the theme store. Each frame widgets read the
-//! current [`Tokens`] from the context, so a theme change restyles everything on the next frame with nothing
-//! to rebuild.
+//! The theme store (`lum-theme`) works out the colours; this turns them into egui colours. Each frame widgets
+//! read the current [`Tokens`] from the context, so a theme change restyles everything on the next frame with
+//! nothing to rebuild.
 
 use std::sync::Arc;
 
@@ -15,34 +15,7 @@ pub const DANGER: Color32 = Color32::from_rgb(0xE8, 0x64, 0x5E);
 pub const WARNING: Color32 = Color32::from_rgb(0xE0, 0xAE, 0x3F);
 pub const OK: Color32 = Color32::from_rgb(0x3F, 0xBF, 0x74);
 
-/// The colour roles a theme sets, as in `COLOUR_ROLES`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Role {
-    Primary,
-    PrimaryHover,
-    PrimaryMuted,
-    PrimaryText,
-    OnPrimary,
-    BgBase,
-    BgCard,
-    BgCardHover,
-    BgFrame,
-    BgHeader,
-    Border,
-    TextPrimary,
-    TextSecondary,
-    TextMuted,
-    FolderColor,
-    FolderBorder,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GradientKind {
-    Linear,
-    Radial,
-    /// "conical" in themes.json, "Sweep" in the theme editor.
-    Sweep,
-}
+pub use lum_theme::{GradientKind, Role};
 
 /// A colour role painted as a gradient. `angle` works like CSS: the direction it runs in, 0 = upwards,
 /// 90 = to the right.
@@ -102,8 +75,48 @@ pub fn luminance(c: Color32) -> f32 {
     0.299 * f32::from(c.r()) + 0.587 * f32::from(c.g()) + 0.114 * f32::from(c.b())
 }
 
-const fn hex(rgb: u32) -> Color32 {
-    Color32::from_rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
+pub fn colour(c: lum_theme::Rgb) -> Color32 {
+    Color32::from_rgb(c.r, c.g, c.b)
+}
+
+impl From<&lum_theme::Gradient> for Gradient {
+    fn from(g: &lum_theme::Gradient) -> Gradient {
+        Gradient {
+            kind: g.kind,
+            angle: g.angle as f32,
+            stops: g.stops.iter().map(|&(p, c)| (p as f32, colour(c))).collect(),
+        }
+    }
+}
+
+impl From<&lum_theme::Palette> for Palette {
+    fn from(p: &lum_theme::Palette) -> Palette {
+        let c = |role: Role| colour(p.get(role));
+        Palette {
+            primary: c(Role::Primary),
+            primary_hover: c(Role::PrimaryHover),
+            primary_muted: c(Role::PrimaryMuted),
+            primary_text: c(Role::PrimaryText),
+            on_primary: c(Role::OnPrimary),
+            bg_base: c(Role::BgBase),
+            bg_card: c(Role::BgCard),
+            bg_card_hover: c(Role::BgCardHover),
+            bg_frame: c(Role::BgFrame),
+            bg_header: c(Role::BgHeader),
+            border: c(Role::Border),
+            text_primary: c(Role::TextPrimary),
+            text_secondary: c(Role::TextSecondary),
+            text_muted: c(Role::TextMuted),
+            folder_color: c(Role::FolderColor),
+            folder_border: c(Role::FolderBorder),
+            radius: p.radius.clamp(0, 40) as u8,
+            font_family: p.font_family.clone(),
+            glow: p.glow,
+            background_image: p.background_image.clone(),
+            image_opacity: p.image_opacity.clamp(0.0, 1.0) as f32,
+            gradients: p.gradients.iter().map(|(r, g)| (*r, Gradient::from(g))).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,60 +140,24 @@ pub struct Palette {
     pub folder_color: Color32,
     pub folder_border: Color32,
     pub radius: u8,
+    pub font_family: String,
     /// The accent glow around the overlay (off in performance mode).
     pub glow: bool,
+    /// Drawn behind the overlay content, empty for none.
+    pub background_image: String,
+    pub image_opacity: f32,
     pub gradients: Vec<(Role, Gradient)>,
 }
 
 impl Palette {
     /// Near-black with a bluey-purple accent (the default).
     pub fn dark() -> Palette {
-        Palette {
-            primary: hex(0x7B6CF6),
-            primary_hover: hex(0x9184F8),
-            primary_muted: hex(0x24213B),
-            primary_text: hex(0xA99FFA),
-            on_primary: hex(0xFFFFFF),
-            bg_base: hex(0x131317),
-            bg_card: hex(0x1B1B21),
-            bg_card_hover: hex(0x23232A),
-            bg_frame: hex(0x0E0E11),
-            bg_header: hex(0x17171C),
-            border: hex(0x2A2A30),
-            text_primary: hex(0xECECF1),
-            text_secondary: hex(0xA3A3AF),
-            text_muted: hex(0x6C6C78),
-            folder_color: hex(0x1B1B21),
-            folder_border: hex(0xA99FFA),
-            radius: 10,
-            glow: true,
-            gradients: Vec::new(),
-        }
+        Palette::from(&lum_theme::Palette::dark())
     }
 
     /// White with a yellow accent.
     pub fn light() -> Palette {
-        Palette {
-            primary: hex(0xF2B705),
-            primary_hover: hex(0xDCA704),
-            primary_muted: hex(0xFCF1CD),
-            primary_text: hex(0x8A6A00),
-            on_primary: hex(0x1A1600),
-            bg_base: hex(0xFFFFFF),
-            bg_card: hex(0xF6F6F3),
-            bg_card_hover: hex(0xEEEEEA),
-            bg_frame: hex(0xF1F1ED),
-            bg_header: hex(0xFAFAF8),
-            border: hex(0xE4E4E1),
-            text_primary: hex(0x18180F),
-            text_secondary: hex(0x4F4F46),
-            text_muted: hex(0x86867C),
-            folder_color: hex(0xF6F6F3),
-            folder_border: hex(0xF2B705),
-            radius: 10,
-            glow: true,
-            gradients: Vec::new(),
-        }
+        Palette::from(&lum_theme::Palette::light())
     }
 
     pub fn colour(&self, role: Role) -> Color32 {
@@ -224,6 +201,8 @@ pub struct Tokens {
     pub hover: bool,
     /// Settings → Overlay & Interface → Performance mode: no glow, no background image, no animation.
     pub performance: bool,
+    /// The looks a theme gives single modules, notifications (`toasts`) and warnings (`alerts`), as whole palettes.
+    pub sections: Vec<(String, Palette)>,
 }
 
 /// The colour a label takes, as the `tone` property in the Python stylesheet.
@@ -247,7 +226,7 @@ fn tokens_id() -> egui::Id {
 impl Tokens {
     pub fn new(p: Palette, text_scale: f32) -> Tokens {
         let text_scale = if text_scale.is_finite() { text_scale.clamp(0.8, 1.6) } else { 1.0 };
-        Tokens { p, text_scale, hover: true, performance: false }
+        Tokens { p, text_scale, hover: true, performance: false, sections: Vec::new() }
     }
 
     /// The palette with the Text size, Hover effects and Performance mode settings applied.
@@ -256,6 +235,27 @@ impl Tokens {
         tokens.hover = settings.get_bool("animations.hover", true);
         tokens.performance = settings.get_bool("ui.performance_mode", false);
         tokens
+    }
+
+    /// The tokens of a theme: its palette and what it gives single modules, with the settings applied.
+    pub fn of_theme(
+        palette: &lum_theme::Palette,
+        sections: &[(String, lum_theme::Section)],
+        settings: &lum_core::settings::Settings,
+    ) -> Tokens {
+        let mut tokens = Tokens::with_settings(Palette::from(palette), settings);
+        tokens.sections = sections
+            .iter()
+            .map(|(key, section)| (key.clone(), Palette::from(&palette.with_section(section))))
+            .collect();
+        tokens
+    }
+
+    /// These tokens with one module's own look (`with module_colours(key)`), or `None` when the theme gives it
+    /// none. Draw that module's windows with them.
+    pub fn for_section(&self, key: &str) -> Option<Tokens> {
+        let (_, p) = self.sections.iter().find(|(k, _)| k == key)?;
+        Some(Tokens { p: p.clone(), sections: Vec::new(), ..self.clone() })
     }
 
     /// The accent glow around the overlay and panels is wanted.
@@ -433,6 +433,10 @@ impl Tokens {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn hex(rgb: u32) -> Color32 {
+        colour(lum_theme::Rgb::from_u32(rgb))
+    }
 
     #[test]
     fn radii_follow_the_stylesheet() {

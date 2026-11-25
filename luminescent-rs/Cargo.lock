@@ -2313,6 +2313,7 @@ dependencies = [
  "egui_kittest",
  "lum-core",
  "lum-platform",
+ "lum-theme",
  "tempfile",
  "tracing",
 ]
@@ -2336,6 +2337,7 @@ dependencies = [
  "jiff",
  "lum-core",
  "lum-platform",
+ "lum-theme",
  "lum-ui",
  "serde_json",
  "tempfile",

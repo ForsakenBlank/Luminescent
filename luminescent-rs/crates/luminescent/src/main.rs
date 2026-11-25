@@ -6,7 +6,7 @@
 //!     luminescent --safe-mode           start without modules and with automations paused
 //!     luminescent --idle-check <secs>   start, measure idle CPU, wake-ups and memory, print them, then quit
 //!     luminescent --spike <name>        one of the UI framework checks (`--spike list` names them)
-//!     luminescent ctl <command>         talk to the running app (ping, status, overlay, action <id>, quit)
+//!     luminescent ctl <command>         talk to the running app (ping, status, overlay, action <id>, theme <name>, quit)
 //!     luminescent --strip-metadata <paths>   clean copies into the Metadata save folder (Dolphin / Explorer menu)
 
 mod ctl;

@@ -25,7 +25,8 @@ use lum_platform::instance;
 use lum_platform::ipc::{self, CtlEndpoint, CtlRequest};
 use lum_platform::keepawake::KeepAwake;
 use lum_platform::tray::{self, MenuItem, Tray, TrayEvent};
-use lum_ui::UiModule;
+use lum_theme::{ThemeEvent, ThemeStore};
+use lum_ui::{Tokens, UiModule};
 use serde_json::json;
 use tokio::runtime::Runtime;
 
@@ -58,9 +59,6 @@ pub enum AppMsg {
     /// Keep awake changed (or could not), with the error text.
     KeepAwake(bool, Option<String>),
 }
-
-/// The accent of the built-in Dark theme, for the tray icon until phase 4 brings the theme store.
-const ACCENT: [u8; 3] = [0x7B, 0x6C, 0xF6];
 
 /// Notifications go to the log, and to the desktop once windows run and Settings → General allows them.
 /// Phase 5 adds Luminescent's own cards (`general.notify_style`).
@@ -227,6 +225,9 @@ pub struct App {
     /// Where the window rules, the placer and desktop events come from. Nothing until windows start.
     pub desktop: Desktop,
     pub hotkeys: HotkeyManager,
+    pub themes: ThemeStore,
+    /// New tokens a theme switch made, for the UI thread to install into egui's context.
+    restyle: Option<Tokens>,
     /// The empty overlay of the Hello tray milestone; phase 5 brings the real one.
     pub overlay: lum_ui::overlay::Overlay,
     pub overlay_open: bool,
@@ -295,6 +296,8 @@ impl App {
             runtime: None,
             desktop: Desktop::none(),
             hotkeys: HotkeyManager::dry(),
+            themes: ThemeStore::load(&paths, settings.raw_saved()),
+            restyle: None,
             overlay: lum_ui::overlay::Overlay::default(),
             overlay_open: false,
             tray: None,
@@ -383,12 +386,13 @@ impl App {
         self.overlay.dim =
             self.settings.get("ui.overlay_dim").and_then(serde_json::Value::as_f64).unwrap_or(0.64) as f32;
         self.register_hotkeys();
+        self.register_theme_hotkeys();
         let mailbox = self.mailbox.clone();
         self.keep_awake =
             Some(KeepAwake::start(Arc::new(move |on, err| mailbox.send(AppMsg::KeepAwake(on, err)))));
         let mailbox = self.mailbox.clone();
         let sink: tray::Sink = Arc::new(move |event| mailbox.send(AppMsg::Tray(event)));
-        match Tray::start(self.tooltip(), tray::sparkle_icons(ACCENT), self.tray_menu(), sink) {
+        match Tray::start(self.tooltip(), tray::sparkle_icons(self.accent()), self.tray_menu(), sink) {
             Ok(t) => self.tray = Some(t),
             // the palette, the hotkeys and `luminescent ctl` still work without a tray (R16)
             Err(e) => tracing::warn!("no tray icon: {e}"),
@@ -400,6 +404,8 @@ impl App {
         let binds = [
             ("ui.overlay_hotkey", "overlay"),
             ("ui.palette_hotkey", "command palette"),
+            ("ui.theme_cycle_hotkey", "next theme"),
+            ("ui.theme_prev_hotkey", "previous theme"),
             ("general.keep_awake_hotkey", "keep awake"),
         ];
         for (key, label) in binds {
@@ -411,6 +417,109 @@ impl App {
                 self.hotkey_refused(label, &e);
             }
         }
+    }
+
+    /// The keys themes have of their own (theme editor → General).
+    fn register_theme_hotkeys(&mut self) {
+        self.hotkeys.unregister_all("themes");
+        for (id, name, combo) in self.themes.hotkeys() {
+            let label = format!("theme {name}");
+            if let Err(e) = self.hotkeys.register("themes", &combo, &id, &label, hotkeys::Options::default())
+            {
+                self.notifier.notify(
+                    APP_NAME,
+                    &format!("The key for the theme {name} is not registered: {e}"),
+                    4000,
+                );
+            }
+        }
+    }
+
+    /// The tokens of the active theme, with Text size, Hover effects and Performance mode from the settings.
+    pub fn tokens(&self) -> Tokens {
+        let (palette, sections) = self.themes.active_look();
+        Tokens::of_theme(&palette, &sections, &self.settings)
+    }
+
+    fn accent(&self) -> [u8; 3] {
+        let c = self.themes.active().palette().get(lum_theme::Role::Primary);
+        [c.r, c.g, c.b]
+    }
+
+    /// Makes the active theme's look the one on screen: new tokens for egui (the UI thread installs them before
+    /// the next frame is drawn, so everything changes in one frame) and the tray icon in the new accent.
+    pub fn restyle(&mut self) {
+        self.restyle = Some(self.tokens());
+        if let Some(tray) = &self.tray {
+            tray.set_icons(tray::sparkle_icons(self.accent()));
+        }
+        self.waker.wake();
+    }
+
+    /// What the UI thread installs, once, after a theme or a look setting changed.
+    pub fn take_restyle(&mut self) -> Option<Tokens> {
+        self.restyle.take()
+    }
+
+    /// Switches to a theme. The restyling, the settings profile and the events follow from what the store says.
+    pub fn apply_theme(&mut self, id: &str) {
+        if self.themes.apply(id) {
+            self.theme_events();
+        }
+    }
+
+    fn theme_events(&mut self) {
+        for event in self.themes.take_events() {
+            match event {
+                ThemeEvent::Applied(id) => self.theme_applied(&id),
+                ThemeEvent::Changed => self.register_theme_hotkeys(),
+            }
+        }
+    }
+
+    fn theme_applied(&mut self, id: &str) {
+        let Some(t) = self.themes.get(id) else { return };
+        let (name, profile) = (t.name().to_owned(), t.profile().to_owned());
+        tracing::info!("theme applied: {name}");
+        self.emit("theme.changed", &name);
+        // a theme picks its settings profile; none picked means the default profile
+        let want = if profile.is_empty() { "default" } else { profile.as_str() };
+        if self.settings.active_profile() != want {
+            match self.settings.switch_profile(want, true) {
+                Ok(_) => {
+                    let shown = self.settings.profile_name(&self.settings.active_profile());
+                    self.notifier.notify(APP_NAME, &format!("Settings profile: {shown}"), 2500);
+                }
+                Err(e) => tracing::warn!("could not switch to the settings profile {want}: {e}"),
+            }
+        }
+        self.restyle();
+    }
+
+    /// The theme after the active one (`step` -1: before it) in its folder.
+    pub fn next_theme(&mut self, step: i64) {
+        let Some(t) = self.themes.next_theme(step) else { return };
+        let (id, name) = (t.id().to_owned(), t.name().to_owned());
+        self.apply_theme(&id);
+        self.notifier.notify(APP_NAME, &format!("Theme: {name}"), 1500);
+    }
+
+    /// Back to the theme that was on before this one (press again to swap back).
+    pub fn last_theme(&mut self) {
+        let Some(t) = self.themes.previous().filter(|t| t.id() != self.themes.active_id()) else {
+            self.notifier.notify(APP_NAME, "There is no theme to go back to yet.", 2500);
+            return;
+        };
+        let (id, name) = (t.id().to_owned(), t.name().to_owned());
+        self.apply_theme(&id);
+        self.notifier.notify(APP_NAME, &format!("Theme: {name}"), 1500);
+    }
+
+    fn theme_key(&mut self, id: &str) {
+        let Some(t) = self.themes.get(id).filter(|t| t.id() != self.themes.active_id()) else { return };
+        let name = t.name().to_owned();
+        self.apply_theme(id);
+        self.notifier.notify(APP_NAME, &format!("Theme: {name}"), 1500);
     }
 
     fn hotkey_refused(&self, label: &str, error: &str) {
@@ -576,6 +685,7 @@ impl App {
         for event in self.hotkeys.poll() {
             self.hotkey(event);
         }
+        self.theme_events();
         self.flush_if_due();
         self.next_flush()
     }
@@ -593,14 +703,27 @@ impl App {
                         "overlay" => self.toggle_overlay(),
                         "keep awake" => self.toggle_keep_awake(),
                         "command palette" => tracing::info!("the command palette comes in phase 5"),
+                        "next theme" => self.next_theme(1),
+                        "previous theme" => self.next_theme(-1),
                         _ => {}
                     }
+                } else if owner == "themes" {
+                    self.theme_key(&id);
                 }
             }
             HotkeyEvent::Refused { owner, combo, reason } => {
                 tracing::warn!("{owner}: {combo} was refused: {reason}");
                 if owner == "launcher" {
                     self.hotkey_refused(&combo, &reason);
+                } else if owner == "themes" {
+                    let name =
+                        self.themes.hotkeys().into_iter().find(|(_, _, c)| hotkeys::normalize(c) == combo);
+                    let name = name.map_or(combo.clone(), |(_, name, _)| name);
+                    self.notifier.notify(
+                        APP_NAME,
+                        &format!("The key for the theme {name} is not registered: {reason}"),
+                        4000,
+                    );
                 }
             }
             other => tracing::debug!("hotkey: {other:?}"),
@@ -720,9 +843,30 @@ impl App {
                 "ok: the palette and the settings page come in a later build".to_owned()
             }
             CtlCommand::Action(id) => self.run_action(&id),
+            CtlCommand::Theme(which) => self.ctl_theme(&which),
             CtlCommand::Quit => return ("bye".to_owned(), true),
         };
         (answer, false)
+    }
+
+    fn ctl_theme(&mut self, which: &str) -> String {
+        match which.to_lowercase().as_str() {
+            "next" => self.next_theme(1),
+            "previous" | "prev" => self.next_theme(-1),
+            "back" => self.last_theme(),
+            _ => {
+                let found = self
+                    .themes
+                    .themes()
+                    .iter()
+                    .find(|t| t.id() == which || t.name().eq_ignore_ascii_case(which));
+                let Some(id) = found.map(|t| t.id().to_owned()) else {
+                    return format!("error: there is no theme called {which}");
+                };
+                self.apply_theme(&id);
+            }
+        }
+        format!("ok: {}", self.themes.active().name())
     }
 
     fn status(&self) -> String {
@@ -733,6 +877,7 @@ impl App {
             "pid": std::process::id(),
             "home": self.paths.home.display().to_string(),
             "safe_mode": self.safe_mode,
+            "theme": self.themes.active().name(),
             "modules": self.host.running(),
             "module_errors": errors,
             "hotkey_latency_p99_ms": self.hotkeys.latency_p99_ms(),
@@ -765,6 +910,7 @@ impl App {
         }
         tracing::info!("shutting down");
         self.usage.flush();
+        self.themes.flush();
         self.with_modules(|host, cx, actions| host.stop_all(cx, actions));
         if let Some(start_guard) = &self.start_guard {
             start_guard.ok();

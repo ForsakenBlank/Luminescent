@@ -21,6 +21,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("ctl socket", ctl_socket),
     ("widget kit in Dark and Light", widget_kit),
     ("hotkeys, tray menu and the overlay", hello_tray),
+    ("themes switch and restyle", themes),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -167,6 +168,38 @@ fn hello_tray(app: &mut App) -> Result<(), String> {
     lum_ui::headless_pass(&ctx, input(true), |ui| app.show_modules(ui.ctx()));
     if app.overlay_open {
         return Err("Esc did not close the overlay".into());
+    }
+    Ok(())
+}
+
+/// A theme switch by name, next and back: the tokens for egui change, and the active theme is reported.
+fn themes(app: &mut App) -> Result<(), String> {
+    let start = app.themes.active_id().to_owned();
+    let (answer, _) = app.handle_ctl("theme light");
+    if answer != "ok: Light" {
+        return Err(format!("ctl theme light answered {answer:?}"));
+    }
+    let ctx = egui::Context::default();
+    ctx.set_embed_viewports(true);
+    lum_ui::setup(&ctx, lum_ui::Tokens::dark());
+    let tokens = app.take_restyle().ok_or("switching themes made no new tokens")?;
+    if !tokens.p.is_light() {
+        return Err("Light is not light".into());
+    }
+    tokens.install(&ctx);
+    if !lum_ui::Tokens::of(&ctx).p.is_light() {
+        return Err("the new tokens were not installed".into());
+    }
+    let (answer, _) = app.handle_ctl("theme back");
+    if answer != format!("ok: {}", app.themes.get(&start).map_or("", |t| t.name())) {
+        return Err(format!("ctl theme back answered {answer:?}"));
+    }
+    if app.take_restyle().is_none() {
+        return Err("going back made no new tokens".into());
+    }
+    let (answer, _) = app.handle_ctl("theme no such theme");
+    if !answer.starts_with("error:") {
+        return Err(format!("an unknown theme answered {answer:?}"));
     }
     Ok(())
 }

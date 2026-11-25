@@ -181,7 +181,10 @@ pub fn toward_hue(h: f64, target: f64, amount: f64) -> f64 {
 }
 
 /// OKLCH hue ranges, so "make every green follow the accent" knows what a green is.
-pub const FAMILIES: [(&str, &str, &[(f64, f64)]); 7] = [
+/// Key, label and the hue spans of a family.
+pub type Family = (&'static str, &'static str, &'static [(f64, f64)]);
+
+pub const FAMILIES: [Family; 7] = [
     ("reds", "Reds and pinks", &[(345.0, 360.0), (0.0, 40.0)]),
     ("oranges", "Oranges and browns", &[(40.0, 75.0)]),
     ("yellows", "Yellows", &[(75.0, 115.0)]),

@@ -11,10 +11,13 @@ rust-version = "1.97"
 lum-core = { path = "crates/lum-core" }
 lum-fixtures = { path = "crates/lum-fixtures" }
 lum-hypr = { path = "crates/lum-hypr" }
+lum-theme = { path = "crates/lum-theme" }
 lum-platform = { path = "crates/lum-platform" }
 lum-ui = { path = "crates/lum-ui" }
 
 anyhow = "1"
+base64 = "0.22"
+indexmap = { version = "2", features = ["serde"] }
 jiff = "1"
 clap = { version = "4", features = ["derive"] }
 crc32fast = "1"

@@ -1,13 +1,23 @@
 [package]
 name = "lum-theme"
-description = "Palette tokens, gradients, colour maths and the theme store (phase 4)."
+description = "Palette tokens, gradients, colour maths and the theme store."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish = false
 
 [dependencies]
-lum-core = { path = "../lum-core" }
+indexmap.workspace = true
+lum-core.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+base64.workspace = true
+
+[dev-dependencies]
+lum-fixtures.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

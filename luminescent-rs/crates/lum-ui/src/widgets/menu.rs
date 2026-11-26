@@ -24,6 +24,7 @@ fn entry(ui: &mut Ui, text: &str, hint: &str, tick: Option<bool>) -> Response {
     let hint_width = hint_galley.as_ref().map_or(0.0, |g| g.size().x + 24.0);
     let width = (left + galley.size().x + hint_width + 24.0).max(ui.available_width());
     let (rect, response) = ui.allocate_exact_size(vec2(width, galley.size().y + 14.0), Sense::click());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, text));
     if ui.is_rect_visible(rect) {
         let painter = ui.painter();
         if response.hovered() && enabled {

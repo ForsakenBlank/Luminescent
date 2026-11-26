@@ -122,7 +122,7 @@ impl DashboardUi {
         let w = match tab.kind() {
             "page" => w.min(room_w).max(PAGE_MIN.0),
             "picture" => w.min(room_w).max(80),
-            _ => w.max(184).min(720).min(room_w),
+            _ => w.clamp(184, 720).min(room_w),
         };
         let bar =
             if tab.kind() == "page" || (tab.kind() == "picture" && tab.title_bar()) { HEADER_H } else { 0 };
@@ -517,6 +517,9 @@ impl DashboardUi {
         let tokens = cx.tokens.clone();
         let kind = item.kind();
         let resp = ui.interact(rect, base_id().with(("row", item.id())), Sense::click_and_drag());
+        if kind != "separator" {
+            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, item.name()));
+        }
         let painter = ui.painter_at(rect.expand2(vec2(PAD, 0.0)));
         if kind == "separator" {
             painter.hline(rect.x_range().shrink(8.0), rect.center().y, Stroke::new(1.0, tokens.p.border));
@@ -883,7 +886,7 @@ impl DashboardUi {
             None,
             true,
             tab.collapsed(),
-            &[("⤢", "Open it as the full page"), ("✕", "Take it off the dashboard")],
+            &[("↗", "Open it as the full page"), ("✕", "Take it off the dashboard")],
         );
         if head.clicked[0] {
             self.out.open_page = Some(tab.page().to_owned());

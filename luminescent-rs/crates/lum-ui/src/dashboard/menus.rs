@@ -520,7 +520,7 @@ impl DashboardUi {
                 self.out.hide_overlay = true;
             }
             if plain && menu::item(ui, "Run with arguments…").clicked() {
-                acts.push(Act::Ask(Ask::RunArgs(iid.clone())));
+                acts.push(Act::Ask(Ask::WithArguments(iid.clone())));
             }
             if (cx.env.is_running)(item.id()) && menu::item(ui, "■  Stop").clicked() {
                 self.out.stop.push(iid.clone());

@@ -39,9 +39,9 @@ pub enum Ask {
     RemoveBoxes(Vec<String>),
     RemoveLocked(Vec<String>),
     /// "Run with arguments…": the arguments, then it runs.
-    RunArgs(String),
+    WithArguments(String),
     /// An item that asks for its arguments each time it runs.
-    AskArgs(String),
+    Arguments(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,7 +69,7 @@ impl DashboardUi {
         let label = format!("Arguments for {name}:");
         let title = if name.is_empty() { "Arguments" } else { name };
         self.ask =
-            Some((Ask::AskArgs(id.to_owned()), AskDialog::ask_text(dialog_id(), title, &label, default)));
+            Some((Ask::Arguments(id.to_owned()), AskDialog::ask_text(dialog_id(), title, &label, default)));
     }
 
     fn open_ask(&mut self, ask: Ask, dialog: AskDialog) {
@@ -195,11 +195,11 @@ impl DashboardUi {
                 store.delete_tabs(&ids);
                 self.selected.retain(|s| !ids.contains(s));
             }
-            Ask::RunArgs(id) => {
+            Ask::WithArguments(id) => {
                 self.out.run.push((id, Some(text)));
                 self.out.hide_overlay = true;
             }
-            Ask::AskArgs(id) => self.out.run_now.push((id, Some(text))),
+            Ask::Arguments(id) => self.out.run_now.push((id, Some(text))),
         }
     }
 
@@ -429,7 +429,7 @@ impl DashboardUi {
                     format!("Delete \"{name}\" from the dashboard?\n(The file itself is not touched.)");
                 AskDialog::confirm(id, "Delete item", &text, "Delete", "Cancel", true)
             }
-            Ask::RunArgs(iid) => {
+            Ask::WithArguments(iid) => {
                 let (name, args) = store
                     .find_item(iid)
                     .map(|(_, i)| (i.name().to_owned(), i.args().to_owned()))
@@ -440,7 +440,7 @@ impl DashboardUi {
             | Ask::NewBoardName { .. }
             | Ask::RemoveLocked(_)
             | Ask::RemoveBoxes(_)
-            | Ask::AskArgs(_) => {
+            | Ask::Arguments(_) => {
                 return;
             }
         };

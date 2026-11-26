@@ -14,6 +14,7 @@
 //! can throw its state away and build it again (`repair` in the Python app).
 
 pub mod backdrop;
+pub mod chrome;
 pub mod pages;
 pub mod switcher;
 
@@ -34,6 +35,7 @@ use crate::widgets::IconButton;
 use crate::window::{self, Screen};
 
 pub use backdrop::Backdrop;
+pub use chrome::{ChromeData, ChromeLayer};
 
 /// The overlay's windows are titled per monitor, so on Hyprland a cover rule opens each full size on its own
 /// screen.
@@ -57,6 +59,12 @@ pub struct Config {
     pub on_cursor_screen: bool,
     /// Hyprland blurs what is behind the backdrop.
     pub blur: bool,
+    /// `ui.chrome_items`, as saved (empty for the default layout).
+    pub chrome_items: Vec<serde_json::Value>,
+    pub show_clock: bool,
+    pub show_status: bool,
+    /// The dashboard's snap grid, which chrome elements snap to as well.
+    pub snap: f32,
 }
 
 impl Default for Config {
@@ -74,6 +82,10 @@ impl Default for Config {
             last_page: "dashboard".to_owned(),
             on_cursor_screen: true,
             blur: true,
+            chrome_items: Vec::new(),
+            show_clock: true,
+            show_status: true,
+            snap: 8.0,
         }
     }
 }
@@ -120,6 +132,14 @@ impl Config {
             last_page: settings.get_str("ui.last_page").unwrap_or("dashboard").to_owned(),
             on_cursor_screen: settings.get_str("ui.overlay_screen").unwrap_or("cursor") == "cursor",
             blur: settings.get_bool("ui.blur", true) && !performance,
+            chrome_items: settings
+                .get("ui.chrome_items")
+                .and_then(serde_json::Value::as_array)
+                .cloned()
+                .unwrap_or_default(),
+            show_clock: settings.get_bool("ui.show_clock", true),
+            show_status: settings.get_bool("ui.show_status", true),
+            snap: settings.get_f64("dashboard.snap").unwrap_or(8.0).max(1.0) as f32,
         }
     }
 
@@ -165,6 +185,8 @@ pub struct Out {
     pub page_shown: Option<String>,
     /// This page panicked while drawing: throw its state away and build it again.
     pub repair: Option<String>,
+    /// The chrome elements changed: save this list as `ui.chrome_items`.
+    pub chrome: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -190,6 +212,7 @@ pub struct MainOverlay {
     focus_pending: bool,
     first_frame_pending: bool,
     backdrop: Backdrop,
+    pub chrome: ChromeLayer,
 }
 
 impl Default for MainOverlay {
@@ -205,6 +228,7 @@ impl Default for MainOverlay {
             focus_pending: false,
             first_frame_pending: false,
             backdrop: Backdrop::default(),
+            chrome: ChromeLayer::default(),
         }
     }
 }
@@ -265,6 +289,7 @@ impl MainOverlay {
     pub fn hide(&mut self) {
         if self.state == State::Open {
             self.state = State::Closing;
+            self.chrome.set_editing(false, false);
         }
     }
 
@@ -288,7 +313,7 @@ impl MainOverlay {
     }
 
     /// Draws the overlay for this frame on every screen (nothing while it is hidden). Call it every frame.
-    pub fn show(&mut self, ctx: &Context, config: &Config, page: &mut PageFn<'_>) -> Out {
+    pub fn show(&mut self, ctx: &Context, config: &Config, data: &ChromeData, page: &mut PageFn<'_>) -> Out {
         let mut out = Out::default();
         if self.state == State::Closed {
             return out;
@@ -334,6 +359,9 @@ impl MainOverlay {
         if self.first_frame_pending {
             switcher::snap(ctx, base_id().with("switcher"));
         }
+        let top = self.screens.get(self.host).map_or(0.0, |s| s.insets().0);
+        self.chrome.load(&config.chrome_items, top);
+        let pass = Pass { reveal, config, data };
 
         if ctx.embed_viewports() {
             // no separate windows (tests, --smoke): the switcher's screen over this whole window
@@ -344,7 +372,7 @@ impl MainOverlay {
                     let rect = Rect::from_min_size(ui.cursor().min, rect.size());
                     ui.allocate_rect(rect, Sense::hover());
                     let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
-                    self.draw_screen(&mut child, self.host, reveal, config, page, &mut out);
+                    self.draw_screen(&mut child, self.host, &pass, page, &mut out);
                 },
             );
         } else {
@@ -368,7 +396,7 @@ impl MainOverlay {
                 ctx.show_viewport_immediate(id, builder, |ui, _| {
                     let rect = ui.max_rect();
                     let mut child = ui.new_child(UiBuilder::new().max_rect(rect));
-                    self.draw_screen(&mut child, i, reveal, config, page, &mut out);
+                    self.draw_screen(&mut child, i, &pass, page, &mut out);
                 });
                 window::shown(ctx, &title, None, host);
                 if host && focus_now {
@@ -379,6 +407,7 @@ impl MainOverlay {
         if std::mem::take(&mut self.first_frame_pending) {
             out.first_frame = true;
         }
+        out.chrome = self.chrome.take_changes();
         out
     }
 
@@ -386,17 +415,17 @@ impl MainOverlay {
         &mut self,
         ui: &mut Ui,
         index: usize,
-        reveal: f32,
-        config: &Config,
+        pass: &Pass<'_>,
         page: &mut PageFn<'_>,
         out: &mut Out,
     ) {
+        let (config, data) = (pass.config, pass.data);
         let tokens = Tokens::of(ui.ctx());
         let rect = ui.max_rect();
         let screen = self.screens[index].clone();
         let host = index == self.host;
         let (top, bottom) = screen.insets();
-        ui.multiply_opacity(reveal);
+        ui.multiply_opacity(pass.reveal);
         self.backdrop.paint(ui.painter(), rect, &tokens, config.dim, host);
         // the dimmed screen goes first, so everything drawn on it takes clicks before it does
         let background = ui.interact(rect, base_id().with(("backdrop", index)), Sense::click());
@@ -405,6 +434,20 @@ impl MainOverlay {
         let full = pages::is_full(&self.current);
         let mut frame = PageFrame::default();
 
+        let names: Vec<String> = self.screens.iter().map(|s| s.name.clone()).collect();
+        let host_name = self.screens[self.host].name.clone();
+        let host_top = self.screens[self.host].insets().0;
+        let current = self.current.clone();
+        let place = chrome::Place {
+            screen: &screen.name,
+            host: &host_name,
+            screens: &names,
+            page: &current,
+            show_clock: config.show_clock,
+            show_status: config.show_status,
+            snap: config.snap,
+            top: host_top,
+        };
         if host {
             if full {
                 let slot = PageSlot {
@@ -429,6 +472,7 @@ impl MainOverlay {
                 };
                 frame = self.draw_page(ui, inner, &slot, true, page, out);
             }
+            self.chrome.show(ui, &place, data);
             let (clicked, _) = switcher::show(
                 ui,
                 base_id().with("switcher"),
@@ -440,8 +484,13 @@ impl MainOverlay {
             if let Some(key) = clicked {
                 self.switch_to(&key, out);
             }
-            if self.top_right(ui, rect, top, config) {
-                self.hide();
+            match self.top_right(ui, rect, top, config) {
+                Some(TopRight::Close) => self.hide(),
+                Some(TopRight::Edit) => {
+                    let on = !self.chrome.editing;
+                    self.chrome.set_editing(on, config.chrome_items.is_empty());
+                }
+                None => {}
             }
         } else if self.current == "dashboard" {
             let slot = PageSlot {
@@ -450,6 +499,9 @@ impl MainOverlay {
                 extra_screen: Some(&screen.name),
             };
             frame = self.draw_page(ui, surface, &slot, false, page, out);
+        }
+        if !host {
+            self.chrome.show(ui, &place, data);
         }
 
         // the Dashboard works like a desktop: clicking it never closes the overlay
@@ -501,17 +553,21 @@ impl MainOverlay {
         }
     }
 
-    /// The overlay hotkey, SAFE MODE when it applies, and the round ✕. True when ✕ was clicked.
-    fn top_right(&self, ui: &mut Ui, screen: Rect, top: f32, config: &Config) -> bool {
+    /// The overlay hotkey, SAFE MODE when it applies, ✎ and the round ✕.
+    fn top_right(&self, ui: &mut Ui, screen: Rect, top: f32, config: &Config) -> Option<TopRight> {
         let right = pos2(screen.max.x - 28.0, screen.min.y + top + 26.0);
         let area = Rect::from_min_max(pos2(right.x - 600.0, right.y), pos2(right.x, right.y + 36.0));
-        let mut close = false;
+        let mut clicked = None;
         let mut row =
             ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::right_to_left(Align::Center)));
         row.spacing_mut().item_spacing.x = 14.0;
         let tip = "Hide (Esc). Luminescent keeps running; quit from Settings → General.";
         if row.add(IconButton::new("✕").size(36.0).font_px(13.0).tooltip(tip)).clicked() {
-            close = true;
+            clicked = Some(TopRight::Close);
+        }
+        let tip = "Edit the layout: move, add, copy, resize or freeze the logo, clock, date and status chips";
+        if row.add(IconButton::new("✎").size(36.0).font_px(13.0).tooltip(tip)).clicked() {
+            clicked = Some(TopRight::Edit);
         }
         if config.safe_mode {
             row.add(Text::new("SAFE MODE").px(10.0).semibold().mono().spacing(0.08).tone(Tone::Danger));
@@ -519,7 +575,7 @@ impl MainOverlay {
         if !config.hotkey_hint.is_empty() {
             row.add(Text::new(&config.hotkey_hint).px(10.0).medium().mono().spacing(0.08).tone(Tone::Muted));
         }
-        close
+        clicked
     }
 
     /// Esc, Ctrl+1…9, and typing on the Dashboard or Themes page, which opens the palette with what was typed.
@@ -560,7 +616,12 @@ impl MainOverlay {
             }
             return;
         }
-        if frame.busy {
+        if frame.busy || self.chrome.busy() {
+            return;
+        }
+        if escape && self.chrome.editing {
+            // Esc leaves edit mode before it closes anything
+            self.chrome.set_editing(false, false);
             return;
         }
         if escape {
@@ -574,6 +635,20 @@ impl MainOverlay {
             out.palette = Some(typed);
         }
     }
+}
+
+/// What every screen of one frame shares.
+struct Pass<'a> {
+    /// How far it has faded in (or out), 0 to 1.
+    reveal: f32,
+    config: &'a Config,
+    data: &'a ChromeData,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TopRight {
+    Edit,
+    Close,
 }
 
 fn title(screen: &Screen, host: bool, blur: bool) -> String {

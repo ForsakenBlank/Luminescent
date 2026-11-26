@@ -209,6 +209,17 @@ fn overlay(app: &mut App) -> Result<(), String> {
         return Err(format!("Ctrl+3 went to {}", app.overlay.current()));
     }
     pass(app, &[]);
+    let empty = app.overlay_config.chrome_items.is_empty();
+    app.overlay.chrome.set_editing(true, empty);
+    pass(app, &[]);
+    pass(app, &[]);
+    if app.settings.get("ui.chrome_items").and_then(|v| v.as_array()).map_or(0, Vec::len) != 3 {
+        return Err("editing the layout did not save the default one".into());
+    }
+    pass(app, &[key(Key::Escape, Modifiers::NONE)]);
+    if app.overlay.chrome.editing || !app.overlay.is_open() {
+        return Err("Esc did not just leave edit mode".into());
+    }
     for page in ["settings", "clipboard", "automation", "dashboard"] {
         app.open_overlay(page);
         pass(app, &[]);

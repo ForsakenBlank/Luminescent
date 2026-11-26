@@ -903,6 +903,13 @@ impl App {
     }
 
     fn show_overlay(&mut self, ctx: &egui::Context) {
+        let now = ZonedDateTime::now();
+        let data = lum_ui::overlay::ChromeData {
+            time: now.strftime("%H:%M").to_string(),
+            date: now.strftime("%A %d %B").to_string().to_uppercase().replace(" 0", " "),
+            hour: now.hour().clamp(0, 23) as u8,
+            ..Default::default()
+        };
         let mut themes_out = lum_ui::themes::Out::default();
         let out = {
             let App { overlay, overlay_config, themes_ui, themes, settings, hotkeys, .. } = self;
@@ -922,7 +929,7 @@ impl App {
                         }
                     }
                 };
-                overlay.show(ctx, overlay_config, &mut page)
+                overlay.show(ctx, overlay_config, &data, &mut page)
             })
         };
         self.themes_out(themes_out);
@@ -934,8 +941,19 @@ impl App {
         if let Some(key) = out.repair {
             self.repair_page(&key);
         }
+        if let Some(list) = out.chrome {
+            self.settings.set("ui.chrome_items", serde_json::Value::Array(list.clone()));
+            if let Err(e) = self.settings.save_quiet() {
+                tracing::warn!("could not save the overlay's layout: {e}");
+            }
+            self.overlay_config.chrome_items = list;
+        }
         if out.closed {
             self.overlay_closed();
+        } else if self.overlay.is_open() {
+            // the clock changes once a minute; running timers in the chips every second
+            let secs = if data.ticks_every_second() { 1 } else { 60 - now.second().clamp(0, 59) as u64 };
+            ctx.request_repaint_after(Duration::from_secs(secs));
         }
     }
 

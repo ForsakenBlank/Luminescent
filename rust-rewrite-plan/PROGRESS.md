@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 30.25 %   [######..............]   Current phase: Phase 5 at 25 % (phase 3's Hello tray check is unconfirmed)
+Overall: 31.75 %   [######..............]   Current phase: Phase 5 at 50 % (phase 3's Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -19,7 +19,7 @@ Overall: 30.25 %   [######..............]   Current phase: Phase 5 at 25 % (phas
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
-| 5 | Overlay shell | 6 % | 31 % | 37 % | 25 % | in progress |
+| 5 | Overlay shell | 6 % | 31 % | 37 % | 50 % | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
@@ -74,7 +74,7 @@ Overall: 30.25 %   [######..............]   Current phase: Phase 5 at 25 % (phas
 
 ### Phase 5: Overlay shell
 - [x] 25 %: backdrop, switcher, show / hide on every monitor, latency measured
-- [ ] 50 %: chrome layer with edit mode
+- [x] 50 %: chrome layer with edit mode
 - [ ] 75 %: command palette and cheat sheet
 - [ ] 100 %: notification cards, on-screen warning, prewarm, repair, Looks right confirmed
 
@@ -142,6 +142,14 @@ Overall: 30.25 %   [######..............]   Current phase: Phase 5 at 25 % (phas
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-26, Phase 5 at 50 % (overall 31.75 %)
+
+`overlay/chrome.rs`: the chrome layer (`ui.chrome_items`, every kind, the default layout, ✎ edit mode with the bar,
++ Add, Reset, Done, drag on the dashboard's snap grid with Python's round-half-to-even, the right-click menu with
+Freeze, Duplicate, Edit text… / Your name…, Size, Move to screen, Remove, Done editing; Esc leaves edit mode first).
+The app gives it the time and date (`ChromeData`) and repaints once a minute while the overlay is up. Chip lines
+(timers, Hearing Guard, reminders, media, CPU) are empty until those modules exist.
 
 ### 2026-11-26, Phase 5 at 25 % (overall 30.25 %; 31.75 % with phase 3's Hello tray check)
 

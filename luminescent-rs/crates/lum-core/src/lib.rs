@@ -4,6 +4,7 @@
 pub mod actions;
 pub mod backup;
 pub mod clock;
+pub mod dashboard;
 pub mod events;
 pub mod guard;
 pub mod logging;

@@ -4,6 +4,7 @@
 pub mod alert;
 pub mod anim;
 pub mod cheatsheet;
+pub mod dashboard;
 pub mod dialog;
 pub mod fonts;
 pub mod gallery;

@@ -160,6 +160,28 @@ impl Desktop {
         let _ = (runtime, sink);
     }
 
+    /// Makes another program's window float above ours, centred on the area `[x, y, width, height]` (the
+    /// screen with the mouse). Only Hyprland can do this; elsewhere windows already open on top.
+    pub fn float_foreign(&self, addr: &str, area: [i32; 4]) {
+        #[cfg(target_os = "linux")]
+        if let Some(session) = &self.hyprland {
+            let [x, y, w, h] = area;
+            session.sync().float_on_top(addr, lum_hypr::sync::Area { x, y, w, h });
+        }
+        #[cfg(not(target_os = "linux"))]
+        let _ = (addr, area);
+    }
+
+    /// Puts a window floated by [`Desktop::float_foreign`] back into the tiling layout.
+    pub fn unfloat_foreign(&self, addr: &str) {
+        #[cfg(target_os = "linux")]
+        if let Some(session) = &self.hyprland {
+            session.sync().unfloat(addr);
+        }
+        #[cfg(not(target_os = "linux"))]
+        let _ = addr;
+    }
+
     /// Our binds go quiet; call it on the way out.
     pub fn shutdown(&self) {
         #[cfg(target_os = "linux")]
@@ -205,6 +227,10 @@ mod hyprland {
 
         pub fn placer(&self) -> Arc<dyn WindowPlacer> {
             self.placer.clone()
+        }
+
+        pub fn sync(&self) -> &WindowSync {
+            &self.sync
         }
 
         pub fn listen(

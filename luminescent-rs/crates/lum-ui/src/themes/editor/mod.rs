@@ -738,7 +738,7 @@ impl ThemeEditor {
 }
 
 /// The combo a key press makes while a hotkey is being recorded, in the stored form (`ctrl+shift+space`).
-pub(super) fn combo_of(modifiers: Modifiers, key: Key) -> Option<String> {
+pub fn combo_of(modifiers: Modifiers, key: Key) -> Option<String> {
     let name = match key {
         Key::Escape => return None,
         Key::Space => "space".to_owned(),

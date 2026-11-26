@@ -161,6 +161,17 @@ pub struct PageSlot<'a> {
     pub on_desktop: Rect,
     /// Set when this is another screen than the switcher's; only the Dashboard has anything there.
     pub extra_screen: Option<&'a str>,
+    /// The name of the screen this is drawn on.
+    pub screen: &'a str,
+    /// The whole window of this screen in the `Ui`'s own coordinates: the Dashboard's boxes are placed in it.
+    pub canvas: Rect,
+    /// Add this to a point of the window to get its place on the desktop.
+    pub to_desktop: egui::Vec2,
+    /// Every screen of the overlay, in desktop coordinates.
+    pub screens: &'a [Screen],
+    /// How far down the logo, clock and chips reach on the switcher's screen (0 on the others), so the
+    /// Dashboard's boxes start below them.
+    pub chrome_bottom: f32,
 }
 
 /// What a page says about itself after a frame.
@@ -459,6 +470,7 @@ impl MainOverlay {
         let host_name = self.screens[self.host].name.clone();
         let host_top = self.screens[self.host].insets().0;
         let current = self.current.clone();
+        let screens = self.screens.clone();
         let place = chrome::Place {
             screen: &screen.name,
             host: &host_name,
@@ -469,12 +481,22 @@ impl MainOverlay {
             snap: config.snap,
             top: host_top,
         };
+        let chrome_bottom = if host && self.current == "dashboard" {
+            self.chrome.bottom_on_host(ui, &place, data)
+        } else {
+            0.0
+        };
         if host {
             if full {
                 let slot = PageSlot {
                     key: &self.current,
                     on_desktop: surface.translate(to_desktop),
                     extra_screen: None,
+                    screen: &screen.name,
+                    canvas: rect,
+                    to_desktop,
+                    screens: &screens,
+                    chrome_bottom,
                 };
                 frame = self.draw_page(ui, surface, &slot, false, page, out);
             } else {
@@ -490,6 +512,11 @@ impl MainOverlay {
                     key: &self.current,
                     on_desktop: inner.translate(to_desktop),
                     extra_screen: None,
+                    screen: &screen.name,
+                    canvas: rect,
+                    to_desktop,
+                    screens: &screens,
+                    chrome_bottom: 0.0,
                 };
                 frame = self.draw_page(ui, inner, &slot, true, page, out);
             }
@@ -518,6 +545,11 @@ impl MainOverlay {
                 key: &self.current,
                 on_desktop: surface.translate(to_desktop),
                 extra_screen: Some(&screen.name),
+                screen: &screen.name,
+                canvas: rect,
+                to_desktop,
+                screens: &screens,
+                chrome_bottom: 0.0,
             };
             frame = self.draw_page(ui, surface, &slot, false, page, out);
         }

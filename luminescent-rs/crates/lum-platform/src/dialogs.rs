@@ -57,6 +57,11 @@ pub fn open_file(request: Request, done: impl FnOnce(Option<PathBuf>) + Send + '
     spawn(move || request.build().pick_file(), done);
 }
 
+/// Asks for a folder.
+pub fn pick_folder(request: Request, done: impl FnOnce(Option<PathBuf>) + Send + 'static) {
+    spawn(move || request.build().pick_folder(), done);
+}
+
 /// Asks where to save a file.
 pub fn save_file(request: Request, done: impl FnOnce(Option<PathBuf>) + Send + 'static) {
     spawn(move || request.build().save_file(), done);

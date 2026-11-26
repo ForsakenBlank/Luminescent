@@ -31,6 +31,8 @@ use lum_ui::{Tokens, UiModule};
 use serde_json::json;
 use tokio::runtime::Runtime;
 
+mod dashboard;
+
 use crate::ctl::{self, CtlCommand};
 use crate::{idle, shell, smoke};
 
@@ -275,6 +277,14 @@ pub struct App {
     pub hotkeys: HotkeyManager,
     pub themes: ThemeStore,
     pub themes_ui: lum_ui::themes::ThemesUi,
+    pub dashboard: lum_core::dashboard::DashboardStore,
+    pub dashboard_ui: lum_ui::dashboard::DashboardUi,
+    /// The processes items started and the runs that wait for their turn.
+    dash: dashboard::Running,
+    /// The dialog of an item that asks for its arguments each time it runs.
+    ask_args: Option<(String, lum_ui::dialog::DialogWindow)>,
+    /// Other programs' windows put on top of the overlay while it is up.
+    floated: Vec<String>,
     /// New tokens a theme switch made, for the UI thread to install into egui's context.
     restyle: Option<Tokens>,
     pub overlay: MainOverlay,
@@ -365,6 +375,15 @@ impl App {
                 paths.data_file("picker.json"),
                 paths.data_file("colours.json"),
             ),
+            dashboard: lum_core::dashboard::DashboardStore::load(
+                &paths.data_file("dashboard.json"),
+                &[],
+                settings.raw_saved(),
+            ),
+            dashboard_ui: lum_ui::dashboard::DashboardUi::default(),
+            dash: dashboard::Running::default(),
+            ask_args: None,
+            floated: Vec::new(),
             restyle: None,
             overlay: MainOverlay::default(),
             overlay_config: OverlayConfig::from_settings(&settings, safe_mode),
@@ -476,6 +495,7 @@ impl App {
         self.overlay_config = OverlayConfig::from_settings(&self.settings, self.safe_mode);
         self.register_hotkeys();
         self.register_theme_hotkeys();
+        self.register_dashboard_hotkeys();
         let mailbox = self.mailbox.clone();
         self.keep_awake =
             Some(KeepAwake::start(Arc::new(move |on, err| mailbox.send(AppMsg::KeepAwake(on, err)))));
@@ -667,6 +687,9 @@ impl App {
             ));
         }
         menu.push(MenuItem::Separator);
+        if let Some(sub) = self.dashboard_tray_menu() {
+            menu.push(sub);
+        }
         if has("keepawake") {
             let combo = self.settings.get_str("general.keep_awake_hotkey").unwrap_or_default();
             let hint = if combo.is_empty() {
@@ -773,6 +796,7 @@ impl App {
                 "action",
             ));
         }
+        out.extend(self.dashboard_palette_entries());
         let active = self.themes.active_id();
         for t in self.themes.themes() {
             let hint = if t.id() == active { "active" } else { "theme" };
@@ -807,6 +831,7 @@ impl App {
                 }
             }
             "theme" => self.apply_theme(rest),
+            "item" => self.run_dashboard_item(rest, None),
             // the settings page opens on that section once it exists (phase 7)
             "settings" => self.open_overlay("settings"),
             "lum" => self.run_luminescent(rest),
@@ -897,6 +922,8 @@ impl App {
     /// The overlay finished going away: it remembers the page it was on.
     fn overlay_closed(&mut self) {
         self.emit("overlay.closed", "");
+        self.dashboard_ui.hidden();
+        self.unfloat_foreign();
         let page = self.overlay.current().to_owned();
         if self.settings.get_str("ui.last_page") != Some(page.as_str()) {
             self.settings.set("ui.last_page", json!(page));
@@ -923,8 +950,10 @@ impl App {
         }
         self.last_repair = Some(Instant::now());
         tracing::warn!("repairing the overlay (was on {key})");
-        if key == "themes" {
-            self.themes_ui.reset_page();
+        match key {
+            "themes" => self.themes_ui.reset_page(),
+            "dashboard" => self.dashboard_repair(),
+            _ => {}
         }
         self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
     }
@@ -944,7 +973,11 @@ impl App {
                 "settings" => self.open_overlay("settings"),
                 "restart" => self.restart_app(false),
                 "quit" => self.confirm_quit(),
-                other => tracing::debug!("tray: {other}"),
+                "dash-edit" => self.open_overlay("dashboard"),
+                other => match other.strip_prefix("dash:") {
+                    Some(id) => self.run_dashboard_item(id, None),
+                    None => tracing::debug!("tray: {other}"),
+                },
             },
         }
     }
@@ -1006,8 +1039,12 @@ impl App {
             self.hotkey(event);
         }
         self.theme_events();
+        self.dashboard_tick();
         self.flush_if_due();
-        self.next_flush()
+        match (self.next_flush(), self.dash.deadline()) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
     }
 
     fn hotkey(&mut self, event: HotkeyEvent) {
@@ -1036,6 +1073,8 @@ impl App {
                     }
                 } else if owner == "themes" {
                     self.theme_key(&id);
+                } else if owner == "dashboard" {
+                    self.run_dashboard_item(&id, None);
                 }
             }
             HotkeyEvent::Released { .. } => {
@@ -1050,6 +1089,12 @@ impl App {
                 tracing::warn!("{owner}: {combo} was refused: {reason}");
                 if owner == "launcher" {
                     self.hotkey_refused(&combo, &reason);
+                } else if owner == "dashboard" {
+                    self.notifier.notify(
+                        "Dashboard hotkeys",
+                        &format!("{}: {reason}", hotkeys::pretty(&combo, hotkeys::Os::current())),
+                        4000,
+                    );
                 } else if owner == "themes" {
                     let name =
                         self.themes.hotkeys().into_iter().find(|(_, _, c)| hotkeys::normalize(c) == combo);
@@ -1116,6 +1161,9 @@ impl App {
             }
             AppMsg::Desktop(event) => {
                 tracing::debug!("desktop: {event:?}");
+                if let DesktopEvent::ForeignWindow { addr, .. } = &event {
+                    self.foreign_opened(addr);
+                }
                 self.hotkeys.desktop_event(&event);
             }
             AppMsg::Tray(event) => self.tray_event(event),
@@ -1145,6 +1193,7 @@ impl App {
                 tracing::error!("the overlay failed while drawing: building it again");
                 self.overlay = MainOverlay::default();
                 self.themes_ui.reset_page();
+                self.dashboard_repair();
                 self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
             }
         } else if std::mem::take(&mut self.prewarm_due) {
@@ -1199,6 +1248,7 @@ impl App {
                 self.emit("alert.closed", &title);
             }
         }
+        self.show_ask_args(ctx);
         if let Some(dialog) = &mut self.quit_dialog {
             match dialog.show(ctx) {
                 lum_ui::dialog::Outcome::Open => {}
@@ -1265,27 +1315,61 @@ impl App {
             ..Default::default()
         };
         let mut themes_out = lum_ui::themes::Out::default();
+        let tools = self.tool_sources();
+        let (snap, tidy_style, tidy_order, show_icons) = self.dashboard_env_values();
         let out = {
-            let App { overlay, overlay_config, themes_ui, themes, settings, hotkeys, .. } = self;
+            let App {
+                overlay,
+                overlay_config,
+                themes_ui,
+                themes,
+                settings,
+                hotkeys,
+                dashboard,
+                dashboard_ui,
+                dash,
+                safe_mode,
+                ..
+            } = self;
             with_env(settings, hotkeys, |env| {
+                let is_running = |id: &str| dash.is_running(id);
+                let key_owner = |combo: &str| hotkeys.owner_of(combo).map(str::to_owned);
+                let dashboard_env = lum_ui::dashboard::Env {
+                    snap,
+                    tidy_style: &tidy_style,
+                    tidy_order: &tidy_order,
+                    show_icons,
+                    safe_mode: *safe_mode,
+                    is_running: &is_running,
+                    key_owner: &key_owner,
+                    tools: &tools,
+                };
                 let mut page = |ui: &mut egui::Ui, slot: &PageSlot<'_>| -> PageFrame {
+                    let mut sub = |ui: &mut egui::Ui, key: &str, rect: egui::Rect| -> PageFrame {
+                        match key {
+                            "themes" => {
+                                let out = themes_ui.page_ui(ui, rect, themes, env);
+                                themes_out.files.extend(out.files);
+                                themes_out.notify.extend(out.notify);
+                                PageFrame { busy: themes_ui.busy() }
+                            }
+                            other => {
+                                lum_ui::overlay::pages::placeholder(ui, other);
+                                PageFrame::default()
+                            }
+                        }
+                    };
                     match slot.key {
-                        "themes" => {
-                            let out = themes_ui.page_ui(ui, slot.on_desktop, themes, env);
-                            themes_out.files.extend(out.files);
-                            themes_out.notify.extend(out.notify);
-                            PageFrame { busy: themes_ui.busy() }
-                        }
+                        "dashboard" => dashboard_ui.show(ui, slot, dashboard, &dashboard_env, &mut sub),
                         _ if slot.extra_screen.is_some() => PageFrame::default(),
-                        key => {
-                            lum_ui::overlay::pages::placeholder(ui, key);
-                            PageFrame::default()
-                        }
+                        key => sub(ui, key, slot.on_desktop),
                     }
                 };
                 overlay.show(ctx, overlay_config, &data, &mut page)
             })
         };
+        let dashboard_out = self.dashboard_ui.take_out();
+        self.dashboard_out(dashboard_out);
         self.themes_out(themes_out);
         if out.first_frame
             && let Some(asked) = self.open_asked.take()
@@ -1454,6 +1538,7 @@ impl App {
         tracing::info!("shutting down");
         self.usage.flush();
         self.themes.flush();
+        self.dashboard_flush();
         self.palette.flush();
         self.toasts.clear();
         self.with_modules(|host, cx, actions| host.stop_all(cx, actions));

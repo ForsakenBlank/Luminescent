@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 26.75 %   [#####...............]   Current phase: Phase 4 at 75 % (phase 3 built, its Hello tray check is unconfirmed)
+Overall: 28.75 %   [#####...............]   Current phase: Phase 4 at 100 % (phase 3 built, its Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -18,7 +18,7 @@ Overall: 26.75 %   [#####...............]   Current phase: Phase 4 at 75 % (phas
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
-| 4 | Themes | 8 % | 23 % | 31 % | 75 % | in progress |
+| 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
@@ -70,7 +70,7 @@ Overall: 26.75 %   [#####...............]   Current phase: Phase 4 at 75 % (phas
 - [x] 25 %: lum-theme engine, tones / generation / gradient fixtures pass
 - [x] 50 %: ThemeStore, live apply, theme hotkeys, import / export, undo / redo
 - [x] 75 %: Themes page and the colour picker dialog with gradient mode
-- [ ] 100 %: theme editor (non-desktop pages), snapshots in three themes
+- [x] 100 %: theme editor (non-desktop pages), snapshots in three themes
 
 ### Phase 5: Overlay shell
 - [ ] 25 %: backdrop, switcher, show / hide on every monitor, latency measured
@@ -142,6 +142,47 @@ Overall: 26.75 %   [#####...............]   Current phase: Phase 4 at 75 % (phas
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-26, Phase 4 at 100 % (overall 28.75 %, 31 % once phase 3's Hello tray check is confirmed)
+
+Branch `claude/exciting-brown-fjwlud`. Phase 3's Hello tray check is still "unsure" from the user and stays under
+"Waiting on the user"; nothing asks for it again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, all tests under Xvfb, `--smoke`, `cargo deny`):
+* The Themes window: `lum_ui::themes::ThemesUi` (a `FloatingPanel` holding `ThemesPage`, the shared `ColourDialog` with
+  `picker.json` and `colours.json`, and the editor). The app draws it from `show_modules` and opens it with
+  `ctl overlay themes` (the page switcher is phase 5). File dialogs go through `lum_platform::dialogs`, the answer
+  comes back as `AppMsg::ThemeFile` into `ThemesUi::file_chosen`, notices go to the Notifier, and `Out.suspend_keys`
+  suspends the hotkeys while the editor records a key. `themes::Env` carries what the window needs from the app
+  (profile names, who owns a key, toast style, whether Hyprland and Caelestia are there).
+* The editor (`themes/editor/`: `mod.rs` state, undo / redo, save / cancel, left and right columns; `pages.rs` General,
+  Colours, When it is applied, a part's own look, desktop stubs; `preview.rs`; `tools.rs` the eight quick tools; `values.rs`
+  reading and writing the raw theme). Undo / redo uses `lum_theme::history::History` (a 700 ms burst is one step; a quick
+  tool is always one). Recently changed (lum scope only), favourites (`store.set_favourite`), Save keeps the recent list
+  with the theme, Cancel and Esc and the ✕ ask first when something changed. The desktop pages (Caelestia colours and look,
+  Glass, Window borders, Terminal) are stubs that say they come later; Caelestia ones are hidden until the module exists.
+* Tests: `crates/lum-ui/tests/themes.rs` (snapshots of the page in Dark, Light and a gradient theme "Dusk"; the editor's
+  General and Colours pages in the same three; a module page and a quick tool; the colour dialog solid in Light and
+  gradient in Dark; behaviour: Save keeps a quick tool, Ctrl+Z takes it back, Cancel asks, a new theme is drawn by the very
+  next pass). `themes::demo` (a store and window of their own) serves the tests and `--smoke`, which now walks every
+  editor page, every quick tool and the colour dialog in three looks and checks `ctl overlay themes`.
+* Records: D31 (rfd with xdg-portal only) and D32 (`Theme` is the raw JSON, saves through a background writer) were already
+  in the decision log; nothing new to add. FEATURE_INVENTORY Themes lines ticked except the desktop ones.
+
+**Fixed on the way.** The page asked for a repaint every frame (only when an action ran now; the kittest `run` caught it).
+`＋` has no glyph in any bundled font and panics in egui's layout: use `+`. A long mono line in the colour dialog widened
+the whole dialog and pushed Done off the edge (it wraps now). `FloatingPanel` is 85 % opaque by default, so panels that
+sit over others (the editor, the quick tool, the colour dialog) set `opacity = 1.0`.
+
+**Left out on purpose.**
+* Font is a text box (egui has no list of the system's fonts); the theme's font family is stored but the app only has
+  the bundled Geist until a later phase loads system fonts.
+* The "From a picture" tool asks for a file with the system dialog; the Caelestia wallpaper shortcut is phase 14.
+* The eyedropper button in the colour dialog waits for phase 9's screen picker (`ColourDialog::take_screen_request`).
+* "Switching restyles within one frame" is tested as: the pass after `Tokens::install` already reads the new tokens (a
+  headless pass), not as a timed measurement on a real desktop.
+* Not tried on a real desktop: the editor and quick tool as separate windows (embedded rendering is what the tests see),
+  key recording in the General page, the file dialogs. See "Waiting on the user".
 
 ### 2026-11-25, Phase 4 at 50 % (overall 24.75 %), stopped early because the session's usage ran out
 
@@ -528,6 +569,12 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 4 (optional, does not block phase 5):** with a throw-away `LUMINESCENT_HOME`, run the app and
+  `luminescent ctl overlay themes`. Click a theme (the whole app and the tray sparkle should follow at once), drag a card
+  onto a folder, right-click a card → Settings…, change a colour (the preview follows), open a colour and switch to
+  Gradient, try a quick tool and Ctrl+Z, press Save, then Cancel after a change (it should ask). In General, click
+  Record and press a key combination, and press Browse… for a picture. Say what looked or behaved wrong.
 
 * **Phase 3 (the user said "unsure" for both systems on 2026-11-25; still blocks the 100 % checkpoint and the Hello tray milestone):** the Hello tray steps for Hyprland and
   Windows 11, as given in the session's final message (also below in short). Quit the Python app first: both use

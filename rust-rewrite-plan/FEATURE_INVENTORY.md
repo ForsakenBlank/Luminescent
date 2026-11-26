@@ -124,19 +124,19 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Click a theme to apply it everywhere, live | 4 | `ui/themes_page.py` |
-| [ ] | Built-in Dark and Light (can not be deleted) plus the built-in pack | 4 | `core/themes.py` |
-| [ ] | Folders with colours, collapse, drag themes into folders | 4 | `ui/themes_page.py` |
-| [ ] | Theme editor: three resizable columns, every colour role, font, radius, glow, background image + opacity, card icon, wallpaper, settings profile | 4 | `ui/themes_page.py` |
-| [ ] | Looks per module, for notifications and for on-screen warnings; Copy the look of…; Match all its colours to it | 4 | `ui/themes_page.py` |
-| [ ] | Colour picker dialog: SV square, hue strip, old / new, hex / rgb / hsl / names, eyedropper, readability, recent and theme colours | 4, 9 | `core/colourpick.py` |
-| [ ] | Gradients for any colour: stops, Linear / Radial / Sweep, angle, presets, Ideas, ◐ shortcut | 4 | `core/colourpick.py` |
-| [ ] | Quick tools: Main colours, Harmony, From a picture, Surprise me, Adjust all, Follow the accent, Add variance, Light ⇄ dark, with before / after | 4 | `ui/colour_tools.py`, `core/tones.py` |
-| [ ] | Undo / redo of any theme change; Recently changed with put-back | 4 | `ui/colour_tools.py` |
-| [ ] | Import / export `.lumtheme`; From a colour… | 4 | `core/themes.py` |
-| [ ] | Next / previous theme hotkeys (round the folder); a key per theme; Back to the theme before | 4 | `core/themes.py` |
-| [ ] | A theme switches its settings profile | 4, 7 | `core/themes.py` |
-| [ ] | Desktop wallpaper per theme (picture, GIF, video, Wallpaper Engine project); red line when the file is gone | 4, 14 | `core/wallpaper.py` |
+| [x] | Click a theme to apply it everywhere, live | 4 | `ui/themes_page.py` |
+| [x] | Built-in Dark and Light (can not be deleted) plus the built-in pack | 4 | `core/themes.py` |
+| [x] | Folders with colours, collapse, drag themes into folders | 4 | `ui/themes_page.py` |
+| [x] | Theme editor: three resizable columns, every colour role, font, radius, glow, background image + opacity, card icon, wallpaper, settings profile | 4 | `ui/themes_page.py` |
+| [x] | Looks per module, for notifications and for on-screen warnings; Copy the look of…; Match all its colours to it | 4 | `ui/themes_page.py` |
+| [ ] | Colour picker dialog: SV square, hue strip, old / new, hex / rgb / hsl / names, eyedropper (the screen pick comes with phase 9), readability, recent and theme colours | 4, 9 | `core/colourpick.py` |
+| [x] | Gradients for any colour: stops, Linear / Radial / Sweep, angle, presets, Ideas, ◐ shortcut | 4 | `core/colourpick.py` |
+| [x] | Quick tools: Main colours, Harmony, From a picture, Surprise me, Adjust all, Follow the accent, Add variance, Light ⇄ dark, with before / after | 4 | `ui/colour_tools.py`, `core/tones.py` |
+| [x] | Undo / redo of any theme change; Recently changed with put-back | 4 | `ui/colour_tools.py` |
+| [x] | Import / export `.lumtheme`; From a colour… | 4 | `core/themes.py` |
+| [x] | Next / previous theme hotkeys (round the folder); a key per theme; Back to the theme before | 4 | `core/themes.py` |
+| [x] | A theme switches its settings profile | 4, 7 | `core/themes.py` |
+| [ ] | Desktop wallpaper per theme (picture, GIF, video, Wallpaper Engine project); red line when the file is gone (the box and the red line are built; applying it is phase 14) | 4, 14 | `core/wallpaper.py` |
 | [ ] | Caelestia colours per theme, grouped and named, searchable, favourites, hover / click preview | 14 | `ui/colour_tools.py` |
 | [ ] | Caelestia look per theme (transparency, fonts, sizes, pictures, logo, lock screen, desktop clock) | 14 | `modules/caelestia_look.py` |
 | [ ] | Caelestia extras: picture instead of lyrics, picture or GIF behind the lock screen | 14 | `modules/caelestia_look.py` |

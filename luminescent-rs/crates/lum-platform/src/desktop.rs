@@ -29,6 +29,9 @@ pub struct Monitor {
     pub height: u32,
     pub scale: f32,
     pub primary: bool,
+    /// What bars and docks keep for themselves at the top and the bottom (they stay above our windows).
+    pub top_inset: u32,
+    pub bottom_inset: u32,
 }
 
 /// A window to open full size on one monitor (Hyprland only places it if a rule says so before it maps).
@@ -49,6 +52,11 @@ pub fn monitors() -> Vec<Monitor> {
     let mut list = imp::monitors();
     list.sort_by_key(|m| !m.primary);
     list
+}
+
+/// Where the mouse pointer is, in desktop coordinates, when the system says.
+pub fn cursor() -> Option<(i32, i32)> {
+    imp::cursor()
 }
 
 /// The compositor places our windows through rules (Hyprland), so a window's own position means nothing.
@@ -282,6 +290,7 @@ mod imp {
             .into_iter()
             .map(|m| {
                 let (width, height) = m.logical_size();
+                let [_, top, _, bottom] = m.reserved();
                 Monitor {
                     name: m.name,
                     x: m.x,
@@ -290,9 +299,15 @@ mod imp {
                     height,
                     scale: m.scale.max(0.1) as f32,
                     primary: m.focused,
+                    top_inset: top.max(0) as u32,
+                    bottom_inset: bottom.max(0) as u32,
                 }
             })
             .collect()
+    }
+
+    pub fn cursor() -> Option<(i32, i32)> {
+        Hypr::from_env()?.cursor_pos()
     }
 
     fn spike(app_id: &str) -> Option<Hypr> {
@@ -387,6 +402,7 @@ mod imp {
                 dpi_x = 96;
             }
             let r = info.monitorInfo.rcMonitor;
+            let work = info.monitorInfo.rcWork;
             let end = info.szDevice.iter().position(|&c| c == 0).unwrap_or(info.szDevice.len());
             list.push(Monitor {
                 name: String::from_utf16_lossy(&info.szDevice[..end]),
@@ -396,9 +412,19 @@ mod imp {
                 height: (r.bottom - r.top).max(0) as u32,
                 scale: dpi_x as f32 / 96.0,
                 primary: info.monitorInfo.dwFlags & MONITORINFOF_PRIMARY != 0,
+                top_inset: (work.top - r.top).max(0) as u32,
+                bottom_inset: (r.bottom - work.bottom).max(0) as u32,
             });
         }
         TRUE
+    }
+
+    pub fn cursor() -> Option<(i32, i32)> {
+        use windows_sys::Win32::Foundation::POINT;
+        use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+        let mut at = POINT { x: 0, y: 0 };
+        // SAFETY: writes into the POINT it is given.
+        (unsafe { GetCursorPos(&mut at) } != 0).then_some((at.x, at.y))
     }
 
     pub fn monitors() -> Vec<Monitor> {
@@ -432,6 +458,10 @@ mod imp {
 
     pub fn monitors() -> Vec<Monitor> {
         Vec::new()
+    }
+
+    pub fn cursor() -> Option<(i32, i32)> {
+        None
     }
 
     pub fn install_rules(_app_id: &str, _covers: &[Cover]) -> Result<bool, String> {

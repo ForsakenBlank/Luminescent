@@ -20,7 +20,8 @@ const CHECKS: &[(&str, Check)] = &[
     ("backup", backup_zip),
     ("ctl socket", ctl_socket),
     ("widget kit in Dark and Light", widget_kit),
-    ("hotkeys, tray menu and the overlay", hello_tray),
+    ("hotkeys and the tray menu", hello_tray),
+    ("the overlay: open, switch pages, close", overlay),
     ("themes switch and restyle", themes),
     ("themes window, editor and colour dialog", themes_window),
 ];
@@ -114,8 +115,16 @@ fn themes_window(app: &mut App) -> Result<(), String> {
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     lum_ui::themes::demo::build_headless(&dir)?;
     let (answer, _) = app.handle_ctl("overlay themes");
-    if answer != "ok" || !app.themes_ui.is_open() {
-        return Err(format!("ctl overlay themes did not open the window ({answer})"));
+    if answer != "ok" || !app.overlay.is_open() || app.overlay.current() != "themes" {
+        return Err(format!("ctl overlay themes did not open the Themes page ({answer})"));
+    }
+    app.hide_overlay();
+    let ctx = headless_context();
+    for _ in 0..2 {
+        lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+    }
+    if app.overlay.is_visible() {
+        return Err("the overlay did not go away".into());
     }
     Ok(())
 }
@@ -152,36 +161,70 @@ fn hello_tray(app: &mut App) -> Result<(), String> {
     if lum_platform::tray::sparkle_icon(32, [0x7B, 0x6C, 0xF6]).rgba.iter().all(|&b| b == 0) {
         return Err("the tray icon is empty".into());
     }
-    let (answer, _) = app.handle_ctl("overlay");
-    if answer != "ok" || !app.overlay_open {
-        return Err(format!("ctl overlay answered {answer:?}"));
-    }
+    Ok(())
+}
+
+fn headless_context() -> egui::Context {
     let ctx = egui::Context::default();
     ctx.set_embed_viewports(true);
     lum_ui::setup(&ctx, lum_ui::Tokens::dark());
-    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
-    let input = |esc: bool| egui::RawInput {
-        screen_rect: Some(screen),
-        events: if esc {
-            vec![egui::Event::Key {
-                key: egui::Key::Escape,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: egui::Modifiers::NONE,
-            }]
-        } else {
-            Vec::new()
-        },
+    lum_ui::Motion::off().install(&ctx);
+    ctx
+}
+
+fn key(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
+    egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers }
+}
+
+fn input(events: &[egui::Event]) -> egui::RawInput {
+    egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1600.0, 1000.0))),
+        events: events.to_vec(),
         ..Default::default()
-    };
-    lum_ui::headless_pass(&ctx, input(false), |ui| app.show_modules(ui.ctx()));
-    if !app.overlay_open {
-        return Err("the overlay closed by itself".into());
     }
-    lum_ui::headless_pass(&ctx, input(true), |ui| app.show_modules(ui.ctx()));
-    if app.overlay_open {
+}
+
+/// The overlay drawn without windows: `ctl overlay` opens it, Ctrl+3 goes to the third page, typing on the
+/// Themes page asks for the palette, Esc closes it and the page it was on is remembered.
+fn overlay(app: &mut App) -> Result<(), String> {
+    use egui::{Key, Modifiers};
+    let (answer, _) = app.handle_ctl("overlay");
+    if answer != "ok" || !app.overlay.is_open() {
+        return Err(format!("ctl overlay answered {answer:?}"));
+    }
+    let ctx = headless_context();
+    let pass = |app: &mut App, events: &[egui::Event]| {
+        let output = lum_ui::headless_pass(&ctx, input(events), |ui| app.show_modules(ui.ctx()));
+        ctx.tessellate(output.shapes, output.pixels_per_point).len()
+    };
+    pass(app, &[]);
+    if pass(app, &[]) == 0 {
+        return Err("the overlay drew nothing".into());
+    }
+    if app.open_times.is_empty() {
+        return Err("the open was not timed".into());
+    }
+    pass(app, &[key(Key::Num3, Modifiers::CTRL)]);
+    if app.overlay.current() != "themes" {
+        return Err(format!("Ctrl+3 went to {}", app.overlay.current()));
+    }
+    pass(app, &[]);
+    for page in ["settings", "clipboard", "automation", "dashboard"] {
+        app.open_overlay(page);
+        pass(app, &[]);
+        pass(app, &[]);
+    }
+    let (answer, _) = app.handle_ctl("overlay nowhere");
+    if !answer.starts_with("error:") {
+        return Err(format!("an unknown page answered {answer:?}"));
+    }
+    pass(app, &[key(Key::Escape, Modifiers::NONE)]);
+    pass(app, &[]);
+    if app.overlay.is_visible() {
         return Err("Esc did not close the overlay".into());
+    }
+    if app.settings.get_str("ui.last_page") != Some("dashboard") {
+        return Err("the page it was on was not remembered".into());
     }
     Ok(())
 }

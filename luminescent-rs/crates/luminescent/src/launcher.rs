@@ -26,6 +26,7 @@ use lum_platform::ipc::{self, CtlEndpoint, CtlRequest};
 use lum_platform::keepawake::KeepAwake;
 use lum_platform::tray::{self, MenuItem, Tray, TrayEvent};
 use lum_theme::{ThemeEvent, ThemeStore};
+use lum_ui::overlay::{Config as OverlayConfig, MainOverlay, PageFrame, PageSlot};
 use lum_ui::{Tokens, UiModule};
 use serde_json::json;
 use tokio::runtime::Runtime;
@@ -54,6 +55,8 @@ pub enum AppMsg {
     },
     /// `--idle-check` is done.
     IdleReport(idle::Numbers),
+    /// `--idle-check` opens the overlay (true) and hides it again before it measures.
+    IdleOverlay(bool),
     Desktop(DesktopEvent),
     Tray(TrayEvent),
     /// Keep awake changed (or could not), with the error text.
@@ -231,9 +234,15 @@ pub struct App {
     pub themes_ui: lum_ui::themes::ThemesUi,
     /// New tokens a theme switch made, for the UI thread to install into egui's context.
     restyle: Option<Tokens>,
-    /// The empty overlay of the Hello tray milestone; phase 5 brings the real one.
-    pub overlay: lum_ui::overlay::Overlay,
-    pub overlay_open: bool,
+    pub overlay: MainOverlay,
+    /// What the overlay takes from the settings, made again when they change.
+    pub overlay_config: OverlayConfig,
+    /// When the overlay was asked to open, until its first frame is drawn.
+    open_asked: Option<Instant>,
+    /// How long the last opens took from the request to the first frame, in ms (newest last).
+    pub open_times: Vec<f64>,
+    /// When the overlay was last rebuilt after a page failed (at most every few seconds).
+    last_repair: Option<Instant>,
     tray: Option<Tray>,
     keep_awake: Option<KeepAwake>,
     mailbox: Mailbox,
@@ -305,8 +314,11 @@ impl App {
                 paths.data_file("colours.json"),
             ),
             restyle: None,
-            overlay: lum_ui::overlay::Overlay::default(),
-            overlay_open: false,
+            overlay: MainOverlay::default(),
+            overlay_config: OverlayConfig::from_settings(&settings, safe_mode),
+            open_asked: None,
+            open_times: Vec::new(),
+            last_repair: None,
             tray: None,
             keep_awake: None,
             mailbox: mailbox.clone(),
@@ -390,8 +402,7 @@ impl App {
         }
         self.notifier.running = true;
         self.notifier.desktop = self.settings.get_bool("general.tray_messages", true);
-        self.overlay.dim =
-            self.settings.get("ui.overlay_dim").and_then(serde_json::Value::as_f64).unwrap_or(0.64) as f32;
+        self.overlay_config = OverlayConfig::from_settings(&self.settings, self.safe_mode);
         self.register_hotkeys();
         self.register_theme_hotkeys();
         let mailbox = self.mailbox.clone();
@@ -406,22 +417,29 @@ impl App {
         }
     }
 
-    /// The launcher's own hotkeys, with the Python labels. "Quit all" comes with its confirmation in phase 5.
+    /// The launcher's own hotkeys, with the Python labels.
     fn register_hotkeys(&mut self) {
-        let binds = [
+        let mut binds: Vec<(String, String)> = [
+            ("general.settings_hotkey", "settings"),
             ("ui.overlay_hotkey", "overlay"),
             ("ui.palette_hotkey", "command palette"),
             ("ui.theme_cycle_hotkey", "next theme"),
             ("ui.theme_prev_hotkey", "previous theme"),
             ("general.keep_awake_hotkey", "keep awake"),
-        ];
+        ]
+        .into_iter()
+        .map(|(key, label)| (key.to_owned(), label.to_owned()))
+        .collect();
+        for (page, _) in lum_ui::overlay::pages::NAV_SECTIONS {
+            binds.push((lum_ui::overlay::pages::hotkey_setting(page), format!("overlay {page}")));
+        }
         for (key, label) in binds {
-            let combo = self.settings.get_str(key).unwrap_or_default().to_owned();
+            let combo = self.settings.get_str(&key).unwrap_or_default().to_owned();
             if let Err(e) =
-                self.hotkeys.register("launcher", &combo, label, label, hotkeys::Options::default())
+                self.hotkeys.register("launcher", &combo, &label, &label, hotkeys::Options::default())
                 && !combo.is_empty()
             {
-                self.hotkey_refused(label, &e);
+                self.hotkey_refused(&label, &e);
             }
         }
     }
@@ -600,24 +618,80 @@ impl App {
         }
     }
 
-    /// Opens the overlay, or closes it when it is open (the overlay hotkey and a tray click toggle it).
+    /// Opens the overlay on the page it starts on, or hides it when it is open (the overlay hotkey and a tray
+    /// click toggle it).
     pub fn toggle_overlay(&mut self) {
-        self.set_overlay(!self.overlay_open);
+        if self.overlay.is_open() {
+            self.hide_overlay();
+        } else {
+            let page = self.overlay_config.start_page();
+            self.open_overlay(&page);
+        }
     }
 
-    pub fn set_overlay(&mut self, open: bool) {
-        if open && !self.overlay_open {
-            self.overlay.opened();
+    /// Shows the overlay on `page`, or switches to it when the overlay is up already.
+    pub fn open_overlay(&mut self, page: &str) {
+        if self.overlay.is_open() {
+            self.overlay.show_page(page);
+        } else {
+            self.open_asked = Some(Instant::now());
+            let screens = lum_ui::window::screens();
+            let host = MainOverlay::host_for(&screens, self.overlay_config.on_cursor_screen);
+            self.overlay.open(page, screens, host);
+            let current = self.overlay.current().to_owned();
+            self.emit("overlay.opened", &current);
         }
-        self.overlay_open = open;
         self.waker.wake();
+    }
+
+    pub fn hide_overlay(&mut self) {
+        self.overlay.hide();
+        self.waker.wake();
+    }
+
+    /// The overlay finished going away: it remembers the page it was on.
+    fn overlay_closed(&mut self) {
+        self.emit("overlay.closed", "");
+        let page = self.overlay.current().to_owned();
+        if self.settings.get_str("ui.last_page") != Some(page.as_str()) {
+            self.settings.set("ui.last_page", json!(page));
+            if let Err(e) = self.settings.save_quiet() {
+                tracing::warn!("could not save the page the overlay was on: {e}");
+            }
+            self.overlay_config.last_page = page;
+        }
+    }
+
+    fn opened_in(&mut self, asked: Instant) {
+        let ms = asked.elapsed().as_secs_f64() * 1000.0;
+        tracing::info!("overlay open: first frame {ms:.1} ms after asking");
+        self.open_times.push(ms);
+        if self.open_times.len() > 50 {
+            self.open_times.remove(0);
+        }
+    }
+
+    /// A page failed while drawing: its state goes and is built again, at most every few seconds.
+    fn repair_page(&mut self, key: &str) {
+        if self.last_repair.is_some_and(|at| at.elapsed() < Duration::from_secs(3)) {
+            return;
+        }
+        self.last_repair = Some(Instant::now());
+        tracing::warn!("repairing the overlay (was on {key})");
+        if key == "themes" {
+            self.themes_ui.reset_page();
+        }
+        self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
     }
 
     fn tray_event(&mut self, event: TrayEvent) {
         match event {
             TrayEvent::Activated => self.toggle_overlay(),
             TrayEvent::Menu(id) => match id.as_str() {
-                "open" => self.set_overlay(true),
+                "open" => {
+                    let page = self.overlay_config.start_page();
+                    self.open_overlay(&page);
+                }
                 "palette" => tracing::info!("the command palette comes in phase 5"),
                 "keepawake" => self.toggle_keep_awake(),
                 "reset" => self.hotkeys.reset_keys(),
@@ -708,11 +782,16 @@ impl App {
                 if owner == "launcher" {
                     match id.as_str() {
                         "overlay" => self.toggle_overlay(),
+                        "settings" => self.open_overlay("settings"),
                         "keep awake" => self.toggle_keep_awake(),
                         "command palette" => tracing::info!("the command palette comes in phase 5"),
                         "next theme" => self.next_theme(1),
                         "previous theme" => self.next_theme(-1),
-                        _ => {}
+                        other => {
+                            if let Some(page) = other.strip_prefix("overlay ") {
+                                self.open_overlay(page);
+                            }
+                        }
                     }
                 } else if owner == "themes" {
                     self.theme_key(&id);
@@ -769,11 +848,18 @@ impl App {
             AppMsg::Emit { name, text } => self.emit(&name, &text),
             AppMsg::IdleReport(mut numbers) => {
                 numbers.software_renderer = self.software_renderer;
+                numbers.overlay_ms = self.open_times.last().copied();
                 let text = numbers.report(&self.mode);
                 println!("{text}");
                 tracing::info!("{}", text.lines().next().unwrap_or_default());
                 self.exit_code = u8::from(!numbers.ok());
                 self.quitting = true;
+            }
+            AppMsg::IdleOverlay(open) => {
+                // only with windows: without them nothing would draw it, so it could not go away again
+                if self.notifier.running {
+                    if open { self.open_overlay("themes") } else { self.hide_overlay() }
+                }
             }
             AppMsg::Desktop(event) => {
                 tracing::debug!("desktop: {event:?}");
@@ -796,26 +882,14 @@ impl App {
         }
     }
 
-    /// Lets every running module draw its windows for this frame. A module that panics while drawing counts a
-    /// fault, and one that keeps failing is switched off for the session.
+    /// Draws the overlay, the Themes windows and every running module's windows for this frame. A module that
+    /// panics while drawing counts a fault, and one that keeps failing is switched off for the session.
     pub fn show_modules(&mut self, ctx: &egui::Context) {
-        if self.overlay_open {
-            let mut screens = lum_ui::window::screens();
-            if screens.is_empty() {
-                // the system did not list them (X11 without Hyprland): the screen the main window is on
-                let size = ctx.input(|i| i.viewport().monitor_size).unwrap_or(egui::vec2(1280.0, 800.0));
-                screens.push(lum_ui::window::Screen::new(
-                    "screen",
-                    egui::Rect::from_min_size(egui::Pos2::ZERO, size),
-                ));
-            }
-            if self.overlay.show(ctx, &screens).close {
-                self.overlay_open = false;
-                ctx.request_repaint();
-            }
+        if self.overlay.is_visible() {
+            self.show_overlay(ctx);
         }
-        if self.themes_ui.is_open() {
-            let out = self.with_themes_ui(|ui, store, env| ui.show(ctx, store, env));
+        if self.themes_ui.has_windows() {
+            let out = self.with_themes_ui(|ui, store, env| ui.show_windows(ctx, store, env));
             self.themes_out(out);
         }
         let App { host, settings, .. } = self;
@@ -828,28 +902,49 @@ impl App {
         }
     }
 
+    fn show_overlay(&mut self, ctx: &egui::Context) {
+        let mut themes_out = lum_ui::themes::Out::default();
+        let out = {
+            let App { overlay, overlay_config, themes_ui, themes, settings, hotkeys, .. } = self;
+            with_env(settings, hotkeys, |env| {
+                let mut page = |ui: &mut egui::Ui, slot: &PageSlot<'_>| -> PageFrame {
+                    match slot.key {
+                        "themes" => {
+                            let out = themes_ui.page_ui(ui, slot.on_desktop, themes, env);
+                            themes_out.files.extend(out.files);
+                            themes_out.notify.extend(out.notify);
+                            PageFrame { busy: themes_ui.busy() }
+                        }
+                        _ if slot.extra_screen.is_some() => PageFrame::default(),
+                        key => {
+                            lum_ui::overlay::pages::placeholder(ui, key);
+                            PageFrame::default()
+                        }
+                    }
+                };
+                overlay.show(ctx, overlay_config, &mut page)
+            })
+        };
+        self.themes_out(themes_out);
+        if out.first_frame
+            && let Some(asked) = self.open_asked.take()
+        {
+            self.opened_in(asked);
+        }
+        if let Some(key) = out.repair {
+            self.repair_page(&key);
+        }
+        if out.closed {
+            self.overlay_closed();
+        }
+    }
+
     fn with_themes_ui<R>(
         &mut self,
         f: impl FnOnce(&mut lum_ui::themes::ThemesUi, &mut ThemeStore, &lum_ui::themes::Env<'_>) -> R,
     ) -> R {
         let App { themes_ui, themes, settings, hotkeys, .. } = self;
-        let profile_name = |id: &str| settings.profile_name(id);
-        let key_owner =
-            |combo: &str| hotkeys.owner_of(combo).filter(|owner| *owner != "themes").map(str::to_owned);
-        let env = lum_ui::themes::Env {
-            profile_name: &profile_name,
-            profiles: settings
-                .profiles()
-                .into_iter()
-                .filter(|p| p.id != "default")
-                .map(|p| (p.id, p.name))
-                .collect(),
-            key_owner: &key_owner,
-            toast_style: settings.get_str("general.toast_style").unwrap_or("glow").to_owned(),
-            hyprland: lum_platform::desktop::places_windows_by_rule(),
-            caelestia: false,
-        };
-        f(themes_ui, themes, &env)
+        with_env(settings, hotkeys, |env| f(themes_ui, themes, env))
     }
 
     /// File dialogs the Themes window wants (they answer through the mailbox) and its desktop notices.
@@ -889,21 +984,21 @@ impl App {
             CtlCommand::Status => self.status(),
             CtlCommand::Overlay(page) => {
                 tracing::info!("asked to open: {line}");
-                self.set_overlay(true);
-                match page.as_deref() {
-                    Some("themes") => {
-                        self.themes_ui.open();
-                        "ok".to_owned()
-                    }
-                    Some(page) => {
-                        format!("ok: the overlay is empty in this build, so {page} is not there yet")
-                    }
-                    None => "ok".to_owned(),
+                let page = page.map(|p| p.to_lowercase()).unwrap_or_else(|| self.overlay_config.start_page());
+                if lum_ui::overlay::pages::title(&page).is_none() {
+                    return (format!("error: there is no page called {page}"), false);
                 }
+                self.open_overlay(&page);
+                "ok".to_owned()
             }
-            CtlCommand::Palette | CtlCommand::Settings(_) => {
+            CtlCommand::Settings(_) => {
+                tracing::info!("asked to open: {line}");
+                self.open_overlay("settings");
+                "ok".to_owned()
+            }
+            CtlCommand::Palette => {
                 tracing::info!("asked to open: {line} (that comes in phase 5)");
-                "ok: the palette and the settings page come in a later build".to_owned()
+                "ok: the palette comes in a later build".to_owned()
             }
             CtlCommand::Action(id) => self.run_action(&id),
             CtlCommand::Theme(which) => self.ctl_theme(&which),
@@ -944,6 +1039,7 @@ impl App {
             "modules": self.host.running(),
             "module_errors": errors,
             "hotkey_latency_p99_ms": self.hotkeys.latency_p99_ms(),
+            "overlay_open_ms": open_times(&self.open_times),
         })
         .to_string()
     }
@@ -991,6 +1087,47 @@ impl App {
             runtime.shutdown_timeout(Duration::from_secs(1));
         }
     }
+}
+
+/// What the Themes page and its windows need to know about the rest of the app.
+fn with_env<R>(
+    settings: &Settings,
+    hotkeys: &HotkeyManager,
+    f: impl FnOnce(&lum_ui::themes::Env<'_>) -> R,
+) -> R {
+    let profile_name = |id: &str| settings.profile_name(id);
+    let key_owner =
+        |combo: &str| hotkeys.owner_of(combo).filter(|owner| *owner != "themes").map(str::to_owned);
+    let env = lum_ui::themes::Env {
+        profile_name: &profile_name,
+        profiles: settings
+            .profiles()
+            .into_iter()
+            .filter(|p| p.id != "default")
+            .map(|p| (p.id, p.name))
+            .collect(),
+        key_owner: &key_owner,
+        toast_style: settings.get_str("general.toast_style").unwrap_or("glow").to_owned(),
+        hyprland: lum_platform::desktop::places_windows_by_rule(),
+        caelestia: false,
+    };
+    f(&env)
+}
+
+/// The overlay's open times for `ctl status`: the last one, the middle one and the slowest, in ms.
+fn open_times(times: &[f64]) -> serde_json::Value {
+    if times.is_empty() {
+        return serde_json::Value::Null;
+    }
+    let mut sorted = times.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    let round = |ms: f64| (ms * 10.0).round() / 10.0;
+    json!({
+        "count": times.len(),
+        "last": round(times[times.len() - 1]),
+        "median": round(sorted[sorted.len() / 2]),
+        "max": round(sorted[sorted.len() - 1]),
+    })
 }
 
 /// Once a week: zip the setup into data/backups and keep the newest five. Checked 20 s after the start and

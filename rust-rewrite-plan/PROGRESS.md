@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 28.75 %   [#####...............]   Current phase: Phase 4 at 100 % (phase 3 built, its Hello tray check is unconfirmed)
+Overall: 30.25 %   [######..............]   Current phase: Phase 5 at 25 % (phase 3's Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -19,7 +19,7 @@ Overall: 28.75 %   [#####...............]   Current phase: Phase 4 at 100 % (pha
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
-| 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
+| 5 | Overlay shell | 6 % | 31 % | 37 % | 25 % | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
@@ -73,7 +73,7 @@ Overall: 28.75 %   [#####...............]   Current phase: Phase 4 at 100 % (pha
 - [x] 100 %: theme editor (non-desktop pages), snapshots in three themes
 
 ### Phase 5: Overlay shell
-- [ ] 25 %: backdrop, switcher, show / hide on every monitor, latency measured
+- [x] 25 %: backdrop, switcher, show / hide on every monitor, latency measured
 - [ ] 50 %: chrome layer with edit mode
 - [ ] 75 %: command palette and cheat sheet
 - [ ] 100 %: notification cards, on-screen warning, prewarm, repair, Looks right confirmed
@@ -142,6 +142,18 @@ Overall: 28.75 %   [#####...............]   Current phase: Phase 4 at 100 % (pha
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-26, Phase 5 at 25 % (overall 30.25 %; 31.75 % with phase 3's Hello tray check)
+
+Branch `claude/keen-keller-1quy00`, which starts from phase 4's branch (it holds phases 3 and 4; main does not yet).
+`lum_ui::overlay` is the real overlay now: `MainOverlay` (one window per screen, the cover titles, fade in and out,
+the panel, `backdrop.rs`, the switcher with its sliding marker, ✕ and the hotkey hint, Ctrl+1…9, Esc, a click on
+the dim around a panel page, typing on the Dashboard or Themes page asks for the palette, a page that panics is
+reported for repair), `pages.rs` (the page lists, `nav_order`, placeholders). The Themes page draws in the panel;
+`ThemesUi` keeps the editor and the colour dialog as windows. `ctl overlay <page>`, the "Jump to" hotkeys and
+`general.settings_hotkey` open pages; the last page is remembered. `ctl status` has `overlay_open_ms`, and
+`--idle-check` opens and hides the overlay before it measures (Xvfb, debug: first frame 53 ms, then 0 frames).
+Snapshots `overlay_*`; the Themes and editor snapshots changed because the page is no longer in a window.
 
 ### 2026-11-26, Phase 4 at 100 % (overall 28.75 %, 31 % once phase 3's Hello tray check is confirmed)
 

@@ -1,12 +1,12 @@
-//! The Themes window: the page of theme cards, the colour dialog it shares with the theme editor, and the
-//! editor itself. The overlay has no page switcher until phase 5, so for now this is a floating window.
+//! The Themes page of the overlay (the theme cards), the colour dialog it shares with the theme editor, and the
+//! editor itself. The page draws into the overlay's panel; the editor and the colour dialog are windows of
+//! their own, drawn whether the overlay is up or not.
 
 use std::path::PathBuf;
 
 use egui::Context;
 use lum_theme::ThemeStore;
 
-use crate::panel::{FloatingPanel, Geometry};
 use crate::picker::{ColourDialog, PickerEvent};
 use crate::themes::editor::ThemeEditor;
 use crate::themes::page::{FileAsk, FileJob, PageCx, PageOut, ThemesPage};
@@ -74,34 +74,38 @@ impl Out {
 
 #[derive(Debug)]
 pub struct ThemesUi {
-    panel: FloatingPanel,
     page: ThemesPage,
     picker: ColourDialog,
     editor: Option<ThemeEditor>,
+    /// Where the page was drawn last, in desktop coordinates: the editor and dialogs open in front of it.
+    near: egui::Rect,
 }
 
 impl ThemesUi {
     /// `picker_file` is `picker.json`, `eyedropper_file` the screen colour picker's `colours.json`.
     pub fn new(picker_file: PathBuf, eyedropper_file: PathBuf) -> ThemesUi {
         ThemesUi {
-            panel: FloatingPanel::new(
-                "themes",
-                "Themes",
-                Geometry { x: 160.0, y: 90.0, w: 1040.0, h: 720.0 },
-            )
-            .min_size(egui::vec2(640.0, 420.0)),
             page: ThemesPage::new(),
             picker: ColourDialog::new(picker_file, eyedropper_file),
             editor: None,
+            near: egui::Rect::from_min_size(egui::pos2(160.0, 90.0), egui::vec2(1040.0, 720.0)),
         }
     }
 
-    pub fn open(&mut self) {
-        self.panel.open();
+    /// The editor or the colour dialog is open, so there is something to draw even with the overlay hidden.
+    pub fn has_windows(&self) -> bool {
+        self.editor.is_some() || self.picker.is_open()
     }
 
-    pub fn is_open(&self) -> bool {
-        self.panel.is_open() || self.editor.is_some() || self.picker.is_open()
+    /// Something of the page's own uses the keyboard right now (a dialog, the colour dialog, the editor), so Esc
+    /// and typing are not the overlay's.
+    pub fn busy(&self) -> bool {
+        self.page.has_dialog() || self.has_windows()
+    }
+
+    /// Throws the page's state away (it failed while drawing); the next frame builds it afresh.
+    pub fn reset_page(&mut self) {
+        self.page = ThemesPage::new();
     }
 
     pub fn picker(&mut self) -> &mut ColourDialog {
@@ -112,34 +116,39 @@ impl ThemesUi {
         self.editor.as_mut()
     }
 
-    /// Opens the editor on a theme, as big as the screen the Themes window is on allows.
+    /// Opens the editor on a theme, as big as the screen the page is on allows.
     pub fn edit(&mut self, ctx: &Context, store: &ThemeStore, id: &str) {
         if let Some(theme) = store.get(id) {
-            let area = work_area(ctx, self.panel.geometry.rect());
+            let area = work_area(ctx, self.near);
             self.editor = Some(ThemeEditor::new(theme, store.recent_changes(id), area));
         }
     }
 
-    /// Draws whatever is open this frame.
-    pub fn show(&mut self, ctx: &Context, store: &mut ThemeStore, env: &Env<'_>) -> Out {
+    /// Draws the page into `ui`, which sits at `on_desktop` on the screen.
+    pub fn page_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        on_desktop: egui::Rect,
+        store: &mut ThemeStore,
+        env: &Env<'_>,
+    ) -> Out {
+        self.near = on_desktop;
         let mut out = Out::default();
-        let near = self.panel.geometry.rect();
-        let mut edit = None;
-        {
-            let ThemesUi { panel, page, picker, editor } = self;
-            let response = panel.show(ctx, |ui| {
-                let mut cx =
-                    PageCx { store: &mut *store, picker: &mut *picker, near, profile_name: env.profile_name };
-                edit = out.take(page.ui(ui, &mut cx));
-            });
-            // Esc closes the window unless a dialog, the colour dialog or the editor has it
-            if response.escape && !page.has_dialog() && !picker.is_open() && editor.is_none() {
-                panel.close();
-            }
+        let mut cx = PageCx {
+            store: &mut *store,
+            picker: &mut self.picker,
+            near: on_desktop,
+            profile_name: env.profile_name,
+        };
+        if let Some(id) = out.take(self.page.ui(ui, &mut cx)) {
+            self.edit(ui.ctx(), store, &id);
         }
-        if let Some(id) = edit {
-            self.edit(ctx, store, &id);
-        }
+        out
+    }
+
+    /// Draws the editor and the colour dialog, when they are open.
+    pub fn show_windows(&mut self, ctx: &Context, store: &mut ThemeStore, env: &Env<'_>) -> Out {
+        let mut out = Out::default();
         if let Some(editor) = &mut self.editor {
             let result = editor.show(ctx, store, &mut self.picker, env);
             out.files.extend(result.files);
@@ -148,6 +157,7 @@ impl ThemesUi {
                 self.editor = None;
             }
         }
+        let near = self.near;
         for event in self.picker.show(ctx) {
             self.picked(&event, store, env, near);
         }
@@ -162,7 +172,7 @@ impl ThemesUi {
         self.page.picked(event, &mut cx);
     }
 
-    /// A file dialog the window asked for came back.
+    /// A file dialog the page or the editor asked for came back.
     pub fn file_chosen(
         &mut self,
         job: &FileJob,
@@ -171,7 +181,7 @@ impl ThemesUi {
         env: &Env<'_>,
     ) -> Out {
         let mut out = Out::default();
-        let near = self.panel.geometry.rect();
+        let near = self.near;
         if let (FileJob::Browse(field), Some(editor)) = (job, &mut self.editor) {
             editor.file_chosen(field, path, near);
             return out;

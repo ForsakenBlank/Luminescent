@@ -203,14 +203,10 @@ mod behaviour {
     #[test]
     fn a_new_theme_is_drawn_by_the_very_next_pass() {
         let dir = tempfile::tempdir().unwrap();
-        let mut demo = Demo::new(dir.path(), Look::Dark);
-        let mut harness = Harness::builder().with_size([1280.0, 860.0]).build_ui_state(
-            |ui, demo: &mut Demo| demo.ui(ui),
-            {
-                demo.ui.open();
-                demo
-            },
-        );
+        let demo = Demo::new(dir.path(), Look::Dark);
+        let mut harness = Harness::builder()
+            .with_size([1280.0, 860.0])
+            .build_ui_state(|ui, demo: &mut Demo| demo.ui(ui), demo);
         harness.run();
         assert!(!Tokens::of(&harness.ctx).p.is_light());
         harness.state_mut().store.apply("light");

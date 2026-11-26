@@ -9,8 +9,9 @@ use lum_platform::process;
 
 use crate::launcher::{AppMsg, Mailbox, Passes};
 
-/// The start-up work (the "started" event at 1.5 s and so on) is done by then.
-const SETTLE: Duration = Duration::from_secs(3);
+/// The start-up work (the "started" event at 1.5 s, the overlay's prewarm at 3 s, and the open and close of
+/// the overlay below) is done by then.
+const SETTLE: Duration = Duration::from_secs(5);
 
 /// Over this the process counts as busy; 0.1 % of a core is what one wake-up a second with a little work
 /// costs, which is already more than the budget.
@@ -32,6 +33,8 @@ pub struct Numbers {
     /// The CPU draws the pixels (llvmpipe in CI and cloud machines). Its driver adds 50 MB or more of
     /// libraries to the RSS, so memory over the limit is reported but does not fail the check.
     pub software_renderer: bool,
+    /// With windows, the overlay is opened and hidden again before measuring: its first frame took this long.
+    pub overlay_ms: Option<f64>,
 }
 
 impl Numbers {
@@ -54,6 +57,9 @@ impl Numbers {
             ""
         };
         let verdict = if self.ok() { "OK" } else { "OVER BUDGET" };
+        let overlay = self.overlay_ms.map_or(String::new(), |ms| {
+            format!("\n  overlay      opened and hidden before measuring (first frame after {ms:.1} ms)")
+        });
         let desktop =
             std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_| std::env::consts::OS.to_owned());
         format!(
@@ -62,7 +68,7 @@ impl Numbers {
              \x20 wake-ups     {wakeups} a second (budget under {WAKEUP_BUDGET:.0})\n\
              \x20 memory       {rss:.0} MB RSS{private} (target {RSS_TARGET_MB:.0} MB, limit {RSS_LIMIT_MB:.0} MB){software}\n\
              \x20 threads      {threads}\n\
-             \x20 UI passes    {logic} woken, {ui} painted (budget 0 painted)\n\
+             \x20 UI passes    {logic} woken, {ui} painted (budget 0 painted){overlay}\n\
              \x20 result       {verdict}\n\
              | {desktop} | {mode} | {cpu:.2} % | {wakeups} | {rss:.0} MB | {threads} | {logic} / {ui} | {verdict} |",
             secs = self.secs,
@@ -75,7 +81,12 @@ impl Numbers {
 }
 
 pub async fn check(length: Duration, passes: Arc<Passes>, mailbox: Mailbox) {
-    tokio::time::sleep(SETTLE).await;
+    // the overlay opens and goes away again first, so the measuring also shows it leaves nothing running
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    mailbox.send(AppMsg::IdleOverlay(true));
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    mailbox.send(AppMsg::IdleOverlay(false));
+    tokio::time::sleep(SETTLE - Duration::from_secs(2)).await;
     let (before, passes_before, started) = (process::sample(), passes.read(), Instant::now());
     tokio::time::sleep(length).await;
     let (after, passes_after, secs) = (process::sample(), passes.read(), started.elapsed().as_secs_f64());
@@ -93,6 +104,7 @@ pub async fn check(length: Duration, passes: Arc<Passes>, mailbox: Mailbox) {
         logic_passes: passes_after.0 - passes_before.0,
         ui_passes: passes_after.1 - passes_before.1,
         software_renderer: false,
+        overlay_ms: None,
     };
     mailbox.send(AppMsg::IdleReport(numbers));
 }
@@ -112,6 +124,7 @@ mod tests {
             logic_passes: 0,
             ui_passes: 0,
             software_renderer: false,
+            overlay_ms: None,
         }
     }
 

@@ -30,11 +30,18 @@ pub fn shown(ctx: &Context, title: &str, at: Option<egui::Pos2>, focus: bool) {
 pub struct Screen {
     pub name: String,
     pub rect: Rect,
+    /// The part bars and docks leave free (Noctalia, Waybar, the taskbar stay above the overlay).
+    pub work: Rect,
 }
 
 impl Screen {
     pub fn new(name: impl Into<String>, rect: Rect) -> Screen {
-        Screen { name: name.into(), rect }
+        Screen { name: name.into(), rect, work: rect }
+    }
+
+    /// How much the bars take at the top and the bottom.
+    pub fn insets(&self) -> (f32, f32) {
+        ((self.work.min.y - self.rect.min.y).max(0.0), (self.rect.max.y - self.work.max.y).max(0.0))
     }
 }
 
@@ -45,7 +52,17 @@ pub fn screens() -> Vec<Screen> {
         .map(|m| {
             let rect =
                 Rect::from_min_size(pos2(m.x as f32, m.y as f32), vec2(m.width as f32, m.height as f32));
-            Screen { name: m.name, rect }
+            let mut work = rect;
+            work.min.y += m.top_inset as f32;
+            work.max.y -= m.bottom_inset as f32;
+            Screen { name: m.name, rect, work: if work.is_positive() { work } else { rect } }
         })
         .collect()
+}
+
+/// The screen the mouse is on, if the system says where it is.
+pub fn cursor_screen(screens: &[Screen]) -> Option<usize> {
+    let (x, y) = desktop::cursor()?;
+    let at = pos2(x as f32, y as f32);
+    screens.iter().position(|s| s.rect.contains(at))
 }

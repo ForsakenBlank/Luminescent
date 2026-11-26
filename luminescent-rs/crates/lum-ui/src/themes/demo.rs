@@ -82,9 +82,7 @@ impl Demo {
         }
         let settings = Settings::load(&paths);
         let ui = ThemesUi::new(paths.data_file("picker.json"), paths.data_file("colours.json"));
-        let mut demo = Demo { ui, store, settings, fonts: false, edit_next: false, restyles: 0 };
-        demo.ui.open();
-        demo
+        Demo { ui, store, settings, fonts: false, edit_next: false, restyles: 0 }
     }
 
     /// Opens the theme editor on the active theme.
@@ -103,30 +101,54 @@ impl Demo {
         self.restyles += 1;
     }
 
-    /// One frame of the window. A theme that was applied since the last frame restyles first, so the pass
-    /// already draws with it.
+    /// One frame of the page on a plain background, with the editor and the colour dialog over it.
     pub fn ui(&mut self, ui: &mut Ui) {
+        let rect = ui.max_rect();
+        let tokens = self.ready(ui.ctx());
+        crate::paint::fill(ui.painter(), rect, 0.0, &tokens, crate::theme::Role::BgBase, 1.0);
+        self.page(ui, rect);
         let ctx = ui.ctx().clone();
+        self.windows(&ctx);
+    }
+
+    /// The tokens of the active theme, installed first when it changed since the last frame (so the pass
+    /// already draws with it), and the editor opened when asked.
+    pub fn ready(&mut self, ctx: &egui::Context) -> std::sync::Arc<Tokens> {
         let events = self.store.take_events();
         if self.restyles == 0 || events.iter().any(|e| matches!(e, ThemeEvent::Applied(_))) {
-            self.restyle(&ctx);
+            self.restyle(ctx);
         }
         if std::mem::take(&mut self.edit_next) {
             let id = self.store.active_id().to_owned();
-            self.ui.edit(&ctx, &self.store, &id);
+            self.ui.edit(ctx, &self.store, &id);
         }
-        let profile_name = |id: &str| id.to_owned();
-        let key_owner = |_: &str| None;
-        let env = Env {
-            profile_name: &profile_name,
-            profiles: vec![("work".to_owned(), "Work".to_owned())],
-            key_owner: &key_owner,
-            toast_style: "glow".to_owned(),
-            hyprland: true,
-            caelestia: false,
-        };
-        drop(self.ui.show(&ctx, &mut self.store, &env));
+        Tokens::of(ctx)
     }
+
+    /// Just the page, as the overlay's panel holds it.
+    pub fn page(&mut self, ui: &mut Ui, on_desktop: Rect) {
+        let Demo { ui: themes, store, .. } = self;
+        with_env(|env| drop(themes.page_ui(ui, on_desktop, store, env)));
+    }
+
+    pub fn windows(&mut self, ctx: &egui::Context) {
+        let Demo { ui: themes, store, .. } = self;
+        with_env(|env| drop(themes.show_windows(ctx, store, env)));
+    }
+}
+
+fn with_env(f: impl FnOnce(&Env<'_>)) {
+    let profile_name = |id: &str| id.to_owned();
+    let key_owner = |_: &str| None;
+    let env = Env {
+        profile_name: &profile_name,
+        profiles: vec![("work".to_owned(), "Work".to_owned())],
+        key_owner: &key_owner,
+        toast_style: "glow".to_owned(),
+        hyprland: true,
+        caelestia: false,
+    };
+    f(&env);
 }
 
 /// Builds the window in all three looks with the page, every page of the editor, every quick tool and the

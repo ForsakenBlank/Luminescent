@@ -7,8 +7,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 
 use egui::{ColorImage, Context, TextureHandle, TextureOptions};
 
-/// Pictures are shown at card size, so they are shrunk to this (twice the card, for sharp screens).
-const LARGEST: u32 = 480;
+/// Pictures are shown at card size, so by default they are shrunk to this (twice the card, for sharp screens).
+const CARD_SIZE: u32 = 480;
 
 enum Slot {
     Loading,
@@ -17,6 +17,7 @@ enum Slot {
 }
 
 pub struct Pictures {
+    largest: u32,
     slots: HashMap<PathBuf, Slot>,
     tx: Sender<(PathBuf, Option<ColorImage>)>,
     rx: Receiver<(PathBuf, Option<ColorImage>)>,
@@ -31,11 +32,16 @@ impl std::fmt::Debug for Pictures {
 impl Default for Pictures {
     fn default() -> Pictures {
         let (tx, rx) = channel();
-        Pictures { slots: HashMap::new(), tx, rx }
+        Pictures { largest: CARD_SIZE, slots: HashMap::new(), tx, rx }
     }
 }
 
 impl Pictures {
+    /// Pictures shrunk to fit `px` on their longer side (a backdrop wants the whole screen's worth).
+    pub fn with_largest(px: u32) -> Pictures {
+        Pictures { largest: px.max(16), ..Pictures::default() }
+    }
+
     /// The picture at `path`, once it is loaded; asks for it the first time. `None` while it loads, and for a
     /// file that is gone or not a picture.
     pub fn get(&mut self, ctx: &Context, path: &str) -> Option<&TextureHandle> {
@@ -56,9 +62,9 @@ impl Pictures {
         }
         if !self.slots.contains_key(&key) {
             self.slots.insert(key.clone(), Slot::Loading);
-            let (tx, ctx, path) = (self.tx.clone(), ctx.clone(), key.clone());
+            let (tx, ctx, path, largest) = (self.tx.clone(), ctx.clone(), key.clone(), self.largest);
             let started = std::thread::Builder::new().name("theme-picture".into()).spawn(move || {
-                let _ = tx.send((path.clone(), decode(&path)));
+                let _ = tx.send((path.clone(), decode(&path, largest)));
                 ctx.request_repaint();
             });
             if started.is_err() {
@@ -77,10 +83,10 @@ impl Pictures {
     }
 }
 
-fn decode(path: &Path) -> Option<ColorImage> {
+fn decode(path: &Path, largest: u32) -> Option<ColorImage> {
     let image = image::open(path).ok()?;
-    let image = if image.width() > LARGEST || image.height() > LARGEST {
-        image.resize(LARGEST, LARGEST, image::imageops::FilterType::Triangle)
+    let image = if image.width() > largest || image.height() > largest {
+        image.resize(largest, largest, image::imageops::FilterType::Triangle)
     } else {
         image
     };

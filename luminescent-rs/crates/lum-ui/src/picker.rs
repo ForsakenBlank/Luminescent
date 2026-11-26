@@ -97,14 +97,17 @@ impl ColourDialog {
     /// `picker_file` is `picker.json` (its own recent picks), `eyedropper_file` the screen colour picker's
     /// `colours.json`, which the recent row reads too.
     pub fn new(picker_file: PathBuf, eyedropper_file: PathBuf) -> ColourDialog {
+        let mut panel = FloatingPanel::new(
+            "colour-picker",
+            "Pick a colour",
+            Geometry { x: 200.0, y: 120.0, w: WIDTH, h: SOLID_HEIGHT },
+        )
+        .resizable(false)
+        .min_size(vec2(WIDTH, 300.0));
+        // the colour dialog sits over other windows, so it must not show them through
+        panel.opacity = 1.0;
         ColourDialog {
-            panel: FloatingPanel::new(
-                "colour-picker",
-                "Pick a colour",
-                Geometry { x: 200.0, y: 120.0, w: WIDTH, h: SOLID_HEIGHT },
-            )
-            .resizable(false)
-            .min_size(vec2(WIDTH, 300.0)),
+            panel,
             target: String::new(),
             allow_gradient: false,
             start: Picked::Colour(Rgb::BLACK),

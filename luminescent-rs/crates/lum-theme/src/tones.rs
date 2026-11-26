@@ -587,7 +587,7 @@ pub fn main_from_picture(pixels: &[[u8; 4]], light: bool) -> Option<Main> {
 }
 
 /// An accent bright enough to read on a dark background (dark enough on a light one).
-fn fit_accent(c: Rgb, light: bool) -> Rgb {
+pub fn fit_accent(c: Rgb, light: bool) -> Rgb {
     let t = tone(c);
     if light { with_tone(c, t.min(52.0)) } else { with_tone(c, t.max(62.0)) }
 }

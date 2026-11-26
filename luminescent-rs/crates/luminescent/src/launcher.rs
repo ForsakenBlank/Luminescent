@@ -832,9 +832,24 @@ impl App {
         &mut self,
         f: impl FnOnce(&mut lum_ui::themes::ThemesUi, &mut ThemeStore, &lum_ui::themes::Env<'_>) -> R,
     ) -> R {
-        let App { themes_ui, themes, settings, .. } = self;
+        let App { themes_ui, themes, settings, hotkeys, .. } = self;
         let profile_name = |id: &str| settings.profile_name(id);
-        f(themes_ui, themes, &lum_ui::themes::Env { profile_name: &profile_name })
+        let key_owner =
+            |combo: &str| hotkeys.owner_of(combo).filter(|owner| *owner != "themes").map(str::to_owned);
+        let env = lum_ui::themes::Env {
+            profile_name: &profile_name,
+            profiles: settings
+                .profiles()
+                .into_iter()
+                .filter(|p| p.id != "default")
+                .map(|p| (p.id, p.name))
+                .collect(),
+            key_owner: &key_owner,
+            toast_style: settings.get_str("general.toast_style").unwrap_or("glow").to_owned(),
+            hyprland: lum_platform::desktop::places_windows_by_rule(),
+            caelestia: false,
+        };
+        f(themes_ui, themes, &env)
     }
 
     /// File dialogs the Themes window wants (they answer through the mailbox) and its desktop notices.
@@ -851,6 +866,9 @@ impl App {
         }
         for (title, text) in out.notify {
             self.notifier.notify(&title, &text, 4000);
+        }
+        if let Some(suspended) = out.suspend_keys {
+            self.hotkeys.set_suspended(suspended);
         }
     }
 

@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 29 %   [#####...............]   Current phase: Phase 4 at 75 % (phase 3 built, its Hello tray check is unconfirmed)
+Overall: 26.75 %   [#####...............]   Current phase: Phase 4 at 75 % (phase 3 built, its Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |

@@ -22,6 +22,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("widget kit in Dark and Light", widget_kit),
     ("hotkeys, tray menu and the overlay", hello_tray),
     ("themes switch and restyle", themes),
+    ("themes window, editor and colour dialog", themes_window),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -104,6 +105,19 @@ fn backup_zip(app: &mut App) -> Result<(), String> {
 /// systems with no display.
 fn widget_kit(_app: &mut App) -> Result<(), String> {
     lum_ui::gallery::build_headless()
+}
+
+/// The Themes page, every page of the editor, every quick tool and the colour dialog, in three looks, in a
+/// folder of their own so the real themes stay as they are.
+fn themes_window(app: &mut App) -> Result<(), String> {
+    let dir = app.paths.home.join("smoke-themes");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    lum_ui::themes::demo::build_headless(&dir)?;
+    let (answer, _) = app.handle_ctl("overlay themes");
+    if answer != "ok" || !app.themes_ui.is_open() {
+        return Err(format!("ctl overlay themes did not open the window ({answer})"));
+    }
+    Ok(())
 }
 
 /// Talks to its own ctl socket. The answer comes from this thread, so the request goes from another one.

@@ -162,7 +162,7 @@ right check are still on the waiting list; nothing asked for them again.
   screen's name, its canvas, `to_desktop`, every screen and `chrome_bottom`). Tab boxes (accent bar, mono caps title,
   zero-padded count, chevron, fold that glides, right-edge resize), rows (badge or real icon off the UI thread, ROOT, green
   dot, hotkey hint, search highlight, tooltips as Python), page boxes (the app's page function draws them; ↗ and ✕;
-  resizable from edge and corner), picture boxes (fit / fill / stretch, frame, corners, opacity, title bar), the
+  resizable from edge and corner), picture boxes (fit / fill / stretch, GIFs play, frame, corners, opacity, title bar), the
   toolbar (dashboards as pills or one menu when many, + Add, Tidy up and its menu, Undo for 12 s, Lock, search with the match
   count and Enter runs the first), selection band, Ctrl / Shift click, Ctrl+A, Delete, Esc, Ctrl+Z, tidy up in
   columns / grid / rows by position / name / size (`tidy.rs`, pure and tested), drag with snap (`round_ties_even`),
@@ -182,7 +182,8 @@ right check are still on the waiting list; nothing asked for them again.
   `--smoke` check "dashboard".
 
 **Left out on purpose or not done.**
-* A GIF shows its first frame (the `image` crate decodes frames; playing them is the first thing to add).
+* Animated WebP shows its first frame; GIFs play (decoded on a thread, at most 400 frames, shown by the clock, a repaint
+  only at each frame's end while the box is drawn).
 * A page box saves its state only once a page has state to give (`DashboardStore::set_page_state` is ready); only Themes is
   a real page so far, the rest are placeholders.
 * The Tools tab is made from the registered actions, so a first start before any module exists has an empty one (Python

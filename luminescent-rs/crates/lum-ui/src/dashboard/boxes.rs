@@ -985,7 +985,8 @@ impl DashboardUi {
         let r = area.shrink(pad);
         let path = lum_platform::runner::expand(tab.picture_path());
         let ctx = ui.ctx().clone();
-        let texture = self.pictures().get(&ctx, &path).map(|t| (t.id(), t.size_vec2()));
+        let playing = if path.to_lowercase().ends_with(".gif") { self.gifs.frame(&ctx, &path) } else { None };
+        let texture = playing.or_else(|| self.pictures().get(&ctx, &path).map(|t| (t.id(), t.size_vec2())));
         let Some((tex, size)) = texture else {
             let text = if path.is_empty() || !std::path::Path::new(&path).is_file() {
                 "Right-click → Choose a picture…"

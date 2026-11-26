@@ -11,6 +11,7 @@
 
 mod boxes;
 mod dialogs;
+mod gif;
 mod icons;
 mod menus;
 pub mod tidy;
@@ -184,6 +185,7 @@ pub struct DashboardUi {
     /// The screen dialogs and menus open on: the last one clicked.
     ctx_screen: String,
     pictures: Option<Pictures>,
+    gifs: gif::Gifs,
     icons: icons::Icons,
     glides: HashMap<String, (Vec2, f64)>,
     resize: Option<boxes::Resize>,

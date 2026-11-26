@@ -110,7 +110,7 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [x] | Drag a header to move (snap grid, default 8 px, Off = pixel moves), click to fold, drag right edge to resize | 6 | `ui/dashboard.py` |
 | [x] | Tidy up: columns / grid / rows, by position / name / size, only the selection, glide, Undo / Ctrl+Z | 6 | `ui/dashboard.py` |
 | [x] | Page boxes (any page as a resizable box that remembers its state) *(phase 6: built; only Themes is a real page so far, and a page box saves its state once a page has some to give)* | 6 | `ui/dashboard.py` |
-| [ ] | Picture boxes (picture or GIF; frame, fill, corners, opacity, title bar) *(phase 6: built; a GIF shows its first frame, playing it is left)* | 6 | `ui/dashboard.py` |
+| [x] | Picture boxes (picture or GIF; frame, fill, corners, opacity, title bar) *(phase 6: a GIF plays while its box is on screen; animated WebP shows its first frame)* | 6 | `ui/dashboard.py` |
 | [x] | Selection rectangle, Ctrl / Shift click, multi-drag, Delete, Ctrl+A, menus for the selection | 6 | `ui/dashboard.py` |
 | [x] | Several dashboards; new = empty / with Tools / copy; instant switching; toolbar folds into a menu | 6 | `ui/dashboard.py` |
 | [x] | A different dashboard per screen ("This screen shows") | 6 | `ui/dashboard.py` |

@@ -249,6 +249,7 @@ impl DashboardUi {
                 Pick::Picture(id) => {
                     store.set_geometry(&id, &[("path", json!(path))]);
                     self.pictures().forget(&path);
+                    self.gifs.forget(&path);
                 }
                 Pick::AddFile(tab) => store.add_paths(&tab, &[path], -1, &desktop_name),
             }

@@ -275,7 +275,14 @@ fn a_theme_exported_by_python_imports_like_it_does_there() {
     let id = t.id().to_owned();
     let mut got = Value::Object(t.0.clone());
     let images = dir.path().join("theme-images").to_string_lossy().into_owned();
-    let text = got.to_string().replace(&images, "<SCRATCH>/share/theme-images").replace(&id, "<ID>");
+    // JSON writes a Windows path's backslashes doubled, so look for the path as JSON writes it, then make the
+    // separators after it slashes
+    let escaped = serde_json::to_string(&images).unwrap().trim_matches('"').to_owned();
+    let text = got
+        .to_string()
+        .replace(&escaped, "<SCRATCH>/share/theme-images")
+        .replace(&id, "<ID>")
+        .replace("images\\\\<ID>", "images/<ID>");
     got = serde_json::from_str(&text).unwrap();
     let want_id = case["imported_id"].as_str().unwrap();
     let want: Value = serde_json::from_str(&case["imported"].to_string().replace(want_id, "<ID>")).unwrap();

@@ -395,3 +395,127 @@ fn dragging_thirty_boxes_with_three_hundred_items_stays_smooth() {
     let limit = if cfg!(debug_assertions) { 120.0 } else { 16.0 };
     assert!(per_frame < limit, "{per_frame:.2} ms a frame");
 }
+
+mod two_screens {
+    use super::*;
+    use egui::UiBuilder;
+
+    struct Two {
+        store: DashboardStore,
+        ui: DashboardUi,
+        screens: Vec<Screen>,
+        ready: bool,
+    }
+
+    /// Screen A is the left half of the window and DP-2 the right half, like two monitors side by side.
+    fn harness(dir: &tempfile::TempDir) -> Harness<'static, Two> {
+        let path = dir.path().join("dashboard.json");
+        std::fs::write(
+            &path,
+            r#"{"layout": 3, "active": "main", "screens": {"DP-2": "side"}, "boards": [
+              {"id": "main", "name": "Main", "tabs": [{"id": "a", "title": "A", "x": 40, "y": 140, "items": []},
+                                                      {"id": "b", "title": "B", "x": 340, "y": 140, "screen": "DP-3", "items": []}]},
+              {"id": "side", "name": "Side", "tabs": [{"id": "s", "title": "Side box", "x": 20, "y": 140, "items": [{"id": "si", "name": "Only on the side", "path": "x"}]}]}]}"#,
+        )
+        .unwrap();
+        let screens = vec![
+            Screen::new("A", Rect::from_min_size(pos2(0.0, 0.0), vec2(800.0, 800.0))),
+            Screen::new("DP-2", Rect::from_min_size(pos2(800.0, 0.0), vec2(800.0, 800.0))),
+        ];
+        let state = Two {
+            store: DashboardStore::load(&path, &[], &Map::new()),
+            ui: DashboardUi::default(),
+            screens,
+            ready: false,
+        };
+        Harness::builder().with_size([1600.0, 800.0]).build_ui_state(
+            |ui, state: &mut Two| {
+                if !state.ready {
+                    lum_ui::fonts::install(ui.ctx());
+                    lum_ui::Tokens::dark().install(ui.ctx());
+                    lum_ui::Motion::off().install(ui.ctx());
+                    state.ready = true;
+                }
+                let owner = |_: &str| None::<String>;
+                let running = |_: &str| false;
+                let env = Env {
+                    snap: 8,
+                    tidy_style: "columns",
+                    tidy_order: "position",
+                    show_icons: false,
+                    safe_mode: false,
+                    is_running: &running,
+                    key_owner: &owner,
+                    tools: &[],
+                };
+                for (i, screen) in state.screens.clone().iter().enumerate() {
+                    let canvas = Rect::from_min_size(pos2(800.0 * i as f32, 0.0), vec2(800.0, 800.0));
+                    let slot = PageSlot {
+                        key: "dashboard",
+                        on_desktop: canvas,
+                        extra_screen: (i > 0).then_some(screen.name.as_str()),
+                        screen: &screen.name,
+                        canvas,
+                        to_desktop: vec2(0.0, 0.0),
+                        screens: &state.screens,
+                        chrome_bottom: 0.0,
+                    };
+                    let mut child = ui.new_child(UiBuilder::new().max_rect(canvas));
+                    let mut sub = |_: &mut egui::Ui, _: &str, _: Rect| PageFrame::default();
+                    state.ui.show(&mut child, &slot, &mut state.store, &env, &mut sub);
+                }
+            },
+            state,
+        )
+    }
+
+    #[test]
+    fn a_screen_shows_the_board_pinned_to_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut h = harness(&dir);
+        h.run();
+        let row = h.get_by_label("Only on the side").rect();
+        assert!(row.min.x >= 800.0, "the Side board is drawn on the right screen, not the left");
+    }
+
+    #[test]
+    fn dragging_a_box_across_to_the_other_screen_puts_it_there() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut h = harness(&dir);
+        h.run();
+        h.run();
+        // box A's header, dragged to x 1000 on the right screen (200 into it) and 200 down
+        let from = pos2(100.0, 157.0);
+        let to = pos2(1000.0, 357.0);
+        h.hover_at(from);
+        h.event(egui::Event::PointerButton {
+            pos: from,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        h.step();
+        for step in 1..=8 {
+            h.hover_at(from + (to - from) * (step as f32 / 8.0));
+            h.step();
+        }
+        h.event(egui::Event::PointerButton {
+            pos: to,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
+        h.run();
+        h.run();
+        let tab = h.state().store.tab("a").unwrap();
+        assert_eq!(tab.screen(), "DP-2");
+        assert_eq!(
+            h.state().store.board_of_tab("a").unwrap().id(),
+            "side",
+            "that screen shows the Side board, so the box joined it"
+        );
+        // the mouse let go at 200 into the screen and 357 down, 60 and 17 px into the box: 140 and 340, which
+        // snap to the 8 px grid with halves going to the even number, as Python's round() does
+        assert_eq!((tab.x(), tab.y()), (144, 336));
+    }
+}

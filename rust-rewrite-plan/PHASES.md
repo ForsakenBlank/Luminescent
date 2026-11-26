@@ -667,6 +667,23 @@ backdrop texture, the page switcher, the editable chrome layer, type-to-search, 
 nucleo-matcher, the cheat sheet, Luminescent notification cards plus desktop notifications, the on-screen
 warning, placeholder pages, prewarm and repair. Use the WindowPlacer and HotkeyManager from phase 3.
 
+What phases 3 and 4 left for you:
+- Phase 3's Hello tray check is still unconfirmed (the user said "unsure"); leave it on the waiting list and do not ask
+  again unless the user brings it up. The empty overlay (lum_ui::overlay) and its dims exist; replace them with the real one.
+- The Themes window is a floating panel for now: lum_ui::themes::ThemesUi (App.themes_ui), drawn from App::show_modules
+  and opened by `ctl overlay themes`. Make the Themes page a real page of the overlay (ThemesPage::ui needs a PageCx; the
+  editor and colour dialog stay floating windows) and add the page switcher entry. lum_ui::themes::MODULES is the list of
+  modules with their icons and titles; reuse it for nav items and the palette. Typing on the Themes page opens the palette.
+- Notifications: App has an AppNotifier (launcher.rs) that only does desktop notifications; build Luminescent's own cards
+  behind the same Notifier trait. Tray → Restart / Settings and "Quit all" (general.force_quit_hotkey) were left out until
+  the confirmation dialog and settings page exist.
+- Gotchas found in phase 4: `＋` (U+FF0B) and a few other symbols have no glyph in any bundled font and panic egui's layout
+  (use ASCII `+`; the list is in the phase 2 note); an egui Area draws nothing on its first pass, so headless smoke checks
+  must run two passes before asserting; FloatingPanel is 85 % opaque, set `opacity = 1.0` on anything that sits over other
+  panels; egui_kittest's `Harness::run` fails when a page repaints every frame, which is a useful idle test for each new
+  page; use `Id::unique`, not `Id::new`; Windows CI stops at the first failing crate, so a Windows-only failure in an early
+  crate hides later ones (look at the log, not just the badge).
+
 Measure hotkey-to-visible latency on Hyprland and Windows (I will run the command you give me) and compare it with
 PERFORMANCE.md. Nothing may repaint or tick while the overlay is hidden; prove it with the idle check.
 

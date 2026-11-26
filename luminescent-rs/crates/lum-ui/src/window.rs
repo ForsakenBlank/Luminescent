@@ -66,3 +66,16 @@ pub fn cursor_screen(screens: &[Screen]) -> Option<usize> {
     let at = pos2(x as f32, y as f32);
     screens.iter().position(|s| s.rect.contains(at))
 }
+
+/// The screen to use when the system lists none (X11 without Hyprland): the one the main window is on, as big as
+/// the system says it is. Where there are no windows of our own (tests), the whole window.
+pub fn fallback_screen(ctx: &Context) -> Screen {
+    if ctx.embed_viewports() {
+        return Screen::new("screen", ctx.content_rect());
+    }
+    let size = ctx
+        .input(|i| i.viewport().monitor_size)
+        .filter(|s| s.x > 1.0 && s.y > 1.0)
+        .unwrap_or(vec2(1280.0, 800.0));
+    Screen::new("screen", Rect::from_min_size(pos2(0.0, 0.0), size))
+}

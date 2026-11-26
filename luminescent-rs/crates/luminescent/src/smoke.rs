@@ -23,6 +23,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("hotkeys and the tray menu", hello_tray),
     ("the overlay: open, switch pages, close", overlay),
     ("command palette and cheat sheet", palette_and_cheat_sheet),
+    ("notification cards, the warning, prewarm and quit", messages),
     ("themes switch and restyle", themes),
     ("themes window, editor and colour dialog", themes_window),
 ];
@@ -277,6 +278,45 @@ fn palette_and_cheat_sheet(app: &mut App) -> Result<(), String> {
     if app.cheatsheet.is_open() {
         return Err("Esc did not close the cheat sheet".into());
     }
+    Ok(())
+}
+
+/// A card from `ctl notify`, the warning from `ctl alert` closed with Enter, the overlay's prewarm, and the quit
+/// question (Cancel keeps it running).
+fn messages(app: &mut App) -> Result<(), String> {
+    use egui::{Key, Modifiers};
+    app.cards_on();
+    let ctx = headless_context();
+    let pass = |app: &mut App, events: &[egui::Event]| {
+        let output = lum_ui::headless_pass(&ctx, input(events), |ui| app.show_modules(ui.ctx()));
+        ctx.tessellate(output.shapes, output.pixels_per_point).len()
+    };
+    for line in
+        ["notify Smoke test | A card from the smoke test", "alert Smoke test | A warning in the middle"]
+    {
+        let (answer, _) = app.handle_ctl(line);
+        if answer != "ok" {
+            return Err(format!("ctl {line} answered {answer:?}"));
+        }
+    }
+    pass(app, &[]);
+    if app.toasts.len() != 1 || pass(app, &[]) == 0 {
+        return Err("the card was not drawn".into());
+    }
+    pass(app, &[key(Key::Enter, Modifiers::NONE)]);
+    if !app.alerts.is_empty() {
+        return Err("Enter did not close the warning".into());
+    }
+    app.handle(crate::launcher::AppMsg::Prewarm);
+    pass(app, &[]);
+    app.confirm_quit();
+    pass(app, &[]);
+    pass(app, &[]);
+    pass(app, &[key(Key::Escape, Modifiers::NONE)]);
+    if app.quitting {
+        return Err("Cancel on the quit question quit".into());
+    }
+    app.toasts.clear();
     Ok(())
 }
 

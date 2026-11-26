@@ -69,24 +69,24 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Full-screen overlay on every monitor: dim, dot grid, optional background image, glow; painted once per screen | 5 | `ui/overlay.py` |
-| [ ] | Page switcher hanging from the top centre with sliding marker; order and extra pages set in Settings | 5 | `ui/overlay.py` |
-| [ ] | Pages: Dashboard, Automation, Themes, Clipboard, Settings; extra: Notes, Timers, Calculator, Today, Usage, Calendar, Hearing Guard, System Monitor, Media, System Settings, Performance | 5 | `core/settings.py` |
-| [ ] | Esc / ✕ / click on the dimmed area hides; the Dashboard never closes it on click | 5, 6 | `ui/overlay.py` |
-| [ ] | `Ctrl+1…9` switch pages; a jump hotkey per page | 5 | `ui/overlay.py` |
-| [ ] | Opens on the screen with the mouse (or primary); optionally on the last page | 5 | `ui/overlay.py` |
-| [ ] | Frosted background (Hyprland blur / Windows acrylic) | 5 | `ui/overlay.py` |
-| [ ] | Text size 85 % to 150 % everywhere | 2, 5 | `core/theme.py` |
-| [ ] | Performance mode drops glow, animations, background images | 2, 5 | `core/anim.py` |
-| [ ] | Type on the Dashboard or Themes page to open the palette with what you typed | 5 | `ui/overlay.py` |
-| [ ] | Chrome layer: logo, sparkle, title, clock, time, date, status chips, running timers; edit mode to drag, add, freeze, duplicate, resize, move to screen, remove, reset | 5 | `ui/chrome.py` |
-| [ ] | Status chips: running timers, Hearing Guard level, next reminder | 5 | `ui/chrome.py` |
-| [ ] | Pages built lazily; prewarm after start; repair (rebuild) when a page breaks | 5 | `ui/overlay.py` |
-| [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries | 5 | `ui/palette.py` |
-| [ ] | Hotkey cheat sheet while held | 5 | `ui/cheatsheet.py` |
-| [ ] | Luminescent notification cards: position, width, accent style, duration, max on screen, opacity, text size, icon, hover keeps, ✕, right-click copies, grows to fit | 5 | `ui/toast.py` |
-| [ ] | Desktop notifications option; reminders and dose warnings always go to the desktop too | 5 | `ui/toast.py` |
-| [ ] | Warning on screen (centre, above everything, until Got it) | 5 | `ui/alert.py` |
+| [x] | Full-screen overlay on every monitor: dim, dot grid, optional background image, glow; painted once per screen *(each layer a texture made once, D33)* | 5 | `ui/overlay.py` |
+| [x] | Page switcher hanging from the top centre with sliding marker; order and extra pages set in Settings | 5 | `ui/overlay.py` |
+| [ ] | Pages: Dashboard, Automation, Themes, Clipboard, Settings; extra: Notes, Timers, Calculator, Today, Usage, Calendar, Hearing Guard, System Monitor, Media, System Settings, Performance *(phase 5: all in the switcher, Themes built, the rest placeholders until their phases)* | 5 | `core/settings.py` |
+| [x] | Esc / ✕ / click on the dimmed area hides; the Dashboard never closes it on click | 5, 6 | `ui/overlay.py` |
+| [x] | `Ctrl+1…9` switch pages; a jump hotkey per page | 5 | `ui/overlay.py` |
+| [x] | Opens on the screen with the mouse (or primary); optionally on the last page | 5 | `ui/overlay.py` |
+| [x] | Frosted background (Hyprland blur / Windows acrylic) *(Hyprland blur; Windows has no acrylic in Python either, see D38)* | 5 | `ui/overlay.py` |
+| [x] | Text size 85 % to 150 % everywhere | 2, 5 | `core/theme.py` |
+| [x] | Performance mode drops glow, animations, background images | 2, 5 | `core/anim.py` |
+| [x] | Type on the Dashboard or Themes page to open the palette with what you typed | 5 | `ui/overlay.py` |
+| [x] | Chrome layer: logo, sparkle, title, clock, time, date, status chips, running timers; edit mode to drag, add, freeze, duplicate, resize, move to screen, remove, reset | 5 | `ui/chrome.py` |
+| [ ] | Status chips: running timers, Hearing Guard level, next reminder *(phase 5: the chips are drawn from `ChromeData`; their lines come with phases 8, 11, 12)* | 5 | `ui/chrome.py` |
+| [x] | Pages built lazily; prewarm after start; repair (rebuild) when a page breaks | 5 | `ui/overlay.py` |
+| [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries *(phase 5: pages, actions, themes, settings, Luminescent entries, recent; sums and quick reminders phase 8, notes 8, colours 9, pins 8, dashboard items 6, automations 10)* | 5 | `ui/palette.py` |
+| [x] | Hotkey cheat sheet while held | 5 | `ui/cheatsheet.py` |
+| [x] | Luminescent notification cards: position, width, accent style, duration, max on screen, opacity, text size, icon, hover keeps, ✕, right-click copies, grows to fit *(right-click copies at once and says so on the card: a menu can not leave a card's small window, D37)* | 5 | `ui/toast.py` |
+| [x] | Desktop notifications option; reminders and dose warnings always go to the desktop too | 5 | `ui/toast.py` |
+| [x] | Warning on screen (centre, above everything, until Got it) | 5 | `ui/alert.py` |
 
 ## Animations (phases 2, 5)
 

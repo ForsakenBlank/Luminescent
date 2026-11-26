@@ -1,6 +1,7 @@
 //! The egui side of Luminescent: fonts, design tokens, the widget kit, floating panels and dialogs. Only this
 //! crate and the binary know about egui.
 
+pub mod alert;
 pub mod anim;
 pub mod cheatsheet;
 pub mod dialog;
@@ -15,6 +16,7 @@ pub mod picker;
 pub mod text;
 pub mod theme;
 pub mod themes;
+pub mod toast;
 pub mod widgets;
 pub mod window;
 

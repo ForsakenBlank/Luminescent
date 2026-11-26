@@ -32,6 +32,30 @@ pub fn acquire(path: &Path, wait: Duration) -> io::Result<Option<InstanceLock>> 
     }
 }
 
+/// Starts this program again, on its own, after this copy has let go of the lock (tray → Restart, or Restart in
+/// safe mode from the palette). The new copy outlives this one.
+pub fn relaunch(safe_mode: bool) -> io::Result<()> {
+    let exe = std::env::current_exe()?;
+    let mut command = std::process::Command::new(exe);
+    command.env_remove("LUMINESCENT_SAFE_MODE");
+    if safe_mode {
+        command.env("LUMINESCENT_SAFE_MODE", "1");
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // a session of its own, so it does not go when the terminal this copy came from closes
+        command.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        command.creation_flags(DETACHED_PROCESS);
+    }
+    command.stdin(std::process::Stdio::null()).spawn().map(drop)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

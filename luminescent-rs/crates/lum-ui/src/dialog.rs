@@ -204,6 +204,10 @@ impl AskDialog {
         dialog
     }
 
+    pub fn id(&self) -> Id {
+        self.id
+    }
+
     /// What is typed in an `ask_text` dialog.
     pub fn text(&self) -> &str {
         self.input.as_deref().unwrap_or("")
@@ -321,5 +325,52 @@ mod tests {
         };
         assert_eq!(run(vec![key(Key::Enter)]), Outcome::Accepted("OK".to_owned()));
         assert_eq!(run(vec![key(Key::Escape)]), Outcome::Cancelled);
+    }
+}
+
+/// A dialog with nothing of ours under it (Quit from the tray or a hotkey): a see-through window of its own over
+/// the screen with the mouse, with the dialog in the middle.
+#[derive(Debug)]
+pub struct DialogWindow {
+    pub dialog: AskDialog,
+    screen: Option<crate::window::Screen>,
+    fresh: bool,
+}
+
+/// Dialog windows are titled per screen, so on Hyprland a cover rule opens them full size on it.
+pub const COVER_PREFIX: &str = "Luminescent dialog";
+
+impl DialogWindow {
+    pub fn new(dialog: AskDialog, screen: Option<crate::window::Screen>) -> DialogWindow {
+        DialogWindow { dialog, screen, fresh: true }
+    }
+
+    pub fn show(&mut self, ctx: &Context) -> Outcome {
+        if ctx.embed_viewports() {
+            return self.dialog.show(ctx);
+        }
+        let screen = self.screen.clone().unwrap_or_else(|| crate::window::fallback_screen(ctx));
+        let title = lum_platform::desktop::cover_title(COVER_PREFIX, &screen.name);
+        let builder = egui::ViewportBuilder::default()
+            .with_title(title.clone())
+            .with_app_id(lum_platform::desktop::APP_ID)
+            .with_decorations(false)
+            .with_transparent(true)
+            .with_always_on_top()
+            .with_taskbar(false)
+            .with_resizable(false)
+            .with_active(true)
+            .with_position(screen.rect.min)
+            .with_inner_size(screen.rect.size());
+        let mut outcome = Outcome::Open;
+        let dialog = &mut self.dialog;
+        ctx.show_viewport_immediate(egui::ViewportId::from_hash_of(dialog.id()), builder, |ui, _| {
+            outcome = dialog.show(ui.ctx());
+        });
+        crate::window::shown(ctx, &title, None, true);
+        if std::mem::take(&mut self.fresh) {
+            crate::window::placer(ctx).focus(&title);
+        }
+        outcome
     }
 }

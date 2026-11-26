@@ -5,7 +5,7 @@
 //! timers, backups) runs on a small tokio runtime, sends a message and wakes the main thread.
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use anyhow::Context;
@@ -57,6 +57,8 @@ pub enum AppMsg {
     IdleReport(idle::Numbers),
     /// `--idle-check` opens the overlay (true) and hides it again before it measures.
     IdleOverlay(bool),
+    /// A few seconds after the start: get the overlay's textures and glyphs ready.
+    Prewarm,
     Desktop(DesktopEvent),
     Tray(TrayEvent),
     /// Keep awake changed (or could not), with the error text.
@@ -65,29 +67,57 @@ pub enum AppMsg {
     ThemeFile(lum_ui::themes::page::FileJob, Option<std::path::PathBuf>),
 }
 
-/// Notifications go to the log, and to the desktop once windows run and Settings → General allows them.
-/// Phase 5 adds Luminescent's own cards (`general.notify_style`).
+/// Notifications go to the log, and once windows run, to Luminescent's own cards or to the desktop, as Settings
+/// → General says. Cards wait in `cards` until the UI thread draws its next frame.
 #[derive(Debug, Default)]
 struct AppNotifier {
     /// The app runs with windows, so there is a desktop to show them on.
     running: bool,
     /// Settings → General → Show notifications.
-    desktop: bool,
+    shown: bool,
+    /// Settings → General → Notification style is "Luminescent" (cards) rather than the desktop's.
+    cards_style: bool,
+    cards: Mutex<Vec<(String, String, u32)>>,
+    waker: Waker,
+}
+
+impl AppNotifier {
+    fn card(&self, title: &str, message: &str, ms: u32) {
+        if let Ok(mut cards) = self.cards.lock() {
+            cards.push((title.to_owned(), message.to_owned(), ms));
+        }
+        self.waker.wake();
+    }
+
+    fn take_cards(&self) -> Vec<(String, String, u32)> {
+        self.cards.lock().map(|mut c| std::mem::take(&mut *c)).unwrap_or_default()
+    }
 }
 
 impl Notifier for AppNotifier {
     fn notify(&self, title: &str, message: &str, ms: u32) {
         tracing::info!("notify: {title} - {message}");
-        if self.running && self.desktop {
+        if !self.running || !self.shown {
+            return;
+        }
+        if self.cards_style {
+            self.card(title, message, ms);
+        } else {
             lum_platform::notify::show(title, message, ms, None);
         }
     }
 
+    /// Always shows (reminders, dose warnings): a desktop notification, so it stays in your notification
+    /// history, and a card as well when that is the notification style.
     fn toast(&self, title: &str, message: &str, ms: u32) {
         tracing::info!("toast: {title} - {message}");
-        if self.running {
-            lum_platform::notify::show(title, message, ms, None);
+        if !self.running {
+            return;
         }
+        if self.cards_style {
+            self.card(title, message, ms);
+        }
+        lum_platform::notify::show(title, message, ms, None);
     }
 }
 
@@ -95,6 +125,12 @@ impl Notifier for AppNotifier {
 /// frame drains whatever arrived before it.
 #[derive(Clone, Default)]
 pub struct Waker(Arc<OnceLock<egui::Context>>);
+
+impl std::fmt::Debug for Waker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Waker")
+    }
+}
 
 impl Waker {
     pub fn set(&self, ctx: &egui::Context) {
@@ -182,6 +218,13 @@ pub fn run(options: Options, started: Instant) -> anyhow::Result<u8> {
     };
     app.shutdown();
     drop(lock);
+    if let Some(safe) = app.restart {
+        tracing::info!("restarting{}", if safe { " in safe mode" } else { "" });
+        if let Err(e) = instance::relaunch(safe) {
+            eprintln!("Luminescent could not start again: {e}");
+            return Ok(1);
+        }
+    }
     Ok(code)
 }
 
@@ -245,6 +288,13 @@ pub struct App {
     last_repair: Option<Instant>,
     pub palette: lum_ui::palette::Palette,
     pub cheatsheet: lum_ui::cheatsheet::CheatSheet,
+    pub toasts: lum_ui::toast::Toasts,
+    toast_look: lum_ui::toast::Look,
+    pub alerts: lum_ui::alert::Alerts,
+    quit_dialog: Option<lum_ui::dialog::DialogWindow>,
+    prewarm_due: bool,
+    /// Start again once this copy has shut down (`Some(true)`: in safe mode).
+    pub restart: Option<bool>,
     tray: Option<Tray>,
     keep_awake: Option<KeepAwake>,
     mailbox: Mailbox,
@@ -295,7 +345,7 @@ impl App {
             host: ModuleHost::new(modules()),
             events: EventBus::new(),
             actions: ActionRegistry::new(),
-            notifier: AppNotifier::default(),
+            notifier: AppNotifier { waker: waker.clone(), ..AppNotifier::default() },
             endpoint,
             ctl_requests,
             safe_mode,
@@ -323,6 +373,12 @@ impl App {
             last_repair: None,
             palette: lum_ui::palette::Palette::new(paths.data_file("palette.json")),
             cheatsheet: lum_ui::cheatsheet::CheatSheet::default(),
+            toasts: lum_ui::toast::Toasts::default(),
+            toast_look: lum_ui::toast::Look::from_settings(&settings),
+            alerts: lum_ui::alert::Alerts::default(),
+            quit_dialog: None,
+            prewarm_due: false,
+            restart: None,
             tray: None,
             keep_awake: None,
             mailbox: mailbox.clone(),
@@ -372,6 +428,12 @@ impl App {
             runtime.spawn(idle::check(Duration::from_secs(secs), self.passes.clone(), messages.clone()));
         }
         if !options.smoke && !options.bench {
+            let prewarm = messages.clone();
+            runtime.spawn(async move {
+                // the first open of the overlay without the wait, as Python's prewarm
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                prewarm.send(AppMsg::Prewarm);
+            });
             let started = messages.clone();
             runtime.spawn(async move {
                 tokio::time::sleep(Duration::from_millis(1500)).await;
@@ -396,7 +458,12 @@ impl App {
     /// Sets the desktop up for our windows (Hyprland's rules and the placer) and starts listening to it.
     /// Call it before the first window opens.
     pub fn start_desktop(&mut self) {
-        self.desktop = Desktop::start(&[lum_ui::widgets::dim::COVER_PREFIX, lum_ui::overlay::COVER_PREFIX]);
+        self.desktop = Desktop::start(&[
+            lum_ui::widgets::dim::COVER_PREFIX,
+            lum_ui::overlay::COVER_PREFIX,
+            lum_ui::cheatsheet::COVER_PREFIX,
+            lum_ui::dialog::COVER_PREFIX,
+        ]);
         tracing::info!("windows placed by {}", self.desktop.describe());
         let waker = self.waker.clone();
         self.hotkeys = HotkeyManager::start(&self.desktop, Arc::new(move || waker.wake()));
@@ -405,7 +472,7 @@ impl App {
             self.desktop.listen(runtime.handle(), move |event| mailbox.send(AppMsg::Desktop(event)));
         }
         self.notifier.running = true;
-        self.notifier.desktop = self.settings.get_bool("general.tray_messages", true);
+        self.settings_changed();
         self.overlay_config = OverlayConfig::from_settings(&self.settings, self.safe_mode);
         self.register_hotkeys();
         self.register_theme_hotkeys();
@@ -421,9 +488,19 @@ impl App {
         }
     }
 
+    /// What follows the settings (on start and after a profile switch): the overlay, the cards, notifications.
+    fn settings_changed(&mut self) {
+        self.overlay_config = OverlayConfig::from_settings(&self.settings, self.safe_mode);
+        self.toast_look = lum_ui::toast::Look::from_settings(&self.settings);
+        self.notifier.shown = self.settings.get_bool("general.tray_messages", true);
+        self.notifier.cards_style =
+            self.settings.get_str("general.notify_style").unwrap_or("luminescent") == "luminescent";
+    }
+
     /// The launcher's own hotkeys, with the Python labels.
     fn register_hotkeys(&mut self) {
         let mut binds: Vec<(String, String)> = [
+            ("general.force_quit_hotkey", "quit all"),
             ("general.settings_hotkey", "settings"),
             ("ui.overlay_hotkey", "overlay"),
             ("ui.palette_hotkey", "command palette"),
@@ -517,6 +594,7 @@ impl App {
         if self.settings.active_profile() != want {
             match self.settings.switch_profile(want, true) {
                 Ok(_) => {
+                    self.settings_changed();
                     let shown = self.settings.profile_name(&self.settings.active_profile());
                     self.notifier.notify(APP_NAME, &format!("Settings profile: {shown}"), 2500);
                 }
@@ -606,12 +684,24 @@ impl App {
         if has("reset") {
             menu.push(MenuItem::action("reset", "⌨  Reset stuck keys"));
         }
+        if has("settings") || shown.is_empty() {
+            menu.push(MenuItem::action("settings", "⚙  Settings…"));
+        }
         if has("log") {
             menu.push(MenuItem::action("log", "📄  Open log file"));
         }
+        if self.safe_mode {
+            menu.push(MenuItem::action("restart", "🛟  Safe mode: restart normally"));
+        }
+        if has("restart") {
+            menu.push(MenuItem::action("restart", "🔄  Restart"));
+        }
         if has("quit") || shown.is_empty() {
             menu.push(MenuItem::Separator);
-            menu.push(MenuItem::action("quit", "⏻  Quit everything"));
+            menu.push(MenuItem::action(
+                "quit",
+                format!("⏻  Quit everything  ({})", pretty("general.force_quit_hotkey")),
+            ));
         }
         menu
     }
@@ -734,6 +824,9 @@ impl App {
             // from the palette there is no key to hold
             "Show the hotkey cheat sheet" => self.cheat_sheet("", true),
             "Open the log file" => self.open_log(),
+            "Restart Luminescent" => self.restart_app(false),
+            "Restart in safe mode (no modules, automations paused)" => self.restart_app(true),
+            "Quit Luminescent…" => self.confirm_quit(),
             other => tracing::warn!("palette: {other} is not built yet"),
         }
     }
@@ -848,10 +941,9 @@ impl App {
                 "keepawake" => self.toggle_keep_awake(),
                 "reset" => self.reset_keys(),
                 "log" => self.open_log(),
-                "quit" => {
-                    tracing::info!("quitting: asked to from the tray");
-                    self.quitting = true;
-                }
+                "settings" => self.open_overlay("settings"),
+                "restart" => self.restart_app(false),
+                "quit" => self.confirm_quit(),
                 other => tracing::debug!("tray: {other}"),
             },
         }
@@ -929,6 +1021,7 @@ impl App {
                 if owner == "launcher" {
                     match id.as_str() {
                         "overlay" => self.toggle_overlay(),
+                        "quit all" => self.confirm_quit(),
                         "settings" => self.open_overlay("settings"),
                         "keep awake" => self.toggle_keep_awake(),
                         "command palette" => self.open_palette(""),
@@ -995,7 +1088,7 @@ impl App {
         }
     }
 
-    fn handle(&mut self, message: AppMsg) {
+    pub(crate) fn handle(&mut self, message: AppMsg) {
         match message {
             AppMsg::Quit(why) => {
                 tracing::info!("quitting: {why}");
@@ -1010,6 +1103,10 @@ impl App {
                 tracing::info!("{}", text.lines().next().unwrap_or_default());
                 self.exit_code = u8::from(!numbers.ok());
                 self.quitting = true;
+            }
+            AppMsg::Prewarm => {
+                self.prewarm_due = true;
+                self.waker.wake();
             }
             AppMsg::IdleOverlay(open) => {
                 // only with windows: without them nothing would draw it, so it could not go away again
@@ -1042,11 +1139,22 @@ impl App {
     /// panics while drawing counts a fault, and one that keeps failing is switched off for the session.
     pub fn show_modules(&mut self, ctx: &egui::Context) {
         if self.overlay.is_visible() {
-            self.show_overlay(ctx);
+            let drawn = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.show_overlay(ctx)));
+            if drawn.is_err() {
+                // something on the overlay broke: throw all of it away; the next frame builds it again
+                tracing::error!("the overlay failed while drawing: building it again");
+                self.overlay = MainOverlay::default();
+                self.themes_ui.reset_page();
+                self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
+            }
+        } else if std::mem::take(&mut self.prewarm_due) {
+            let screens = lum_ui::window::screens();
+            self.overlay.prewarm(ctx, &screens, &self.overlay_config);
         }
         if self.cheatsheet.is_open() && self.cheatsheet.show(ctx) {
             self.hotkeys.watch_release(None);
         }
+        self.show_messages(ctx);
         if self.palette.is_open() {
             // sums and quick reminders join in phase 8, with the calculator and reminders
             if let Some(entry) = self.palette.show(ctx, &|_| Vec::new()) {
@@ -1065,6 +1173,87 @@ impl App {
                 self.notifier.toast("Luminescent error", &text, 6000);
             }
         }
+    }
+
+    /// Cards, warnings and the quit question, wherever they come from.
+    fn show_messages(&mut self, ctx: &egui::Context) {
+        for (title, message, ms) in self.notifier.take_cards() {
+            self.toasts.push(&title, &message, ms, &self.toast_look);
+        }
+        if !self.toasts.is_empty() {
+            let screens = lum_ui::window::screens();
+            let primary =
+                screens.first().map_or_else(|| lum_ui::window::fallback_screen(ctx).rect, |s| s.work);
+            let out = self.toasts.show(ctx, &self.toast_look, primary);
+            if let Some(text) = out.copy {
+                // the clipboard can wait on whoever owns it, so not on this thread
+                std::thread::spawn(move || {
+                    if let Err(e) = lum_platform::clipboard::set_text(&text) {
+                        tracing::warn!("could not copy the notification: {e}");
+                    }
+                });
+            }
+        }
+        if !self.alerts.is_empty() {
+            for title in self.alerts.show(ctx) {
+                self.emit("alert.closed", &title);
+            }
+        }
+        if let Some(dialog) = &mut self.quit_dialog {
+            match dialog.show(ctx) {
+                lum_ui::dialog::Outcome::Open => {}
+                lum_ui::dialog::Outcome::Accepted(_) => {
+                    tracing::info!("quitting: confirmed");
+                    self.quit_dialog = None;
+                    self.quitting = true;
+                }
+                lum_ui::dialog::Outcome::Cancelled => self.quit_dialog = None,
+            }
+        }
+    }
+
+    /// Cards on, as with windows and the default settings, so `--smoke` can draw them without a desktop.
+    pub(crate) fn cards_on(&mut self) {
+        self.notifier.running = true;
+        self.notifier.shown = true;
+        self.notifier.cards_style = true;
+    }
+
+    /// The big warning in the middle of the screen with the mouse (automation and performance alerts).
+    pub fn alert(&mut self, title: &str, message: &str, level: &str, seconds: f64) {
+        let screens = lum_ui::window::screens();
+        let screen = lum_ui::window::cursor_screen(&screens).map(|i| screens[i].rect);
+        self.alerts.show_alert(title, message, level, seconds, screen);
+        self.waker.wake();
+    }
+
+    /// Tray → Quit everything, the "Quit all" hotkey and the palette ask first.
+    pub fn confirm_quit(&mut self) {
+        if self.quit_dialog.is_some() {
+            return;
+        }
+        let dialog = lum_ui::dialog::AskDialog::confirm(
+            egui::Id::unique("lum-quit"),
+            &format!("Quit {APP_NAME}"),
+            "Close Luminescent and every module?",
+            "Quit",
+            "Cancel",
+            false,
+        );
+        let screens = lum_ui::window::screens();
+        let screen = lum_ui::window::cursor_screen(&screens)
+            .or((!screens.is_empty()).then_some(0))
+            .map(|i| screens[i].clone());
+        self.quit_dialog = Some(lum_ui::dialog::DialogWindow::new(dialog, screen));
+        self.waker.wake();
+    }
+
+    /// Shuts down and starts again (in safe mode: no modules, automations paused).
+    pub fn restart_app(&mut self, safe: bool) {
+        tracing::info!("restarting{}", if safe { " in safe mode" } else { "" });
+        self.restart = Some(safe);
+        self.quitting = true;
+        self.waker.wake();
     }
 
     fn show_overlay(&mut self, ctx: &egui::Context) {
@@ -1189,6 +1378,14 @@ impl App {
             }
             CtlCommand::Action(id) => self.run_action(&id),
             CtlCommand::Theme(which) => self.ctl_theme(&which),
+            CtlCommand::Notify(title, text) => {
+                self.notifier.notify(&title, &text, 4000);
+                "ok".to_owned()
+            }
+            CtlCommand::Alert(title, text) => {
+                self.alert(&title, &text, "warning", 0.0);
+                "ok".to_owned()
+            }
             CtlCommand::Quit => return ("bye".to_owned(), true),
         };
         (answer, false)
@@ -1257,6 +1454,8 @@ impl App {
         tracing::info!("shutting down");
         self.usage.flush();
         self.themes.flush();
+        self.palette.flush();
+        self.toasts.clear();
         self.with_modules(|host, cx, actions| host.stop_all(cx, actions));
         if let Some(start_guard) = &self.start_guard {
             start_guard.ok();
@@ -1276,8 +1475,8 @@ impl App {
     }
 }
 
-/// The palette's own entries (`lum:` ids), with the Python labels. Updates come with phase 15; restart and quit
-/// with their confirmation at the end of this phase.
+/// The palette's own entries (`lum:` ids), with the Python labels. Check for updates and Update now come with
+/// the updater in phase 15.
 const LUMINESCENT_ENTRIES: &[&str] = &[
     "Next theme",
     "Previous theme",
@@ -1286,6 +1485,9 @@ const LUMINESCENT_ENTRIES: &[&str] = &[
     "Keep awake on / off",
     "Show the hotkey cheat sheet",
     "Open the log file",
+    "Restart Luminescent",
+    "Restart in safe mode (no modules, automations paused)",
+    "Quit Luminescent…",
 ];
 
 /// What the Themes page and its windows need to know about the rest of the app.

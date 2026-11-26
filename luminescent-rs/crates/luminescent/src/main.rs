@@ -6,7 +6,8 @@
 //!     luminescent --safe-mode           start without modules and with automations paused
 //!     luminescent --idle-check <secs>   start, measure idle CPU, wake-ups and memory, print them, then quit
 //!     luminescent --spike <name>        one of the UI framework checks (`--spike list` names them)
-//!     luminescent ctl <command>         talk to the running app (ping, status, overlay, action <id>, theme <name>, quit)
+//!     luminescent ctl <command>         talk to the running app (ping, status, overlay, palette, action <id>,
+//!                                       theme <name>, notify <title> | <text>, alert <title> | <text>, quit)
 //!     luminescent --strip-metadata <paths>   clean copies into the Metadata save folder (Dolphin / Explorer menu)
 
 mod ctl;
@@ -70,7 +71,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Send a command to the running Luminescent: ping, status, overlay, palette, settings, action <id>, quit
+    /// Send a command to the running Luminescent: ping, status, overlay [page], palette, settings, action <id>,
+    /// theme <name>, notify <title> | <text>, alert <title> | <text>, quit
     Ctl {
         #[arg(required = true, num_args = 1.., allow_hyphen_values = true)]
         command: Vec<String>,

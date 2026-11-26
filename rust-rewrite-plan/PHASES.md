@@ -758,6 +758,31 @@ already started, continue from its handoff note.
 This session is Phase 6: the dashboard. The spec is ui/dashboard.py (read all of it) and the Dashboard section of
 README.md. The runner, hotkeys and window placement already exist from phase 3; the overlay from phase 5.
 
+What phase 5 left for you:
+- Phase 3's Hello tray check and phase 5's Looks right check may still be open; leave them on the waiting list and do
+  not ask again unless the user brings them up.
+- The overlay draws pages through the function the app passes to `MainOverlay::show` (`App::show_overlay` in
+  launcher.rs): the Dashboard is a full page (`PageSlot` covers the free part of the screen, under the chrome), and
+  every other screen gets a slot with `extra_screen: Some(name)` while the Dashboard is shown. Replace the
+  placeholder there with the real page and keep its state in the app. Return `PageFrame { busy: true }` while a
+  dialog of the page has the keyboard. A page that panics comes back as `Out::repair`: reset its state in
+  `App::repair_page`. Clicking empty dashboard space never closes the overlay (already so); typing on it already
+  opens the palette.
+- Boxes start below the chrome: `ChromeLayer::bottom_on_host` (the logo, clock and chips, with room for two more
+  chips). The chrome and the dashboard share `dashboard.snap`; drag snapping must use `round_ties_even` (Python's
+  `round()` rounds halves to even).
+- Palette: add `item:<id>` rows in `App::palette_entries` (hint `<tab>` or `<board> › <tab>`, plus ` · <hotkey>`,
+  kind "item"; skip separators, headings and action items) and run them in `App::run_palette_entry`. Tray: the
+  Dashboard submenu (`dashboard.show_in_tray`, "dashboard" in `general.tray_items`) and "Edit the dashboard…".
+- "Apps opened while the overlay is up appear on top of it" (`ui.apps_over_overlay`, Python `_foreign_opened`) was
+  left for this phase: float foreign windows that open while the overlay is up, unfloat them when it closes.
+- Gotchas found in phase 5: an egui menu or pop-up is drawn inside its window, so a small window (a card) can not
+  show one; without Hyprland no screens are listed, so use `window::fallback_screen`; `f32::clamp` panics when its
+  bounds cross (screen sizes can be tiny in tests), use `.min().max()`; to recolour a galley lay it out with
+  `Color32::PLACEHOLDER`; `ui.put` places a widget in an exact rect; kittest finds only widgets with a
+  `widget_info` label (use `Role::Tab`, `ListItem`, `Alert` as fits); text typed into a `TextEdit` changes it during
+  the pass, so refresh anything derived from it right after the widget, not before.
+
 Build everything in the Phase 6 Deliverables list: DashboardStore over dashboard.json with the layout migrations,
 tab / page / picture boxes, items of every kind with the ItemDialog, the canvas with selection, snapping, tidy up
 with undo, lock and search, several boards and per-screen boards, drag and drop of rows, files and boxes across

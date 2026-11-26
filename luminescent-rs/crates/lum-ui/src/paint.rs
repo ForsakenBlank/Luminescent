@@ -287,6 +287,35 @@ fn fringe(mesh: &mut Mesh, outline: &[Pos2], width: f32, shade: impl Fn(Pos2) ->
     }
 }
 
+/// A soft radial glow from `centre`, fading from `colour` to nothing `reach` away, kept inside the rounded
+/// rectangle (`QRadialGradient` on a clipped card). A fan from the centre to the outline, with a ring where the
+/// glow ends, so it fades by distance and leaves the rounded corners alone.
+pub fn radial_glow(painter: &Painter, rect: Rect, radius: f32, centre: Pos2, reach: f32, colour: Color32) {
+    if !rect.contains(centre) || reach <= 0.0 {
+        return;
+    }
+    let outline = rounded_outline(rect, radius);
+    let mut mesh = Mesh::default();
+    mesh.colored_vertex(centre, colour);
+    let at = |d: f32| colour.gamma_multiply((1.0 - d / reach).clamp(0.0, 1.0));
+    // per outline point: the point on the ring (or the outline itself when it is nearer) and the outline point
+    for &p in &outline {
+        let d = p.distance(centre);
+        let ring = if d > reach { centre + (p - centre) * (reach / d) } else { p };
+        mesh.colored_vertex(ring, at(ring.distance(centre)));
+        mesh.colored_vertex(p, at(d));
+    }
+    let n = outline.len() as u32;
+    for i in 0..n {
+        let j = (i + 1) % n;
+        let (ring_i, edge_i, ring_j, edge_j) = (1 + 2 * i, 2 + 2 * i, 1 + 2 * j, 2 + 2 * j);
+        mesh.add_triangle(0, ring_i, ring_j);
+        mesh.add_triangle(ring_i, edge_i, edge_j);
+        mesh.add_triangle(ring_i, edge_j, ring_j);
+    }
+    painter.add(Shape::mesh(mesh));
+}
+
 /// The Luminescent mark: a four-pointed sparkle with curved sides, `size` across, centred on `centre`.
 pub fn sparkle(painter: &Painter, centre: Pos2, size: f32, colour: Color32) {
     let origin = centre - vec2(size, size) / 2.0;

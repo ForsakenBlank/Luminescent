@@ -73,7 +73,7 @@ impl CheatSheet {
         }
         let mut close = false;
         if self.screens.is_empty() {
-            self.screens.push(Screen::new("screen", ctx.content_rect()));
+            self.screens.push(crate::window::fallback_screen(ctx));
         }
         if ctx.embed_viewports() {
             let rect = ctx.content_rect();

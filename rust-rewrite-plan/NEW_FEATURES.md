@@ -18,6 +18,8 @@ use. Progress for this track = ticked features done ÷ ticked features.
 - [ ] **Screenshots through the portal** on KDE and GNOME, so the colour picker, ruler and text grab work there.
   (S · Sonnet 5.5 high)
 - [ ] **Typing text without wtype / ydotool** through the virtual-keyboard protocol. (M · Opus 5.5 high)
+- [ ] **Frosted overlay on Windows 11** (acrylic or Mica behind the dimmed screen, like Hyprland's blur), with
+  Settings → Overlay → Frosted background working on both systems. (S · Opus 5.5 high)
 
 ### Speed you can feel
 - [ ] **Instant search everywhere**: the palette also finds apps (desktop entries / Start menu), files in folders

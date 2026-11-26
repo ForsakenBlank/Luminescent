@@ -21,7 +21,7 @@ pub mod switcher;
 use std::panic::AssertUnwindSafe;
 
 use egui::{
-    Align, Area, Context, Event, Id, Key, Layout, Modifiers, Order, Rect, Sense, Ui, UiBuilder,
+    Align, Area, Color32, Context, Event, Id, Key, Layout, Modifiers, Order, Rect, Sense, Ui, UiBuilder,
     ViewportBuilder, ViewportId, pos2, vec2,
 };
 use lum_core::settings::Settings;
@@ -29,6 +29,7 @@ use lum_platform::desktop::{self, APP_ID, marker};
 use lum_platform::hotkeys::{self, Os};
 
 use crate::anim::{self, Ease, Kind};
+use crate::fonts::Weight;
 use crate::text::Text;
 use crate::theme::{Tokens, Tone};
 use crate::widgets::IconButton;
@@ -305,11 +306,38 @@ impl MainOverlay {
         }
     }
 
-    /// Gets the expensive parts ready before the first open: the picture is decoded and the glow and dot
-    /// textures exist. Nothing is shown.
-    pub fn prewarm(&mut self, ctx: &Context) {
+    /// Gets the expensive parts ready before the first open: the picture is decoded, the glow, halo and dot
+    /// textures are made for each screen and the switcher's and chrome's text is in the font atlas. Nothing is
+    /// shown: it all goes through a painter that draws nowhere.
+    pub fn prewarm(&mut self, ctx: &Context, screens: &[Screen], config: &Config) {
         let tokens = Tokens::of(ctx);
         self.backdrop.prepare(ctx, &tokens);
+        let layer = egui::LayerId::new(Order::Background, base_id().with("prewarm"));
+        let painter = ctx.layer_painter(layer).with_clip_rect(Rect::NOTHING);
+        let host = MainOverlay::host_for(screens, config.on_cursor_screen);
+        for (i, screen) in screens.iter().enumerate() {
+            let rect = Rect::from_min_size(pos2(0.0, 0.0), screen.rect.size());
+            self.backdrop.paint(&painter, rect, &tokens, config.dim, i == host);
+            let (top, bottom) = screen.insets();
+            backdrop::panel(&painter, backdrop::panel_rect(rect.size(), top, bottom), &tokens);
+        }
+        for (_, name, _) in &config.nav {
+            drop(painter.layout_no_wrap(
+                name.clone(),
+                tokens.font(14.0, Weight::Medium, false),
+                Color32::WHITE,
+            ));
+        }
+        for text in ["LUMINESCENT", "0123456789:", &config.hotkey_hint] {
+            for (px, mono) in [(15.0, true), (26.0, true), (10.5, true), (10.0, true), (11.5, true)] {
+                drop(painter.layout_no_wrap(
+                    text.to_owned(),
+                    tokens.font(px, Weight::Medium, mono),
+                    Color32::WHITE,
+                ));
+            }
+        }
+        tracing::debug!("overlay prewarmed for {} screens", screens.len());
     }
 
     /// Draws the overlay for this frame on every screen (nothing while it is hidden). Call it every frame.
@@ -319,14 +347,7 @@ impl MainOverlay {
             return out;
         }
         if self.screens.is_empty() {
-            // the system did not list them (X11 without Hyprland): the screen the main window is on
-            let rect = if ctx.embed_viewports() {
-                ctx.content_rect()
-            } else {
-                let size = ctx.input(|i| i.viewport().monitor_size).unwrap_or(vec2(1280.0, 800.0));
-                Rect::from_min_size(pos2(0.0, 0.0), size)
-            };
-            self.screens.push(Screen::new("screen", rect));
+            self.screens.push(window::fallback_screen(ctx));
         }
         let reveal = match self.state {
             State::Closing => anim::value_from(

@@ -283,14 +283,7 @@ impl Palette {
         }
         self.refresh(extra);
         let size = vec2(WIDTH + 2.0 * GLOW, BOX_H + 2.0 * GLOW);
-        let screen = self.screen.unwrap_or_else(|| {
-            if ctx.embed_viewports() {
-                ctx.content_rect()
-            } else {
-                let size = ctx.input(|i| i.viewport().monitor_size).unwrap_or(vec2(1280.0, 800.0));
-                Rect::from_min_size(pos2(0.0, 0.0), size)
-            }
-        });
+        let screen = self.screen.unwrap_or_else(|| crate::window::fallback_screen(ctx).rect);
         let at = pos2(
             (screen.center().x - size.x / 2.0).round(),
             (screen.min.y + screen.height() * 0.18 - GLOW).round(),

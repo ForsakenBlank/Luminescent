@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (phase 3's Hello tray check is unconfirmed)
+Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (100 % built; the Looks right check waits on you) (phase 3's Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -19,7 +19,7 @@ Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (phas
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
-| 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % | in progress |
+| 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % (100 % built, waiting on the Looks right check) | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
@@ -142,6 +142,51 @@ Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (phas
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-26, Phase 5 built to 100 %, the Looks right check waits on you (overall 33.25 %; 37 % with both checks)
+
+Branch `claude/keen-keller-1quy00` (phases 3, 4 and 5; main has none of them yet). The 100 % checkpoint is ticked
+once your Hyprland and Windows 11 results are in (steps under "Waiting on the user"); then phase 5 is at 100 % and
+overall at 34.75 % (37 % with phase 3's Hello tray check too).
+
+**Done and green** (fmt, clippy on Linux and the Windows target, every test under Xvfb with snapshots, `--smoke`,
+`cargo deny`, `--idle-check` in release under Xvfb: 0 frames painted after the overlay was opened and hidden).
+* `lum_ui::toast`: Luminescent cards (position, width, the five accent styles with the glow at the top-left corner
+  as in Python, how long they stay with the extra time for long text, most on screen, see-through, text size,
+  icon, the error / warning accent from the title, hover keeps it, ✕ on hover, a click closes or opens a long one,
+  right-click copies, the Notifications look of the theme). `AppNotifier` queues them behind the same `Notifier`
+  (`general.notify_style`, `general.tray_messages`); `toast()` always goes to the desktop as well. The theme
+  previews draw their card with the same `toast::paint_card`.
+* `lum_ui::alert`: the warning in the middle of the screen with the mouse (levels, icons, Got it, Enter / Esc /
+  Space, the count down, one per title, the Warnings look of the theme). `App::alert` is what automation and
+  performance alerts will call.
+* `lum_ui::dialog::DialogWindow`: a dialog over the screen with the mouse when nothing of ours is open. Quit
+  everything (tray, `general.force_quit_hotkey` "quit all", the palette's "Quit Luminescent…") asks first.
+  Restart and Restart in safe mode (tray, palette; "Safe mode: restart normally" in safe mode) shut down, let go of
+  the lock and start again (`lum_platform::instance::relaunch`). Tray → Settings… opens the Settings page.
+* Prewarm 3 s after start (D33); the whole overlay is thrown away and rebuilt if drawing it panics (D34).
+* `ctl notify <title> | <text>` and `ctl alert <title> | <text>`, to try them and for scripts.
+* Fixed on the way: without Hyprland no screens are listed, and the cards fell back to the 1x1 main window and
+  panicked in `clamp` (min above max). Every window now falls back to `window::fallback_screen` (the main window's
+  monitor size).
+* Records: D33 to D38 in ARCHITECTURE.md, FEATURE_INVENTORY.md overlay lines, the Windows acrylic idea in
+  NEW_FEATURES.md.
+
+**Measured here** (release, Xvfb, llvmpipe, 1920x1080): first frame of the overlay 29 to 52 ms after asking; idle
+0.01 % CPU, 0.3 wake-ups/s, 0 frames painted after it was hidden; 2 000 palette entries well under 5 ms. A real GPU
+should do better; your numbers decide whether prewarm needs to keep windows alive (below).
+
+**Left out on purpose.**
+* Apps opened while the overlay is up floating above it (`ui.apps_over_overlay`, Python `_foreign_opened`): needs the
+  Hyprland `openwindow` events for foreign windows; it belongs with the dashboard running items (phase 6).
+* The theme crossfade on rebuild (Python lays a picture of the old look over the new one): egui restyles in one
+  frame, so there is nothing to hide.
+* Palette rows for dashboard items, notes, colours, pins, automations, sums and quick reminders come with their
+  phases (`App::palette_entries`, `run_palette_entry`, `Palette::show`'s `extra`). Check for updates and Update now
+  come with phase 15.
+* Chip lines (timers, Hearing Guard, reminders, media, CPU and memory) come with their modules (`ChromeData`).
+* If your open latency is over 50 ms on a real desktop: keep the overlay's windows alive and hidden between opens
+  (X11 and Windows can hide a window; Wayland can not, see the phase 2 note), or open them at prewarm off screen.
 
 ### 2026-11-26, Phase 5 at 75 % (overall 33.25 %)
 
@@ -600,6 +645,17 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 5 (blocks the 100 % checkpoint and the Looks right milestone):** quit the Python app first (same
+  hotkeys). Build with `cd luminescent-rs && cargo build --release -p luminescent`, then with a throw-away
+  `LUMINESCENT_HOME` run `./target/release/luminescent`. Press Ctrl+Shift+Space ten times (open, close), then run
+  `./target/release/luminescent ctl status` and paste `overlay_open_ms` and `hotkey_latency_p99_ms` (the budget is
+  50 ms for both together). Then `ctl quit` and `./target/release/luminescent --idle-check 20` (it opens and hides the
+  overlay first, then must paint 0 frames). Look at: the dim and dots on every screen, the switcher with its sliding
+  marker, Ctrl+1…9, the Themes page in the panel, ✎ edit mode (drag the clock, right-click a chip), typing on Themes
+  (opens the palette), Ctrl+Alt+Space (the palette), holding Ctrl+Alt+/ (the cheat sheet, gone when you let go),
+  `luminescent ctl notify Hello | a card`, `luminescent ctl alert Hot | a warning`, tray → Quit everything (asks
+  first). Say what looked or behaved wrong next to the mock-ups.
 
 * **Phase 4 (optional, does not block phase 5):** with a throw-away `LUMINESCENT_HOME`, run the app and
   `luminescent ctl overlay themes`. Click a theme (the whole app and the tray sparkle should follow at once), drag a card

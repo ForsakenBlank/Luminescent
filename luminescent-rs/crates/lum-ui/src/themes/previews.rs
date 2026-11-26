@@ -7,7 +7,7 @@ use egui::{Align2, Color32, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, pos2
 use crate::fonts::{self, Weight};
 use crate::paint;
 use crate::text::Text;
-use crate::theme::{Gradient, GradientKind, Palette, Role, Tokens, alpha};
+use crate::theme::{Palette, Role, Tokens, alpha};
 
 /// Where each colour role is drawn, so the picture can be pointed at.
 #[derive(Debug, Default, Clone)]
@@ -284,38 +284,7 @@ pub fn paint_panel(c: &Canvas<'_>, area: Rect, title: &str, reg: &mut Reg) {
 /// A notification card the way `ui/toast.py` draws it, in one of its styles (`glow`, `stripe`, `top`, `outline`).
 pub fn paint_toast(c: &Canvas<'_>, area: Rect, title: &str, text: &str, style: &str) {
     let p = c.p().clone();
-    let rad = f32::from(p.radius);
-    let shape = area.shrink(0.5);
-    c.fill(shape, rad, Role::BgBase);
-    let clip = c.painter.with_clip_rect(shape);
-    match style {
-        "glow" => {
-            let g = Gradient::new(
-                GradientKind::Radial,
-                0.0,
-                vec![(0.0, alpha(p.primary, 0.22)), (1.0, alpha(p.primary, 0.0))],
-            );
-            if let Some(g) = g {
-                paint::gradient(&clip, area, rad, &g, 1.0);
-            }
-        }
-        "stripe" => {
-            clip.rect_filled(r(area.min.x, area.min.y, 4.0, area.height()), 0.0, p.primary);
-        }
-        "top" => {
-            let g = Gradient::new(
-                GradientKind::Linear,
-                90.0,
-                vec![(0.0, p.primary), (0.65, p.primary), (1.0, alpha(p.primary, 0.0))],
-            );
-            if let Some(g) = g {
-                paint::gradient(&clip, r(area.min.x, area.min.y, area.width(), 2.5), 0.0, &g, 1.0);
-            }
-        }
-        _ => {}
-    }
-    let edge = if style == "outline" { Stroke::new(1.5, p.primary) } else { Stroke::new(1.0, p.border) };
-    c.painter.rect_stroke(shape, rad, edge, StrokeKind::Inside);
+    crate::toast::paint_card(c.painter, area, &c.tokens, style, p.primary, 1.0);
     c.text(
         r(area.min.x + 40.0, area.min.y + 10.0, area.width() - 52.0, 18.0),
         Align2::LEFT_CENTER,

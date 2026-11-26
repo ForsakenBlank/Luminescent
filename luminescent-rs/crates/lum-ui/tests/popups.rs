@@ -4,6 +4,7 @@
 #![allow(clippy::unwrap_used)]
 
 use egui::{Key, Modifiers};
+use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, SnapshotOptions};
 use lum_ui::Tokens;
 use lum_ui::cheatsheet::{CheatSheet, Group};
@@ -190,4 +191,115 @@ fn esc_closes_the_cheat_sheet_only_in_toggle_mode() {
     toggle.key_press(Key::Escape);
     toggle.run();
     assert!(!toggle.state().sheet.is_open());
+}
+
+struct Messages {
+    toasts: lum_ui::toast::Toasts,
+    look: lum_ui::toast::Look,
+    alerts: lum_ui::alert::Alerts,
+    light: bool,
+    ready: bool,
+    copied: Vec<String>,
+}
+
+fn messages(light: bool) -> Harness<'static, Messages> {
+    use lum_ui::toast::{Look, Toasts};
+    let mut toasts = Toasts::default();
+    // the glow in Dark, the stripe in Light; the theme previews show the other styles
+    let look = Look { style: if light { "stripe" } else { "glow" }.into(), ..Look::default() };
+    toasts.push("Theme: Dark", "", 60_000, &look);
+    toasts.push("Calculator", "12 * 7 = 84  (copied)", 60_000, &look);
+    toasts.push("Luminescent error", "The overlay was rebuilt to recover.", 60_000, &look);
+    toasts.push("⚠ Disk nearly full", "Only 2 GB are left on /home.", 60_000, &look);
+    let long = "A long message that goes on. ".repeat(60);
+    toasts.push("Reminders", &long, 60_000, &look);
+    let mut alerts = lum_ui::alert::Alerts::default();
+    alerts.show_alert(
+        "CPU is hot",
+        "The processor is at 92 °C. Close something heavy or let it cool down.",
+        "warning",
+        0.0,
+        None,
+    );
+    let builder = Harness::builder().with_size([1400.0, 900.0]).with_pixels_per_point(1.0);
+    let builder = if cfg!(target_os = "linux") { builder.wgpu() } else { builder };
+    builder.build_ui_state(
+        |ui, state: &mut Messages| {
+            if !state.ready {
+                setup(ui.ctx(), state.light);
+                state.ready = true;
+            }
+            let screen = ui.ctx().content_rect();
+            let out = state.toasts.show(ui.ctx(), &state.look, screen);
+            state.copied.extend(out.copy);
+            state.alerts.show(ui.ctx());
+        },
+        Messages { toasts, look, alerts, light, ready: false, copied: Vec::new() },
+    )
+}
+
+#[test]
+fn notification_cards_and_the_warning_dark() {
+    photograph(&mut messages(false), "messages_dark");
+}
+
+#[test]
+fn notification_cards_and_the_warning_light() {
+    photograph(&mut messages(true), "messages_light");
+}
+
+#[test]
+fn got_it_closes_the_warning_and_a_right_click_copies_a_card() {
+    let mut harness = messages(false);
+    harness.run();
+    harness.get_by_label("Got it").click();
+    harness.run();
+    assert!(harness.state().alerts.is_empty());
+    let card = harness.get_by_label("Theme: Dark").rect().center();
+    harness.hover_at(card);
+    for pressed in [true, false] {
+        harness.event(egui::Event::PointerButton {
+            pos: card,
+            button: egui::PointerButton::Secondary,
+            pressed,
+            modifiers: Modifiers::NONE,
+        });
+    }
+    harness.run();
+    assert_eq!(harness.state().copied, ["Theme: Dark"]);
+}
+
+#[test]
+fn the_quit_question_answers_once() {
+    use lum_ui::dialog::{AskDialog, DialogWindow, Outcome};
+    struct Q {
+        window: DialogWindow,
+        answers: Vec<Outcome>,
+        ready: bool,
+    }
+    let dialog = AskDialog::confirm(
+        egui::Id::unique("q"),
+        "Quit Luminescent",
+        "Close Luminescent and every module?",
+        "Quit",
+        "Cancel",
+        false,
+    );
+    let mut harness = Harness::builder().with_size([900.0, 600.0]).build_ui_state(
+        |ui, q: &mut Q| {
+            if !q.ready {
+                setup(ui.ctx(), false);
+                q.ready = true;
+            }
+            let outcome = q.window.show(ui.ctx());
+            if outcome != Outcome::Open {
+                q.answers.push(outcome);
+            }
+        },
+        Q { window: DialogWindow::new(dialog, None), answers: Vec::new(), ready: false },
+    );
+    harness.run();
+    harness.get_by_label("Quit").click();
+    harness.run();
+    assert_eq!(harness.state().answers, [Outcome::Accepted("Quit".into())]);
 }

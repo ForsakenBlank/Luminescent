@@ -12,6 +12,10 @@ pub enum CtlCommand {
     Action(String),
     /// Switch theme: `next`, `previous`, `back` (the one before) or a theme's name.
     Theme(String),
+    /// Show a notification: a title, and the text after a `|`.
+    Notify(String, String),
+    /// Show the warning in the middle of the screen: a title, and the text after a `|`.
+    Alert(String, String),
     Quit,
 }
 
@@ -33,10 +37,22 @@ pub fn parse(line: &str) -> Result<CtlCommand, String> {
         "action" if rest.contains(':') => Ok(CtlCommand::Action(rest)),
         "action" => Err("action needs an id like notes:new_note".to_owned()),
         "theme" => rest_or(arg, "theme needs next, previous, back or a theme's name").map(CtlCommand::Theme),
+        "notify" | "alert" => {
+            let (title, text) = rest.split_once('|').unwrap_or((rest.as_str(), ""));
+            let (title, text) = (title.trim().to_owned(), text.trim().to_owned());
+            if title.is_empty() {
+                return Err(format!("{verb} needs a title, and the text after a |"));
+            }
+            Ok(if verb == "notify" {
+                CtlCommand::Notify(title, text)
+            } else {
+                CtlCommand::Alert(title, text)
+            })
+        }
         "quit" => Ok(CtlCommand::Quit),
         "" => Err("no command given".to_owned()),
         other => Err(format!(
-            "unknown command '{other}' (try ping, status, overlay, palette, settings, action, theme, quit)"
+            "unknown command '{other}' (try ping, status, overlay, palette, settings, action, theme, notify, alert, quit)"
         )),
     }
 }
@@ -56,5 +72,11 @@ mod tests {
         assert_eq!(parse("theme Tokyo Night"), Ok(CtlCommand::Theme("Tokyo Night".into())));
         assert!(parse("theme").is_err());
         assert!(parse("dance").unwrap_err().contains("unknown command 'dance'"));
+        assert_eq!(
+            parse("notify Hi | there you are"),
+            Ok(CtlCommand::Notify("Hi".into(), "there you are".into()))
+        );
+        assert_eq!(parse("alert CPU is hot"), Ok(CtlCommand::Alert("CPU is hot".into(), String::new())));
+        assert!(parse("alert").is_err());
     }
 }

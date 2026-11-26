@@ -19,6 +19,7 @@ anyhow = "1"
 base64 = "0.22"
 indexmap = { version = "2", features = ["serde"] }
 jiff = "1"
+nucleo-matcher = "0.3"
 clap = { version = "4", features = ["derive"] }
 crc32fast = "1"
 crossbeam-channel = "0.5"

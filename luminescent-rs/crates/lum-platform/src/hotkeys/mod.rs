@@ -53,6 +53,15 @@ pub enum HotkeyEvent {
         owner: String,
         key: String,
     },
+    /// The keys being watched with [`HotkeyManager::watch_release`] were let go.
+    Released {
+        combo: String,
+    },
+    /// The system can not say whether those keys are held (Hyprland only knows some keys): whoever asked has to
+    /// work without it (the cheat sheet then stays until the hotkey is pressed again).
+    ReleaseUnknown {
+        combo: String,
+    },
     /// The system would not take a hotkey registered a moment ago (the keys are in your own Hyprland config,
     /// or Hyprland said no). It is no longer registered.
     Refused {
@@ -93,6 +102,11 @@ pub(crate) enum Signal {
         by: String,
         by_combo: Option<String>,
     },
+    /// Every key of a watched combo was seen up (`unknown`: the system could not tell).
+    Released {
+        combo: String,
+        unknown: bool,
+    },
     // the Windows hook takes every combo it can name
     #[cfg_attr(windows, allow(dead_code))]
     Refused {
@@ -115,6 +129,8 @@ pub(crate) trait Backend: Send {
     fn reset(&mut self);
     fn send(&self, combo: &str);
     fn release_modifiers(&self);
+    /// Reports [`Signal::Released`] once every key of `combo` is up, checking every 50 ms; `None` stops it.
+    fn watch_release(&mut self, combo: Option<&str>);
     fn desktop_event(&mut self, _event: &DesktopEvent) {}
     fn shutdown(&mut self);
 }
@@ -131,6 +147,7 @@ impl Backend for Dry {
     fn reset(&mut self) {}
     fn send(&self, _combo: &str) {}
     fn release_modifiers(&self) {}
+    fn watch_release(&mut self, _combo: Option<&str>) {}
     fn shutdown(&mut self) {}
 }
 
@@ -379,6 +396,19 @@ impl HotkeyManager {
         self.backend.release_modifiers();
     }
 
+    /// Watches `combo` until all its keys are let go, then reports [`HotkeyEvent::Released`] (or
+    /// [`HotkeyEvent::ReleaseUnknown`] where the system can not tell). One combo at a time; `None` stops.
+    pub fn watch_release(&mut self, combo: Option<&str>) {
+        let combo = combo.map(normalize);
+        if self.dry {
+            if let Some(combo) = combo {
+                self.out.push(HotkeyEvent::ReleaseUnknown { combo });
+            }
+            return;
+        }
+        self.backend.watch_release(combo.as_deref());
+    }
+
     /// Hands desktop events to the backend (Hyprland's binds report through the FIFO and need putting back
     /// after a config reload).
     pub fn desktop_event(&mut self, event: &DesktopEvent) {
@@ -439,6 +469,13 @@ impl HotkeyManager {
                 if h.down && h.interruptible && !same_owner && !self.suspended {
                     self.out.push(HotkeyEvent::Interrupted { owner: h.owner.clone(), key: by });
                 }
+            }
+            Signal::Released { combo, unknown } => {
+                self.out.push(if unknown {
+                    HotkeyEvent::ReleaseUnknown { combo }
+                } else {
+                    HotkeyEvent::Released { combo }
+                });
             }
             Signal::Refused { combo, reason } => {
                 tracing::warn!("{combo}: {reason}");
@@ -528,6 +565,7 @@ impl Backend for Scripted {
     fn reset(&mut self) {}
     fn send(&self, _combo: &str) {}
     fn release_modifiers(&self) {}
+    fn watch_release(&mut self, _combo: Option<&str>) {}
     fn shutdown(&mut self) {}
 }
 

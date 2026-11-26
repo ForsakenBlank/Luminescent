@@ -2,12 +2,14 @@
 //! crate and the binary know about egui.
 
 pub mod anim;
+pub mod cheatsheet;
 pub mod dialog;
 pub mod fonts;
 pub mod gallery;
 pub mod module;
 pub mod overlay;
 pub mod paint;
+pub mod palette;
 pub mod panel;
 pub mod picker;
 pub mod text;

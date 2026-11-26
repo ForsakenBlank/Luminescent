@@ -46,6 +46,7 @@ enum Cmd {
     Watch(String),
     Unwatch(String),
     ResetWatches,
+    WatchRelease(Option<String>),
     Send(String),
     Stop,
 }
@@ -70,6 +71,7 @@ impl HyprKeys {
             trusted: false,
             foreign: None,
             watches: HashMap::new(),
+            release: None,
         };
         std::thread::Builder::new()
             .name("hypr-keys".into())
@@ -193,6 +195,10 @@ impl Backend for HyprKeys {
 
     fn release_modifiers(&self) {}
 
+    fn watch_release(&mut self, combo: Option<&str>) {
+        let _ = self.tx.send(Cmd::WatchRelease(combo.map(str::to_owned)));
+    }
+
     fn desktop_event(&mut self, event: &DesktopEvent) {
         match event {
             DesktopEvent::Bind { id, at } => {
@@ -249,18 +255,25 @@ struct Worker {
     trusted: bool,
     foreign: Option<(Instant, Vec<Value>)>,
     watches: HashMap<String, Instant>,
+    /// A combo to report once its keys are let go, and whether it has been checked yet.
+    release: Option<(String, bool)>,
 }
 
 impl Worker {
     fn run(mut self, rx: Receiver<Cmd>) {
         loop {
-            let cmd = if self.watches.is_empty() {
+            let cmd = if self.watches.is_empty() && self.release.is_none() {
                 rx.recv().ok()
             } else {
-                match rx.recv_timeout(Duration::from_millis(100)) {
+                // the cheat sheet's keys are checked every 50 ms, hold keys every 100 ms; only while watched
+                let every = if self.release.is_some() { 50 } else { 100 };
+                match rx.recv_timeout(Duration::from_millis(every)) {
                     Ok(cmd) => Some(cmd),
                     Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
-                        self.check_holds();
+                        if !self.watches.is_empty() {
+                            self.check_holds();
+                        }
+                        self.check_release();
                         continue;
                     }
                     Err(crossbeam_channel::RecvTimeoutError::Disconnected) => None,
@@ -327,6 +340,7 @@ impl Worker {
                 self.watches.remove(&key);
             }
             Cmd::ResetWatches => self.watches.clear(),
+            Cmd::WatchRelease(combo) => self.release = combo.map(|c| (c, false)),
             Cmd::Send(combo) => {
                 let (mods, key) = keys::split(&combo);
                 let hmods: Vec<&str> = mods.iter().filter_map(|m| keys::hypr_modifier(m)).collect();
@@ -334,6 +348,23 @@ impl Worker {
                 let _ = self.hypr.send_shortcut(&hmods.join(" "), if ks.is_empty() { &key } else { &ks });
             }
             Cmd::Stop => {}
+        }
+    }
+
+    /// Reports the watched combo once its keys are up. Where Hyprland can not tell at the first check, it says so
+    /// and stops; later "can not tell" answers count as still held, so nothing goes away wrongly.
+    fn check_release(&mut self) {
+        let Some((combo, checked)) = self.release.clone() else { return };
+        match self.key_state(&combo) {
+            Some(false) => {
+                self.release = None;
+                self.signal(Signal::Released { combo, unknown: false });
+            }
+            None if !checked => {
+                self.release = None;
+                self.signal(Signal::Released { combo, unknown: true });
+            }
+            _ => self.release = Some((combo, true)),
         }
     }
 

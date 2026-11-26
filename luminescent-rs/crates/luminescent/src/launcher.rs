@@ -243,6 +243,8 @@ pub struct App {
     pub open_times: Vec<f64>,
     /// When the overlay was last rebuilt after a page failed (at most every few seconds).
     last_repair: Option<Instant>,
+    pub palette: lum_ui::palette::Palette,
+    pub cheatsheet: lum_ui::cheatsheet::CheatSheet,
     tray: Option<Tray>,
     keep_awake: Option<KeepAwake>,
     mailbox: Mailbox,
@@ -319,6 +321,8 @@ impl App {
             open_asked: None,
             open_times: Vec::new(),
             last_repair: None,
+            palette: lum_ui::palette::Palette::new(paths.data_file("palette.json")),
+            cheatsheet: lum_ui::cheatsheet::CheatSheet::default(),
             tray: None,
             keep_awake: None,
             mailbox: mailbox.clone(),
@@ -423,6 +427,7 @@ impl App {
             ("general.settings_hotkey", "settings"),
             ("ui.overlay_hotkey", "overlay"),
             ("ui.palette_hotkey", "command palette"),
+            ("ui.cheatsheet_hotkey", "cheat sheet"),
             ("ui.theme_cycle_hotkey", "next theme"),
             ("ui.theme_prev_hotkey", "previous theme"),
             ("general.keep_awake_hotkey", "keep awake"),
@@ -644,6 +649,153 @@ impl App {
         self.waker.wake();
     }
 
+    /// Opens the command palette (with text typed on the overlay), or closes it when it is open and nothing
+    /// was typed.
+    pub fn open_palette(&mut self, text: &str) {
+        if self.palette.is_open() && text.is_empty() {
+            self.palette.close();
+        } else {
+            let screens = lum_ui::window::screens();
+            let screen = lum_ui::window::cursor_screen(&screens).or((!screens.is_empty()).then_some(0));
+            let entries = self.palette_entries();
+            self.palette.open(entries, text, screen.map(|i| screens[i].rect));
+        }
+        self.waker.wake();
+    }
+
+    /// Everything the palette can find, in the order the Python app lists it. Dashboard items, notes, colours,
+    /// calculator pins and automations join as their phases bring them.
+    pub fn palette_entries(&self) -> Vec<lum_ui::palette::Entry> {
+        use lum_ui::palette::Entry;
+        let mut out = Vec::new();
+        for (key, name, _) in &self.overlay_config.nav {
+            out.push(Entry::new(format!("page:{key}"), format!("Open {name}"), APP_NAME, "page"));
+        }
+        for registered in self.actions.all() {
+            if !self.host.is_running(&registered.owner) {
+                continue;
+            }
+            let title = self.host.title(&registered.owner).unwrap_or(&registered.owner);
+            out.push(Entry::new(
+                format!("act:{}", registered.full_id()),
+                &registered.action.label,
+                title,
+                "action",
+            ));
+        }
+        let active = self.themes.active_id();
+        for t in self.themes.themes() {
+            let hint = if t.id() == active { "active" } else { "theme" };
+            out.push(Entry::new(format!("theme:{}", t.id()), format!("Theme: {}", t.name()), hint, "theme"));
+        }
+        for s in &self.settings.schema().sections {
+            out.push(Entry::new(
+                format!("settings:{}", s.key),
+                format!("Settings › {}", s.title),
+                "settings",
+                "settings",
+            ));
+        }
+        for label in LUMINESCENT_ENTRIES {
+            out.push(Entry::new(format!("lum:{label}"), *label, APP_NAME, "luminescent"));
+        }
+        out
+    }
+
+    fn run_palette_entry(&mut self, entry: &lum_ui::palette::Entry) {
+        if !entry.id.starts_with("calc:") && !entry.id.starts_with("remind:") {
+            let group = entry.id.split(':').next().unwrap_or_default();
+            self.usage.record("tools", &format!("palette:{group}"), "Command palette");
+        }
+        let (kind, rest) = entry.id.split_once(':').unwrap_or((entry.id.as_str(), ""));
+        match kind {
+            "page" => self.open_overlay(rest),
+            "act" => {
+                let answer = self.run_action(rest);
+                if let Some(e) = answer.strip_prefix("error: ") {
+                    self.notifier.notify(APP_NAME, e, 4000);
+                }
+            }
+            "theme" => self.apply_theme(rest),
+            // the settings page opens on that section once it exists (phase 7)
+            "settings" => self.open_overlay("settings"),
+            "lum" => self.run_luminescent(rest),
+            other => tracing::warn!("the palette has no way to run {other} entries yet"),
+        }
+    }
+
+    fn run_luminescent(&mut self, label: &str) {
+        match label {
+            "Next theme" => self.next_theme(1),
+            "Previous theme" => self.next_theme(-1),
+            "Back to the theme before (undo a theme switch)" => self.last_theme(),
+            "Reset stuck keys" => self.reset_keys(),
+            "Keep awake on / off" => self.toggle_keep_awake(),
+            // from the palette there is no key to hold
+            "Show the hotkey cheat sheet" => self.cheat_sheet("", true),
+            "Open the log file" => self.open_log(),
+            other => tracing::warn!("palette: {other} is not built yet"),
+        }
+    }
+
+    /// The cheat sheet's hotkey was pressed (or the palette asked for it, `toggle` then).
+    pub(crate) fn cheat_sheet(&mut self, combo: &str, toggle: bool) {
+        if self.cheatsheet.is_open() {
+            if self.cheatsheet.toggle_mode {
+                self.cheatsheet.close();
+                self.hotkeys.watch_release(None);
+            }
+            return;
+        }
+        let toggle = toggle || self.settings.get_bool("ui.cheatsheet_toggle", false) || combo.is_empty();
+        let groups = self.cheat_sheet_groups();
+        let screens = lum_ui::window::screens();
+        self.cheatsheet.open(groups, screens, toggle);
+        if !toggle {
+            self.hotkeys.watch_release(Some(combo));
+        }
+        self.waker.wake();
+    }
+
+    /// Every hotkey in the settings, by section, in the order of Settings; switched-off modules are greyed.
+    fn cheat_sheet_groups(&self) -> Vec<lum_ui::cheatsheet::Group> {
+        let mut out = Vec::new();
+        for s in &self.settings.schema().sections {
+            let Some(values) = self.settings.section(&s.key) else { continue };
+            let hold = s.key == "doodle"
+                && values.get("mode").and_then(serde_json::Value::as_str).unwrap_or("hold") == "hold";
+            let rows: Vec<(String, String)> = s
+                .fields
+                .iter()
+                .filter(|f| f.kind == lum_core::settings::schema::FieldType::Hotkey)
+                .filter_map(|f| {
+                    let combo = values.get(&f.key)?.as_str().filter(|c| !c.is_empty())?;
+                    let label =
+                        if hold && f.label == "Draw hotkey" { "Hold to draw" } else { f.label.as_str() };
+                    Some((label.to_owned(), combo.to_owned()))
+                })
+                .collect();
+            if rows.is_empty() {
+                continue;
+            }
+            let enabled = values.get("enabled").and_then(serde_json::Value::as_bool).unwrap_or(true);
+            let on = enabled && (!self.host.keys().contains(&s.key.as_str()) || self.host.is_running(&s.key));
+            out.push(lum_ui::cheatsheet::Group { name: s.title.clone(), on, rows });
+        }
+        out
+    }
+
+    fn reset_keys(&mut self) {
+        self.hotkeys.reset_keys();
+        self.notifier.notify(APP_NAME, "Keyboard state reset.", 2000);
+    }
+
+    fn open_log(&self) {
+        if let Err(e) = lum_platform::runner::open_path(&self.paths.log_file().to_string_lossy()) {
+            tracing::warn!("could not open the log: {e}");
+        }
+    }
+
     pub fn hide_overlay(&mut self) {
         self.overlay.hide();
         self.waker.wake();
@@ -692,15 +844,10 @@ impl App {
                     let page = self.overlay_config.start_page();
                     self.open_overlay(&page);
                 }
-                "palette" => tracing::info!("the command palette comes in phase 5"),
+                "palette" => self.open_palette(""),
                 "keepawake" => self.toggle_keep_awake(),
-                "reset" => self.hotkeys.reset_keys(),
-                "log" => {
-                    if let Err(e) = lum_platform::runner::open_path(&self.paths.log_file().to_string_lossy())
-                    {
-                        tracing::warn!("could not open the log: {e}");
-                    }
-                }
+                "reset" => self.reset_keys(),
+                "log" => self.open_log(),
                 "quit" => {
                     tracing::info!("quitting: asked to from the tray");
                     self.quitting = true;
@@ -784,7 +931,8 @@ impl App {
                         "overlay" => self.toggle_overlay(),
                         "settings" => self.open_overlay("settings"),
                         "keep awake" => self.toggle_keep_awake(),
-                        "command palette" => tracing::info!("the command palette comes in phase 5"),
+                        "command palette" => self.open_palette(""),
+                        "cheat sheet" => self.cheat_sheet(&combo, false),
                         "next theme" => self.next_theme(1),
                         "previous theme" => self.next_theme(-1),
                         other => {
@@ -796,6 +944,14 @@ impl App {
                 } else if owner == "themes" {
                     self.theme_key(&id);
                 }
+            }
+            HotkeyEvent::Released { .. } => {
+                self.cheatsheet.close();
+                self.waker.wake();
+            }
+            HotkeyEvent::ReleaseUnknown { .. } => {
+                self.cheatsheet.switch_to_toggle();
+                self.waker.wake();
             }
             HotkeyEvent::Refused { owner, combo, reason } => {
                 tracing::warn!("{owner}: {combo} was refused: {reason}");
@@ -888,6 +1044,15 @@ impl App {
         if self.overlay.is_visible() {
             self.show_overlay(ctx);
         }
+        if self.cheatsheet.is_open() && self.cheatsheet.show(ctx) {
+            self.hotkeys.watch_release(None);
+        }
+        if self.palette.is_open() {
+            // sums and quick reminders join in phase 8, with the calculator and reminders
+            if let Some(entry) = self.palette.show(ctx, &|_| Vec::new()) {
+                self.run_palette_entry(&entry);
+            }
+        }
         if self.themes_ui.has_windows() {
             let out = self.with_themes_ui(|ui, store, env| ui.show_windows(ctx, store, env));
             self.themes_out(out);
@@ -937,6 +1102,9 @@ impl App {
             && let Some(asked) = self.open_asked.take()
         {
             self.opened_in(asked);
+        }
+        if let Some(text) = out.palette {
+            self.open_palette(&text);
         }
         if let Some(key) = out.repair {
             self.repair_page(&key);
@@ -1015,8 +1183,9 @@ impl App {
                 "ok".to_owned()
             }
             CtlCommand::Palette => {
-                tracing::info!("asked to open: {line} (that comes in phase 5)");
-                "ok: the palette comes in a later build".to_owned()
+                tracing::info!("asked to open: {line}");
+                self.open_palette("");
+                "ok".to_owned()
             }
             CtlCommand::Action(id) => self.run_action(&id),
             CtlCommand::Theme(which) => self.ctl_theme(&which),
@@ -1106,6 +1275,18 @@ impl App {
         }
     }
 }
+
+/// The palette's own entries (`lum:` ids), with the Python labels. Updates come with phase 15; restart and quit
+/// with their confirmation at the end of this phase.
+const LUMINESCENT_ENTRIES: &[&str] = &[
+    "Next theme",
+    "Previous theme",
+    "Back to the theme before (undo a theme switch)",
+    "Reset stuck keys",
+    "Keep awake on / off",
+    "Show the hotkey cheat sheet",
+    "Open the log file",
+];
 
 /// What the Themes page and its windows need to know about the rest of the app.
 fn with_env<R>(

@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 31.75 %   [######..............]   Current phase: Phase 5 at 50 % (phase 3's Hello tray check is unconfirmed)
+Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (phase 3's Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -19,7 +19,7 @@ Overall: 31.75 %   [######..............]   Current phase: Phase 5 at 50 % (phas
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
-| 5 | Overlay shell | 6 % | 31 % | 37 % | 50 % | in progress |
+| 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
@@ -75,7 +75,7 @@ Overall: 31.75 %   [######..............]   Current phase: Phase 5 at 50 % (phas
 ### Phase 5: Overlay shell
 - [x] 25 %: backdrop, switcher, show / hide on every monitor, latency measured
 - [x] 50 %: chrome layer with edit mode
-- [ ] 75 %: command palette and cheat sheet
+- [x] 75 %: command palette and cheat sheet
 - [ ] 100 %: notification cards, on-screen warning, prewarm, repair, Looks right confirmed
 
 ### Phase 6: Dashboard
@@ -142,6 +142,17 @@ Overall: 31.75 %   [######..............]   Current phase: Phase 5 at 50 % (phas
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-26, Phase 5 at 75 % (overall 33.25 %)
+
+`lum_ui::palette` (nucleo-matcher over haystacks made once per open, the recent list in `palette.json` through a
+background writer, rows like the Python delegate, ↑↓ PgUp PgDn, Tab, Enter, Esc, closes when it loses the keyboard;
+results follow the typing in the same pass; 2 000 entries well under the 5 ms budget) and `lum_ui::cheatsheet`
+(cards per settings section, OFF greyed, hold or toggle mode). `HotkeyManager::watch_release` reports when the
+cheat sheet's keys are let go (every 50 ms on the hotkey thread, only while it is up; Hyprland that can not tell
+switches it to toggle mode, as Python). The app's index: pages, module actions, themes, settings sections and the
+`lum:` entries Python has, except updates (phase 15) and restart / quit (next checkpoint). Sums and quick reminders
+come with phase 8 through `Palette::show`'s `extra`.
 
 ### 2026-11-26, Phase 5 at 50 % (overall 31.75 %)
 

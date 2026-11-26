@@ -32,6 +32,7 @@ enum Msg {
     RemoveHold(String),
     Suspend(bool),
     Reset,
+    WatchRelease(Option<String>),
     Stop,
 }
 
@@ -112,6 +113,8 @@ fn run_hook(ready: Sender<Result<u32, String>>) {
 
 fn run_matcher(rx: Receiver<Msg>, signals: Sender<Signal>, wake: Wake) {
     let mut m = Matcher::new(System);
+    // the cheat sheet's keys, checked every 50 ms until they are all up
+    let mut release: Option<(String, Vec<Vec<u16>>)> = None;
     let emit = |out: Vec<Signal>| {
         if !out.is_empty() {
             for s in out {
@@ -122,11 +125,19 @@ fn run_matcher(rx: Receiver<Msg>, signals: Sender<Signal>, wake: Wake) {
     };
     loop {
         // the 100 ms check runs only while a key is held
-        let msg = if m.busy() {
-            match rx.recv_timeout(Duration::from_millis(100)) {
+        let msg = if m.busy() || release.is_some() {
+            let every = if release.is_some() { 50 } else { 100 };
+            match rx.recv_timeout(Duration::from_millis(every)) {
                 Ok(msg) => msg,
                 Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
                     emit(m.tick(Instant::now()));
+                    // a key is down when any of its codes is (left or right Ctrl)
+                    let up = release.as_ref().is_some_and(|(_, keys)| {
+                        keys.iter().any(|codes| !codes.iter().any(|&c| System.is_down(c)))
+                    });
+                    if up && let Some((combo, _)) = release.take() {
+                        emit(vec![Signal::Released { combo, unknown: false }]);
+                    }
                     continue;
                 }
                 Err(crossbeam_channel::RecvTimeoutError::Disconnected) => return,
@@ -145,6 +156,12 @@ fn run_matcher(rx: Receiver<Msg>, signals: Sender<Signal>, wake: Wake) {
             Msg::RemoveHold(key) => m.remove_hold(&key),
             Msg::Suspend(on) => m.suspend(on),
             Msg::Reset => emit(m.reset()),
+            Msg::WatchRelease(combo) => {
+                release = combo.map(|c| {
+                    let keys = c.split('+').filter(|k| !k.is_empty()).map(vk::codes).collect();
+                    (c, keys)
+                })
+            }
             Msg::Stop => return,
         }
     }
@@ -203,6 +220,10 @@ impl Backend for HookKeys {
         let mut inputs: Vec<INPUT> = codes.iter().map(|&c| key_input(c, false)).collect();
         inputs.extend(codes.iter().rev().map(|&c| key_input(c, true)));
         send_inputs(&inputs);
+    }
+
+    fn watch_release(&mut self, combo: Option<&str>) {
+        let _ = self.tx.send(Msg::WatchRelease(combo.map(str::to_owned)));
     }
 
     fn release_modifiers(&self) {

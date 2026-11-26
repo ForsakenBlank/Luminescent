@@ -22,6 +22,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("widget kit in Dark and Light", widget_kit),
     ("hotkeys and the tray menu", hello_tray),
     ("the overlay: open, switch pages, close", overlay),
+    ("command palette and cheat sheet", palette_and_cheat_sheet),
     ("themes switch and restyle", themes),
     ("themes window, editor and colour dialog", themes_window),
 ];
@@ -236,6 +237,45 @@ fn overlay(app: &mut App) -> Result<(), String> {
     }
     if app.settings.get_str("ui.last_page") != Some("dashboard") {
         return Err("the page it was on was not remembered".into());
+    }
+    Ok(())
+}
+
+/// The palette finds a theme by a few letters and Enter applies it; the cheat sheet lists the overlay's
+/// hotkeys and Esc closes it in toggle mode.
+fn palette_and_cheat_sheet(app: &mut App) -> Result<(), String> {
+    use egui::{Key, Modifiers};
+    let start = app.themes.active_id().to_owned();
+    let (answer, _) = app.handle_ctl("palette");
+    if answer != "ok" || !app.palette.is_open() {
+        return Err(format!("ctl palette answered {answer:?}"));
+    }
+    let ctx = headless_context();
+    let pass = |app: &mut App, events: &[egui::Event]| {
+        lum_ui::headless_pass(&ctx, input(events), |ui| app.show_modules(ui.ctx()));
+    };
+    // an area is only measured on its first pass
+    pass(app, &[]);
+    pass(app, &[]);
+    pass(app, &[egui::Event::Text("theme light".into())]);
+    match app.palette.results().first() {
+        Some(e) if e.id == "theme:light" => {}
+        other => return Err(format!("\"theme light\" found {other:?} first")),
+    }
+    pass(app, &[key(Key::Enter, Modifiers::NONE)]);
+    if app.palette.is_open() || app.themes.active_id() != "light" {
+        return Err("Enter did not apply the theme it found".into());
+    }
+    app.apply_theme(&start);
+    app.cheat_sheet("", true);
+    pass(app, &[]);
+    pass(app, &[]);
+    if !app.cheatsheet.is_open() {
+        return Err("the cheat sheet did not open".into());
+    }
+    pass(app, &[key(Key::Escape, Modifiers::NONE)]);
+    if app.cheatsheet.is_open() {
+        return Err("Esc did not close the cheat sheet".into());
     }
     Ok(())
 }

@@ -56,6 +56,8 @@ pub fn run(secs: u64) -> Result<(), String> {
                 HotkeyEvent::Refused { combo, reason, .. } => {
                     println!("  {at:7.2} s  {combo} refused: {reason}")
                 }
+                HotkeyEvent::Released { combo } => println!("  {at:7.2} s  {combo} let go"),
+                HotkeyEvent::ReleaseUnknown { combo } => println!("  {at:7.2} s  {combo}: can not tell"),
             }
         }
     }

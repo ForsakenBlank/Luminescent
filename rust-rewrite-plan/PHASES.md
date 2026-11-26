@@ -692,6 +692,10 @@ Code should read like a careful human wrote it. Commit after each checkpoint.
 
 Finish: fmt, clippy -D warnings, tests (including snapshots), --smoke. Update rust-rewrite-plan/PROGRESS.md and
 FEATURE_INVENTORY.md. Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -767,6 +771,10 @@ read like a careful human wrote it. Commit after each checkpoint.
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -830,6 +838,10 @@ dashes anywhere. Code should read like a careful human wrote it. Commit after ea
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -914,6 +926,10 @@ Commit after each tool.
 
 Finish each session: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md (checkpoints,
 percentages, handoff note naming the next tool) and FEATURE_INVENTORY.md.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -986,6 +1002,10 @@ anywhere. Code should read like a careful human wrote it. Commit after each chec
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -1071,6 +1091,10 @@ checkpoint.
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -1153,6 +1177,10 @@ read like a careful human wrote it. Commit after each checkpoint.
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -1224,6 +1252,10 @@ human wrote it. Commit after each checkpoint.
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -1309,6 +1341,10 @@ after each checkpoint.
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---
@@ -1385,6 +1421,10 @@ read like a careful human wrote it. Commit after each checkpoint.
 
 Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
 Stop at a checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
+learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
+Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
 ```
 
 ---

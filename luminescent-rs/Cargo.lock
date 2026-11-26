@@ -2349,6 +2349,7 @@ dependencies = [
  "lum-core",
  "lum-platform",
  "lum-theme",
+ "serde_json",
  "tempfile",
  "tracing",
 ]

@@ -45,9 +45,11 @@ impl Pictures {
         let key = PathBuf::from(path);
         while let Ok((done, image)) = self.rx.try_recv() {
             let slot = match image {
-                Some(image) => {
-                    Slot::Ready(ctx.load_texture(format!("theme-picture:{}", done.display()), image, TextureOptions::LINEAR))
-                }
+                Some(image) => Slot::Ready(ctx.load_texture(
+                    format!("theme-picture:{}", done.display()),
+                    image,
+                    TextureOptions::LINEAR,
+                )),
                 None => Slot::Missing,
             };
             self.slots.insert(done, slot);

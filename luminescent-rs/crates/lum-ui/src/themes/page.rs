@@ -8,18 +8,17 @@
 use std::path::PathBuf;
 
 use egui::{
-    Align2, Color32, CursorIcon, Id, Layout, Pos2, Rect, Response, Sense, Shape, Stroke, StrokeKind, Ui, pos2,
-    vec2,
+    Align2, Color32, CursorIcon, Id, Layout, Rect, Response, Sense, Shape, Stroke, StrokeKind, Ui, pos2, vec2,
 };
 use lum_platform::dialogs::Request;
 use lum_theme::store::{Folder, Group};
 use lum_theme::{Rgb, Theme, ThemeStore};
 
-use crate::dialog::{AskDialog, Icon, Outcome};
+use crate::dialog::{AskDialog, Outcome};
 use crate::fonts::Weight;
 use crate::paint;
 use crate::picker::{ColourDialog, Picked, PickerEvent, PickerKind};
-use crate::text::{Text, hint, mono};
+use crate::text::Text;
 use crate::theme::{Palette, Role, Tokens, Tone, colour};
 use crate::themes::pictures::Pictures;
 use crate::themes::previews::{Canvas, Reg, paint_overlay};
@@ -67,6 +66,7 @@ pub struct PageCx<'a> {
     pub profile_name: &'a dyn Fn(&str) -> String,
 }
 
+#[derive(Debug)]
 enum Ask {
     NewTheme(String),
     Rename(String),
@@ -106,20 +106,11 @@ struct GroupDrag {
 
 #[derive(Debug, Default)]
 pub struct ThemesPage {
-    dialog: Option<(AskKind, AskDialog)>,
+    dialog: Option<(Ask, AskDialog)>,
     group_drag: Option<GroupDrag>,
     pub pictures: Pictures,
     /// The name typed for a folder, until its colour is picked.
     folder_name: String,
-}
-
-/// `Ask` without its payload being public.
-struct AskKind(Ask);
-
-impl std::fmt::Debug for AskKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Ask")
-    }
 }
 
 fn dialog_id() -> Id {
@@ -136,46 +127,66 @@ impl ThemesPage {
         let tokens = Tokens::of(ui.ctx());
         let mut out = PageOut::default();
         let mut acts: Vec<Act> = Vec::new();
-        self.toolbar(ui, cx, &tokens, &mut acts);
-        egui::ScrollArea::vertical().auto_shrink([false, false]).id_salt("themes-page-scroll").show(ui, |ui| {
-            egui::Frame::NONE.inner_margin(egui::Margin { left: 24, right: 24, top: 4, bottom: 24 }).show(ui, |ui| {
-                self.groups(ui, cx, &tokens, &mut acts);
-            });
-        });
+        self.toolbar(ui, cx, &mut acts);
+        egui::ScrollArea::vertical().auto_shrink([false, false]).id_salt("themes-page-scroll").show(
+            ui,
+            |ui| {
+                egui::Frame::NONE
+                    .inner_margin(egui::Margin { left: 24, right: 24, top: 4, bottom: 24 })
+                    .show(ui, |ui| {
+                        self.groups(ui, cx, &tokens, &mut acts);
+                    });
+            },
+        );
         self.run(acts, cx, &mut out, ui.ctx());
         self.dialogs(ui.ctx(), cx, &mut out);
         out
     }
 
-    fn toolbar(&mut self, ui: &mut Ui, cx: &PageCx<'_>, tokens: &Tokens, acts: &mut Vec<Act>) {
-        ui.allocate_ui_with_layout(vec2(ui.available_width(), 52.0), Layout::left_to_right(egui::Align::Center), |ui| {
-            ui.add_space(24.0);
-            ui.spacing_mut().item_spacing.x = 12.0;
-            ui.add(Text::new("Themes").px(15.0).semibold());
-            let active = cx.store.active().name().to_uppercase();
-            ui.add(Text::new(format!("ACTIVE: {active}")).px(10.0).mono().medium().spacing(0.06).tone(Tone::Muted));
-            ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+    fn toolbar(&mut self, ui: &mut Ui, cx: &PageCx<'_>, acts: &mut Vec<Act>) {
+        ui.allocate_ui_with_layout(
+            vec2(ui.available_width(), 52.0),
+            Layout::left_to_right(egui::Align::Center),
+            |ui| {
                 ui.add_space(24.0);
                 ui.spacing_mut().item_spacing.x = 12.0;
-                let add = ui.add(Button::primary("＋ New theme"));
-                widgets::tip(add.clone(), "A copy of the active theme. Right-click any card → Settings… to change it.");
-                if add.clicked() {
-                    acts.push(Act::NewTheme(String::new()));
-                }
-                if ui.add(Button::ghost("New folder")).clicked() {
-                    acts.push(Act::NewFolder);
-                }
-                let from = ui.add(Button::ghost("From a colour…"));
-                if widgets::tip(from, "Pick one colour; every other colour is chosen to match it").clicked() {
-                    acts.push(Act::FromColour);
-                }
-                let import = ui.add(Button::ghost("Import…"));
-                if widgets::tip(import, "Add a theme someone shared (.lumtheme)").clicked() {
-                    acts.push(Act::Import);
-                }
-            });
-        });
-        let _ = tokens;
+                ui.add(Text::new("Themes").px(15.0).semibold());
+                let active = cx.store.active().name().to_uppercase();
+                ui.add(
+                    Text::new(format!("ACTIVE: {active}"))
+                        .px(10.0)
+                        .mono()
+                        .medium()
+                        .spacing(0.06)
+                        .tone(Tone::Muted),
+                );
+                ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add_space(24.0);
+                    ui.spacing_mut().item_spacing.x = 12.0;
+                    let add = ui.add(Button::primary("+ New theme"));
+                    widgets::tip(
+                        add.clone(),
+                        "A copy of the active theme. Right-click any card → Settings… to change it.",
+                    );
+                    if add.clicked() {
+                        acts.push(Act::NewTheme(String::new()));
+                    }
+                    if ui.add(Button::ghost("New folder")).clicked() {
+                        acts.push(Act::NewFolder);
+                    }
+                    let from = ui.add(Button::ghost("From a colour…"));
+                    if widgets::tip(from, "Pick one colour; every other colour is chosen to match it")
+                        .clicked()
+                    {
+                        acts.push(Act::FromColour);
+                    }
+                    let import = ui.add(Button::ghost("Import…"));
+                    if widgets::tip(import, "Add a theme someone shared (.lumtheme)").clicked() {
+                        acts.push(Act::Import);
+                    }
+                });
+            },
+        );
     }
 
     fn groups(&mut self, ui: &mut Ui, cx: &mut PageCx<'_>, tokens: &Tokens, acts: &mut Vec<Act>) {
@@ -191,7 +202,16 @@ impl ThemesPage {
             let collapsed = cx.store.group_collapsed(group);
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing.y = 14.0;
-                let header = self.header(ui, group, collapsed, index, groups.len(), tokens, acts, dragging_theme.is_some());
+                let header = self.header(
+                    ui,
+                    group,
+                    collapsed,
+                    index,
+                    groups.len(),
+                    tokens,
+                    acts,
+                    dragging_theme.is_some(),
+                );
                 header_centres.push((group.key.clone(), header.rect.center().y));
                 if let Some(id) = header.dropped {
                     let folder = group.folder.as_ref().map(|f| f.id.clone()).unwrap_or_default();
@@ -210,7 +230,18 @@ impl ThemesPage {
                     let rect = cell(area, i, columns, card_w);
                     let order: Vec<&str> = group.themes.iter().map(String::as_str).collect();
                     let at = order.iter().position(|id| *id == t.id());
-                    self.card(ui, rect, t, t.id() == active, cx, tokens, acts, &group.themes, at, &cx.store.folders());
+                    self.card(
+                        ui,
+                        rect,
+                        t,
+                        t.id() == active,
+                        cx,
+                        tokens,
+                        acts,
+                        &group.themes,
+                        at,
+                        &cx.store.folders(),
+                    );
                 }
                 let rect = cell(area, themes.len(), columns, card_w);
                 if add_card(ui, rect, tokens).clicked() {
@@ -225,7 +256,11 @@ impl ThemesPage {
         {
             let layer = egui::LayerId::new(egui::Order::Tooltip, Id::unique("themes-card-drag"));
             let painter = ui.ctx().layer_painter(layer);
-            let galley = painter.layout_no_wrap(t.name().to_owned(), tokens.font(12.0, Weight::Medium, false), tokens.p.text_primary);
+            let galley = painter.layout_no_wrap(
+                t.name().to_owned(),
+                tokens.font(12.0, Weight::Medium, false),
+                tokens.p.text_primary,
+            );
             let rect = Rect::from_min_size(p + vec2(14.0, 10.0), galley.size() + vec2(20.0, 12.0));
             painter.rect_filled(rect, tokens.rs(), tokens.p.bg_card_hover);
             painter.rect_stroke(rect, tokens.rs(), Stroke::new(1.0, tokens.p.primary), StrokeKind::Inside);
@@ -266,7 +301,9 @@ impl ThemesPage {
         let chip = Rect::from_center_size(pos2(rect.min.x + 10.0 + 10.0 + 4.0, mid), vec2(8.0, 8.0));
         let chip_colour = Rgb::parse(&group.colour).map_or(p.primary, colour);
         painter.rect_filled(chip, 2.0, chip_colour);
-        let title = painter.layout_job(Text::new(group.name.to_uppercase()).px(11.0).mono().semibold().spacing(0.14).job(tokens));
+        let title = painter.layout_job(
+            Text::new(group.name.to_uppercase()).px(11.0).mono().semibold().spacing(0.14).job(tokens),
+        );
         let title_pos = pos2(chip.max.x + 10.0, mid - title.size().y / 2.0);
         let count_at = pos2(title_pos.x + title.size().x + 10.0, mid);
         painter.galley(title_pos, title, p.text_primary);
@@ -278,7 +315,11 @@ impl ThemesPage {
             p.text_muted,
         );
         if response.hovered() {
-            ui.ctx().set_cursor_icon(if self.group_drag.is_some() { CursorIcon::Grabbing } else { CursorIcon::PointingHand });
+            ui.ctx().set_cursor_icon(if self.group_drag.is_some() {
+                CursorIcon::Grabbing
+            } else {
+                CursorIcon::PointingHand
+            });
         }
         widgets::tip(response.clone(), "Click to fold · drag to move the folder · right-click for options");
         if response.clicked() {
@@ -354,7 +395,8 @@ impl ThemesPage {
         let to = if slot > from { slot - 1 } else { slot };
         if down {
             ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
-            let y = centres.get(slot).map_or_else(|| centres.last().map_or(p.y, |c| c.1 + 60.0), |c| c.1 - 20.0);
+            let y =
+                centres.get(slot).map_or_else(|| centres.last().map_or(p.y, |c| c.1 + 60.0), |c| c.1 - 20.0);
             let rect = ui.max_rect();
             ui.painter().hline(rect.x_range(), y, Stroke::new(2.0, tokens.p.primary));
         } else {
@@ -395,9 +437,12 @@ impl ThemesPage {
 
         let inner = rect.shrink(9.0);
         let picture = Rect::from_min_size(inner.min, vec2(inner.width(), PREVIEW_HEIGHT));
-        self.picture(ui, picture, t, tokens);
+        self.picture(ui, picture, t);
 
-        let row = Rect::from_min_size(pos2(inner.min.x + 4.0, picture.max.y + 10.0), vec2(inner.width() - 8.0, 20.0));
+        let row = Rect::from_min_size(
+            pos2(inner.min.x + 4.0, picture.max.y + 10.0),
+            vec2(inner.width() - 8.0, 20.0),
+        );
         let painter = ui.painter();
         let badge_w = if active { 26.0 } else { 0.0 };
         let mut job = Text::new(t.name()).px(13.0).medium().job(tokens);
@@ -410,7 +455,13 @@ impl ThemesPage {
         if active {
             let badge = Rect::from_center_size(pos2(row.max.x - 9.0, row.center().y), vec2(18.0, 18.0));
             paint::fill(painter, badge, 9.0, tokens, Role::Primary, 1.0);
-            painter.text(badge.center(), Align2::CENTER_CENTER, "✓", tokens.font(10.0, Weight::Regular, false), p.on_primary);
+            painter.text(
+                badge.center(),
+                Align2::CENTER_CENTER,
+                "✓",
+                tokens.font(10.0, Weight::Regular, false),
+                p.on_primary,
+            );
         }
         if response.hovered() {
             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
@@ -487,7 +538,7 @@ impl ThemesPage {
     }
 
     /// The card picture: the theme's icon, else its background image, else a little mock-up in its colours.
-    fn picture(&mut self, ui: &mut Ui, area: Rect, t: &Theme, tokens: &Tokens) {
+    fn picture(&mut self, ui: &mut Ui, area: Rect, t: &Theme) {
         let palette = Palette::from(&t.palette());
         let radius = crate::themes::previews::card_radius(palette.radius);
         for path in [t.icon(), t.background_image()] {
@@ -502,19 +553,24 @@ impl ThemesPage {
                 let scale = (area.width() / size.x).max(area.height() / size.y);
                 let shown = size * scale;
                 let at = Rect::from_center_size(area.center(), shown);
-                painter.image(texture.id(), at, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+                painter.image(
+                    texture.id(),
+                    at,
+                    Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                    Color32::WHITE,
+                );
                 return;
             }
         }
         let canvas = Canvas::new(ui.painter(), &palette);
         let mut reg = Reg::default();
         paint_overlay(&canvas, area, PREVIEW_HEIGHT / 112.0, &mut reg);
-        let _ = tokens;
     }
 
     // ── doing things ───────────────────────────────────────────────────────
 
     fn run(&mut self, acts: Vec<Act>, cx: &mut PageCx<'_>, out: &mut PageOut, ctx: &egui::Context) {
+        let acted = !acts.is_empty();
         for act in acts {
             match act {
                 Act::Apply(id) => {
@@ -523,7 +579,10 @@ impl ThemesPage {
                 Act::Edit(id) => out.edit = Some(id),
                 Act::Rename(id) => {
                     let name = cx.store.get(&id).map(|t| t.name().to_owned()).unwrap_or_default();
-                    self.ask(AskKind(Ask::Rename(id)), AskDialog::ask_text(dialog_id(), "Rename theme", "New name:", &name));
+                    self.ask(
+                        Ask::Rename(id),
+                        AskDialog::ask_text(dialog_id(), "Rename theme", "New name:", &name),
+                    );
                 }
                 Act::Duplicate(id) => {
                     cx.store.duplicate(&id);
@@ -531,7 +590,8 @@ impl ThemesPage {
                 Act::Export(id) => {
                     let name = cx.store.get(&id).map(|t| t.name().to_owned()).unwrap_or_default();
                     let safe: String = name.chars().filter(|c| !"\\/:*?\"<>|".contains(*c)).collect();
-                    let safe = if safe.trim().is_empty() { "theme".to_owned() } else { safe.trim().to_owned() };
+                    let safe =
+                        if safe.trim().is_empty() { "theme".to_owned() } else { safe.trim().to_owned() };
                     let request = Request::new("Export theme")
                         .folder(Some(lum_core::paths::user_home()))
                         .file_name(&format!("{safe}.lumtheme"))
@@ -544,25 +604,41 @@ impl ThemesPage {
                 Act::Delete(id) => {
                     let name = cx.store.get(&id).map(|t| t.name().to_owned()).unwrap_or_default();
                     self.ask(
-                        AskKind(Ask::Delete(id)),
-                        AskDialog::confirm(dialog_id(), "Delete theme", &format!("Delete the theme \"{name}\"?"), "Delete", "Cancel", true),
+                        Ask::Delete(id),
+                        AskDialog::confirm(
+                            dialog_id(),
+                            "Delete theme",
+                            &format!("Delete the theme \"{name}\"?"),
+                            "Delete",
+                            "Cancel",
+                            true,
+                        ),
                     );
                 }
                 Act::Toggle(group) => cx.store.toggle_group(&group),
                 Act::RenameFolder(f) => {
                     self.ask(
-                        AskKind(Ask::RenameFolder(f.id.clone())),
+                        Ask::RenameFolder(f.id.clone()),
                         AskDialog::ask_text(dialog_id(), "Rename folder", "New name:", &f.name),
                     );
                 }
                 Act::FolderColour(f) => {
                     let start = Rgb::parse(&f.colour).unwrap_or(Rgb::from_u32(0x7B6CF6));
-                    cx.picker.open(&format!("folder:{}", f.id), "Folder colour", Picked::Colour(start), false, cx.near);
+                    cx.picker.open(
+                        &format!("folder:{}", f.id),
+                        "Folder colour",
+                        Picked::Colour(start),
+                        false,
+                        cx.near,
+                    );
                 }
                 Act::MoveGroup(from, to) => self.move_group(cx.store, from, to),
                 Act::DeleteFolder(id) => cx.store.delete_folder(&id),
                 Act::NewTheme(folder) => {
-                    self.ask(AskKind(Ask::NewTheme(folder)), AskDialog::ask_text(dialog_id(), "New theme", "Name:", ""));
+                    self.ask(
+                        Ask::NewTheme(folder),
+                        AskDialog::ask_text(dialog_id(), "New theme", "Name:", ""),
+                    );
                 }
                 Act::Import => {
                     let request = Request::new("Import a theme")
@@ -579,12 +655,15 @@ impl ThemesPage {
                     cx.picker.open("from-colour", "The theme's accent colour", start, false, cx.near);
                 }
                 Act::NewFolder => {
-                    self.ask(AskKind(Ask::NewFolder), AskDialog::ask_text(dialog_id(), "New folder", "Folder name:", ""));
+                    self.ask(
+                        Ask::NewFolder,
+                        AskDialog::ask_text(dialog_id(), "New folder", "Folder name:", ""),
+                    );
                 }
             }
         }
-        if cx.store.active_id() != Tokens::of(ctx).p.primary.to_hex().as_str() {
-            // a change of the store has to reach the poll loop, which restyles the app
+        if acted {
+            // a change of the store has to reach the app's poll, which restyles everything
             ctx.request_repaint();
         }
     }
@@ -599,24 +678,20 @@ impl ThemesPage {
         store.set_group_order(&order);
     }
 
-    fn ask(&mut self, kind: AskKind, dialog: AskDialog) {
+    fn ask(&mut self, kind: Ask, dialog: AskDialog) {
         self.dialog = Some((kind, dialog));
     }
 
     fn message(&mut self, title: &str, text: &str) {
-        self.ask(AskKind(Ask::Message), AskDialog::error(dialog_id(), title, text));
+        self.ask(Ask::Message, AskDialog::error(dialog_id(), title, text));
     }
 
     fn dialogs(&mut self, ctx: &egui::Context, cx: &mut PageCx<'_>, out: &mut PageOut) {
         let Some((kind, mut dialog)) = self.dialog.take() else { return };
         match dialog.show(ctx) {
             Outcome::Open => self.dialog = Some((kind, dialog)),
-            Outcome::Cancelled => {
-                if let Ask::NewFolder = kind.0 {
-                    // a folder without a colour is not made
-                }
-            }
-            Outcome::Accepted(answer) => self.answered(kind.0, &answer, dialog.text().to_owned(), cx, out),
+            Outcome::Cancelled => {}
+            Outcome::Accepted(answer) => self.answered(kind, &answer, dialog.text().to_owned(), cx, out),
         }
     }
 
@@ -641,10 +716,8 @@ impl ThemesPage {
                 let t = cx.store.from_accent(accent, answer == "Light", "");
                 cx.store.apply(t.id());
             }
-            Ask::UseImported(id) => {
-                if answer == "Use it" {
-                    cx.store.apply(&id);
-                }
+            Ask::UseImported(id) if answer == "Use it" => {
+                cx.store.apply(&id);
             }
             _ => {}
         }
@@ -660,7 +733,7 @@ impl ThemesPage {
             && let Some(accent) = colour
         {
             self.ask(
-                AskKind(Ask::FromColour(accent)),
+                Ask::FromColour(accent),
                 AskDialog::choose(
                     dialog_id(),
                     "Theme from a colour",
@@ -682,21 +755,31 @@ impl ThemesPage {
     }
 
     /// A file dialog the page asked for came back.
-    pub fn file_chosen(&mut self, job: &FileJob, path: Option<PathBuf>, cx: &mut PageCx<'_>, out: &mut PageOut) {
+    pub fn file_chosen(
+        &mut self,
+        job: &FileJob,
+        path: Option<PathBuf>,
+        cx: &mut PageCx<'_>,
+        out: &mut PageOut,
+    ) {
         let Some(path) = path else { return };
         match job {
             FileJob::Import => match cx.store.import_file(&path) {
                 Ok(t) => {
                     let text = format!("Added \"{}\". Use it now?", t.name());
                     self.ask(
-                        AskKind(Ask::UseImported(t.id().to_owned())),
+                        Ask::UseImported(t.id().to_owned()),
                         AskDialog::choose(dialog_id(), "Import theme", &text, &["Use it"], "Not now"),
                     );
                 }
                 Err(e) => self.message("Import theme", &e.to_string()),
             },
             FileJob::Export(id) => {
-                let path = if path.extension().is_some_and(|e| e == "lumtheme") { path } else { path.with_extension("lumtheme") };
+                let path = if path.extension().is_some_and(|e| e == "lumtheme") {
+                    path
+                } else {
+                    path.with_extension("lumtheme")
+                };
                 match cx.store.export(id, &path) {
                     Ok(()) => out.notify.push(("Themes".to_owned(), format!("Saved {}", path.display()))),
                     Err(e) => self.message("Export theme", &e.to_string()),
@@ -709,11 +792,6 @@ impl ThemesPage {
     /// Whether a dialog of the page is open (Esc then belongs to it).
     pub fn has_dialog(&self) -> bool {
         self.dialog.is_some()
-    }
-
-    pub fn paint_hint(ui: &mut Ui, text: &str) {
-        ui.add(hint(text).wrap());
-        let _ = mono("");
     }
 }
 
@@ -734,9 +812,13 @@ fn alpha_of(c: Color32, a: f32) -> Color32 {
     crate::theme::alpha(c, a)
 }
 
-/// The dashed "＋ New theme" tile at the end of each group.
+/// The dashed "+ New theme" tile at the end of each group.
 fn add_card(ui: &mut Ui, rect: Rect, tokens: &Tokens) -> Response {
-    let response = ui.interact(rect, Id::unique(("themes-add-card", rect.min.x as i32, rect.min.y as i32)), Sense::click());
+    let response = ui.interact(
+        rect,
+        Id::unique(("themes-add-card", rect.min.x as i32, rect.min.y as i32)),
+        Sense::click(),
+    );
     let p = &tokens.p;
     let stroke = Stroke::new(1.0, if response.hovered() { p.text_muted } else { p.border });
     let r = rect.shrink(0.5);
@@ -748,13 +830,16 @@ fn add_card(ui: &mut Ui, rect: Rect, tokens: &Tokens) -> Response {
         closed.push(*first);
     }
     ui.painter().add(Shape::dashed_line(&closed, stroke, 4.0, 3.0));
-    ui.painter().text(rect.center(), Align2::CENTER_CENTER, "＋ New theme", tokens.font(13.0, Weight::Medium, false), p.text_muted);
+    ui.painter().text(
+        rect.center(),
+        Align2::CENTER_CENTER,
+        "+ New theme",
+        tokens.font(13.0, Weight::Medium, false),
+        p.text_muted,
+    );
     if response.hovered() {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
     response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, "New theme"));
     response
 }
-
-#[allow(dead_code)]
-fn unused(_: Pos2, _: Icon) {}

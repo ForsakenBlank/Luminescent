@@ -417,7 +417,7 @@ impl ColourDialog {
             if !response.has_focus() && !response.changed() {
                 self.hex = now.hex();
             }
-            if ui.add(IconButton::new("⧉").size(30.0).tooltip("Copy the hex code")).clicked() {
+            if ui.add(IconButton::new("⎘").size(30.0).tooltip("Copy the hex code")).clicked() {
                 ui.ctx().copy_text(now.hex());
             }
             let eye = ui.add_enabled(
@@ -467,7 +467,8 @@ impl ColourDialog {
                 picker::contrast(c, background)
             ))
             .px(10.5)
-            .tone(Tone::Muted),
+            .tone(Tone::Muted)
+            .wrap(),
         );
     }
 
@@ -617,8 +618,7 @@ impl ColourDialog {
             {
                 self.remove_stop(self.current);
             }
-            if ui.add(Button::ghost("＋ Colour")).on_hover_text("Add a colour in the biggest gap").clicked()
-            {
+            if ui.add(Button::ghost("+ Colour")).on_hover_text("Add a colour in the biggest gap").clicked() {
                 let stops = self.sorted();
                 let gap = (0..stops.len() - 1)
                     .max_by(|&a, &b| (stops[a + 1].0 - stops[a].0).total_cmp(&(stops[b + 1].0 - stops[b].0)));

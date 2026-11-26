@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 24.75 %   [####................]   Current phase: Phase 4 at 50 % (phase 3 built, its Hello tray check is unconfirmed)
+Overall: 29 %   [#####...............]   Current phase: Phase 4 at 75 % (phase 3 built, its Hello tray check is unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -18,7 +18,7 @@ Overall: 24.75 %   [####................]   Current phase: Phase 4 at 50 % (phas
 | 1 | Workspace + core infrastructure | 5 % | 2 % | 7 % | 100 % | done |
 | 2 | UI foundation + widget kit | 7 % | 7 % | 14 % | 100 % | done (gate provisional, D26) |
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
-| 4 | Themes | 8 % | 23 % | 31 % | 50 % (the 75 % part is half built) | in progress |
+| 4 | Themes | 8 % | 23 % | 31 % | 75 % | in progress |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 0 % | not started |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
@@ -69,7 +69,7 @@ Overall: 24.75 %   [####................]   Current phase: Phase 4 at 50 % (phas
 ### Phase 4: Themes
 - [x] 25 %: lum-theme engine, tones / generation / gradient fixtures pass
 - [x] 50 %: ThemeStore, live apply, theme hotkeys, import / export, undo / redo
-- [ ] 75 %: Themes page and the colour picker dialog with gradient mode
+- [x] 75 %: Themes page and the colour picker dialog with gradient mode
 - [ ] 100 %: theme editor (non-desktop pages), snapshots in three themes
 
 ### Phase 5: Overlay shell

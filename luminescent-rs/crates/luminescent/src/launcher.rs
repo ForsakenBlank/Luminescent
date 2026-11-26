@@ -58,6 +58,8 @@ pub enum AppMsg {
     Tray(TrayEvent),
     /// Keep awake changed (or could not), with the error text.
     KeepAwake(bool, Option<String>),
+    /// A file dialog the Themes window asked for was answered (`None` when it was cancelled).
+    ThemeFile(lum_ui::themes::page::FileJob, Option<std::path::PathBuf>),
 }
 
 /// Notifications go to the log, and to the desktop once windows run and Settings → General allows them.
@@ -226,6 +228,7 @@ pub struct App {
     pub desktop: Desktop,
     pub hotkeys: HotkeyManager,
     pub themes: ThemeStore,
+    pub themes_ui: lum_ui::themes::ThemesUi,
     /// New tokens a theme switch made, for the UI thread to install into egui's context.
     restyle: Option<Tokens>,
     /// The empty overlay of the Hello tray milestone; phase 5 brings the real one.
@@ -297,6 +300,10 @@ impl App {
             desktop: Desktop::none(),
             hotkeys: HotkeyManager::dry(),
             themes: ThemeStore::load(&paths, settings.raw_saved()),
+            themes_ui: lum_ui::themes::ThemesUi::new(
+                paths.data_file("picker.json"),
+                paths.data_file("colours.json"),
+            ),
             restyle: None,
             overlay: lum_ui::overlay::Overlay::default(),
             overlay_open: false,
@@ -773,6 +780,10 @@ impl App {
                 self.hotkeys.desktop_event(&event);
             }
             AppMsg::Tray(event) => self.tray_event(event),
+            AppMsg::ThemeFile(job, path) => {
+                let out = self.with_themes_ui(|ui, store, env| ui.file_chosen(&job, path, store, env));
+                self.themes_out(out);
+            }
             AppMsg::KeepAwake(on, error) => {
                 if let Some(k) = &mut self.keep_awake {
                     k.reported(on);
@@ -803,6 +814,10 @@ impl App {
                 ctx.request_repaint();
             }
         }
+        if self.themes_ui.is_open() {
+            let out = self.with_themes_ui(|ui, store, env| ui.show(ctx, store, env));
+            self.themes_out(out);
+        }
         let App { host, settings, .. } = self;
         let mut cx = lum_ui::UiCx::new(ctx, settings);
         let failed = host.each_running("drawing", |module| module.show(&mut cx));
@@ -810,6 +825,32 @@ impl App {
             if let Some(text) = self.with_modules(|host, cx, actions| host.report_fault(key, cx, actions)) {
                 self.notifier.toast("Luminescent error", &text, 6000);
             }
+        }
+    }
+
+    fn with_themes_ui<R>(
+        &mut self,
+        f: impl FnOnce(&mut lum_ui::themes::ThemesUi, &mut ThemeStore, &lum_ui::themes::Env<'_>) -> R,
+    ) -> R {
+        let App { themes_ui, themes, settings, .. } = self;
+        let profile_name = |id: &str| settings.profile_name(id);
+        f(themes_ui, themes, &lum_ui::themes::Env { profile_name: &profile_name })
+    }
+
+    /// File dialogs the Themes window wants (they answer through the mailbox) and its desktop notices.
+    fn themes_out(&mut self, out: lum_ui::themes::Out) {
+        for ask in out.files {
+            let mailbox = self.mailbox.clone();
+            let job = ask.job;
+            let done = move |path| mailbox.send(AppMsg::ThemeFile(job, path));
+            if ask.save {
+                lum_platform::dialogs::save_file(ask.request, done);
+            } else {
+                lum_platform::dialogs::open_file(ask.request, done);
+            }
+        }
+        for (title, text) in out.notify {
+            self.notifier.notify(&title, &text, 4000);
         }
     }
 
@@ -831,7 +872,11 @@ impl App {
             CtlCommand::Overlay(page) => {
                 tracing::info!("asked to open: {line}");
                 self.set_overlay(true);
-                match page {
+                match page.as_deref() {
+                    Some("themes") => {
+                        self.themes_ui.open();
+                        "ok".to_owned()
+                    }
                     Some(page) => {
                         format!("ok: the overlay is empty in this build, so {page} is not there yet")
                     }

@@ -82,7 +82,7 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [x] | Chrome layer: logo, sparkle, title, clock, time, date, status chips, running timers; edit mode to drag, add, freeze, duplicate, resize, move to screen, remove, reset | 5 | `ui/chrome.py` |
 | [ ] | Status chips: running timers, Hearing Guard level, next reminder *(phase 5: the chips are drawn from `ChromeData`; their lines come with phases 8, 11, 12)* | 5 | `ui/chrome.py` |
 | [x] | Pages built lazily; prewarm after start; repair (rebuild) when a page breaks | 5 | `ui/overlay.py` |
-| [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries *(phase 5: pages, actions, themes, settings, Luminescent entries, recent; sums and quick reminders phase 8, notes 8, colours 9, pins 8, dashboard items 6, automations 10)* | 5 | `ui/palette.py` |
+| [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries *(phase 5: pages, actions, themes, settings, Luminescent entries, recent; sums and quick reminders phase 8, notes 8, colours 9, pins 8, automations 10; phase 6: dashboard items are in)* | 5 | `ui/palette.py` |
 | [x] | Hotkey cheat sheet while held | 5 | `ui/cheatsheet.py` |
 | [x] | Luminescent notification cards: position, width, accent style, duration, max on screen, opacity, text size, icon, hover keeps, ✕, right-click copies, grows to fit *(right-click copies at once and says so on the card: a menu can not leave a card's small window, D37)* | 5 | `ui/toast.py` |
 | [x] | Desktop notifications option; reminders and dose warnings always go to the desktop too | 5 | `ui/toast.py` |
@@ -101,23 +101,23 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Tab boxes of items on every screen; header with accent bar, mono caps title, count, fold | 6 | `ui/dashboard.py` |
-| [ ] | Items: script, program, file, folder, URL, command, Luminescent action; badge and real icon | 6 | `ui/dashboard.py` |
-| [ ] | Item options: arguments, hotkey, working folder, run as administrator, ask for arguments, run in a terminal window | 6 | `ui/dashboard.py` |
-| [ ] | Groups run several items in order; headings and separators | 6 | `ui/dashboard.py` |
-| [ ] | Running items show a green dot and Stop | 6 | `ui/dashboard.py` |
-| [ ] | Folder items: Open terminal here | 6 | `ui/dashboard.py` |
-| [ ] | Drag a header to move (snap grid, default 8 px, Off = pixel moves), click to fold, drag right edge to resize | 6 | `ui/dashboard.py` |
-| [ ] | Tidy up: columns / grid / rows, by position / name / size, only the selection, glide, Undo / Ctrl+Z | 6 | `ui/dashboard.py` |
-| [ ] | Page boxes (any page as a resizable box that remembers its state) | 6 | `ui/dashboard.py` |
-| [ ] | Picture boxes (picture or GIF; frame, fill, corners, opacity, title bar) | 6 | `ui/dashboard.py` |
-| [ ] | Selection rectangle, Ctrl / Shift click, multi-drag, Delete, Ctrl+A, menus for the selection | 6 | `ui/dashboard.py` |
-| [ ] | Several dashboards; new = empty / with Tools / copy; instant switching; toolbar folds into a menu | 6 | `ui/dashboard.py` |
-| [ ] | A different dashboard per screen ("This screen shows") | 6 | `ui/dashboard.py` |
-| [ ] | Drag items between boxes, files in from the file manager, boxes onto another screen | 6 | `ui/dashboard.py` |
-| [ ] | Lock button, search box that highlights | 6 | `ui/dashboard.py` |
-| [ ] | Item hotkeys work anywhere; every item in the tray menu and the palette | 6 | `ui/dashboard.py` |
-| [ ] | Tools tab of Luminescent's own actions | 6 | `ui/dashboard.py` |
+| [x] | Tab boxes of items on every screen; header with accent bar, mono caps title, count, fold | 6 | `ui/dashboard.py` |
+| [x] | Items: script, program, file, folder, URL, command, Luminescent action; badge and real icon *(phase 6: SVG icons are not drawn, those rows keep their badge)* | 6 | `ui/dashboard.py` |
+| [x] | Item options: arguments, hotkey, working folder, run as administrator, ask for arguments, run in a terminal window | 6 | `ui/dashboard.py` |
+| [x] | Groups run several items in order; headings and separators | 6 | `ui/dashboard.py` |
+| [x] | Running items show a green dot and Stop | 6 | `ui/dashboard.py` |
+| [x] | Folder items: Open terminal here | 6 | `ui/dashboard.py` |
+| [x] | Drag a header to move (snap grid, default 8 px, Off = pixel moves), click to fold, drag right edge to resize | 6 | `ui/dashboard.py` |
+| [x] | Tidy up: columns / grid / rows, by position / name / size, only the selection, glide, Undo / Ctrl+Z | 6 | `ui/dashboard.py` |
+| [x] | Page boxes (any page as a resizable box that remembers its state) *(phase 6: built; only Themes is a real page so far, and a page box saves its state once a page has some to give)* | 6 | `ui/dashboard.py` |
+| [ ] | Picture boxes (picture or GIF; frame, fill, corners, opacity, title bar) *(phase 6: built; a GIF shows its first frame, playing it is left)* | 6 | `ui/dashboard.py` |
+| [x] | Selection rectangle, Ctrl / Shift click, multi-drag, Delete, Ctrl+A, menus for the selection | 6 | `ui/dashboard.py` |
+| [x] | Several dashboards; new = empty / with Tools / copy; instant switching; toolbar folds into a menu | 6 | `ui/dashboard.py` |
+| [x] | A different dashboard per screen ("This screen shows") | 6 | `ui/dashboard.py` |
+| [x] | Drag items between boxes, files in from the file manager, boxes onto another screen | 6 | `ui/dashboard.py` |
+| [x] | Lock button, search box that highlights | 6 | `ui/dashboard.py` |
+| [x] | Item hotkeys work anywhere; every item in the tray menu and the palette | 6 | `ui/dashboard.py` |
+| [x] | Tools tab of Luminescent's own actions *(phase 6: made from the actions that are registered, so it fills up as modules arrive)* | 6 | `ui/dashboard.py` |
 | [ ] | Scripts open in your terminal (kitty, alacritty, foot get the theme colours) and stay open | 3, 6 | `core/runner.py`, `core/terminal.py` |
 
 ## Themes (phases 4, 14)

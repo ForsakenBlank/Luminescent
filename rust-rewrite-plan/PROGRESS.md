@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (100 % built; the Looks right check waits on you) (phase 3's Hello tray check is unconfirmed)
+Overall: 37.75 %   [#######.............]   Current phase: Phase 6 at 75 % (100 % built; the Dashboard check waits on you) (phase 3's Hello tray and phase 5's Looks right checks are unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -20,7 +20,7 @@ Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (100 
 | 3 | Platform layer | 9 % | 14 % | 23 % | 75 % (100 % built, waiting on the Hello tray check) | in progress |
 | 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % (100 % built, waiting on the Looks right check) | in progress |
-| 6 | Dashboard | 6 % | 37 % | 43 % | 0 % | not started |
+| 6 | Dashboard | 6 % | 37 % | 43 % | 75 % (100 % built, waiting on the Dashboard check) | in progress |
 | 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 0 % | not started |
@@ -79,10 +79,10 @@ Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (100 
 - [ ] 100 %: notification cards, on-screen warning, prewarm, repair, Looks right confirmed
 
 ### Phase 6: Dashboard
-- [ ] 25 %: store, model, migrations, running items and groups
-- [ ] 50 %: boxes drawn, dragged, resized, folded, snapped, on every screen
-- [ ] 75 %: selection, tidy with undo, boards, per-screen boards, page and picture boxes
-- [ ] 100 %: all drag and drop, dialogs, hotkeys, lock, search, snapshots
+- [x] 25 %: store, model, migrations, running items and groups
+- [x] 50 %: boxes drawn, dragged, resized, folded, snapped, on every screen
+- [x] 75 %: selection, tidy with undo, boards, per-screen boards, page and picture boxes
+- [ ] 100 %: all drag and drop, dialogs, hotkeys, lock, search, snapshots (built and tested here; ticked once the Dashboard check below is in)
 
 ### Phase 7: Settings page
 - [ ] 25 %: layout, sidebar, search with counts, pinning
@@ -142,6 +142,67 @@ Overall: 33.25 %   [######..............]   Current phase: Phase 5 at 75 % (100 
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-26, Phase 6 built to 100 %, the Dashboard check waits on you (overall 37.75 %; 43 % with all three checks)
+
+Branch `claude/epic-sagan-5cj237`. It started at `main`, which has none of phases 3 to 5, so it was fast-forwarded onto
+`origin/claude/keen-keller-1quy00` (phases 3, 4 and 5) first: **this branch holds phases 3 to 6, and `main` has only 1
+and 2. Merge it (or `keen-keller` plus this) before starting phase 7.** Phase 3's Hello tray check and phase 5's Looks
+right check are still on the waiting list; nothing asked for them again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, every test under Xvfb with snapshots, `--smoke`):
+* `lum_core::dashboard` (`DashboardStore`, D39): `dashboard.json` over raw JSON with typed views; every `_load` rule (layout 1
+  and 2 moved over once, defaults filled, bad boards dropped, pins checked, the first start with the Tools tab and the
+  File Launcher shortcuts); boards (add as empty / with Tools / copy, rename, move, delete, pins per screen); boxes (tab,
+  page, picture); items (add, update, delete with group clean-up, move by drop / delta, sort, files dropped in);
+  geometry saved through the background writer; `hotkey_users`. Tests: all five cases of
+  `dashboard_migration_cases.json` (random ids compared as placeholders), the sample home saved back byte for byte,
+  item moves, copied boards, pins, dropped files, snapping with halves to even.
+* `lum_ui::dashboard` (`DashboardUi`): the page drawn once per screen from the overlay's `PageSlot` (now also carries the
+  screen's name, its canvas, `to_desktop`, every screen and `chrome_bottom`). Tab boxes (accent bar, mono caps title,
+  zero-padded count, chevron, fold that glides, right-edge resize), rows (badge or real icon off the UI thread, ROOT, green
+  dot, hotkey hint, search highlight, tooltips as Python), page boxes (the app's page function draws them; ↗ and ✕;
+  resizable from edge and corner), picture boxes (fit / fill / stretch, frame, corners, opacity, title bar), the
+  toolbar (dashboards as pills or one menu when many, + Add, Tidy up and its menu, Undo for 12 s, Lock, search with the match
+  count and Enter runs the first), selection band, Ctrl / Shift click, Ctrl+A, Delete, Esc, Ctrl+Z, tidy up in
+  columns / grid / rows by position / name / size (`tidy.rs`, pure and tested), drag with snap (`round_ties_even`),
+  drags of boxes and rows across screens (D41), files dropped on a box, every menu of the Python page with its labels,
+  the item dialog (name, File… / Folder…, arguments, ask, working folder, admin, terminal, hotkey recorder with clash
+  warning, group members) and every question (new tab, rename, heading, new dashboard, delete, remove).
+* The app (`launcher/dashboard.rs`): items run (programs, files, folders, links, commands, terminal commands, actions, groups
+  with `dashboard.group_delay_ms`, arguments asked in a dialog of their own), Stop, a process table checked every 1.5 s
+  (D42), usage logging and `dashboard.item_run`, `dashboard.switched`, item hotkeys under owner `dashboard` for every
+  board with the overlay closed, palette rows `item:<id>`, the tray's Dashboard submenu and "Edit the dashboard…", Open
+  terminal here, Show in file manager, "Apps opened while the overlay is up appear on top of it" (Hyprland
+  `float_on_top` / `unfloat`, `Desktop::float_foreign`), repair resets the page's state.
+* Numbers (release, no GPU): dragging a box with 30 boxes and 300 items on screen takes **1.78 ms a frame** (budget 16 ms).
+* Tests: `crates/lum-ui/tests/dashboard.rs` (snapshots Dark, Light, empty; drag and snap, lock, fold, double click, band
+  select and Delete, tidy and undo, search and Enter, row drop between boxes, the row menu to the item dialog and a
+  save, the 30 x 300 drag, and a two-screen harness: a pinned board on the second screen, a box dragged across it),
+  `--smoke` check "dashboard".
+
+**Left out on purpose or not done.**
+* A GIF shows its first frame (the `image` crate decodes frames; playing them is the first thing to add).
+* A page box saves its state only once a page has state to give (`DashboardStore::set_page_state` is ready); only Themes is
+  a real page so far, the rest are placeholders.
+* The Tools tab is made from the registered actions, so a first start before any module exists has an empty one (Python
+  lists every module's actions, running or not).
+* "Add files…" takes one file (the dialog wrapper picks one); group members are reordered with ↑ ↓ buttons, not dragged;
+  boxes do not fade in when they appear or a board is switched to; the Caelestia "Lock screen" button is phase 14.
+* Glyphs: `⤢` has no font, the "full page" button is `↗`. SVG icons are not drawn (rows keep their badge).
+* Not tried on a real desktop: dragging across real monitors (the hand-over uses Hyprland's cursor), files dropped from a
+  file manager, Windows. See "Waiting on the user".
+
+**Surprising, worth knowing.**
+* The dashboard is drawn once per screen with the same state, so anything it does per frame (the pointer on the desktop,
+  the record of what was drawn) is kept per frame, not per call (`begin_pass` swaps the records on a new frame number).
+* Python's `round()` rounds halves to even and it matters: 228 / 8 is 28.5, so the first box goes at 224, and a box
+  dropped at 140 snaps to 144.
+* A drag asks for a repaint after every move, so kittest's `run` never settles during one: use `step()`. A double click needs
+  `ctx.options_mut(|o| o.input_options.max_double_click_delay = 5.0)` in tests (a harness frame is a quarter of a second),
+  `focus()` then `run()` before `type_text`, and rows and menu entries now have accessible names.
+* `egui::WidgetType` is deprecated (`egui::Role`); the Edition 2024 `impl Iterator` rules need `+ use<'a>` on views that
+  hand out iterators.
 
 ### 2026-11-26, Phase 5 built to 100 %, the Looks right check waits on you (overall 33.25 %; 37 % with both checks)
 
@@ -645,6 +706,17 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 6 (blocks the 100 % checkpoint):** quit the Python app first (same hotkeys). Build with
+  `cd luminescent-rs && cargo build --release -p luminescent`, copy your real `dashboard.json` into a throw-away
+  `LUMINESCENT_HOME` (`data/dashboard.json`) and run `./target/release/luminescent`. Open the overlay and check on the
+  Dashboard: your boxes are where they were, with real icons; drag a header (snaps to 8 px) and a right edge; click a header
+  to fold; drag a box and a row onto your other monitor and back (the drop should land under the mouse); drop a file from
+  the file manager on a box; Ctrl+click two headers and drag them together; drag on empty space to select, Ctrl+A,
+  Delete; Tidy up and Ctrl+Z; right-click a row, then Edit… and set a hotkey; **close the overlay and press that hotkey**;
+  double-click a program and a group; Lock; type in the search box; make a second dashboard and "This screen shows" on
+  the other monitor; tray → Dashboard; open an app (Super+E) while the overlay is up (it should float above it) and close
+  the overlay (it should tile again). Say what looked or behaved wrong next to the Python version.
 
 * **Phase 5 (blocks the 100 % checkpoint and the Looks right milestone):** quit the Python app first (same
   hotkeys). Build with `cd luminescent-rs && cargo build --release -p luminescent`, then with a throw-away

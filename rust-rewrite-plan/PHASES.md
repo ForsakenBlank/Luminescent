@@ -850,6 +850,34 @@ luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 7 already started, co
 This session is Phase 7: the Settings page. The spec is settings_ui.py, core/settings.py, core/backup.py and the
 Settings section of README.md. The settings store and profiles already exist in lum-core (phase 1).
 
+What phases 3 to 6 left for you:
+- Phase 3's Hello tray, phase 5's Looks right and phase 6's Dashboard checks may still be open; leave them on the
+  waiting list and do not ask again unless the user brings them up. The work branch holds phases 3 to 6 (main only 1
+  and 2), so the user merges before this session starts.
+- Pages are drawn by the `sub` closure in `App::show_overlay` (launcher.rs): `match key { "themes" => ..., other =>
+  placeholder }`. Add "settings" there. The same closure draws a page that is a box on the dashboard, so the Settings
+  page must work in any size from 360 x 220 up and draw into the rect it is given. Return `PageFrame { busy: true }`
+  while a dialog or a key recording has the keyboard. A page that panics comes back as `Out::repair`: reset its state
+  in `App::repair_page`.
+- Settings that other parts already read each frame, so a change shows at once without a restart: `dashboard.snap`,
+  `dashboard.tidy_style`, `dashboard.tidy_order`, `dashboard.show_icons` (the page), `dashboard.group_delay_ms`,
+  `dashboard.use_terminal`, `dashboard.keep_open`, `dashboard.terminal`, `dashboard.python_path` (when an item runs).
+  After Save the app has to refresh what is made from settings: `App::settings_changed()`, the tray
+  (`refresh_tray`, for `dashboard.show_in_tray` and `general.tray_items`) and the overlay's `Config`.
+- The hotkey recorder: `lum_ui::widgets::HotkeyField` draws it, `lum_ui::themes::editor::combo_of(modifiers, key)` turns
+  a key press into a stored combo, `lum_platform::hotkeys::keys::{normalize, validate, pretty}` check it, the app's
+  `HotkeyManager::owner_of(combo)` says what else uses it, and `Out.suspend_keys` stops hotkeys firing while one is
+  recorded. The dashboard's item dialog does it in `dashboard/dialogs.rs`; move the shared part into the kit.
+- Gotchas: an egui menu or pop-up is drawn inside its window; `f32::clamp` panics when its bounds cross, use
+  `.min().max()`; `ui.put` places a widget in an exact rect; text typed into a `TextEdit` changes it during the pass;
+  `⤢ ＋ ⌕ ⌗ ⏯ ⏲ ⏻ ␟ ⓘ ⧉` have no glyph in any bundled font and panic in layout (use `↗` and `+`); `egui::WidgetType` is
+  `egui::Role`; give custom-painted widgets `response.widget_info(...)` so kittest can find them (menu entries and
+  dashboard rows have it now). In tests: a drag or a recording asks for a frame every frame, so use `step()` there, not
+  `run()`; a double click needs `ctx.options_mut(|o| o.input_options.max_double_click_delay = 5.0)`; call `focus()` and
+  `run()` before `type_text`.
+- The settings schema dump has a Dashboard & Scripts section (use_terminal, terminal, keep_open, python_path,
+  show_in_tray, show_icons, group_delay_ms, tidy_style, tidy_order, snap): all of it must show up with its help text.
+
 Build everything in the Phase 7 Deliverables list: the schema-driven page with the profile bar, sidebar search
 with match counts, "Only matching settings", pinned sections, lazy sections, a widget for every field type
 including the hotkey recorder with live clash warnings, the custom widgets, module action buttons or "Turn it

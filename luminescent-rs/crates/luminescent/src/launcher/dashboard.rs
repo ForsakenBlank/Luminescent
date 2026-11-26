@@ -319,7 +319,7 @@ impl App {
     // ── palette and tray ───────────────────────────────────────────────────
 
     /// Every item that runs, for the palette (a Luminescent action is already listed by its module).
-    pub(super) fn dashboard_palette_entries(&self) -> Vec<lum_ui::palette::Entry> {
+    pub(crate) fn dashboard_palette_entries(&self) -> Vec<lum_ui::palette::Entry> {
         let several = self.dashboard.board_count() > 1;
         let mut out = Vec::new();
         for (board, tab) in self.dashboard.all_tabs() {

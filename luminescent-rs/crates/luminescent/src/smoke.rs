@@ -26,6 +26,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("notification cards, the warning, prewarm and quit", messages),
     ("themes switch and restyle", themes),
     ("themes window, editor and colour dialog", themes_window),
+    ("dashboard: boxes, items, palette, tray and running", dashboard),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -349,5 +350,51 @@ fn themes(app: &mut App) -> Result<(), String> {
     if !answer.starts_with("error:") {
         return Err(format!("an unknown theme answered {answer:?}"));
     }
+    Ok(())
+}
+
+/// The dashboard drawn without windows: a box with a heading and an item, the page open on it, the item in the
+/// palette and the tray, and a group with nothing in it run without trouble.
+fn dashboard(app: &mut App) -> Result<(), String> {
+    use serde_json::json;
+    let tab = app.dashboard.add_tab("Smoke", 96, 232, "", "");
+    app.dashboard.add_item(&tab, lum_core::dashboard::DashboardStore::blank_item("heading", "Things"), -1);
+    let mut item = lum_core::dashboard::DashboardStore::blank_item("item", "Say hello");
+    item.insert("path".into(), json!("echo"));
+    item.insert("hotkey".into(), json!("ctrl+alt+9"));
+    app.dashboard.add_item(&tab, item, -1);
+    let group = lum_core::dashboard::DashboardStore::blank_item("group", "Nothing yet");
+    app.dashboard.add_item(&tab, group, -1);
+    app.open_overlay("dashboard");
+    let ctx = headless_context();
+    // the first frame of an open is still fading in and paints nothing
+    let mut drawn = 0;
+    for _ in 0..3 {
+        let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+        drawn = ctx.tessellate(output.shapes, output.pixels_per_point).len();
+    }
+    if drawn == 0 {
+        return Err("the dashboard drew nothing".into());
+    }
+    if !app.dashboard_palette_entries().iter().any(|e| e.id.starts_with("item:") && e.label == "Say hello") {
+        return Err("the item is not in the command palette".into());
+    }
+    let has_menu = app
+        .tray_menu()
+        .iter()
+        .any(|m| matches!(m, lum_platform::tray::MenuItem::Sub { text, .. } if text.contains("Dashboard")));
+    if !has_menu {
+        return Err("the tray menu has no Dashboard submenu".into());
+    }
+    let group_id = app
+        .dashboard
+        .tab(&tab)
+        .and_then(|t| t.items().find(|i| i.kind() == "group").map(|i| i.id().to_owned()));
+    let Some(group_id) = group_id else { return Err("the group is gone".into()) };
+    app.run_dashboard_item(&group_id, None);
+    app.hide_overlay();
+    let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+    let _ = output;
+    app.dashboard.delete_tabs(&[tab]);
     Ok(())
 }

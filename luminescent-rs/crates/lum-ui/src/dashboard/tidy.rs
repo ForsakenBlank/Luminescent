@@ -171,7 +171,9 @@ mod tests {
     #[test]
     fn the_first_box_goes_below_the_clock() {
         assert_eq!(start_of(true, 40.0), (96, 136));
-        assert_eq!(start_of(true, 200.0), (96, 232));
+        // 228 / 8 is 28.5, which Python's round() takes to the even 28
+        assert_eq!(start_of(true, 200.0), (96, 224));
+        assert_eq!(start_of(true, 212.0), (96, 240));
         assert_eq!(start_of(false, 200.0), (96, 64));
     }
 }

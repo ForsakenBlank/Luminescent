@@ -401,15 +401,15 @@ fn dashboard(app: &mut App) -> Result<(), String> {
     Ok(())
 }
 
-/// The Calculator and the Timers drawn without windows: their panels opened by their actions, their pages on
+/// The Snippets, Calculator, Timers, Notes and Reminders drawn without windows: their panels opened by their actions, their pages on
 /// the overlay, and a sum in the palette.
 fn everyday_tools(app: &mut App) -> Result<(), String> {
-    for module in ["calculator", "timer", "notes", "reminders"] {
+    for module in ["snippets", "calculator", "timer", "notes", "reminders"] {
         if !app.host.is_running(module) {
             return Err(format!("{module} is not running"));
         }
     }
-    for action in ["calculator:toggle", "timer:new_stopwatch", "notes:toggle"] {
+    for action in ["snippets:open", "calculator:toggle", "timer:new_stopwatch", "notes:toggle"] {
         let answer = app.run_action(action);
         if answer != "ok" {
             return Err(format!("{action}: {answer}"));
@@ -427,7 +427,7 @@ fn everyday_tools(app: &mut App) -> Result<(), String> {
     if painted(app) == 0 {
         return Err("the panels drew nothing".into());
     }
-    for page in ["calculator", "timers", "notes"] {
+    for page in ["clipboard", "calculator", "timers", "notes"] {
         app.open_overlay(page);
         if painted(app) == 0 {
             return Err(format!("the {page} page drew nothing"));

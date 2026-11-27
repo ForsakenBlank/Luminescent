@@ -13,6 +13,7 @@ pub mod notes;
 pub mod paths;
 pub mod pyjson;
 pub mod settings;
+pub mod snippets;
 pub mod store;
 pub mod usage;
 

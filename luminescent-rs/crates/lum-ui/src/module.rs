@@ -88,6 +88,17 @@ pub enum Request {
         text: String,
         ms: u32,
     },
+    /// Press a key combination in the window that has the keyboard (Snippets pasting). With
+    /// `release_modifiers`, keys the person is still holding are let go of first.
+    SendKeys {
+        combo: String,
+        release_modifiers: bool,
+    },
+    /// Store a setting quietly, as the Settings page would (the folder picked on the Clipboard page).
+    SetSetting {
+        key: String,
+        value: serde_json::Value,
+    },
 }
 
 type Wake = Arc<dyn Fn() + Send + Sync>;

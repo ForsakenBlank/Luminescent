@@ -75,6 +75,18 @@ impl App {
                 Request::SystemNotice { title, text, ms } => {
                     lum_platform::notify::show(&title, &text, ms, None)
                 }
+                Request::SendKeys { combo, release_modifiers } => {
+                    if release_modifiers {
+                        self.hotkeys.release_modifiers();
+                    }
+                    self.hotkeys.send(&combo);
+                }
+                Request::SetSetting { key, value } => {
+                    self.settings.set(&key, value);
+                    if let Err(e) = self.settings.save_quiet() {
+                        tracing::warn!("could not save {key}: {e}");
+                    }
+                }
             }
         }
     }

@@ -183,6 +183,7 @@ impl Passes {
 /// The modules, in the order `modules/__init__.py` lists them. Each phase adds the ones it ports.
 fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
     vec![
+        Box::new(lum_ui::tools::snippets::SnippetsModule::new(services)),
         Box::new(lum_ui::tools::notes::NotesModule::new(services)),
         Box::new(lum_ui::tools::timer::TimerModule::new(services)),
         Box::new(lum_ui::tools::reminders::RemindersModule::new(services)),

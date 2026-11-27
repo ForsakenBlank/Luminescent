@@ -29,7 +29,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("dashboard: boxes, items, palette, tray and running", dashboard),
     ("settings page: every section, save and apply", settings_page),
     ("everyday tools: panels, pages, palette", everyday_tools),
-    ("screen tools: frozen screens, picker, ruler, text grab", screen_tools),
+    ("screen tools: frozen screens, picker, ruler, text grab, doodle", screen_tools),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -494,6 +494,19 @@ fn screen_tools(app: &mut App) -> Result<(), String> {
         if settled(app) > before {
             return Err(format!("Esc left {action}'s frozen screens behind"));
         }
+    }
+    // the doodle: the blackboard puts its overlays up, panic takes them down again
+    if !app.host.is_running("doodle") {
+        return Err("doodle is not running".into());
+    }
+    let before = settled(app);
+    app.run_action("doodle:blackboard");
+    if settled(app) <= before {
+        return Err("the doodle's blackboard drew nothing".into());
+    }
+    app.run_action("doodle:panic");
+    if settled(app) > before {
+        return Err("panic left the doodle's overlays up".into());
     }
     Ok(())
 }

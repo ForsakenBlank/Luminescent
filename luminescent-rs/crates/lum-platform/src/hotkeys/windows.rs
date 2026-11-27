@@ -59,6 +59,22 @@ unsafe extern "system" fn hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRE
     unsafe { CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam) }
 }
 
+/// Ctrl, Shift or a Windows key is down, other than `hold` itself.
+pub fn modifiers_down(hold: &str) -> bool {
+    let groups: [(&str, &[u16]); 3] =
+        [("ctrl", &[0xA2, 0xA3]), ("shift", &[0xA0, 0xA1]), ("windows", &[0x5B, 0x5C])];
+    groups
+        .iter()
+        .filter(|(name, _)| *name != hold)
+        .flat_map(|(_, keys)| keys.iter())
+        .any(|&vk| System.is_down(vk))
+}
+
+pub fn mask_menu_key() {
+    // 0xE8 is unassigned: nothing reacts to it, but Windows no longer sees the Alt release as a lone tap
+    send_inputs(&[key_input(0xE8, false), key_input(0xE8, true)]);
+}
+
 struct System;
 
 impl KeyState for System {

@@ -4,6 +4,7 @@
 pub mod calculator;
 pub mod clip;
 pub mod colorpicker;
+pub mod doodle;
 pub mod draw;
 pub mod edit;
 pub mod frozen;

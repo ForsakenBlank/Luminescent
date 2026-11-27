@@ -24,7 +24,7 @@ pub mod widgets;
 pub mod window;
 
 pub use anim::Motion;
-pub use module::{Bind, Inbox, Request, Services, UiCx, UiModule};
+pub use module::{Bind, FixedBind, HoldEvent, Inbox, Request, Services, UiCx, UiModule};
 pub use theme::{Palette, Tokens, Tone};
 
 /// Gets a fresh context ready: the bundled fonts and the given look.

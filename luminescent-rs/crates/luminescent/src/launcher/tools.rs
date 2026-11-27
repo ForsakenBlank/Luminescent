@@ -20,12 +20,48 @@ impl App {
         for key in self.host.keys() {
             self.hotkeys.unregister_all(key);
         }
+        let mut refused = Vec::new();
+        let holds: Vec<_> = self
+            .host
+            .running_refs()
+            .filter_map(|m| Some((m.key(), m.title(), m.hold_setting()?)))
+            .map(|(key, title, setting)| {
+                let combo = self.settings.get_str(&format!("{key}.{setting}")).unwrap_or_default().to_owned();
+                (key, title, combo)
+            })
+            .collect();
+        for (owner, title, combo) in holds {
+            if let Err(e) = self.hotkeys.register_hold(owner, &combo, true) {
+                self.notifier.notify(
+                    title,
+                    &format!("Hold key '{combo}' not usable ({e}); using toggle mode instead."),
+                    4000,
+                );
+                refused.push((owner, e));
+            }
+        }
+        for (owner, reason) in refused {
+            self.host.each_running("refusing a hold key", |m| {
+                if m.key() == owner {
+                    m.hold_event(lum_ui::HoldEvent::Refused(reason.clone()));
+                }
+            });
+        }
         let mut wanted = Vec::new();
+        let mut fixed = Vec::new();
         for module in self.host.running_refs() {
+            fixed.extend(module.fixed_binds().into_iter().map(|b| (module.key(), b)));
             for bind in module.binds() {
                 let combo =
                     self.settings.get_str(&format!("{}.{}", module.key(), bind.setting)).unwrap_or_default();
                 wanted.push((module.key(), module.title(), bind, combo.to_owned()));
+            }
+        }
+        for (owner, bind) in fixed {
+            let options =
+                hotkeys::Options { non_consuming: bind.non_consuming, ..hotkeys::Options::default() };
+            if let Err(e) = self.hotkeys.register(owner, &bind.combo, bind.id, bind.label, options) {
+                tracing::warn!("{owner}: {} not registered: {e}", bind.combo);
             }
         }
         for (owner, title, bind, combo) in wanted {
@@ -44,6 +80,18 @@ impl App {
         let failed = self.host.each_running("handling a hotkey", |m| {
             if m.key() == owner {
                 m.bind_pressed(id);
+            }
+        });
+        for key in failed {
+            self.module_failed(key);
+        }
+    }
+
+    /// A module's hold key went down, came up or was interrupted.
+    pub(super) fn module_hold(&mut self, owner: &str, event: lum_ui::HoldEvent) {
+        let failed = self.host.each_running("handling a hold key", |m| {
+            if m.key() == owner {
+                m.hold_event(event.clone());
             }
         });
         for key in failed {

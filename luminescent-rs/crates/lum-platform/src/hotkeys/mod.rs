@@ -71,6 +71,27 @@ pub enum HotkeyEvent {
     },
 }
 
+/// Whether Ctrl, Shift or the Windows key is down besides `hold` (Doodle: a Ctrl+Alt+... hotkey on its way, not
+/// a doodle). Only Windows can say; Hyprland's hold binds only match the key on its own anyway.
+pub fn other_modifiers_down(hold: &str) -> bool {
+    #[cfg(windows)]
+    {
+        windows::modifiers_down(&normalize(hold))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = hold;
+        false
+    }
+}
+
+/// Windows: one unassigned key press while a held Alt is down, so letting go of Alt is not a lone Alt tap
+/// (which opens the menu bar of the app underneath). Linux apps do not do that, so it is Windows only.
+pub fn mask_menu_key() {
+    #[cfg(windows)]
+    windows::mask_menu_key();
+}
+
 /// How a hotkey behaves.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Options {

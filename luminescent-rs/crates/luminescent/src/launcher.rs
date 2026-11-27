@@ -185,6 +185,7 @@ fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
     vec![
         Box::new(lum_ui::tools::snippets::SnippetsModule::new(services)),
         Box::new(lum_ui::tools::notes::NotesModule::new(services)),
+        Box::new(lum_ui::tools::doodle::DoodleModule::new(services)),
         Box::new(lum_ui::tools::timer::TimerModule::new(services)),
         Box::new(lum_ui::tools::reminders::RemindersModule::new(services)),
         Box::new(lum_ui::tools::calculator::CalculatorModule::new(services)),
@@ -524,6 +525,7 @@ impl App {
             lum_ui::dialog::COVER_PREFIX,
         ];
         covers.extend(lum_ui::tools::frozen::PREFIXES);
+        covers.push(lum_ui::tools::doodle::COVER_PREFIX);
         self.desktop = Desktop::start(&covers);
         tracing::info!("windows placed by {}", self.desktop.describe());
         let waker = self.waker.clone();
@@ -1150,6 +1152,11 @@ impl App {
                     self.module_hotkey(&owner, &id);
                 }
             }
+            HotkeyEvent::HoldDown { owner, .. } => self.module_hold(&owner, lum_ui::HoldEvent::Down),
+            HotkeyEvent::HoldUp { owner, .. } => self.module_hold(&owner, lum_ui::HoldEvent::Up),
+            HotkeyEvent::Interrupted { owner, key } => {
+                self.module_hold(&owner, lum_ui::HoldEvent::Interrupted(key))
+            }
             HotkeyEvent::Released { .. } => {
                 self.cheatsheet.close();
                 self.waker.wake();
@@ -1185,7 +1192,6 @@ impl App {
                     );
                 }
             }
-            other => tracing::debug!("hotkey: {other:?}"),
         }
     }
 

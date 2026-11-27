@@ -108,6 +108,27 @@ pub enum Request {
     },
 }
 
+/// A key a module always wants, whatever the settings say (Doodle's Esc).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FixedBind {
+    pub combo: String,
+    pub id: &'static str,
+    pub label: &'static str,
+    /// The key press also reaches the app that has the keyboard.
+    pub non_consuming: bool,
+}
+
+/// What happens to a module's hold key (Doodle's "hold Alt to draw").
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HoldEvent {
+    Down,
+    Up,
+    /// Another key went down while it was held: its name.
+    Interrupted(String),
+    /// The key can not be a hold key here; the reason.
+    Refused(String),
+}
+
 type Wake = Arc<dyn Fn() + Send + Sync>;
 
 /// How a module reaches the app from any thread.
@@ -207,6 +228,18 @@ pub trait UiModule: Module {
     }
 
     fn bind_pressed(&mut self, _id: &str) {}
+
+    /// Keys the module wants that are not settings (Esc while drawing).
+    fn fixed_binds(&self) -> Vec<FixedBind> {
+        Vec::new()
+    }
+
+    /// The setting inside its section that holds a key it wants told about while it is held.
+    fn hold_setting(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn hold_event(&mut self, _event: HoldEvent) {}
 
     /// The key of the overlay page this module draws (`calculator`), when it has one.
     fn page_key(&self) -> Option<&'static str> {

@@ -65,6 +65,18 @@ pub fn move_cursor(x: i32, y: i32) -> bool {
     imp::move_cursor(x, y)
 }
 
+/// The window that has the keyboard (Hyprland only): its address, unless it is one of ours. Asks the
+/// compositor, so call it off the UI thread.
+pub fn active_window() -> Option<String> {
+    imp::active_window()
+}
+
+/// Gives the keyboard back to `addr` (Hyprland only) without the mouse jumping: focusing a window makes Hyprland
+/// warp the pointer onto it, so it is put back where it was. Asks the compositor; call it off the UI thread.
+pub fn refocus(addr: &str) {
+    imp::refocus(addr)
+}
+
 /// The compositor places our windows through rules (Hyprland), so a window's own position means nothing.
 pub fn places_windows_by_rule() -> bool {
     #[cfg(target_os = "linux")]
@@ -346,6 +358,32 @@ mod imp {
         Hypr::from_env().is_some_and(|h| h.move_cursor(x, y).is_ok())
     }
 
+    pub fn active_window() -> Option<String> {
+        let hypr = Hypr::from_env()?;
+        let win = hypr.query("activewindow")?;
+        let class = win.get("class").and_then(|c| c.as_str()).unwrap_or_default();
+        let addr = win.get("address").and_then(|a| a.as_str()).unwrap_or_default();
+        (class != super::APP_ID && !addr.is_empty()).then(|| addr.to_owned())
+    }
+
+    pub fn refocus(addr: &str) {
+        let Some(hypr) = Hypr::from_env() else { return };
+        // only when one of ours took the keyboard meanwhile
+        let ours = hypr
+            .query("activewindow")
+            .is_some_and(|w| w.get("class").and_then(|c| c.as_str()) == Some(super::APP_ID));
+        if !ours {
+            return;
+        }
+        let at = hypr.cursor_pos();
+        if let Err(e) = hypr.lua(&lua::focus(addr)) {
+            tracing::warn!("could not give the keyboard back: {e}");
+        }
+        if let Some((x, y)) = at {
+            let _ = hypr.move_cursor(x, y);
+        }
+    }
+
     fn spike(app_id: &str) -> Option<Hypr> {
         let runtime = lum_hypr::socket::runtime_dir()?;
         let hypr = Hypr::from_env()?;
@@ -463,6 +501,12 @@ mod imp {
         (unsafe { GetCursorPos(&mut at) } != 0).then_some((at.x, at.y))
     }
 
+    pub fn active_window() -> Option<String> {
+        None
+    }
+
+    pub fn refocus(_addr: &str) {}
+
     pub fn move_cursor(x: i32, y: i32) -> bool {
         use windows_sys::Win32::UI::WindowsAndMessaging::SetCursorPos;
         // SAFETY: no pointers involved; Windows keeps the point on the desktop itself.
@@ -505,6 +549,12 @@ mod imp {
     pub fn cursor() -> Option<(i32, i32)> {
         None
     }
+
+    pub fn active_window() -> Option<String> {
+        None
+    }
+
+    pub fn refocus(_addr: &str) {}
 
     pub fn move_cursor(_x: i32, _y: i32) -> bool {
         false

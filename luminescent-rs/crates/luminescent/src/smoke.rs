@@ -27,6 +27,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("themes switch and restyle", themes),
     ("themes window, editor and colour dialog", themes_window),
     ("dashboard: boxes, items, palette, tray and running", dashboard),
+    ("settings page: every section, save and apply", settings_page),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -396,5 +397,41 @@ fn dashboard(app: &mut App) -> Result<(), String> {
     let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
     let _ = output;
     app.dashboard.delete_tabs(&[tab]);
+    Ok(())
+}
+
+/// The Settings page drawn section by section: every shown field gets a widget, and applying what changed does
+/// not trouble the app.
+fn settings_page(app: &mut App) -> Result<(), String> {
+    use lum_core::settings::FieldType;
+    app.open_settings("");
+    let ctx = headless_context();
+    let pass = |app: &mut App| {
+        let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+        ctx.tessellate(output.shapes, output.pixels_per_point).len()
+    };
+    pass(app);
+    let sections: Vec<(String, usize)> = app
+        .settings
+        .schema()
+        .sections
+        .iter()
+        .map(|s| (s.key.clone(), s.fields.iter().filter(|f| f.kind != FieldType::Hidden).count()))
+        .collect();
+    for (key, shown) in sections {
+        app.settings_ui.open_section(&key);
+        pass(app);
+        if pass(app) == 0 {
+            return Err(format!("the {key} section drew nothing"));
+        }
+        let drawn = app.settings_ui.drawn().len();
+        if drawn != shown {
+            return Err(format!("the {key} section drew {drawn} of its {shown} settings"));
+        }
+    }
+    app.settings_saved(&["general".to_owned()]);
+    pass(app);
+    app.hide_overlay();
+    pass(app);
     Ok(())
 }

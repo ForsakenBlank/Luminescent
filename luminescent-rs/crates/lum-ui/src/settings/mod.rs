@@ -451,28 +451,22 @@ impl SettingsUi {
         self.warnings.clear();
         let Some(draft) = &self.draft else { return };
         let os = Os::current();
+        // only the section on show needs its warnings; choosing another one works them out again
         let section = &self.schema.sections[self.current];
-        {
-            for field in section.fields.iter().filter(|f| f.kind == lum_core::settings::FieldType::Hotkey) {
-                let combo = keys::normalize(&self.hotkey_text(&section.key, &field.key));
-                if combo.is_empty() {
-                    continue;
-                }
-                let invalid = keys::validate(&combo, os);
-                let warning = if invalid.is_empty() {
-                    model::live_clash(
-                        self.schema,
-                        draft.data(),
-                        (&section.key, &field.key),
-                        &combo,
-                        env.key_user,
-                    )
-                } else {
-                    invalid
-                };
-                if !warning.is_empty() {
-                    self.warnings.insert(format!("{}.{}", section.key, field.key), warning);
-                }
+        for field in section.fields.iter().filter(|f| f.kind == lum_core::settings::FieldType::Hotkey) {
+            let combo = keys::normalize(&self.hotkey_text(&section.key, &field.key));
+            if combo.is_empty() {
+                continue;
+            }
+            let invalid = keys::validate(&combo, os);
+            let own = (section.key.as_str(), field.key.as_str());
+            let warning = if invalid.is_empty() {
+                model::live_clash(self.schema, draft.data(), own, &combo, env.key_user)
+            } else {
+                invalid
+            };
+            if !warning.is_empty() {
+                self.warnings.insert(format!("{}.{}", section.key, field.key), warning);
             }
         }
     }

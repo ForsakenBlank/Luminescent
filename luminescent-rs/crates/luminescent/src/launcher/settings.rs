@@ -97,7 +97,7 @@ impl App {
 
     /// Settings were saved from the page (or a profile was switched): what is made from them is made again,
     /// and only the modules whose section changed restart.
-    pub(super) fn settings_saved(&mut self, changed: &[String]) {
+    pub(crate) fn settings_saved(&mut self, changed: &[String]) {
         self.settings_changed();
         self.hotkeys.unregister_all("launcher");
         self.register_hotkeys();

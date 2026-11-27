@@ -483,6 +483,53 @@ fn every_section_in_light() {
     section_pictures(Look::Light, "light");
 }
 
+#[test]
+fn dashboard_and_scripts_shows_every_setting_with_its_help_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut h = harness(&dir, [1000.0, 1200.0]);
+    open(&mut h, "dashboard");
+    let section = Schema::get().section("dashboard").unwrap();
+    for key in [
+        "use_terminal",
+        "terminal",
+        "keep_open",
+        "python_path",
+        "show_in_tray",
+        "show_icons",
+        "group_delay_ms",
+        "tidy_style",
+        "tidy_order",
+        "snap",
+    ] {
+        let field = section.field(key).unwrap_or_else(|| panic!("{key} is not in the schema"));
+        assert!(h.query_all_by_label_contains(&field.label).next().is_some(), "{key}: its label is missing");
+        if !field.help.is_empty() {
+            assert!(h.query_by_label(&field.help).is_some(), "{key}: its help text is missing");
+        }
+    }
+}
+
+fn tall_picture(look: Look, section: &str, name: &str) {
+    let dir = tempfile::tempdir().unwrap();
+    let mut h = harness_with(state(dir.path(), look, Schema::get()), [980.0, 2300.0], true);
+    h.state_mut().ui.open_section(section);
+    settle(&mut h);
+    if cfg!(target_os = "linux") {
+        let options = SnapshotOptions::new().threshold(1.5).max_failed_pixels(600);
+        h.snapshot_options(name, &options);
+    }
+}
+
+#[test]
+fn the_whole_of_general_with_its_buttons_and_lists() {
+    tall_picture(Look::Dark, "general", "settings_general_whole_dark");
+}
+
+#[test]
+fn the_whole_of_the_overlay_section_with_the_page_switcher() {
+    tall_picture(Look::Light, "ui", "settings_ui_whole_light");
+}
+
 fn small_picture(look: Look, name: &str) {
     let dir = tempfile::tempdir().unwrap();
     let mut h = harness_with(state(dir.path(), look, Schema::get()), [420.0, 260.0], true);

@@ -495,6 +495,12 @@ fn screen_tools(app: &mut App) -> Result<(), String> {
             return Err(format!("Esc left {action}'s frozen screens behind"));
         }
     }
+    // every snapper spot is an action, so the palette lists it
+    for action in ["snapper:snap_left", "snapper:snap_maximise", "snapper:tile"] {
+        if app.actions.find(action).is_err() {
+            return Err(format!("{action} is not an action"));
+        }
+    }
     // the doodle: the blackboard puts its overlays up, panic takes them down again
     if !app.host.is_running("doodle") {
         return Err("doodle is not running".into());

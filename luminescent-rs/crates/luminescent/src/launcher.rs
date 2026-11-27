@@ -191,6 +191,7 @@ fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
         Box::new(lum_ui::tools::calculator::CalculatorModule::new(services)),
         Box::new(lum_ui::tools::colorpicker::ColorPickerModule::new(services)),
         Box::new(lum_ui::tools::textgrab::TextGrabModule::new(services)),
+        Box::new(lum_ui::tools::snapper::SnapperModule::new(services)),
         Box::new(lum_ui::tools::ruler::RulerModule::new(services)),
         Box::new(lum_ui::tools::qr::QrModule::new(services)),
     ]

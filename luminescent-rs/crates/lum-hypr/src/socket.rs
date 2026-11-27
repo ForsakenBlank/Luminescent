@@ -235,6 +235,7 @@ pub struct Client {
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct Monitor {
+    pub id: i64,
     pub name: String,
     pub x: i32,
     pub y: i32,

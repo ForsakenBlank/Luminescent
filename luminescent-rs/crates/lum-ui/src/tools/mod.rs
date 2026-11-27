@@ -13,6 +13,7 @@ pub mod overview;
 pub mod qr;
 pub mod reminders;
 pub mod ruler;
+pub mod snapper;
 pub mod snippets;
 pub mod textgrab;
 pub mod timer;

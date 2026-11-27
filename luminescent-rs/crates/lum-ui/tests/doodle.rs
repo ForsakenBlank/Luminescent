@@ -369,11 +369,16 @@ fn copy_screen_with_the_drawing() {
     hold(&mut h);
     left(&mut h, &[pos2(100.0, 100.0), pos2(200.0, 100.0)]);
     h.state_mut().module.bind_pressed("copy");
-    for _ in 0..40 {
+    // the screenshot, the picture and the clipboard are on a worker thread: wait for its answer
+    let mut said = Vec::new();
+    for _ in 0..500 {
         h.step();
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        said.extend(notes(h.state()));
+        if !said.is_empty() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
     }
-    let said = notes(h.state());
     assert_eq!(said.len(), 1, "{said:?}");
     // the container may have no clipboard to put it on
     assert!(

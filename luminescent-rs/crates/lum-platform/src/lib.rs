@@ -18,6 +18,7 @@ pub mod ocr;
 pub mod process;
 pub mod runner;
 pub mod signals;
+pub mod snap;
 pub mod sounds;
 pub mod system;
 pub mod terminal;

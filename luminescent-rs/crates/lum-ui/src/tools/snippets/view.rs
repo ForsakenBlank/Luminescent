@@ -189,19 +189,6 @@ pub struct Look {
     pub narrow: bool,
 }
 
-pub fn parse_hex(text: &str) -> Option<Color32> {
-    let hex = text.strip_prefix('#')?;
-    let n = u32::from_str_radix(hex, 16).ok()?;
-    match hex.len() {
-        6 => Some(Color32::from_rgb((n >> 16) as u8, (n >> 8) as u8, n as u8)),
-        3 => {
-            let (r, g, b) = ((n >> 8) as u8 & 15, (n >> 4) as u8 & 15, n as u8 & 15);
-            Some(Color32::from_rgb(r * 17, g * 17, b * 17))
-        }
-        _ => None,
-    }
-}
-
 /// How a block of text looks: size, weight, colour, and whether a word longer than the line may be broken.
 #[derive(Clone, Copy)]
 struct Face {
@@ -648,7 +635,7 @@ fn folder_card(
     }
     let target = drop_target(b, ui, rect, &folder.path);
     card_frame(ui, rect, &response, target, tokens);
-    let own = d.colours.get(&snippets::norm(&folder.path)).and_then(|c| parse_hex(c));
+    let own = d.colours.get(&snippets::norm(&folder.path)).and_then(|c| crate::tools::draw::hex(c));
     let colour = own.unwrap_or_else(|| folder_accent(index, d.searching, tokens));
     let icon = Rect::from_center_size(pos2(rect.min.x + 14.0 + 11.0, rect.center().y), vec2(22.0, 16.0));
     ui.painter().rect_stroke(icon, 3.0, Stroke::new(2.0, colour), StrokeKind::Inside);
@@ -792,7 +779,7 @@ fn paint_preview(
             }
         }
         Kind::Colour(hex) => {
-            let fill = parse_hex(hex).unwrap_or(p.bg_frame);
+            let fill = crate::tools::draw::hex(hex).unwrap_or(p.bg_frame);
             painter.add(RectShape::filled(area.shrink(1.0), top_round, fill));
             let light = luminance(fill) > 165.0;
             let text = if light { Color32::from_rgb(0x18, 0x18, 0x0F) } else { Color32::WHITE };
@@ -1023,7 +1010,7 @@ fn hover_preview(
             }
         }
         Kind::Colour(hex) => {
-            painter.rect_filled(inner, 6.0, parse_hex(hex).unwrap_or(tokens.p.bg_frame));
+            painter.rect_filled(inner, 6.0, crate::tools::draw::hex(hex).unwrap_or(tokens.p.bg_frame));
         }
         _ => {
             let more = if text.chars().count() >= 4000 { "…" } else { "" };

@@ -2457,6 +2457,7 @@ dependencies = [
  "jiff",
  "lum-calc",
  "lum-core",
+ "lum-fixtures",
  "lum-platform",
  "lum-theme",
  "nucleo-matcher",

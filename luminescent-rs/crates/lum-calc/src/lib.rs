@@ -2,6 +2,7 @@
 //! currency and date conversions, the history and pins file, and the time words people type ("5m", "at 17:30").
 
 mod book;
+pub mod calendar;
 mod convert;
 mod eval;
 mod format;

@@ -301,6 +301,8 @@ pub struct App {
     toast_preview: bool,
     pub dashboard: lum_core::dashboard::DashboardStore,
     pub dashboard_ui: lum_ui::dashboard::DashboardUi,
+    /// The Today, Usage and Calendar pages.
+    overview: lum_ui::tools::overview::Overview,
     /// The processes items started and the runs that wait for their turn.
     dash: dashboard::Running,
     /// The dialog of an item that asks for its arguments each time it runs.
@@ -415,6 +417,7 @@ impl App {
                 settings.raw_saved(),
             ),
             dashboard_ui: lum_ui::dashboard::DashboardUi::default(),
+            overview: lum_ui::tools::overview::Overview::new(),
             dash: dashboard::Running::default(),
             ask_args: None,
             floated: Vec::new(),
@@ -1003,6 +1006,7 @@ impl App {
                 self.settings_ui.reset_page();
             }
             "dashboard" => self.dashboard_repair(),
+            "today" | "stats" | "calendar" => self.overview.reset(key),
             other => self.reset_module_page(other),
         }
         self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
@@ -1417,6 +1421,9 @@ impl App {
                 dash,
                 host,
                 safe_mode,
+                overview,
+                usage,
+                paths,
                 ..
             } = self;
             EnvData::of(settings).with(hotkeys, |env| {
@@ -1475,6 +1482,24 @@ impl App {
                                     page_out.preview_reminder.or(settings_result.preview_reminder.take());
                                 PageFrame { busy: settings_ui.busy() }
                             }
+                            other if lum_ui::tools::overview::Overview::handles(other) => {
+                                let reminders = host.is_running("reminders").then(|| {
+                                    settings
+                                        .get("reminders.items")
+                                        .and_then(|v| v.as_array())
+                                        .cloned()
+                                        .unwrap_or_default()
+                                });
+                                let mut page_env = lum_ui::tools::overview::Env {
+                                    usage,
+                                    today: now.date(),
+                                    now: now.datetime(),
+                                    reminders: reminders.as_deref(),
+                                    atlas_on: settings.get_bool("atlas_sync.enabled", false),
+                                    atlas_file: paths.data_file("atlas_sync.json"),
+                                };
+                                overview.show(other, ui, rect, &mut page_env)
+                            }
                             other => {
                                 let owner = host
                                     .running_refs()
@@ -1506,6 +1531,9 @@ impl App {
         self.dashboard_out(dashboard_out);
         self.settings_out(settings_result);
         self.themes_out(themes_out);
+        if let Some(section) = self.overview.take_out().open_settings {
+            self.open_settings(&section);
+        }
         if out.first_frame
             && let Some(asked) = self.open_asked.take()
         {

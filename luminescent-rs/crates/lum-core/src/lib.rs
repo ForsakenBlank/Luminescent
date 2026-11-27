@@ -10,6 +10,7 @@ pub mod guard;
 pub mod logging;
 pub mod module;
 pub mod notes;
+pub mod overview;
 pub mod paths;
 pub mod pyjson;
 pub mod qr;

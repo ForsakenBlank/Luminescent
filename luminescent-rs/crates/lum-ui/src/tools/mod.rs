@@ -3,8 +3,10 @@
 
 pub mod calculator;
 pub mod clip;
+pub mod draw;
 pub mod edit;
 pub mod notes;
+pub mod overview;
 pub mod qr;
 pub mod reminders;
 pub mod snippets;

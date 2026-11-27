@@ -429,7 +429,7 @@ fn everyday_tools(app: &mut App) -> Result<(), String> {
     if painted(app) == 0 {
         return Err("the panels drew nothing".into());
     }
-    for page in ["clipboard", "calculator", "timers", "notes"] {
+    for page in ["clipboard", "calculator", "timers", "notes", "today", "stats", "calendar"] {
         app.open_overlay(page);
         if painted(app) == 0 {
             return Err(format!("the {page} page drew nothing"));

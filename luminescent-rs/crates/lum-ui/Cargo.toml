@@ -20,6 +20,7 @@ serde_json.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+lum-fixtures.workspace = true
 rqrr.workspace = true
 egui_kittest.workspace = true
 tempfile.workspace = true

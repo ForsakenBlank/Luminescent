@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn a_longer_link_needs_a_bigger_code() {
         let qr = Qr::make("https://example.com/some/path?with=a&few=parameters").expect("a code");
-        assert!(qr.width() > 21 && (qr.width() - 17) % 4 == 0, "{}", qr.width());
+        assert!(qr.width() > 21 && (qr.width() - 17).is_multiple_of(4), "{}", qr.width());
     }
 
     #[test]

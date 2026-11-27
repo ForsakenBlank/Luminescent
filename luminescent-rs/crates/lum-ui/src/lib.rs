@@ -14,6 +14,7 @@ pub mod paint;
 pub mod palette;
 pub mod panel;
 pub mod picker;
+pub mod settings;
 pub mod text;
 pub mod theme;
 pub mod themes;

@@ -208,6 +208,21 @@ impl<M: ?Sized + Module> ModuleHost<M> {
 
     /// Settings were saved: start what was switched on, stop what was switched off, re-apply the rest.
     pub fn apply_settings(&mut self, cx: &mut ModuleCx<'_>, actions: &mut ActionRegistry) {
+        self.apply_where(cx, actions, |_| true);
+    }
+
+    /// Like [`ModuleHost::apply_settings`], but a running module is only re-applied (by default restarted) when
+    /// its own section is among the `changed` ones. Switching on and off follows `enabled` as always.
+    pub fn apply_changed(&mut self, cx: &mut ModuleCx<'_>, actions: &mut ActionRegistry, changed: &[String]) {
+        self.apply_where(cx, actions, |key| changed.iter().any(|c| c == key));
+    }
+
+    fn apply_where(
+        &mut self,
+        cx: &mut ModuleCx<'_>,
+        actions: &mut ActionRegistry,
+        reapply: impl Fn(&str) -> bool,
+    ) {
         for i in 0..self.slots.len() {
             let key = self.slots[i].module.key();
             let want = Self::enabled(cx.settings, key);
@@ -216,7 +231,7 @@ impl<M: ?Sized + Module> ModuleHost<M> {
                 self.start_at(i, cx, actions);
             } else if had && !want {
                 self.stop_at(i, cx, actions);
-            } else if want && self.slots[i].running {
+            } else if want && self.slots[i].running && reapply(key) {
                 self.reapply_at(i, cx, actions);
             }
             self.slots[i].wanted = want;
@@ -366,6 +381,27 @@ mod tests {
         assert_eq!(host.running(), vec!["doodle"]);
         assert!(actions.find("notes:do_it").is_err());
         assert_eq!(*log.borrow(), ["start notes", "stop notes", "start doodle"]);
+    }
+
+    #[test]
+    fn only_modules_whose_section_changed_are_restarted() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut settings = settings(dir.path());
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let mut host = ModuleHost::new(vec![fake("notes", &log), fake("doodle", &log)]);
+        let events = EventBus::new();
+        let mut actions = ActionRegistry::new();
+        let mut cx =
+            ModuleCx { settings: &mut settings, events: &events, notifier: &LogNotifier, safe_mode: false };
+        host.start_enabled(&mut cx, &mut actions);
+        log.borrow_mut().clear();
+
+        host.apply_changed(&mut cx, &mut actions, &["doodle".to_owned()]);
+        assert_eq!(*log.borrow(), ["stop doodle", "start doodle"]);
+
+        log.borrow_mut().clear();
+        host.apply_changed(&mut cx, &mut actions, &["general".to_owned()]);
+        assert!(log.borrow().is_empty());
     }
 
     #[test]

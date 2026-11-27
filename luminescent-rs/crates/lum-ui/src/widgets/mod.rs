@@ -15,7 +15,7 @@ pub use anchor::{Anchor, anchor_bar};
 pub use button::{Button, IconButton, Variant};
 pub use choice::{Checkbox, ColourButton, Combo, OpacitySlider, Slider, SpinBox, Switch};
 pub use dim::DimOverlay;
-pub use hotkey::{HotkeyField, HotkeyResponse};
+pub use hotkey::{HotkeyField, HotkeyResponse, combo_of, key_cap, recorded_key};
 pub use input::{TextArea, TextInput};
 pub use layout::{Surface, card, rule, section_header, tip, vrule};
 pub use list::{list_frame, row, virtual_list};

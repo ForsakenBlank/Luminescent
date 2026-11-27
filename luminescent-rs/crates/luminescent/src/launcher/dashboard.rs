@@ -104,6 +104,8 @@ impl App {
             self.notifier.notify("Dashboard hotkeys", &problems.join("\n"), 4000);
         }
         self.dashboard.take_hotkeys_stale();
+        // the Settings page checks its hotkeys against these without touching the store it is drawn from
+        self.dashboard_keys = self.dashboard.hotkey_users("", &|c| hotkeys::keys::normalize(c));
         self.refresh_tray();
     }
 

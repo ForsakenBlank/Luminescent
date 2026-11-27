@@ -6,7 +6,6 @@
 use std::path::PathBuf;
 
 use egui::{Align, Context, Id, Key, Layout, Modifiers, Rect, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
-use lum_platform::hotkeys::keys;
 use lum_theme::history::{History, Recent, note_change};
 use lum_theme::{Role, Theme, ThemeStore};
 use serde_json::{Map, Value};
@@ -735,49 +734,4 @@ impl ThemeEditor {
     pub(super) fn ui_palette(&self) -> Palette {
         Palette::from(&self.palette())
     }
-}
-
-/// The combo a key press makes while a hotkey is being recorded, in the stored form (`ctrl+shift+space`).
-pub fn combo_of(modifiers: Modifiers, key: Key) -> Option<String> {
-    let name = match key {
-        Key::Escape => return None,
-        Key::Space => "space".to_owned(),
-        Key::Enter => "enter".to_owned(),
-        Key::Tab => "tab".to_owned(),
-        Key::Backspace => "backspace".to_owned(),
-        Key::Delete => "delete".to_owned(),
-        Key::Insert => "insert".to_owned(),
-        Key::Home => "home".to_owned(),
-        Key::End => "end".to_owned(),
-        Key::PageUp => "page up".to_owned(),
-        Key::PageDown => "page down".to_owned(),
-        Key::ArrowUp => "up".to_owned(),
-        Key::ArrowDown => "down".to_owned(),
-        Key::ArrowLeft => "left".to_owned(),
-        Key::ArrowRight => "right".to_owned(),
-        Key::Minus => "-".to_owned(),
-        Key::Equals => "=".to_owned(),
-        Key::Comma => ",".to_owned(),
-        Key::Period => ".".to_owned(),
-        Key::Slash => "/".to_owned(),
-        Key::Semicolon => ";".to_owned(),
-        Key::Backslash => "\\".to_owned(),
-        Key::OpenBracket => "[".to_owned(),
-        Key::CloseBracket => "]".to_owned(),
-        Key::Backtick => "`".to_owned(),
-        Key::Quote => "'".to_owned(),
-        other => other.name().trim_start_matches("Num").to_lowercase(),
-    };
-    let mut parts = Vec::new();
-    if modifiers.ctrl {
-        parts.push("ctrl");
-    }
-    if modifiers.alt {
-        parts.push("alt");
-    }
-    if modifiers.shift {
-        parts.push("shift");
-    }
-    parts.push(&name);
-    Some(keys::normalize(&parts.join("+")))
 }

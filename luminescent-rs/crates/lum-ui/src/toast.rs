@@ -17,6 +17,7 @@ use egui::{
 };
 use lum_core::settings::Settings;
 use lum_platform::desktop::{APP_ID, marker};
+use serde_json::{Map, Value};
 
 use crate::anim::{self, Ease, Kind};
 use crate::fonts::Weight;
@@ -77,17 +78,25 @@ impl Default for Look {
 
 impl Look {
     pub fn from_settings(settings: &Settings) -> Look {
-        let style = settings.get_str("general.toast_style").unwrap_or("glow");
-        let position = settings.get_str("general.toast_position").unwrap_or("tr");
+        Look::from_values(settings.all())
+    }
+
+    /// The look for these values, saved or not (the Settings page's "Show a notification" tries unsaved ones).
+    pub fn from_values(values: &Map<String, Value>) -> Look {
+        let get = |key: &str| values.get("general").and_then(|s| s.get(key));
+        let text = |key: &str, default: &'static str| get(key).and_then(Value::as_str).unwrap_or(default);
+        let number = |key: &str| get(key).and_then(Value::as_f64);
+        let style = text("toast_style", "glow");
+        let position = text("toast_position", "tr");
         Look {
             position: if POSITIONS.iter().any(|(k, _)| *k == position) { position } else { "tr" }.into(),
-            width: settings.get_f64("general.toast_width").filter(|w| *w > 0.0).unwrap_or(360.0) as f32,
+            width: number("toast_width").filter(|w| *w > 0.0).unwrap_or(360.0) as f32,
             style: if STYLES.iter().any(|(k, _)| *k == style) { style } else { "glow" }.into(),
-            time: settings.get_f64("general.toast_time").filter(|t| *t > 0.0).unwrap_or(1.0) as f32,
-            most: settings.get_i64("general.toast_max").filter(|n| *n > 0).unwrap_or(5).max(1) as usize,
-            opacity: settings.get_f64("general.toast_opacity").unwrap_or(1.0).clamp(0.3, 1.0) as f32,
-            text: settings.get_f64("general.toast_text").filter(|t| *t > 0.0).unwrap_or(1.0) as f32,
-            icon: settings.get_bool("general.toast_icon", true),
+            time: number("toast_time").filter(|t| *t > 0.0).unwrap_or(1.0) as f32,
+            most: number("toast_max").filter(|n| *n > 0.0).unwrap_or(5.0).max(1.0) as usize,
+            opacity: number("toast_opacity").unwrap_or(1.0).clamp(0.3, 1.0) as f32,
+            text: number("toast_text").filter(|t| *t > 0.0).unwrap_or(1.0) as f32,
+            icon: get("toast_icon").is_none_or(|v| v.as_bool().unwrap_or(true)),
         }
     }
 }

@@ -2,7 +2,7 @@
 //! the look for now; recording keys and checking clashes arrive with the hotkey manager in phase 3.
 
 use egui::{Color32, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2};
-use lum_platform::hotkeys;
+use lum_platform::hotkeys::{self, keys};
 
 use crate::fonts::Weight;
 use crate::paint;
@@ -126,6 +126,9 @@ impl<'a> HotkeyField<'a> {
         if response.hovered() {
             ui.ctx().set_cursor_icon(egui::CursorIcon::Text);
         }
+        let name = if self.combo.is_empty() { "Not set".to_owned() } else { self.combo.to_owned() };
+        response
+            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, format!("Hotkey: {name}")));
         response.on_hover_text("Click to type a combo, e.g. ctrl+shift+m")
     }
 }
@@ -161,6 +164,7 @@ fn record_button(ui: &mut Ui, tokens: &Tokens, recording: bool) -> Response {
     if response.hovered() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, recording, label));
     response
 }
 
@@ -182,6 +186,64 @@ pub fn key_cap(ui: &Ui, at: egui::Pos2, text: &str) -> Rect {
     painter.rect_stroke(cap, 4.0, Stroke::new(1.0, p.border), StrokeKind::Inside);
     painter.galley(cap.min + vec2(6.0, 2.0), galley, p.text_primary);
     cap
+}
+
+/// The combo a key press makes while a hotkey is being recorded, in the stored form (`ctrl+shift+space`).
+pub fn combo_of(modifiers: egui::Modifiers, key: egui::Key) -> Option<String> {
+    let name = match key {
+        egui::Key::Escape => return None,
+        egui::Key::Space => "space".to_owned(),
+        egui::Key::Enter => "enter".to_owned(),
+        egui::Key::Tab => "tab".to_owned(),
+        egui::Key::Backspace => "backspace".to_owned(),
+        egui::Key::Delete => "delete".to_owned(),
+        egui::Key::Insert => "insert".to_owned(),
+        egui::Key::Home => "home".to_owned(),
+        egui::Key::End => "end".to_owned(),
+        egui::Key::PageUp => "page up".to_owned(),
+        egui::Key::PageDown => "page down".to_owned(),
+        egui::Key::ArrowUp => "up".to_owned(),
+        egui::Key::ArrowDown => "down".to_owned(),
+        egui::Key::ArrowLeft => "left".to_owned(),
+        egui::Key::ArrowRight => "right".to_owned(),
+        egui::Key::Minus => "-".to_owned(),
+        egui::Key::Equals => "=".to_owned(),
+        egui::Key::Comma => ",".to_owned(),
+        egui::Key::Period => ".".to_owned(),
+        egui::Key::Slash => "/".to_owned(),
+        egui::Key::Semicolon => ";".to_owned(),
+        egui::Key::Backslash => "\\".to_owned(),
+        egui::Key::OpenBracket => "[".to_owned(),
+        egui::Key::CloseBracket => "]".to_owned(),
+        egui::Key::Backtick => "`".to_owned(),
+        egui::Key::Quote => "'".to_owned(),
+        other => other.name().trim_start_matches("Num").to_lowercase(),
+    };
+    let mut parts = Vec::new();
+    if modifiers.ctrl {
+        parts.push("ctrl");
+    }
+    if modifiers.alt {
+        parts.push("alt");
+    }
+    if modifiers.shift {
+        parts.push("shift");
+    }
+    parts.push(&name);
+    Some(keys::normalize(&parts.join("+")))
+}
+
+/// What a recording hotkey field reads from this frame's input: nothing yet, or the first key pressed. A key
+/// with no stored name (and Escape, which gives up) answers `Some(None)`.
+pub fn recorded_key(ui: &Ui) -> Option<Option<String>> {
+    ui.input(|i| {
+        i.events.iter().find_map(|event| match event {
+            egui::Event::Key { key, pressed: true, modifiers, repeat: false, .. } => {
+                Some(combo_of(*modifiers, *key))
+            }
+            _ => None,
+        })
+    })
 }
 
 #[cfg(test)]

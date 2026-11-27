@@ -52,11 +52,18 @@ fn wheel_steps(ui: &Ui, response: &Response) -> f32 {
 pub struct Checkbox<'a> {
     on: &'a mut bool,
     text: String,
+    name: Option<String>,
 }
 
 impl<'a> Checkbox<'a> {
     pub fn new(on: &'a mut bool, text: impl Into<String>) -> Checkbox<'a> {
-        Checkbox { on, text: text.into() }
+        Checkbox { on, text: text.into(), name: None }
+    }
+
+    /// What a screen reader calls a box that has no text beside it.
+    pub fn name(mut self, name: impl Into<String>) -> Checkbox<'a> {
+        self.name = Some(name.into());
+        self
     }
 }
 
@@ -99,7 +106,8 @@ impl Widget for Checkbox<'_> {
             }
         }
         pointing(ui, &response);
-        let (enabled, on, text) = (ui.is_enabled(), *self.on, self.text);
+        let (enabled, on) = (ui.is_enabled(), *self.on);
+        let text = if self.text.is_empty() { self.name.unwrap_or_default() } else { self.text };
         response.widget_info(|| egui::WidgetInfo::selected(egui::Role::CheckBox, enabled, on, &text));
         response
     }

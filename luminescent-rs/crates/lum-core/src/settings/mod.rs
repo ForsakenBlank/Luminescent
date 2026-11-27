@@ -237,6 +237,13 @@ impl Settings {
         self.save(true)
     }
 
+    /// Like [`Settings::replace`] for a caller that applies the change itself and knows which sections it
+    /// touched, so listeners are not told.
+    pub fn replace_silently(&mut self, data: Map<String, Value>) -> Result<(), StoreError> {
+        self.data = data;
+        self.save(false)
+    }
+
     fn profiles_meta(&self) -> Map<String, Value> {
         let default_id = self.schema.default_profile.as_str();
         let default_entry = || Value::Object(profile_entry(default_id, "Default"));

@@ -6,13 +6,15 @@ use lum_theme::{Gradient, Rgb, Role, ThemeStore, palette};
 use serde_json::Value;
 
 use super::tools::{TOOLS, Tool};
-use super::{EditorOut, Page, ThemeEditor, combo_of};
+use super::{EditorOut, Page, ThemeEditor};
 use crate::picker::{ChipFill, Picked, chip, swatch};
 use crate::text::{caps, hint, label};
 use crate::theme::{Tokens, Tone, alpha, colour};
 use crate::themes::Env;
 use crate::themes::page::{FileAsk, FileJob};
-use crate::widgets::{Button, Checkbox, Combo, HotkeyField, IconButton, Slider, Surface, TextInput, tip};
+use crate::widgets::{
+    Button, Checkbox, Combo, HotkeyField, IconButton, Slider, Surface, TextInput, recorded_key, tip,
+};
 
 /// Where a colour row writes to.
 #[derive(Debug, Clone)]
@@ -178,18 +180,13 @@ impl ThemeEditor {
         out: &mut EditorOut,
         changed: &mut bool,
     ) {
-        let events = ui.input(|i| i.events.clone());
-        for event in events {
-            if let egui::Event::Key { key, pressed: true, modifiers, repeat: false, .. } = event {
-                self.recording = false;
-                out.suspend_keys = Some(false);
-                if let Some(combo) = combo_of(modifiers, key) {
-                    self.fields.hotkey = combo;
-                    *changed = true;
-                    self.key_changed(store, env);
-                }
-                break;
-            }
+        let Some(recorded) = recorded_key(ui) else { return };
+        self.recording = false;
+        out.suspend_keys = Some(false);
+        if let Some(combo) = recorded {
+            self.fields.hotkey = combo;
+            *changed = true;
+            self.key_changed(store, env);
         }
     }
 

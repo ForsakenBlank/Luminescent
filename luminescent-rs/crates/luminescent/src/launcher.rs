@@ -32,6 +32,7 @@ use serde_json::json;
 use tokio::runtime::Runtime;
 
 mod dashboard;
+mod settings;
 
 use crate::ctl::{self, CtlCommand};
 use crate::{idle, shell, smoke};
@@ -67,6 +68,10 @@ pub enum AppMsg {
     KeepAwake(bool, Option<String>),
     /// A file dialog the Themes window asked for was answered (`None` when it was cancelled).
     ThemeFile(lum_ui::themes::page::FileJob, Option<std::path::PathBuf>),
+    /// A file dialog the Settings page asked for was answered.
+    SettingsFile(lum_ui::settings::FileJob, Option<std::path::PathBuf>),
+    /// A backup was written, looked at or restored.
+    Backup(settings::BackupDone),
 }
 
 /// Notifications go to the log, and once windows run, to Luminescent's own cards or to the desktop, as Settings
@@ -277,6 +282,11 @@ pub struct App {
     pub hotkeys: HotkeyManager,
     pub themes: ThemeStore,
     pub themes_ui: lum_ui::themes::ThemesUi,
+    pub settings_ui: lum_ui::settings::SettingsUi,
+    /// Which dashboard item uses which hotkey, as of the last time they were registered.
+    dashboard_keys: std::collections::HashMap<String, String>,
+    /// The card on screen shows what the Settings page holds, not what is saved (the notification test).
+    toast_preview: bool,
     pub dashboard: lum_core::dashboard::DashboardStore,
     pub dashboard_ui: lum_ui::dashboard::DashboardUi,
     /// The processes items started and the runs that wait for their turn.
@@ -371,6 +381,12 @@ impl App {
             desktop: Desktop::none(),
             hotkeys: HotkeyManager::dry(),
             themes: ThemeStore::load(&paths, settings.raw_saved()),
+            settings_ui: lum_ui::settings::SettingsUi::new(
+                paths.data_file("picker.json"),
+                paths.data_file("colours.json"),
+            ),
+            toast_preview: false,
+            dashboard_keys: std::collections::HashMap::new(),
             themes_ui: lum_ui::themes::ThemesUi::new(
                 paths.data_file("picker.json"),
                 paths.data_file("colours.json"),
@@ -515,6 +531,7 @@ impl App {
         self.notifier.shown = self.settings.get_bool("general.tray_messages", true);
         self.notifier.cards_style =
             self.settings.get_str("general.notify_style").unwrap_or("luminescent") == "luminescent";
+        self.settings_ui.mark_stale();
     }
 
     /// The launcher's own hotkeys, with the Python labels.
@@ -832,8 +849,7 @@ impl App {
             }
             "theme" => self.apply_theme(rest),
             "item" => self.run_dashboard_item(rest, None),
-            // the settings page opens on that section once it exists (phase 7)
-            "settings" => self.open_overlay("settings"),
+            "settings" => self.open_settings(rest),
             "lum" => self.run_luminescent(rest),
             other => tracing::warn!("the palette has no way to run {other} entries yet"),
         }
@@ -923,6 +939,9 @@ impl App {
     fn overlay_closed(&mut self) {
         self.emit("overlay.closed", "");
         self.dashboard_ui.hidden();
+        if self.settings_ui.on_hide() {
+            self.hotkeys.set_suspended(false);
+        }
         self.unfloat_foreign();
         let page = self.overlay.current().to_owned();
         if self.settings.get_str("ui.last_page") != Some(page.as_str()) {
@@ -952,6 +971,12 @@ impl App {
         tracing::warn!("repairing the overlay (was on {key})");
         match key {
             "themes" => self.themes_ui.reset_page(),
+            "settings" => {
+                if self.settings_ui.on_hide() {
+                    self.hotkeys.set_suspended(false);
+                }
+                self.settings_ui.reset_page();
+            }
             "dashboard" => self.dashboard_repair(),
             _ => {}
         }
@@ -970,7 +995,7 @@ impl App {
                 "keepawake" => self.toggle_keep_awake(),
                 "reset" => self.reset_keys(),
                 "log" => self.open_log(),
-                "settings" => self.open_overlay("settings"),
+                "settings" => self.open_settings(""),
                 "restart" => self.restart_app(false),
                 "quit" => self.confirm_quit(),
                 "dash-edit" => self.open_overlay("dashboard"),
@@ -1059,7 +1084,7 @@ impl App {
                     match id.as_str() {
                         "overlay" => self.toggle_overlay(),
                         "quit all" => self.confirm_quit(),
-                        "settings" => self.open_overlay("settings"),
+                        "settings" => self.open_settings(""),
                         "keep awake" => self.toggle_keep_awake(),
                         "command palette" => self.open_palette(""),
                         "cheat sheet" => self.cheat_sheet(&combo, false),
@@ -1171,6 +1196,8 @@ impl App {
                 let out = self.with_themes_ui(|ui, store, env| ui.file_chosen(&job, path, store, env));
                 self.themes_out(out);
             }
+            AppMsg::SettingsFile(job, path) => self.settings_file_chosen(&job, path),
+            AppMsg::Backup(done) => self.backup_done(done),
             AppMsg::KeepAwake(on, error) => {
                 if let Some(k) = &mut self.keep_awake {
                     k.reported(on);
@@ -1243,6 +1270,7 @@ impl App {
                 });
             }
         }
+        self.restore_toast_look();
         if !self.alerts.is_empty() {
             for title in self.alerts.show(ctx) {
                 self.emit("alert.closed", &title);
@@ -1315,8 +1343,10 @@ impl App {
             ..Default::default()
         };
         let mut themes_out = lum_ui::themes::Out::default();
+        let mut settings_result = lum_ui::settings::Out::default();
         let tools = self.tool_sources();
         let (snap, tidy_style, tidy_order, show_icons) = self.dashboard_env_values();
+        let today = now.strftime("%Y-%m-%d").to_string();
         let out = {
             let App {
                 overlay,
@@ -1324,16 +1354,30 @@ impl App {
                 themes_ui,
                 themes,
                 settings,
+                settings_ui,
                 hotkeys,
                 dashboard,
                 dashboard_ui,
+                dashboard_keys,
                 dash,
+                host,
+                actions,
                 safe_mode,
                 ..
             } = self;
-            with_env(settings, hotkeys, |env| {
+            EnvData::of(settings).with(hotkeys, |env| {
                 let is_running = |id: &str| dash.is_running(id);
                 let key_owner = |combo: &str| hotkeys.owner_of(combo).map(str::to_owned);
+                let key_user = |combo: &str| other_key_user(dashboard_keys, hotkeys, combo);
+                let key_list = || dashboard_key_list(dashboard_keys);
+                let module = |key: &str| module_info(host, actions, key);
+                let settings_env = lum_ui::settings::Env {
+                    key_user: &key_user,
+                    dashboard_keys: &key_list,
+                    module: &module,
+                    version: VERSION,
+                    today: &today,
+                };
                 let dashboard_env = lum_ui::dashboard::Env {
                     snap,
                     tidy_style: &tidy_style,
@@ -1353,6 +1397,26 @@ impl App {
                                 themes_out.notify.extend(out.notify);
                                 PageFrame { busy: themes_ui.busy() }
                             }
+                            "settings" => {
+                                let page_out = settings_ui.page_ui(ui, rect, settings, &settings_env);
+                                settings_result.files.extend(page_out.files);
+                                settings_result.notify.extend(page_out.notify);
+                                settings_result.run.extend(page_out.run);
+                                settings_result.turn_on.extend(page_out.turn_on);
+                                settings_result.suspend_keys =
+                                    page_out.suspend_keys.or(settings_result.suspend_keys);
+                                settings_result.saved = page_out.saved.or(settings_result.saved.take());
+                                settings_result.quit |= page_out.quit;
+                                settings_result.restart |= page_out.restart;
+                                settings_result.toast_test =
+                                    page_out.toast_test.or(settings_result.toast_test.take());
+                                settings_result.export_to =
+                                    page_out.export_to.or(settings_result.export_to.take());
+                                settings_result.check_import =
+                                    page_out.check_import.or(settings_result.check_import.take());
+                                settings_result.restore = page_out.restore.or(settings_result.restore.take());
+                                PageFrame { busy: settings_ui.busy() }
+                            }
                             other => {
                                 lum_ui::overlay::pages::placeholder(ui, other);
                                 PageFrame::default()
@@ -1370,6 +1434,7 @@ impl App {
         };
         let dashboard_out = self.dashboard_ui.take_out();
         self.dashboard_out(dashboard_out);
+        self.settings_out(settings_result);
         self.themes_out(themes_out);
         if out.first_frame
             && let Some(asked) = self.open_asked.take()
@@ -1450,9 +1515,9 @@ impl App {
                 self.open_overlay(&page);
                 "ok".to_owned()
             }
-            CtlCommand::Settings(_) => {
+            CtlCommand::Settings(section) => {
                 tracing::info!("asked to open: {line}");
-                self.open_overlay("settings");
+                self.open_settings(section.as_deref().unwrap_or_default());
                 "ok".to_owned()
             }
             CtlCommand::Palette => {
@@ -1576,28 +1641,97 @@ const LUMINESCENT_ENTRIES: &[&str] = &[
 ];
 
 /// What the Themes page and its windows need to know about the rest of the app.
+/// What the Themes and Settings windows read about the settings, taken in one go so the page can then hold
+/// the settings mutably.
+struct EnvData {
+    profiles: Vec<lum_core::settings::Profile>,
+    toast_style: String,
+    hyprland: bool,
+}
+
+impl EnvData {
+    fn of(settings: &Settings) -> EnvData {
+        EnvData {
+            profiles: settings.profiles(),
+            toast_style: settings.get_str("general.toast_style").unwrap_or("glow").to_owned(),
+            hyprland: lum_platform::desktop::places_windows_by_rule(),
+        }
+    }
+
+    fn with<R>(&self, hotkeys: &HotkeyManager, f: impl FnOnce(&lum_ui::themes::Env<'_>) -> R) -> R {
+        // the same answer as Settings::profile_name
+        let profile_name = |id: &str| match self.profiles.iter().find(|p| p.id == id) {
+            Some(p) if !p.name.is_empty() => p.name.clone(),
+            Some(p) => p.id.clone(),
+            None => "Default".to_owned(),
+        };
+        let key_owner =
+            |combo: &str| hotkeys.owner_of(combo).filter(|owner| *owner != "themes").map(str::to_owned);
+        let env = lum_ui::themes::Env {
+            profile_name: &profile_name,
+            profiles: self
+                .profiles
+                .iter()
+                .filter(|p| p.id != "default")
+                .map(|p| (p.id.clone(), p.name.clone()))
+                .collect(),
+            key_owner: &key_owner,
+            toast_style: self.toast_style.clone(),
+            hyprland: self.hyprland,
+            caelestia: false,
+        };
+        f(&env)
+    }
+}
+
 fn with_env<R>(
     settings: &Settings,
     hotkeys: &HotkeyManager,
     f: impl FnOnce(&lum_ui::themes::Env<'_>) -> R,
 ) -> R {
-    let profile_name = |id: &str| settings.profile_name(id);
-    let key_owner =
-        |combo: &str| hotkeys.owner_of(combo).filter(|owner| *owner != "themes").map(str::to_owned);
-    let env = lum_ui::themes::Env {
-        profile_name: &profile_name,
-        profiles: settings
-            .profiles()
-            .into_iter()
-            .filter(|p| p.id != "default")
-            .map(|p| (p.id, p.name))
+    EnvData::of(settings).with(hotkeys, f)
+}
+
+/// What other than the Settings page's own fields uses a hotkey: a dashboard item or a theme's key.
+fn other_key_user(
+    dashboard_keys: &std::collections::HashMap<String, String>,
+    hotkeys: &HotkeyManager,
+    combo: &str,
+) -> Option<String> {
+    let normal = hotkeys::keys::normalize(combo);
+    if let Some(what) = dashboard_keys.get(&normal) {
+        return Some(what.clone());
+    }
+    (hotkeys.owner_of(&normal) == Some("themes")).then(|| "a theme's own key (Themes)".to_owned())
+}
+
+fn dashboard_key_list(dashboard_keys: &std::collections::HashMap<String, String>) -> Vec<(String, String)> {
+    let mut keys: Vec<(String, String)> =
+        dashboard_keys.iter().map(|(c, w)| (c.clone(), w.clone())).collect();
+    keys.sort();
+    keys
+}
+
+/// A module's section on the Settings page: its buttons while it runs, "Turn it on" while it does not.
+fn module_info(
+    host: &ModuleHost<dyn UiModule>,
+    actions: &ActionRegistry,
+    key: &str,
+) -> Option<lum_ui::settings::ModuleInfo> {
+    if !host.keys().contains(&key) {
+        return None;
+    }
+    Some(lum_ui::settings::ModuleInfo {
+        title: host.title(key).unwrap_or(key).to_owned(),
+        running: host.is_running(key),
+        actions: actions
+            .all()
+            .iter()
+            .filter(|r| r.owner == key)
+            .map(|r| (r.full_id(), r.action.label.clone()))
             .collect(),
-        key_owner: &key_owner,
-        toast_style: settings.get_str("general.toast_style").unwrap_or("glow").to_owned(),
-        hyprland: lum_platform::desktop::places_windows_by_rule(),
-        caelestia: false,
-    };
-    f(&env)
+        error: host.errors().into_iter().find(|(k, _)| *k == key).map(|(_, e)| e),
+    })
 }
 
 /// The overlay's open times for `ctl status`: the last one, the middle one and the slowest, in ms.

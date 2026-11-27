@@ -12,7 +12,7 @@ use super::{Act, DashboardUi, Env, UNDO_FOR, Undo, base_id, tidy};
 use crate::dialog::{AskDialog, Icon, Outcome, rounded};
 use crate::overlay::PageSlot;
 use crate::text::{Text, hint};
-use crate::widgets::{Button, Checkbox, HotkeyField, TextInput};
+use crate::widgets::{Button, Checkbox, HotkeyField, TextInput, recorded_key};
 
 /// What a question on the page is about.
 #[derive(Debug, Clone)]
@@ -908,16 +908,11 @@ impl ItemDialog {
     }
 
     fn record_key(&mut self, ui: &Ui, conflict: &dyn Fn(&str) -> String) {
-        let events = ui.input(|i| i.events.clone());
-        for event in events {
-            if let egui::Event::Key { key, pressed: true, modifiers, repeat: false, .. } = event {
-                self.recording = false;
-                if let Some(combo) = crate::themes::editor::combo_of(modifiers, key) {
-                    self.hotkey = combo;
-                    self.warning = self.problem(conflict);
-                }
-                break;
-            }
+        let Some(recorded) = recorded_key(ui) else { return };
+        self.recording = false;
+        if let Some(combo) = recorded {
+            self.hotkey = combo;
+            self.warning = self.problem(conflict);
         }
     }
 

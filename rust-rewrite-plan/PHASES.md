@@ -868,6 +868,18 @@ What phases 3 to 6 left for you:
   a key press into a stored combo, `lum_platform::hotkeys::keys::{normalize, validate, pretty}` check it, the app's
   `HotkeyManager::owner_of(combo)` says what else uses it, and `Out.suspend_keys` stops hotkeys firing while one is
   recorded. The dashboard's item dialog does it in `dashboard/dialogs.rs`; move the shared part into the kit.
+- More from Notes and Reminders: `tools/notes` is the shape for a tool with a data file, a panel, many small panels, a page and
+  a box (`view.rs` draws into any rect, `mod.rs` owns the data); `tools/reminders` is the shape for a module that wakes at a
+  moment (`request_repaint_after` until the next due time) and shows pop-up windows (`popup.rs`, drawn like the toasts). A
+  module that wants Settings changed sends a `Request` (`ReminderEdit`) and the app applies it; one that needs another module
+  asks through a `UiModule` method with a default (`todo_reminder`, `preview_reminder`, `chips` for the status strip). New
+  widgets: `widgets::drag_rows` (drag to reorder a list, one dimension), `widgets::when` (date and time picker),
+  `AskDialog::ask_choice` / `ask_datetime`; `FloatingPanel::set_back`, `header_height`, `set_accent`; `tools::edit::keep_on_screen`;
+  `tools::notes::markdown` draws Markdown. A custom Settings editor lives in `settings/<name>.rs` (see `reminders.rs`).
+  Data: `lum_core::notes` and `lum_calc::reminder` are the models for a file kept over raw JSON with typed fields and
+  "write the key if it has a value or the file already had it".
+- Glyphs: `egui_kittest` panics where the app would draw a box. Fonts lack `＋` (U+FF0B), `⧉`, `⌗` and `⏲`; use `+` or a drawn
+  `IconShape`. Probe a new character with `ctx.set_missing_glyph_policy(MissingGlyphPolicy::Panic)` after two passes.
 - Gotchas: an egui menu or pop-up is drawn inside its window; `f32::clamp` panics when its bounds cross, use
   `.min().max()`; `ui.put` places a widget in an exact rect; text typed into a `TextEdit` changes it during the pass;
   `⤢ ＋ ⌕ ⌗ ⏯ ⏲ ⏻ ␟ ⓘ ⧉` have no glyph in any bundled font and panic in layout (use `↗` and `+`); `egui::WidgetType` is
@@ -947,8 +959,8 @@ and a dashboard page box. Ends with the **Daily-drivable alpha** milestone.
 
 | In phase | Overall | What is done |
 |---|---|---|
-| 25 % | 49.5 % | lum-calc with all fixtures, Calculator panel and page, Timers with restore |
-| 50 % | 52 % | Notes complete, with sticky notes, undo delete and export |
+| 25 % | 49.5 % | lum-calc with all fixtures, Calculator panel and page, Timers with restore (done) |
+| 50 % | 52 % | Notes complete, with sticky notes, undo delete and export (done; Reminders is done too, so the phase stands at 62 % and 53.2 %) |
 | 75 % | 54.5 % | Reminders complete; Clipboard page and Ctrl+B pop-up |
 | 100 % | 57 % | QR, Today, Usage, Calendar; page boxes for all; **Daily-drivable alpha** confirmed |
 
@@ -963,16 +975,16 @@ rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 8 section), rust
 rust-rewrite-plan/DATA_AND_MIGRATION.md and luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 8
 already started, continue from its handoff note and take the next tool in the checkpoint order.
 
-This session is Phase 8: the everyday tools. Work through them in the checkpoint order (calculator and timers,
-then notes, then reminders and clipboard, then QR, Today, Usage and Calendar). For each tool, read its Python
+This session is Phase 8: the everyday tools. Calculator, timers, Notes and Reminders are built. Work through the rest in the
+checkpoint order: Clipboard (Snippets) first, then QR, then Today, Usage and Calendar. For each tool, read its Python
 file first (modules/calculator.py with core/convert.py and core/timeparse.py, modules/timer.py, modules/notes.py,
 modules/reminders.py, modules/snippets.py, modules/qr.py, ui/today.py, ui/stats.py, ui/calendar_page.py) and its
 section of README.md, then build everything the Phase 8 Deliverables list says for it: the logic in its crate
 with tests, the floating panel, the overlay page where there is one, and the dashboard page box.
 
-Before anything else check the branch: `git log --oneline -3` must show the Phase 8 commits ("Timers: ...",
-"Calculator: ...", "lum-calc: ..."). If PROGRESS.md still says Phase 3 at 0 %, the branch is main without the later
-phases: the work is on origin/ccr-f1a7eeae-uxz8sm (or whichever branch the handoff note names), so fast-forward onto it
+Before anything else check the branch: `git log --oneline -3` must show the Phase 8 commits ("Plan: phase 8 at 62 %",
+"Reminders: ...", "Notes: ..."). If PROGRESS.md says less than Phase 8 at 62 %, the branch is main without the later work:
+it is on origin/ccr-a4cc2d9e-xg3o3z (or whichever branch the handoff note names), so fast-forward onto it
 (`git merge --ff-only origin/<branch>`) and say so.
 
 What phases 3 to 7 left for you:
@@ -993,7 +1005,7 @@ What phases 3 to 7 left for you:
   frame show at once; after Save the app calls `settings_saved`.
 - The hotkey recorder is in the kit: `HotkeyField`, `recorded_key`, `combo_of`; `Out.suspend_keys` pauses the hotkeys.
 
-What phase 8 so far (calculator and timers) left for you, read `lum_ui::module` and `lum_ui::tools` first:
+What phase 8 so far (calculator, timers, Notes, Reminders) left for you, read `lum_ui::module` and `lum_ui::tools` first:
 - A tool lives in `crates/lum-ui/src/tools/<tool>/` and the logic that does not draw lives in `lum-calc` or `lum-core`
   with its own tests. Copy the shape of `tools/calculator` (module, `view.rs`) and `tools/timer`.
 - Actions, hotkeys, palette rows and worker threads reach a module through its `Inbox<Cmd>` (`inbox.action(id, label,
@@ -1020,7 +1032,8 @@ What phase 8 so far (calculator and timers) left for you, read `lum_ui::module` 
   look widgets up by role and label (`get_by_role_and_label`), names repeat; a widget below the fold can not be clicked,
   so make the test window tall; `UPDATE_SNAPSHOTS=1` leaves a picture alone while it is within the tolerance, so delete
   the PNG first when a layout moved a little. This container needs `libasound2-dev pkg-config libxkbcommon-x11-0
-  mesa-vulkan-drivers xvfb` installed (and `gcc-mingw-w64-x86-64` for the Windows clippy run because of `ring`).
+  mesa-vulkan-drivers xvfb` installed (and `gcc-mingw-w64-x86-64` for the Windows clippy run because of `ring`, and
+  `cargo install cargo-deny --locked` for the licence check).
 
 Tests: all calculator, conversion, time and reminder fixtures in luminescent-rs/fixtures must pass, and every
 tool's data file from fixtures/sample_home must round-trip unchanged. Snapshot each panel in Dark and Light.

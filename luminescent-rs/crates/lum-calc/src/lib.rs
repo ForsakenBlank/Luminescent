@@ -9,6 +9,7 @@ mod funcs;
 mod num;
 mod rates;
 pub mod timeparse;
+pub mod timer;
 
 pub use book::{Base, Book, Computed, Entry, Options};
 pub use convert::{convert, date_math, fmt_date, parse_date, unit, unit_count};

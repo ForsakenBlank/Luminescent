@@ -74,7 +74,7 @@ impl App {
     }
 
     /// Lines for the tray's tooltip and the overlay's chips: running timers.
-    pub(super) fn status_lines(&self) -> Vec<String> {
+    pub(crate) fn status_lines(&self) -> Vec<String> {
         if !self.settings.get_bool("ui.tray_timers", true) {
             return Vec::new();
         }

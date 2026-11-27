@@ -3,6 +3,8 @@
 
 pub mod calculator;
 pub mod clip;
+pub mod edit;
+pub mod timer;
 
 use egui::{Context, Id};
 

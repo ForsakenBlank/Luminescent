@@ -5,6 +5,8 @@
 //! Each open panel is a window of its own. Where there are no separate windows (tests, the widget gallery) it
 //! is an area inside the current window, drawn the same way.
 
+use std::cell::Cell;
+
 use egui::viewport::ResizeDirection;
 use egui::{
     Align, Area, Context, CornerRadius, CursorIcon, Id, Key, Layout, Order, Pos2, Rect, Sense, Stroke,
@@ -135,6 +137,8 @@ pub struct FloatingPanel {
     closing: bool,
     /// Opened since the last frame: its fades start over.
     fresh: bool,
+    /// How many times the border blinks, and when the blinking started (known on the first frame it is drawn).
+    flash: Option<(u32, Cell<Option<f64>>)>,
 }
 
 /// What a frame of the panel needs from outside its own state.
@@ -163,6 +167,7 @@ impl FloatingPanel {
             open: false,
             closing: false,
             fresh: false,
+            flash: None,
         }
     }
 
@@ -194,6 +199,28 @@ impl FloatingPanel {
     pub fn set_title(&mut self, title: &str, subtitle: &str) {
         self.title = title.to_owned();
         self.subtitle = subtitle.to_owned();
+    }
+
+    /// Blinks the border `times` times to get attention (a timer ran out).
+    pub fn flash(&mut self, times: u32) {
+        self.flash = Some((times, Cell::new(None)));
+    }
+
+    /// `Some(on)` while the border is blinking, `None` once it has finished.
+    fn flashing(&self, ctx: &Context) -> Option<bool> {
+        const STEP: f64 = 0.25;
+        let (times, started) = self.flash.as_ref()?;
+        let now = ctx.input(|i| i.time);
+        let start = started.get().unwrap_or_else(|| {
+            started.set(Some(now));
+            now
+        });
+        let n = ((now - start) / STEP).floor() as u32;
+        if n >= times * 2 {
+            return None;
+        }
+        ctx.request_repaint_after(std::time::Duration::from_secs_f64(STEP - (now - start) % STEP));
+        Some(n.is_multiple_of(2))
     }
 
     pub fn is_open(&self) -> bool {
@@ -395,6 +422,8 @@ impl FloatingPanel {
         let painter = ui.painter().clone();
         paint::fill(&painter, panel, radius, &tokens, Role::BgBase, self.opacity);
         let border = if self.edit_mode { p.primary } else { p.border };
+        let (border, border_width) =
+            self.flashing(&ctx).map_or((border, 1.0), |on| (if on { p.primary } else { p.border }, 2.0));
 
         let header_rect = Rect::from_min_size(panel.min, vec2(panel.width(), self.header_height));
         let top = CornerRadius {
@@ -410,7 +439,7 @@ impl FloatingPanel {
             0.0,
             p.primary,
         );
-        painter.rect_stroke(panel, radius, Stroke::new(1.0, border), StrokeKind::Inside);
+        painter.rect_stroke(panel, radius, Stroke::new(border_width, border), StrokeKind::Inside);
 
         let mut drawn = Drawn { close: false, escape: false, drag: None, drag_started: false, resize: None };
         // dragging by the header comes first, so the header's buttons (added after) sit on top of it

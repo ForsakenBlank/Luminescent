@@ -28,6 +28,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("themes window, editor and colour dialog", themes_window),
     ("dashboard: boxes, items, palette, tray and running", dashboard),
     ("settings page: every section, save and apply", settings_page),
+    ("calculator and timers: panels, pages, palette", everyday_tools),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -397,6 +398,47 @@ fn dashboard(app: &mut App) -> Result<(), String> {
     let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
     let _ = output;
     app.dashboard.delete_tabs(&[tab]);
+    Ok(())
+}
+
+/// The Calculator and the Timers drawn without windows: their panels opened by their actions, their pages on
+/// the overlay, and a sum in the palette.
+fn everyday_tools(app: &mut App) -> Result<(), String> {
+    for module in ["calculator", "timer"] {
+        if !app.host.is_running(module) {
+            return Err(format!("{module} is not running"));
+        }
+    }
+    for action in ["calculator:toggle", "timer:new_stopwatch"] {
+        let answer = app.run_action(action);
+        if answer != "ok" {
+            return Err(format!("{action}: {answer}"));
+        }
+    }
+    let ctx = headless_context();
+    let painted = |app: &mut App| -> usize {
+        let mut shapes = 0;
+        for _ in 0..3 {
+            let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+            shapes = ctx.tessellate(output.shapes, output.pixels_per_point).len();
+        }
+        shapes
+    };
+    if painted(app) == 0 {
+        return Err("the panels drew nothing".into());
+    }
+    for page in ["calculator", "timers"] {
+        app.open_overlay(page);
+        if painted(app) == 0 {
+            return Err(format!("the {page} page drew nothing"));
+        }
+        app.hide_overlay();
+        painted(app);
+    }
+    let live = app.host.running_refs().flat_map(|m| m.palette_live("2+3*4")).collect::<Vec<_>>();
+    if !live.iter().any(|e| e.label == "= 14") {
+        return Err("a sum typed into the palette gets no answer".into());
+    }
     Ok(())
 }
 

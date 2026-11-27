@@ -87,8 +87,32 @@ impl App {
                         tracing::warn!("could not save {key}: {e}");
                     }
                 }
+                Request::ThemeAccent(colour) => self.accent_from_colour(&colour),
+                Request::ThemeFromColour { colour, light } => self.theme_from_colour(&colour, light),
             }
         }
+    }
+
+    /// The colour picker's "Use as the theme's accent".
+    fn accent_from_colour(&mut self, colour: &str) {
+        let Some(rgb) = lum_theme::Rgb::parse(colour) else { return };
+        let id = self.themes.active_id().to_owned();
+        self.themes.set_accent(&id, rgb);
+        self.theme_events();
+        let name = self.themes.active().name().to_owned();
+        self.notifier.notify("Colour Picker", &format!("{} is now the accent of {name}.", rgb.hex()), 2500);
+    }
+
+    /// The colour picker's "New dark (or light) theme from it": made and switched to.
+    fn theme_from_colour(&mut self, colour: &str, light: bool) {
+        let Some(rgb) = lum_theme::Rgb::parse(colour) else { return };
+        let theme = self.themes.from_accent(rgb, light, &format!("Picked {}", rgb.hex()));
+        self.apply_theme(theme.id());
+        self.notifier.notify(
+            "Colour Picker",
+            &format!("New theme “{}” (Themes page to rename or change it).", theme.name()),
+            3000,
+        );
     }
 
     /// Another module changed the list of reminders: it is stored where Settings keeps it, and the Settings page
@@ -149,9 +173,10 @@ impl App {
             .running_refs()
             .flat_map(|m| {
                 let icon = MODULE_ICONS.iter().find(|(k, _)| *k == m.key()).map_or("", |(_, i)| *i);
-                m.tray_actions().into_iter().map(move |(id, label)| {
+                let actions = m.tray_actions().into_iter().map(move |(id, label)| {
                     MenuItem::action(&format!("act:{}:{id}", m.key()), format!("{icon}  {label}"))
-                })
+                });
+                actions.chain(m.tray_menu()).collect::<Vec<_>>()
             })
             .collect()
     }

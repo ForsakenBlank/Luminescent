@@ -76,6 +76,13 @@ impl Frame {
             .unwrap_or_else(|| image::RgbaImage::new(0, 0))
     }
 
+    /// The picture as PNG bytes (what OCR engines read).
+    pub fn png(&self) -> Result<Vec<u8>, String> {
+        let mut out = std::io::Cursor::new(Vec::new());
+        self.to_image().write_to(&mut out, image::ImageFormat::Png).map_err(|e| e.to_string())?;
+        Ok(out.into_inner())
+    }
+
     pub fn from_image(image: image::RgbaImage) -> Frame {
         let (width, height) = image.dimensions();
         Frame { width, height, rgba: image.into_raw() }

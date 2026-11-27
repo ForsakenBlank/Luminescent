@@ -29,6 +29,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("dashboard: boxes, items, palette, tray and running", dashboard),
     ("settings page: every section, save and apply", settings_page),
     ("everyday tools: panels, pages, palette", everyday_tools),
+    ("screen tools: frozen screens, picker, ruler, text grab", screen_tools),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -443,6 +444,56 @@ fn everyday_tools(app: &mut App) -> Result<(), String> {
     }
     if !app.host.running_refs().flat_map(|m| m.palette_entries()).any(|e| e.id.starts_with("note:")) {
         return Err("the palette lists no notes".into());
+    }
+    Ok(())
+}
+
+/// The colour picker, the ruler and text grab opened by their actions on stand-in screenshots (two screens, one
+/// at 2x), drawn, and closed with Esc.
+fn screen_tools(app: &mut App) -> Result<(), String> {
+    use lum_ui::window::{self, Screen};
+    for module in ["colorpicker", "textgrab", "ruler"] {
+        if !app.host.is_running(module) {
+            return Err(format!("{module} is not running"));
+        }
+    }
+    let ctx = headless_context();
+    window::install_capture(&ctx, std::sync::Arc::new(lum_platform::capture::Fake::default()));
+    let screen = |name: &str, x: f32| {
+        Screen::new(name, egui::Rect::from_min_size(egui::pos2(x, 0.0), egui::vec2(640.0, 400.0)))
+    };
+    window::install_screens(&ctx, vec![screen("A", 0.0), screen("B", 640.0).with_scale(2.0)]);
+    let drawn = |app: &mut App| {
+        let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+        ctx.tessellate(output.shapes, output.pixels_per_point).len()
+    };
+    // other tools' panels may still be fading out: count once things are still
+    let settled = |app: &mut App| (0..5).map(|_| drawn(app)).last().unwrap_or(0);
+    for action in ["colorpicker:pick", "ruler:measure", "textgrab:grab"] {
+        let before = settled(app);
+        let answer = app.run_action(action);
+        if answer != "ok" {
+            return Err(format!("{action}: {answer}"));
+        }
+        let mut shapes = 0;
+        for _ in 0..40 {
+            let output = lum_ui::headless_pass(&ctx, input(&[]), |ui| app.show_modules(ui.ctx()));
+            shapes = ctx.tessellate(output.shapes, output.pixels_per_point).len();
+            // a picture for each of the two screens at least
+            if shapes >= before + 2 {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        if shapes < before + 2 {
+            return Err(format!("{action} showed no frozen screens"));
+        }
+        lum_ui::headless_pass(&ctx, input(&[key(egui::Key::Escape, egui::Modifiers::NONE)]), |ui| {
+            app.show_modules(ui.ctx())
+        });
+        if settled(app) > before {
+            return Err(format!("Esc left {action}'s frozen screens behind"));
+        }
     }
     Ok(())
 }

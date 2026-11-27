@@ -188,6 +188,9 @@ fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
         Box::new(lum_ui::tools::timer::TimerModule::new(services)),
         Box::new(lum_ui::tools::reminders::RemindersModule::new(services)),
         Box::new(lum_ui::tools::calculator::CalculatorModule::new(services)),
+        Box::new(lum_ui::tools::colorpicker::ColorPickerModule::new(services)),
+        Box::new(lum_ui::tools::textgrab::TextGrabModule::new(services)),
+        Box::new(lum_ui::tools::ruler::RulerModule::new(services)),
         Box::new(lum_ui::tools::qr::QrModule::new(services)),
     ]
 }
@@ -1035,6 +1038,8 @@ impl App {
                         self.run_dashboard_item(id, None);
                     } else if let Some(action) = other.strip_prefix("act:") {
                         self.run_action(action);
+                    } else if let Some(row) = other.strip_prefix("row:") {
+                        self.run_module_row(row);
                     } else {
                         tracing::debug!("tray: {other}");
                     }

@@ -3,6 +3,7 @@
 //! snapper's spots, OCR text and the doodle's strokes, undo history and canvas.
 
 pub mod colour;
+pub mod font;
 pub mod frame;
 pub mod loupe;
 pub mod ocr;

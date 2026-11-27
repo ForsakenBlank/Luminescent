@@ -3,6 +3,7 @@
 
 pub mod calculator;
 pub mod clip;
+pub mod colorpicker;
 pub mod draw;
 pub mod edit;
 pub mod frozen;
@@ -10,7 +11,9 @@ pub mod notes;
 pub mod overview;
 pub mod qr;
 pub mod reminders;
+pub mod ruler;
 pub mod snippets;
+pub mod textgrab;
 pub mod timer;
 
 use egui::{Context, Id};

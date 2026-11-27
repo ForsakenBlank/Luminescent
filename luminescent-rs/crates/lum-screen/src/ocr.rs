@@ -68,6 +68,23 @@ pub fn review_size(text: &str) -> (f32, f32) {
     (w as f32, h as f32)
 }
 
+/// Black text on white, the way it looks on screen: for checking an OCR engine end to end.
+pub fn sample_text_picture(text: &str) -> Frame {
+    let px = 20.0;
+    let w = (crate::font::width(text, px) + 24.0) as u32;
+    let h = (crate::font::line_height(px) + 16.0) as u32;
+    let mut grey = vec![255u8; w as usize * h as usize];
+    let baseline = 8.0 + crate::font::semibold_ascent(px);
+    crate::font::rasterise(text, px, 12.0, baseline, |x, y, c| {
+        if x >= 0 && y >= 0 && (x as u32) < w && (y as u32) < h {
+            let i = y as usize * w as usize + x as usize;
+            grey[i] = grey[i].min((255.0 * (1.0 - c)) as u8);
+        }
+    });
+    let rgba = grey.iter().flat_map(|&g| [g, g, g, 255]).collect();
+    Frame { width: w, height: h, rgba }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -56,6 +56,14 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 winreg = "0.56"
+# Windows' own text recognition for Text Grab
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+] }
 
 [dev-dependencies]
 lum-fixtures.workspace = true

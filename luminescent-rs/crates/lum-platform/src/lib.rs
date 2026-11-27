@@ -14,6 +14,7 @@ pub mod instance;
 pub mod ipc;
 pub mod keepawake;
 pub mod notify;
+pub mod ocr;
 pub mod process;
 pub mod runner;
 pub mod signals;

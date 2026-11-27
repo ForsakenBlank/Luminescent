@@ -93,6 +93,11 @@ impl std::fmt::Debug for ColourDialog {
     }
 }
 
+/// The colour dialog the eyedropper answers. Only one dialog is open at a time.
+fn eyedropper_id() -> egui::Id {
+    egui::Id::unique("lum-colour-dialog")
+}
+
 impl ColourDialog {
     /// `picker_file` is `picker.json` (its own recent picks), `eyedropper_file` the screen colour picker's
     /// `colours.json`, which the recent row reads too.
@@ -299,6 +304,15 @@ impl ColourDialog {
 
     /// Draws the dialog if it is open and collects what happened since the last frame.
     pub fn show(&mut self, ctx: &Context) -> Vec<PickerEvent> {
+        // the screen colour picker answers through the context, whoever owns this dialog
+        if self.wants_screen
+            && let Some(answer) = crate::tools::colorpicker::eyedropper::take_answer(ctx, eyedropper_id())
+        {
+            self.wants_screen = false;
+            if let Some(c) = answer {
+                self.picked_from_screen(c);
+            }
+        }
         if self.panel.is_open() {
             let tokens = Tokens::of(ctx);
             let mut panel = std::mem::replace(
@@ -423,12 +437,14 @@ impl ColourDialog {
             if ui.add(IconButton::new("⎘").size(30.0).tooltip("Copy the hex code")).clicked() {
                 ui.ctx().copy_text(now.hex());
             }
+            let can_pick = self.screen_picker || crate::tools::colorpicker::eyedropper::available(ui.ctx());
             let eye = ui.add_enabled(
-                self.screen_picker,
+                can_pick,
                 IconButton::new("⌖").size(30.0).font_px(15.0).tooltip("Pick a colour from the screen"),
             );
             if eye.clicked() {
                 self.wants_screen = true;
+                crate::tools::colorpicker::eyedropper::ask(ui.ctx(), eyedropper_id());
             }
         });
     }

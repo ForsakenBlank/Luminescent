@@ -2446,6 +2446,7 @@ dependencies = [
  "tray-icon",
  "wayland-client",
  "wayland-protocols-wlr",
+ "windows",
  "windows-sys 0.61.2",
  "winreg",
  "zbus 5.19.0",

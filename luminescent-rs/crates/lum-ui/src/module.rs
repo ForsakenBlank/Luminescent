@@ -99,6 +99,13 @@ pub enum Request {
         key: String,
         value: serde_json::Value,
     },
+    /// The active theme gets this colour (`#RRGGBB`) as its accent.
+    ThemeAccent(String),
+    /// A new theme around this colour, applied straight away.
+    ThemeFromColour {
+        colour: String,
+        light: bool,
+    },
 }
 
 type Wake = Arc<dyn Fn() + Send + Sync>;
@@ -217,6 +224,12 @@ pub trait UiModule: Module {
 
     /// Entries for the tray menu: the action's id inside this module and its label.
     fn tray_actions(&self) -> Vec<(String, String)> {
+        Vec::new()
+    }
+
+    /// Menus of the module's own in the tray (the colour picker's Recent colours). An entry whose id starts with
+    /// `row:` runs that palette row of the module.
+    fn tray_menu(&self) -> Vec<lum_platform::tray::MenuItem> {
         Vec::new()
     }
 

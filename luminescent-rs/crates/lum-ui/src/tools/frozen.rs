@@ -76,6 +76,8 @@ pub struct ScreenCx<'a> {
     pub primary: bool,
     /// This screen gets the keys this frame (the one with the keyboard, or the mouse in tests).
     pub has_keys: bool,
+    /// The frozen picture, to draw part of it again (text grab's selection, undimmed).
+    pub texture: egui::TextureId,
 }
 
 impl ScreenCx<'_> {
@@ -180,7 +182,7 @@ impl FrozenScreens {
                         ui.set_clip_rect(area);
                         let response = ui.interact(area, id, Sense::click_and_drag());
                         ui.painter().image(texture, area, full_uv(), Color32::WHITE);
-                        let cx = ScreenCx { index: i, shot, area, primary: i == 0, has_keys };
+                        let cx = ScreenCx { index: i, shot, area, primary: i == 0, has_keys, texture };
                         paint(ui, &cx, &response);
                     },
                 );
@@ -210,7 +212,7 @@ impl FrozenScreens {
                     focused = ui.input(|inp| inp.focused);
                     let response = ui.interact(area, id, Sense::click_and_drag());
                     ui.painter().image(texture, area, full_uv(), Color32::WHITE);
-                    let cx = ScreenCx { index: i, shot, area, primary: i == 0, has_keys: focused };
+                    let cx = ScreenCx { index: i, shot, area, primary: i == 0, has_keys: focused, texture };
                     paint(ui, &cx, &response);
                 },
             );

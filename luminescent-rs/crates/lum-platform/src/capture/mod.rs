@@ -57,9 +57,10 @@ pub struct Fake {
 
 impl Fake {
     /// The colour the fake puts at a real pixel: red counts columns of 16 pixels, green rows, blue is the
-    /// monitor's place in the list.
+    /// monitor's place in the list with a checkerboard of single pixels on top (so a loupe shows them).
     pub fn colour_at(index: usize, x: u32, y: u32) -> [u8; 3] {
-        [(x / 16 % 256) as u8, (y / 16 % 256) as u8, (index * 60 % 256) as u8]
+        let checker = if (x + y).is_multiple_of(2) { 0 } else { 40 };
+        [(x / 16 % 256) as u8, (y / 16 % 256) as u8, ((index * 60 + checker) % 256) as u8]
     }
 
     pub fn frame(index: usize, m: &Monitor) -> Frame {

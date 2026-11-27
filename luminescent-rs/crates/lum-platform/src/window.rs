@@ -35,6 +35,10 @@ pub trait WindowPlacer: Send + Sync {
     fn focus(&self, title: &str);
     /// Puts the window above our other windows.
     fn raise(&self, title: &str);
+    /// Makes the window cover exactly `rect` (x, y, width, height in desktop coordinates): a frozen screen or
+    /// the doodle's canvas over a whole monitor. Hyprland does this with a cover rule, so only Windows needs it,
+    /// where a window opened on a monitor with another scale than the main one comes out the wrong size.
+    fn cover(&self, _title: &str, _rect: (i32, i32, i32, i32)) {}
 }
 
 /// For systems where the windows place themselves (X11, other Wayland desktops) and for tests.
@@ -104,12 +108,13 @@ mod win {
     use super::{Placement, WindowPlacer};
     use std::collections::HashMap;
     use std::sync::Mutex;
-    use windows_sys::Win32::Foundation::{HWND, LPARAM, TRUE};
+    use windows_sys::Win32::Foundation::{HWND, LPARAM, RECT, TRUE};
     use windows_sys::Win32::System::Threading::{AttachThreadInput, GetCurrentProcessId, GetCurrentThreadId};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        BringWindowToTop, EnumWindows, GWL_EXSTYLE, GetForegroundWindow, GetWindowLongPtrW, GetWindowTextW,
-        GetWindowThreadProcessId, HWND_TOPMOST, IsWindow, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE,
-        SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow, SetWindowLongPtrW, SetWindowPos, WS_EX_NOACTIVATE,
+        BringWindowToTop, EnumWindows, GWL_EXSTYLE, GetForegroundWindow, GetWindowLongPtrW, GetWindowRect,
+        GetWindowTextW, GetWindowThreadProcessId, HWND_TOPMOST, IsWindow, SWP_FRAMECHANGED, SWP_NOACTIVATE,
+        SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow, SetWindowLongPtrW, SetWindowPos,
+        WS_EX_NOACTIVATE,
     };
     use windows_sys::core::BOOL;
 
@@ -117,6 +122,9 @@ mod win {
     #[derive(Default)]
     pub struct WinPlacer {
         known: Mutex<HashMap<String, isize>>,
+        /// How often each cover window was put in place: moving it to a monitor with another scale makes
+        /// Windows resize it once more, so it may take two goes.
+        covered: Mutex<HashMap<String, u8>>,
     }
 
     fn title_of(hwnd: HWND) -> String {
@@ -224,6 +232,28 @@ mod win {
             let (Some(hwnd), _) = self.handle(title) else { return };
             // SAFETY: a live window of ours; the flags keep its place, size and focus.
             unsafe { SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) };
+        }
+
+        fn cover(&self, title: &str, rect: (i32, i32, i32, i32)) {
+            let (Some(hwnd), new) = self.handle(title) else { return };
+            let mut covered = self.covered.lock().expect("the placer's lock is never poisoned");
+            if new {
+                covered.remove(title);
+            }
+            let tries = covered.entry(title.to_owned()).or_insert(0);
+            if *tries >= 3 {
+                return;
+            }
+            let (x, y, w, h) = rect;
+            let mut now = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+            // SAFETY: a live window of ours and a RECT to write into.
+            unsafe { GetWindowRect(hwnd, &mut now) };
+            if (now.left, now.top, now.right - now.left, now.bottom - now.top) == rect {
+                return;
+            }
+            *tries += 1;
+            // SAFETY: a live window of ours; the window keeps its place in the stack above other programs.
+            unsafe { SetWindowPos(hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE) };
         }
     }
 }

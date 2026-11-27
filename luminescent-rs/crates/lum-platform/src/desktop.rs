@@ -59,6 +59,12 @@ pub fn cursor() -> Option<(i32, i32)> {
     imp::cursor()
 }
 
+/// Moves the mouse pointer to a point in desktop coordinates (the pickers' arrow keys). False when the system
+/// does not let us.
+pub fn move_cursor(x: i32, y: i32) -> bool {
+    imp::move_cursor(x, y)
+}
+
 /// The compositor places our windows through rules (Hyprland), so a window's own position means nothing.
 pub fn places_windows_by_rule() -> bool {
     #[cfg(target_os = "linux")]
@@ -336,6 +342,10 @@ mod imp {
         Hypr::from_env()?.cursor_pos()
     }
 
+    pub fn move_cursor(x: i32, y: i32) -> bool {
+        Hypr::from_env().is_some_and(|h| h.move_cursor(x, y).is_ok())
+    }
+
     fn spike(app_id: &str) -> Option<Hypr> {
         let runtime = lum_hypr::socket::runtime_dir()?;
         let hypr = Hypr::from_env()?;
@@ -453,6 +463,12 @@ mod imp {
         (unsafe { GetCursorPos(&mut at) } != 0).then_some((at.x, at.y))
     }
 
+    pub fn move_cursor(x: i32, y: i32) -> bool {
+        use windows_sys::Win32::UI::WindowsAndMessaging::SetCursorPos;
+        // SAFETY: no pointers involved; Windows keeps the point on the desktop itself.
+        unsafe { SetCursorPos(x, y) != 0 }
+    }
+
     pub fn monitors() -> Vec<Monitor> {
         let mut list: Vec<Monitor> = Vec::new();
         // SAFETY: the callback only runs during this call, while `list` is borrowed mutably here.
@@ -488,6 +504,10 @@ mod imp {
 
     pub fn cursor() -> Option<(i32, i32)> {
         None
+    }
+
+    pub fn move_cursor(_x: i32, _y: i32) -> bool {
+        false
     }
 
     pub fn install_rules(_app_id: &str, _covers: &[Cover]) -> Result<bool, String> {

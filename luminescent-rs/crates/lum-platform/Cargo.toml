@@ -18,6 +18,7 @@ lum-hypr.workspace = true
 notify-rust = "4.19"
 rodio = { version = "0.23", default-features = false, features = ["playback", "wav", "vorbis", "flac", "mp3"] }
 serde_json.workspace = true
+lum-screen.workspace = true
 tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
 jiff.workspace = true
 shlex = "2"
@@ -32,6 +33,9 @@ ksni = { version = "0.3", features = ["blocking"] }
 libc = "0.2"
 mime_guess = "2"
 zbus = { version = "5", default-features = false, features = ["tokio"] }
+# screenshots straight from the compositor (wlr-screencopy)
+wayland-client = "0.31"
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 
 [target.'cfg(windows)'.dependencies]
 arboard = "3.7"

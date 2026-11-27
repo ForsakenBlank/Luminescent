@@ -514,12 +514,14 @@ impl App {
     /// Sets the desktop up for our windows (Hyprland's rules and the placer) and starts listening to it.
     /// Call it before the first window opens.
     pub fn start_desktop(&mut self) {
-        self.desktop = Desktop::start(&[
+        let mut covers = vec![
             lum_ui::widgets::dim::COVER_PREFIX,
             lum_ui::overlay::COVER_PREFIX,
             lum_ui::cheatsheet::COVER_PREFIX,
             lum_ui::dialog::COVER_PREFIX,
-        ]);
+        ];
+        covers.extend(lum_ui::tools::frozen::PREFIXES);
+        self.desktop = Desktop::start(&covers);
         tracing::info!("windows placed by {}", self.desktop.describe());
         let waker = self.waker.clone();
         self.hotkeys = HotkeyManager::start(&self.desktop, Arc::new(move || waker.wake()));

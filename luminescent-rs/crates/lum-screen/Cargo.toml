@@ -1,0 +1,23 @@
+[package]
+name = "lum-screen"
+description = "The screen tools' logic that draws nothing: colour formats, the loupe, measuring, snap spots, OCR text and the doodle's strokes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+lum-core.workspace = true
+lum-theme.workspace = true
+image.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd"] }
+ab_glyph = "0.2"
+
+[dev-dependencies]
+lum-fixtures.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

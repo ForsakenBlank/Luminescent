@@ -15,6 +15,7 @@ lum-theme = { path = "crates/lum-theme" }
 lum-platform = { path = "crates/lum-platform" }
 lum-ui = { path = "crates/lum-ui" }
 lum-calc = { path = "crates/lum-calc" }
+lum-screen = { path = "crates/lum-screen" }
 
 anyhow = "1"
 base64 = "0.22"

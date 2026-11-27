@@ -5,6 +5,7 @@ pub mod calculator;
 pub mod clip;
 pub mod draw;
 pub mod edit;
+pub mod frozen;
 pub mod notes;
 pub mod overview;
 pub mod qr;

@@ -13,6 +13,7 @@ lum-calc.workspace = true
 jiff.workspace = true
 lum-core.workspace = true
 lum-platform.workspace = true
+lum-screen.workspace = true
 lum-theme.workspace = true
 nucleo-matcher.workspace = true
 pulldown-cmark.workspace = true

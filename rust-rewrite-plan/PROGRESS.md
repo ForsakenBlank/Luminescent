@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 37.75 %   [#######.............]   Current phase: Phase 6 at 75 % (100 % built; the Dashboard check waits on you) (phase 3's Hello tray and phase 5's Looks right checks are unconfirmed)
+Overall: 41.75 %   [########............]   Current phase: Phase 7 at 100 % (built; the Settings check waits on you) (phase 3's Hello tray, phase 5's Looks right and phase 6's Dashboard checks are unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -21,7 +21,7 @@ Overall: 37.75 %   [#######.............]   Current phase: Phase 6 at 75 % (100 
 | 4 | Themes | 8 % | 23 % | 31 % | 100 % (built, CI to confirm) | done |
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % (100 % built, waiting on the Looks right check) | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 75 % (100 % built, waiting on the Dashboard check) | in progress |
-| 7 | Settings page | 4 % | 43 % | 47 % | 0 % | not started |
+| 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 0 % | not started |
 | 10 | Automation | 9 % | 62 % | 71 % | 0 % | not started |
@@ -85,10 +85,10 @@ Overall: 37.75 %   [#######.............]   Current phase: Phase 6 at 75 % (100 
 - [ ] 100 %: all drag and drop, dialogs, hotkeys, lock, search, snapshots (built and tested here; ticked once the Dashboard check below is in)
 
 ### Phase 7: Settings page
-- [ ] 25 %: layout, sidebar, search with counts, pinning
-- [ ] 50 %: a widget for every field type, hotkey recorder with clash warnings
-- [ ] 75 %: profiles, Save & Apply, Undo, Reset, module restarts
-- [ ] 100 %: custom widgets, backups UI, snapshots of every section
+- [x] 25 %: layout, sidebar, search with counts, pinning
+- [x] 50 %: a widget for every field type, hotkey recorder with clash warnings
+- [x] 75 %: profiles, Save & Apply, Undo, Reset, module restarts
+- [x] 100 %: custom widgets, backups UI, snapshots of every section (built and tested here; the Settings check below is on the waiting list)
 
 ### Phase 8: Everyday tools
 - [ ] 25 %: lum-calc with all fixtures, Calculator panel and page, Timers with restore
@@ -142,6 +142,71 @@ Overall: 37.75 %   [#######.............]   Current phase: Phase 6 at 75 % (100 
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-27, Phase 7 built to 100 % (overall 41.75 %; 43.75 % with every check in, 47 % is the phase's own end)
+
+Branch `ccr-6cfe5063-2qz557`. It started at `main` (phases 1 and 2), so this session first merged
+`claude/epic-sagan-5cj237`, which holds phases 3 to 6: **this branch now holds phases 3 to 7, and `main` has only 1
+and 2. Merge it before starting phase 8.** Phase 3's Hello tray, phase 5's Looks right and phase 6's Dashboard checks
+are still on the waiting list; nothing asked for them again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, every test under Xvfb with snapshots, `--smoke`):
+* `lum_ui::settings` (`SettingsUi`): the page drawn into whatever `ui.max_rect()` it is given (the overlay panel or a
+  dashboard box), from `Schema`. Profile bar (switch, New profile, Rename, Delete, the settings path), sidebar with
+  search (`/` focuses it), "Only matching settings" (stored as `ui.settings_search_only`), a count per section ("N found"),
+  highlighted matches in labels, help texts, titles and the sidebar, pinned sections (`ui.settings_pinned`, star on hover),
+  sections built lazily (normalised when first shown, the rest one per frame until all are built, then no repaints),
+  rows of label and field with a hairline, the footer (Reset page, status, Undo changes, Save & Apply). Under 640 px wide
+  the sidebar becomes a search box and a section list above the page; the profile bar scrolls sideways.
+* A widget for every field type: hotkey recorder (`widgets::recorded_key` and `widgets::combo_of` moved into the kit, the
+  dashboard item dialog and the theme editor use them; Record, click the caps, clear; keys pause through
+  `Out.suspend_keys`; clash warnings from the other hotkey fields on the page, `Env.key_user` for dashboard items and
+  theme keys, and the validator), text, folder and file (Browse… through the file dialog wrapper, Qt filters turned into
+  extension lists), int, float, opacity slider, check box with its help beside it, colour (the phase 4 dialog, applied on
+  Done), choice (as wide as its longest entry), and the custom widgets: navigation bar order (needs its own state, see
+  below), Show on start, Tray menu, Backup (Export / Import through the file dialogs, a check and a question before it
+  replaces anything, restore and restart), Quit everything and Restart, "Show a notification" (shows a card with the
+  values on the page, saved or not: `Look::from_values`), Updates (the version only; checking and installing is phase 15).
+  The Reminders list is a slot with a line of text until phase 8.
+* A module's section shows its buttons while it runs and "Turn it on" while it is off (`Env.module`); a module that failed
+  to start shows why.
+* Save & Apply: checks hotkeys used twice (a message listing them), writes through `Settings::replace_silently`, and hands
+  the app `Out.saved` with the sections that changed. `App::settings_saved` re-registers the hotkeys, makes the overlay
+  config, cards and tray again, syncs run-at-login (not for a test copy), restyles, and calls the new
+  `ModuleHost::apply_changed`, which restarts **only the modules whose section changed** (start and stop still follow
+  `enabled`). Fields marked restart ask "Restart Luminescent now?". Profile switches, new, rename and delete work as in
+  Python; unsaved changes are asked about first; a profile switch applies every section.
+* The app: `launcher/settings.rs`, the "settings" page in `show_overlay`, palette entries `settings:<section>` and
+  `ctl settings <section>` open on that section, `AppMsg::SettingsFile` and `AppMsg::Backup` (zip work runs on the
+  tokio pool), `with_env` split into `EnvData` so the page can hold the settings mutably.
+* Tests: `crates/lum-ui/tests/settings.rs` (every field of both schema dumps gets the widget `control_of` says, the Dashboard
+  and Scripts fields with their help texts, save writes what Python would, undo and reset, search and only-matching, pins,
+  recording and clash warnings, profiles, turn it on and module buttons, the notification and quit buttons, backup
+  dialogs, the switcher list, small boxes, the page going away while recording, no repaints when settled; snapshots of
+  every section in Dark and Light at 980 x 620, two tall ones with the buttons and lists, and the small box), model tests in
+  `settings/model.rs`, `apply_changed` in lum-core, `--smoke` check "settings page".
+
+**Left out on purpose or not done.**
+* The hotkey field is not typed into (the Python box also takes text such as `code:123` and bare modifiers); click or Record
+  only, as in the dashboard dialog and theme editor. Clash with the user's own Hyprland binds is not shown live (the
+  hotkey thread owns that query; asking it from the UI thread would block); registering still refuses them with the
+  Python wording.
+* The section change does not fade (Python's 150 ms).
+* The colour field applies on Done only (no live preview); no eyedropper request is handled from this dialog yet.
+* Updates widget: version line and a disabled button (phase 15). Reminders editor: slot (phase 8). Keybind lists: phase 13.
+
+**Surprising, worth knowing.**
+* Python's `hk.normalize` writes "super" as "windows", so the first Save in Python rewrites the Snapper's default hotkeys.
+  Rust does the same (parity), but decides what restarts by comparing with how the page showed the values at first, so
+  that rewrite alone restarts nothing.
+* The page draws into `ui.max_rect()`; the rect `sub` receives is the window in desktop coordinates (for dialogs).
+* The dashboard store is borrowed mutably while its boxes draw, so the Settings page checks dashboard hotkeys against a
+  map the app refreshes whenever it registers them (`App::dashboard_keys`).
+* The nav-bar editor keeps pages that are switched off in their place, which the stored list cannot say, so it has its own
+  state (`NavState`) that starts from the stored list.
+* Sidebar entries and checkboxes need accessible names for kittest; `Checkbox::name` was added. Labels such as "Notes" and
+  "Restart" occur many times on the page, so tests look up by role and label.
+* This container needed `libasound2-dev pkg-config libxkbcommon-x11-0 mesa-vulkan-drivers xvfb` installed first.
 
 ### 2026-11-26, Phase 6 built to 100 %, the Dashboard check waits on you (overall 37.75 %; 43 % with all three checks)
 
@@ -707,6 +772,17 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 7 (blocks the 100 % checkpoint):** quit the Python app first. Build with
+  `cd luminescent-rs && cargo build --release -p luminescent`, copy your real `settings.json` and `profiles.json` into a
+  throw-away `LUMINESCENT_HOME` (`data/` for profiles) and run `./target/release/luminescent`. Open Settings (Ctrl+Alt+S) and
+  check: every section opens and looks like the Python page; search "tray" (matches highlighted, counts in the sidebar,
+  Only matching settings); press `/`; pin a section with the star; change a hotkey with Record (the other hotkeys must
+  stop firing while it waits) and try one that is already used (warning, and Save refuses); Save & Apply and check the
+  change shows at once (tray menu, dashboard snap, a hotkey); make, switch, rename and delete a profile; Export backup,
+  then Import it (it should ask, then restart); Show a notification with an unsaved Notification style; make the
+  overlay's panel small or put Settings in a dashboard box and check it still works. Say what looks or behaves wrong
+  next to the Python version.
 
 * **Phase 6 (blocks the 100 % checkpoint):** quit the Python app first (same hotkeys). Build with
   `cd luminescent-rs && cargo build --release -p luminescent`, copy your real `dashboard.json` into a throw-away

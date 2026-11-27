@@ -148,14 +148,14 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Every option grouped by module, generated from the schema | 7 | `settings_ui.py` |
-| [ ] | Search that highlights and counts matches per section; "Only matching settings" | 7 | `settings_ui.py` |
-| [ ] | Settings profiles (own hotkeys, sizes, sounds); General, Overlay, Animations, Dashboard and Automation shared | 1, 7 | `core/settings.py` |
-| [ ] | Hotkey recorder with live clash warning | 7 | `settings_ui.py` |
-| [ ] | Pin sections with ☆ | 7 | `settings_ui.py` |
-| [ ] | Module pages have buttons for its actions, or Turn it on | 7 | `settings_ui.py` |
-| [ ] | Show on start, tray menu editor, notifications settings and "Show a notification" test | 7 | `settings_ui.py` |
-| [ ] | Reset page, Undo changes, Save & Apply; sections built lazily | 7 | `settings_ui.py` |
+| [x] | Every option grouped by module, generated from the schema | 7 | `settings_ui.py` |
+| [x] | Search that highlights and counts matches per section; "Only matching settings" | 7 | `settings_ui.py` |
+| [x] | Settings profiles (own hotkeys, sizes, sounds); General, Overlay, Animations, Dashboard and Automation shared | 1, 7 | `core/settings.py` |
+| [x] | Hotkey recorder with live clash warning | 7 | `settings_ui.py` |
+| [x] | Pin sections with ☆ | 7 | `settings_ui.py` |
+| [x] | Module pages have buttons for its actions, or Turn it on | 7 | `settings_ui.py` |
+| [x] | Show on start, tray menu editor, notifications settings and "Show a notification" test | 7 | `settings_ui.py` |
+| [x] | Reset page, Undo changes, Save & Apply; sections built lazily | 7 | `settings_ui.py` |
 
 ## Clipboard / Snippets (phase 8)
 
@@ -215,7 +215,7 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [ ] | Reminder pop-up: Snooze 5 min to 1 h, Done, ✕, running-out line, rises into place | 8 | `modules/reminders.py` |
 | [ ] | Sounds, desktop notification, Switch theme action | 8 | `modules/reminders.py` |
 | [ ] | Quick reminders from the palette (`remind me in 20m to stretch`, `at 17:30 call mum`) | 5, 8 | `ui/palette.py` |
-| [ ] | Reminders editor in Settings; runtime state kept apart from settings | 7, 8 | `modules/reminders.py` |
+| [ ] | Reminders editor in Settings (the slot is there, phase 7); runtime state kept apart from settings | 7, 8 | `modules/reminders.py` |
 
 ## Other everyday pages (phase 8)
 

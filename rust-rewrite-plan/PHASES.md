@@ -970,6 +970,32 @@ modules/reminders.py, modules/snippets.py, modules/qr.py, ui/today.py, ui/stats.
 section of README.md, then build everything the Phase 8 Deliverables list says for it: the logic in its crate
 with tests, the floating panel, the overlay page where there is one, and the dashboard page box.
 
+What phases 3 to 7 left for you:
+- Phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks may still be open;
+  leave them on the waiting list and do not ask again unless the user brings them up. The work branch holds phases 3
+  to 7 (main only 1 and 2), so the user merges before this session starts.
+- A module is a `UiModule` in `modules()` (launcher.rs); its actions are registered by the host, so the palette, tray,
+  dashboard Tools tab and the Settings page's buttons ("Turn it on" while off) pick them up with no extra wiring. Its
+  Settings section is already drawn from the schema; a changed section restarts only that module (`apply_changed`,
+  `Module::apply_settings` is a stop and start unless you override it).
+- Pages are drawn by the `sub` closure in `App::show_overlay`: `match key { "themes" => ..., "settings" => ..., other =>
+  placeholder }`, into `ui.max_rect()`, in any size from 360 x 220 up (the same closure draws a dashboard page box). Return
+  `PageFrame { busy: true }` while a dialog or key recording has the keyboard; a page that panics comes back as
+  `Out::repair`, reset its state in `App::repair_page`. File dialogs go out through the page's `Out` and come back as an
+  `AppMsg` (see `AppMsg::SettingsFile`); slow work runs on the tokio runtime and reports through the mailbox.
+- The reminders editor goes into the `Slot` of `reminders.items` (`settings/custom.rs`, `custom_control`; the field is
+  not edited by the page until you give it an editor: `model::is_edited` / `has_editor`). Settings it reads each frame
+  show at once; after Save the app calls `settings_saved`.
+- The hotkey recorder is in the kit: `HotkeyField`, `recorded_key`, `combo_of`; `Out.suspend_keys` pauses the hotkeys.
+- Gotchas: an egui menu or pop-up is drawn inside its window; `f32::clamp` panics when its bounds cross, use
+  `.min().max()`; `ui.put` places a widget in an exact rect; text typed into a `TextEdit` changes it during the pass;
+  `⤢ ＋ ⌕ ⌗ ⏯ ⏲ ⏻ ␟ ⓘ ⧉` have no glyph in any bundled font and panic in layout (use `↗` and `+`); `egui::WidgetType` is
+  `egui::Role`; give custom-painted widgets `response.widget_info(...)` so kittest can find them. In tests: a drag or
+  a recording asks for a frame every frame, so use `step()`, not `run()`; call `focus()` and `run()` before `type_text`;
+  look widgets up by role and label (`get_by_role_and_label`), names repeat; a widget below the fold can not be clicked,
+  so make the test window tall. This container needs `libasound2-dev pkg-config libxkbcommon-x11-0
+  mesa-vulkan-drivers xvfb` installed.
+
 Tests: all calculator, conversion, time and reminder fixtures in luminescent-rs/fixtures must pass, and every
 tool's data file from fixtures/sample_home must round-trip unchanged. Snapshot each panel in Dark and Light.
 

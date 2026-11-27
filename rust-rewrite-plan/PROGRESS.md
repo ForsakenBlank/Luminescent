@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 53.2 %   [##########..........]   Current phase: Phase 8 at 62 % (calculator, timers, Notes and Reminders built; next is Clipboard) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks are unconfirmed)
+Overall: 56.0 %   [###########.........]   Current phase: Phase 8 at 90 % (every tool built; only the Daily-drivable alpha check is left) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks are unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -22,7 +22,7 @@ Overall: 53.2 %   [##########..........]   Current phase: Phase 8 at 62 % (calcu
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % (100 % built, waiting on the Looks right check) | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 75 % (100 % built, waiting on the Dashboard check) | in progress |
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
-| 8 | Everyday tools | 10 % | 47 % | 57 % | 62 % (calculator, timers, Notes, Reminders) | in progress |
+| 8 | Everyday tools | 10 % | 47 % | 57 % | 90 % (100 % built, waiting on the Daily-drivable alpha check) | in progress |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 0 % | not started |
 | 10 | Automation | 9 % | 62 % | 71 % | 0 % | not started |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
@@ -93,8 +93,8 @@ Overall: 53.2 %   [##########..........]   Current phase: Phase 8 at 62 % (calcu
 ### Phase 8: Everyday tools
 - [x] 25 %: lum-calc with all fixtures, Calculator panel and page, Timers with restore
 - [x] 50 %: Notes complete
-- [ ] 75 %: Reminders complete (done), Clipboard page and Ctrl+B pop-up (next)
-- [ ] 100 %: QR, Today, Usage, Calendar, page boxes, Daily-drivable alpha confirmed
+- [x] 75 %: Reminders complete, Clipboard page and Ctrl+B pop-up
+- [ ] 100 %: QR, Today, Usage, Calendar, page boxes (all built and tested here; ticked once the Daily-drivable alpha check below is in)
 
 ### Phase 9: Screen tools
 - [ ] 25 %: capture backends, frozen multi-monitor picker base
@@ -142,6 +142,86 @@ Overall: 53.2 %   [##########..........]   Current phase: Phase 8 at 62 % (calcu
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-27, Phase 8 built to 100 %, the Daily-drivable alpha check waits on you (overall 56.0 %; 57 % with the check)
+
+Branch `claude/pensive-galileo-6ms969`. It started at "Plan: phase 8 at 25 %", not at the 62 % the prompt expected, so the session
+first fast-forwarded it onto `origin/ccr-a4cc2d9e-xg3o3z` (Notes and Reminders; nothing lost, no force). **This branch now holds
+phases 3 to 8. Merge it into `main` (a fast-forward) before the next session starts**, or the next one finds Phase 8 at 25 % again.
+The Hello tray, Looks right, Dashboard and Settings checks are still on the waiting list; nothing asked for them again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, every test under Xvfb with snapshots, `--smoke`, `cargo deny check`):
+* **Clipboard (Snippets).** `lum_core::snippets`: what a file is (`classify`: image, video, link, colour, code, text, file, from the
+  extension and the first 600 characters), the folder listing (favourites row, folders by name, clips in the kept order), search
+  across every folder (names and what text clips say, 200 matches), `Meta` over `.luminescent.json` (folder colours, favourites,
+  order, `path_moved` after a move or rename; the sample file saves back byte for byte), moving and copying (`move_into` picks a
+  free name and refuses a folder into itself), `fill_placeholders`, `save_clipboard` (files, then a picture, then text, named as
+  Python names them), ages and sizes. `lum_platform::trash` (gio, trash-put or kioclient5; PowerShell on Windows) and
+  `lum_platform::frame` (a video's first frame through `ffmpeg`, optional). `lum_ui::tools::snippets`: `view.rs` draws the
+  breadcrumb, search (Ctrl+F, 220 ms pause), New folder / Open folder / Paste here, FAVOURITES, folder and clip cards (text, code,
+  link, colour swatch, file glyph, picture) with only the rows in view; drag a card onto a folder, a folder in the breadcrumb or
+  another card; right-click menus with the Python labels; hover preview after 650 ms; Backspace goes up. `mod.rs` is the module:
+  the Ctrl+B pop-up (960 x 560 by default, dim behind it, closes on click, Esc or use), the "clipboard" overlay page (five columns, fewer in a
+  small box), "No snippets folder yet" with Make this folder / Use another folder…, listing, thumbnails (`thumbs.rs`, EXIF turned,
+  fitted to 720 x 520), copy, paste, save and Trash all on threads. Pasting waits 220 ms, Ctrl+click adds Enter at 340 ms and reopens
+  the pop-up in the same folder at 450 ms. Actions "Open Snippets" and "Save the clipboard to Snippets", the hotkey and a tray entry.
+  New `Request::SendKeys` and `Request::SetSetting`, answered in `launcher/tools.rs`.
+* **QR code.** `lum_core::qr` (the `qrcode` crate: smallest version that fits, level M below 2 000 bytes and L above, 2 900 bytes at
+  most, the Python wording for every message, an RGBA picture and an SVG writer) and `lum_ui::tools::qr`: the panel with the white code
+  card, the line under it, the text box (code follows 250 ms after typing stops), From clipboard, Copy image (picture on the
+  clipboard), Save as… (PNG, or SVG when the name ends in .svg), the hotkey and the "QR code of the clipboard" action. A real
+  decoder (`rqrr`, dev dependency) reads the text back from the picture and from what the panel draws on screen.
+* **Today, Usage, Calendar.** `lum_core::overview` (summary, timeline kinds, most used, day titles, "5m ago", the 30 day series, the
+  top 25 rows) and `lum_calc::calendar` (the Atlas events and tasks in `atlas_sync.json`, repeat rules, a day's agenda with
+  reminders, the month's weeks; all 12 `occurrences` cases of `atlas_cases.json` pass). `lum_ui::tools::overview` draws the three
+  pages into any rect (they are not modules: the app's page closure calls `Overview::show`, so a dashboard box is the same call).
+  Today: four boxes, timeline by the hour, MOST USED, ‹ ›. Usage: the 30 day bars, three columns with bars, Reset… (asks first).
+  Calendar: the month with a dot on busy days, the day's agenda (Atlas events with their colour, tasks, reminders), the Atlas line,
+  Sync with Atlas. In a small box each page stacks its parts.
+* Tests: `crates/lum-ui/tests/snippets.rs` (20), `qr.rs` (7), `overview.rs` (22), plus 22 in `lum_core::snippets`, 9 in `qr`, 9 in
+  `overview`, 7 in `lum_calc::calendar`, and the thumbnail, trash, frame and file-writing tests. Snapshots in Dark and Light of each
+  panel and page, and of each page as a small box. `--smoke` now opens the Snippets and QR actions and draws the clipboard, today,
+  stats and calendar pages.
+
+* Numbers: `--idle-check 12` (debug build, Xvfb, llvmpipe; the 12 seconds include the one currency fetch 8 s after the start) gives 0.12 % of
+  a core and 11.3 wake-ups a second with 2 passes painted, and 21 threads. The commit before this session, measured the same way
+  in a second build, gives 0.13 %, 10.9, 2 painted and 20 threads, so the tools added here cost one thread (the Snippets file writer)
+  and nothing else while closed. A longer run without the fetch is what the budget is judged on.
+
+**Left out on purpose or not done.**
+* Snippets: dragging a card out to another app (egui can not start an outgoing drag; Python handed the file over); link previews on
+  cards (Python's thumbnail worker could fetch them, but the grid only ever asked for pictures and videos, so none ever showed);
+  video thumbnails need `ffmpeg` (optional; Python used OpenCV); the hover preview stays inside the window (Qt's tooltip window could
+  stick out of the pop-up); an animated GIF or WebP shows its first frame; a dashboard box does not remember its folder (`PageFrame`
+  has no state, as with Notes); a rename onto a name that exists is refused (Python's `os.rename` replaced the file on Linux); a moved
+  folder's own order list is not moved with it (as Python). The top-level order is stored under `.` as Python writes it; a file
+  that has `""` there (the sample does) is read and kept under that name.
+* QR: segno's SVG and PNG bytes differ from `qrcode`'s (same picture, may differ in mask or version choice; both scan). There is no
+  page or box for it (Python has none).
+* Today and Usage read the log when the page comes up (a scan of up to 2 MB on the UI thread, once per show) and do not refresh
+  while open, as Python.
+* Calendar: **Sync with Atlas opens Settings → Atlas Sync** until phase 13 (the Rust app has no Atlas module; Python's button starts
+  hosting). The stored calendar is shown only while `atlas_sync.enabled` is on, as Python shows it while its module runs.
+  Notifications for events about to start are phase 13.
+* Not tried on a real desktop: the Ctrl+B hotkey and pasting into another app, the Wayland clipboard, Trash and Recycle Bin, the file
+  dialogs, dragging with a real mouse, the dim window behind the pop-up. See "Waiting on the user".
+
+**Surprising, worth knowing.**
+* Text drawn with the painter has no accessibility node: give painted rows `widget_info` (`Role::ListItem` or `Button`) or kittest can
+  not find them. `DimOverlay` in the harness paints over the panel it dims, so the pop-up snapshots set the dim to 0.
+* A card below the fold can not be clicked by kittest (the test window was too short for the second row); the pop-up test clicks a
+  card in the first row.
+* Python's `_rel` of the top folder is `.` while the sample `.luminescent.json` has an empty name for it. Python never reads the
+  sample's key; Rust reads both.
+* `Counter.most_common` keeps first-seen order for ties; `top_rows` and `most_used` do too. The Python agenda sorts tasks (key 1)
+  before timed events (key = milliseconds); kept.
+* The `atlas_cases.json` repeat cases keep only the first 30 times of a long repeat; the test compares that prefix.
+* jiff 1.0: `to_zoned_datetime` (not `to_zoned`), `ZonedDateTime`, `Date::first_of_month`, `DateTime::since((Unit::Second, other))`.
+* `apt-get install` of the build packages failed until `apt-get update` ran; `cargo install cargo-deny --locked` takes a few minutes.
+* The QR commit has one clippy lint inside a test (`manual_is_multiple_of`), fixed in the next commit.
+
+**Next: Phase 9, the screen tools** (Opus 5.5, high). Before it, the Daily-drivable alpha check below (a day of use with a copied data
+folder); it does not block starting Phase 9 but the 57 % milestone waits for it.
 
 ### 2026-11-27, Phase 8 at 62 %: Notes and Reminders (overall 53.2 %)
 
@@ -909,6 +989,18 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 8, the Daily-drivable alpha (blocks the 100 % checkpoint and the milestone):** quit the Python app first. Build with
+  `cd luminescent-rs && cargo build --release -p luminescent`, copy your real data into a throw-away home
+  (`mkdir /tmp/lumhome && cp ~/.local/share/Luminescent/settings.json /tmp/lumhome/ && cp -r ~/.local/share/Luminescent/data /tmp/lumhome/`;
+  Windows: `%LOCALAPPDATA%\Luminescent`), run `LUMINESCENT_HOME=/tmp/lumhome ./target/release/luminescent`, and use it for a day.
+  Specifically: **Clipboard:** press Ctrl+B in another app, click a text card (it should paste there) and Ctrl+click one (paste, Enter,
+  pop-up back in the same folder); Paste here with text, a picture and a copied file; drag a card onto a folder and onto another
+  card; right-click a card (Favourite, Rename, Show in the file manager, Delete goes to the Trash) and a folder (Colour…); search;
+  rest the mouse on a picture. Open the Clipboard page in the overlay and as a dashboard box. **QR code:** set a hotkey in Settings →
+  QR Code, copy a link, press it, scan it with a phone, Copy image, Save as… a PNG and an SVG. **Today, Usage, Calendar:** add them to
+  the overlay's navigation bar in Settings → Overlay and look at each, also as dashboard boxes. Say what looks or behaves wrong
+  next to the Python version.
 
 * **Phase 8 so far (does not block the next tool):** on Hyprland and Windows 11 with a copied data folder, press the
   Calculator and new timer hotkeys, let a short timer finish (sound, blinking border, the panel must not take the keyboard),

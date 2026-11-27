@@ -961,8 +961,8 @@ and a dashboard page box. Ends with the **Daily-drivable alpha** milestone.
 |---|---|---|
 | 25 % | 49.5 % | lum-calc with all fixtures, Calculator panel and page, Timers with restore (done) |
 | 50 % | 52 % | Notes complete, with sticky notes, undo delete and export (done; Reminders is done too, so the phase stands at 62 % and 53.2 %) |
-| 75 % | 54.5 % | Reminders complete; Clipboard page and Ctrl+B pop-up |
-| 100 % | 57 % | QR, Today, Usage, Calendar; page boxes for all; **Daily-drivable alpha** confirmed |
+| 75 % | 54.5 % | Reminders complete; Clipboard page and Ctrl+B pop-up (done) |
+| 100 % | 57 % | QR, Today, Usage, Calendar; page boxes for all (all built, the phase stands at 90 % and 56 %); **Daily-drivable alpha** confirmed |
 
 **Done when.** Every calculator, time and reminder fixture passes; each tool's data file from `sample_home`
 round-trips unchanged; the user has used the alpha for a day with a copied data folder.
@@ -1100,26 +1100,81 @@ at 60 fps with 500 strokes; picker opens within 150 ms of the hotkey.
 ```text
 We are rewriting Luminescent (a Python + PyQt6 tray app in this repo) as a native Rust app. Read
 rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 9 section), rust-rewrite-plan/PROGRESS.md,
-rust-rewrite-plan/PLATFORM_MATRIX.md and luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 9 already
-started, continue from its handoff note.
+rust-rewrite-plan/PLATFORM_MATRIX.md, rust-rewrite-plan/PERFORMANCE.md and luminescent-rs/CLAUDE.md first. If
+PROGRESS.md shows Phase 9 already started, continue from its handoff note and take the next checkpoint in order.
 
-This session is Phase 9: the screen tools. The spec is modules/doodle.py, modules/colorpicker.py,
-modules/textgrab.py, modules/ruler.py, modules/snapper.py, their settings sections in core/settings.py, and the
-window moving parts of core/hypr.py. Read them first; the doodle's hold-key rules came from real bugs.
+Before anything else check the branch: `git log --oneline -3` must show the end of Phase 8 ("Today, Usage and
+Calendar: ...", "QR code: ...", "Clipboard: ..."). If PROGRESS.md says less than "Phase 8 at 90 %", the branch is main
+without the later work: it is on origin/claude/pensive-galileo-6ms969 (or whichever branch the handoff note names), so
+fast-forward onto it (`git merge --ff-only origin/<branch>`) and say so.
 
-Build everything in the Phase 9 Deliverables list: the screen capture backend with one frozen viewport per
-monitor at its real scale, the colour picker (also the eyedropper for the theme colour dialog), text grab with
-Windows OCR and Tesseract on Linux, the ruler, the doodle with every tool and setting, and the snapper on Hyprland
-and Windows.
+This session is Phase 9: the screen tools. The spec is modules/doodle.py (946 lines), modules/colorpicker.py,
+modules/textgrab.py, modules/ruler.py, modules/snapper.py, their settings sections in core/settings.py, and the window
+moving parts of core/hypr.py. Read each Python file first, with its section of README.md; the doodle's hold-key rules
+came from real bugs. Work in the checkpoint order (capture backends and the frozen multi-monitor picker base, then the
+colour picker, ruler and text grab, then the doodle, then the snapper) and build everything the Phase 9 Deliverables list
+says: the screen capture backend with one frozen viewport per monitor at its real scale, the colour picker (also the
+eyedropper for the theme colour dialog), text grab with Windows OCR and Tesseract on Linux, the ruler, the doodle with
+every tool and setting, and the snapper on Hyprland and Windows. The logic that does not draw (colour formats and
+nudging, measuring, the snap geometry, the doodle's stroke model and undo history) goes in a crate with its own tests;
+capture, window moving and the hold key go in `lum-platform` / `lum-hypr` behind `cfg(target_os)`.
 
-This container has no display. Give me exact commands to test each tool on two monitors with different scales on
-Hyprland and on Windows 11, and wait for my results before ticking the last checkpoint.
+What phases 3 to 8 left for you:
+- Phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings and phase 8's Daily-drivable
+  alpha checks may still be open; leave them on the waiting list and do not ask again unless the user brings them up.
+- A module is a `UiModule` in `modules()` (launcher.rs, in the order of modules/__init__.py: doodle sits after notes,
+  colorpicker, textgrab, snapper and ruler after calculator, in that file's order); its actions are registered by the
+  host, so the palette, tray, dashboard Tools tab and the Settings page's buttons ("Turn it on" while off) pick them up
+  with no extra wiring. Its Settings section is already drawn from the schema; a changed section restarts only that
+  module (`Module::apply_settings` is a stop and start unless you override it).
+- Copy the shape of `crates/lum-ui/src/tools/`: `calculator`, `timer`, `notes` (many small panels, edit mode with the
+  dim and anchor bar), `reminders` (pop-up windows), `snippets` (a pop-up over a dim, worker threads, drag and drop) and
+  `qr` (one panel). Commands from actions, hotkeys and worker threads reach a module through its `Inbox<Cmd>`
+  (`inbox.action(id, label, || Cmd::X)`); what it wants from the app goes back as a `Request` through `Services::send`
+  (a card, an event, the overlay closed, a usage or activity line, `SendKeys`, `SetSetting`, `ApplyTheme`), answered in
+  `launcher/tools.rs`. Hotkeys come from `UiModule::binds` + `bind_pressed`; `HotkeyManager::register_hold(owner, key,
+  interruptible)` and `watch_release` already exist for the doodle's hold-Alt. Palette rows: `palette_entries`,
+  `palette_live` and `run_palette`; the tray takes `tray_actions`.
+- Screens: `lum_ui::window::screens()` gives `Screen { name, rect, work }` in desktop pixels and has NO scale yet. Add it
+  (Hyprland's monitors report one; Windows has per-monitor DPI) before capturing at real pixels. `DimOverlay` is one
+  see-through window per screen (click-through or not); `window::placer(ctx)` / `shown` / `crate::window::fallback_screen`
+  place windows; cover titles (`desktop::cover_title`) make Hyprland open a window full size on its own screen, and
+  `marker::NO_ACTIVATE` keeps it from taking the keyboard.
+- The colour dialog already has the eyedropper hook: `ColourDialog::screen_picker`, `take_screen_request` and
+  `picked_from_screen`, and `colours.json` (the last 10 picks) is the file it reads next to `picker.json`.
+  `lum_platform::clipboard` has `set_text`, `set_picture` and `set_files`; copying never happens on the UI thread
+  (`tools::clip::copy`). `lum_platform::dialogs` has `open_file`, `save_file` and `pick_folder`; `lum_platform::frame`
+  runs `ffmpeg` for a video frame; `tools::draw` has painter helpers (one line cut to a width, mono caps, a card).
+- Data files are kept over raw JSON so unknown fields and key order survive; save through `lum_core::store::Writer`
+  with `pyjson::to_string(.., Style::indented(n))`. Every file from fixtures/sample_home must save back byte for byte
+  (see `the_sample_meta_file_is_saved_back_unchanged` for the shape of the test).
+- Gotchas: an egui menu or pop-up is drawn inside its window; `f32::clamp` panics when its bounds cross, use
+  `.min().max()`; `ui.put` places a widget in an exact rect; `egui::WidgetType` is `egui::Role`; give custom-painted
+  widgets AND painted text rows `response.widget_info(...)` so kittest can find them; `Ui::id` and `Id::new` are
+  deprecated, use `Id::unique((salt, ...))` and put the rect's position in it when two boxes can show the same page; jiff
+  1.0 names are `ZonedDateTime`, `to_zoned_datetime`, `DateTime::since((Unit::Second, other))`; fonts lack `＋` (U+FF0B),
+  `⧉`, `⌗` and `⏲`, so use `+` or `IconButton::shape(IconShape::...)` and probe a new character with
+  `ctx.set_missing_glyph_policy(MissingGlyphPolicy::Panic)` after two passes. In tests: a drag or a recording asks for a
+  frame every frame, so use `step()`, not `run()`; call `focus()` and `run()` before `type_text`; look widgets up by role
+  and label; a widget below the fold can not be clicked, so make the test window tall; `DimOverlay` paints over the
+  panel it dims in the harness, so set the dim to 0 for a picture; `UPDATE_SNAPSHOTS=1` leaves a picture alone while it is
+  within the tolerance, so delete the PNG first when a layout moved a little. This container needs
+  `apt-get update` and then `apt-get install -y libasound2-dev pkg-config libxkbcommon-x11-0 mesa-vulkan-drivers xvfb`
+  (and `gcc-mingw-w64-x86-64` for the Windows clippy run because of `ring`, `rustup target add
+  x86_64-pc-windows-gnu`, and `cargo install cargo-deny --locked` for the licence check).
+
+This container has no display. Test capture against a fake and the geometry with unit tests, snapshot every panel in Dark
+and Light, and give me exact commands to try each tool on two monitors with different scales on Hyprland and on Windows
+11; wait for my results before ticking the last checkpoint. Check the budgets: doodle drawing at 60 fps with 500 strokes
+(write the test), the picker open within 150 ms of the hotkey (give me the command to measure it), nothing polling while
+a tool is closed (`--idle-check`).
 
 Rules: follow luminescent-rs/CLAUDE.md. Same labels, hotkeys and behaviour as the Python app. Never use em dashes
 anywhere. Code should read like a careful human wrote it. Commit after each checkpoint.
 
-Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
-Stop at a checkpoint boundary if you run low on room.
+Finish each session: fmt, clippy -D warnings (and the Windows target), tests, --smoke, cargo deny check. Update
+rust-rewrite-plan/PROGRESS.md (checkpoints, percentages, handoff note naming the next checkpoint) and
+FEATURE_INVENTORY.md. Stop at a checkpoint boundary if you run low on room.
 
 Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
 learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.

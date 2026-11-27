@@ -161,12 +161,12 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Snippets folder as cards (folders, images, videos, links, text, files); click to paste into the app you were using | 8 | `modules/snippets.py` |
-| [ ] | Ctrl+B pop-up grid; Ctrl+click pastes + Enter and reopens | 8 | `modules/snippets.py` |
-| [ ] | ＋ Save clipboard here (text, image, files) | 8 | `modules/snippets.py` |
-| [ ] | Search across folders; folder colours; favourites row; drag to reorder or into folders; hover preview | 8 | `modules/snippets.py` |
-| [ ] | Thumbnails on a background thread (images, video frames, link previews) | 8 | `modules/snippets.py` |
-| [ ] | Placeholders in text snippets (`{date}`, `{time}`, `{datetime}`, `{weekday}`, `{clipboard}`) | 8 | `modules/snippets.py` |
+| [x] | Snippets folder as cards (folders, images, videos, links, text, files); click to paste into the app you were using *(phase 8: videos need `ffmpeg`; the grid is drawn into the pop-up, the page and a box)* | 8 | `modules/snippets.py` |
+| [x] | Ctrl+B pop-up grid; Ctrl+click pastes + Enter and reopens | 8 | `modules/snippets.py` |
+| [x] | ＋ Save clipboard here (text, image, files) *(the button says "Paste here", as the Python grid does)* | 8 | `modules/snippets.py` |
+| [x] | Search across folders; folder colours; favourites row; drag to reorder or into folders; hover preview *(a card can not be dragged out to another app, egui has no outgoing drag)* | 8 | `modules/snippets.py` |
+| [x] | Thumbnails on a background thread (images, video frames, link previews) *(pictures and videos; link previews were never shown by the Python grid either)* | 8 | `modules/snippets.py` |
+| [x] | Placeholders in text snippets (`{date}`, `{time}`, `{datetime}`, `{weekday}`, `{clipboard}`) | 8 | `modules/snippets.py` |
 
 ## Notes (phase 8)
 
@@ -221,10 +221,11 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | QR code from the clipboard; editable; copy picture; save PNG / SVG | 8 | `modules/qr.py` |
-| [ ] | Today: what you did today, earlier days with ‹ › | 8 | `ui/today.py` |
-| [ ] | Usage: most used items, hotkeys and tools; uses per day | 8 | `ui/stats.py` |
-| [ ] | Calendar: Atlas events and tasks next to reminders, notifications on the PC | 8, 13 | `ui/calendar_page.py` |
+| [x] | QR code from the clipboard; editable; copy picture; save PNG / SVG | 8 | `modules/qr.py` |
+| [x] | Today: what you did today, earlier days with ‹ › | 8 | `ui/today.py` |
+| [x] | Usage: most used items, hotkeys and tools; uses per day | 8 | `ui/stats.py` |
+| [x] | Calendar page: Atlas events and tasks (from the stored sync) next to reminders *(phase 8; the Sync with Atlas button opens its Settings until phase 13)* | 8 | `ui/calendar_page.py` |
+| [ ] | Calendar: Atlas sync from the page, and notifications on the PC for events about to start and tasks due | 13 | `modules/atlas_sync.py` |
 
 ## Screen tools (phase 9)
 

@@ -26,9 +26,7 @@ impl SettingsUi {
             "general.quit" => self.quit_buttons(ui),
             "general.updates" => updates(ui, env),
             "general.toast_test" => self.toast_buttons(ui),
-            "reminders.items" => {
-                ui.add(hint("The reminders editor comes with the Reminders page.").px(12.5));
-            }
+            "reminders.items" => self.reminders_editor(ui, section, field, env),
             other => {
                 ui.add(hint(format!("(unsupported field {other})")).px(12.5));
             }

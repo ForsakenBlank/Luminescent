@@ -5,6 +5,7 @@ pub mod calculator;
 pub mod clip;
 pub mod edit;
 pub mod notes;
+pub mod reminders;
 pub mod timer;
 
 use egui::{Context, Id};

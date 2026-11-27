@@ -8,6 +8,7 @@ mod format;
 mod funcs;
 mod num;
 mod rates;
+pub mod reminder;
 pub mod timeparse;
 pub mod timer;
 

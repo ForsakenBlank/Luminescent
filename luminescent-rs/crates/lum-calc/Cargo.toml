@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 lum-core = { workspace = true }
+fancy-regex = { workspace = true }
 jiff = { workspace = true }
 num-bigint = { workspace = true }
 num-integer = { workspace = true }

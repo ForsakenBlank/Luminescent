@@ -36,8 +36,7 @@ pub const TRAY_ITEMS: &[(&str, &str)] = &[
     ("quit", "Quit"),
 ];
 
-/// The fields that have a widget on the page and are stored. Hidden ones are kept as they are, and the
-/// Reminders list waits for its editor (phase 8), so it is kept as it is too.
+/// The fields that have a widget on the page and are stored. Hidden ones are kept as they are.
 pub fn is_edited(section: &Section, field: &Field) -> bool {
     match field.kind {
         FieldType::Widget | FieldType::Hidden => false,
@@ -47,7 +46,10 @@ pub fn is_edited(section: &Section, field: &Field) -> bool {
 }
 
 pub fn has_editor(section: &str, field: &str) -> bool {
-    matches!((section, field), ("ui", "nav_order") | ("general", "start_panels" | "tray_items"))
+    matches!(
+        (section, field),
+        ("ui", "nav_order") | ("general", "start_panels" | "tray_items") | ("reminders", "items")
+    )
 }
 
 /// What a field is drawn as.

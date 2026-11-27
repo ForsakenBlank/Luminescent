@@ -78,6 +78,16 @@ pub enum Request {
     StatusChanged,
     /// A to-do item's due date changed: Reminders keeps its reminder in step.
     TodoReminder(lum_core::notes::TodoSync),
+    /// Add, replace, remove or switch off a reminder in the list in Settings.
+    ReminderEdit(lum_calc::reminder::Edit),
+    /// Switch to the theme with this id (a reminder that changes the theme at a set time).
+    ApplyTheme(String),
+    /// A desktop notification and nothing else: no card of ours, whatever the notification style is.
+    SystemNotice {
+        title: String,
+        text: String,
+        ms: u32,
+    },
 }
 
 type Wake = Arc<dyn Fn() + Send + Sync>;
@@ -204,6 +214,11 @@ pub trait UiModule: Module {
         Vec::new()
     }
 
+    /// Chips for the overlay's status strip, each an icon and a line ("⏰", "Fri 14:30  Stretch").
+    fn chips(&self) -> Vec<(String, String)> {
+        Vec::new()
+    }
+
     /// Rows the palette lists whatever is typed (a calculator pin).
     fn palette_entries(&self) -> Vec<Entry> {
         Vec::new()
@@ -216,6 +231,12 @@ pub trait UiModule: Module {
 
     /// Reminders only: sets or drops the reminder of a to-do item. `false` when this module is not Reminders.
     fn todo_reminder(&mut self, _sync: &lum_core::notes::TodoSync) -> bool {
+        false
+    }
+
+    /// Reminders only: goes off as a test (the Settings editor's "Test this reminder now"). `false` when this
+    /// module is not Reminders.
+    fn preview_reminder(&mut self, _rem: &serde_json::Value) -> bool {
         false
     }
 

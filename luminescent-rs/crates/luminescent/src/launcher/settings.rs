@@ -52,6 +52,11 @@ impl App {
         for key in out.turn_on {
             self.turn_module_on(&key);
         }
+        if let Some(rem) = out.preview_reminder {
+            self.host.each_running("testing a reminder", |m| {
+                m.preview_reminder(&rem);
+            });
+        }
         if let Some((title, text, values)) = out.toast_test {
             self.try_notification(&title, &text, &values);
         }

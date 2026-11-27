@@ -10,6 +10,7 @@ mod bars;
 mod custom;
 mod fields;
 pub mod model;
+mod reminders;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -48,6 +49,8 @@ pub struct Env<'a> {
     pub dashboard_keys: &'a dyn Fn() -> Vec<(String, String)>,
     /// The module behind a section, if it has one.
     pub module: &'a dyn Fn(&str) -> Option<ModuleInfo>,
+    /// The themes as (id, name), for a reminder that switches the theme.
+    pub themes: &'a dyn Fn() -> Vec<(String, String)>,
     pub version: &'a str,
     /// Today as `2026-11-27`, for the name of an exported backup.
     pub today: &'a str,
@@ -60,6 +63,8 @@ pub enum FileJob {
     Browse(String),
     BackupExport,
     BackupImport,
+    /// The sound file of the reminder with this id.
+    ReminderSound(String),
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +104,8 @@ pub struct Out {
     pub check_import: Option<PathBuf>,
     /// Replace the setup with this zip and restart.
     pub restore: Option<PathBuf>,
+    /// Go off as a test (the reminders editor's "Test this reminder now").
+    pub preview_reminder: Option<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -126,6 +133,7 @@ pub struct SettingsUi {
     query: String,
     current: usize,
     nav: NavState,
+    reminders: reminders::RemindersEditor,
     /// `section.key` of the hotkey field that is waiting for keys.
     recording: Option<String>,
     warnings: HashMap<String, String>,
@@ -169,6 +177,7 @@ impl SettingsUi {
             query: String::new(),
             current: 0,
             nav: NavState::from_value(&[]),
+            reminders: reminders::RemindersEditor::default(),
             recording: None,
             warnings: HashMap::new(),
             revision: 0,
@@ -283,6 +292,18 @@ impl SettingsUi {
         }
     }
 
+    fn set_reminder_sound(&mut self, id: &str, path: &std::path::Path) {
+        let mut items: Vec<Value> =
+            self.value("reminders", "items").and_then(Value::as_array).cloned().unwrap_or_default();
+        if let Some(rem) = items.iter_mut().find(|r| r.get("id").and_then(Value::as_str) == Some(id)) {
+            if !rem.get("actions").is_some_and(Value::is_object) {
+                rem["actions"] = Value::Object(Map::new());
+            }
+            rem["actions"]["sound_file"] = Value::String(path.display().to_string());
+            self.set_value("reminders", "items", Value::Array(items));
+        }
+    }
+
     pub fn backup_failed(&mut self, error: &str) {
         self.message("Backup", &format!("Import failed:\n{error}"));
     }
@@ -298,6 +319,7 @@ impl SettingsUi {
                     self.set_value(section, key, Value::String(text));
                 }
             }
+            FileJob::ReminderSound(id) => self.set_reminder_sound(id, &path),
             FileJob::BackupExport => out.export_to = Some(path),
             FileJob::BackupImport => out.check_import = Some(path),
         }

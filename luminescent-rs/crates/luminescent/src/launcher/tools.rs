@@ -70,7 +70,28 @@ impl App {
                 Request::Activity { kind, label, secs } => self.usage.activity(&kind, &label, secs, None),
                 Request::StatusChanged => self.refresh_tray(),
                 Request::TodoReminder(sync) => self.todo_reminder(&sync),
+                Request::ReminderEdit(edit) => self.edit_reminders(&edit),
+                Request::ApplyTheme(id) => self.apply_theme(&id),
+                Request::SystemNotice { title, text, ms } => {
+                    lum_platform::notify::show(&title, &text, ms, None)
+                }
             }
+        }
+    }
+
+    /// Another module changed the list of reminders: it is stored where Settings keeps it, and the Settings page
+    /// is told so its next save does not put the old list back.
+    fn edit_reminders(&mut self, edit: &lum_calc::reminder::Edit) {
+        let mut list = self
+            .settings
+            .get("reminders.items")
+            .and_then(serde_json::Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        lum_calc::reminder::apply_edit(&mut list, edit, jiff::ZonedDateTime::now().date());
+        self.settings.set("reminders.items", serde_json::Value::Array(list));
+        if let Err(e) = self.settings.save_quiet() {
+            tracing::warn!("could not save the reminders: {e}");
         }
     }
 

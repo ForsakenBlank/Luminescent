@@ -63,6 +63,7 @@ fn harness_with(state: State, size: [f32; 2], render: bool) -> Harness<'static, 
                 key_user: &key_user,
                 dashboard_keys: &key_list,
                 module: &info,
+                themes: &|| vec![("light".to_owned(), "Light".to_owned())],
                 version: "2.0.0-test",
                 today: "2026-11-27",
             };
@@ -420,6 +421,79 @@ fn the_backup_buttons_ask_for_files() {
     assert!(files[0].save && files[0].request.title == "Export backup");
 }
 
+fn reminders_on_disk(dir: &tempfile::TempDir) -> Vec<serde_json::Value> {
+    let written = std::fs::read_to_string(dir.path().join("settings.json")).unwrap();
+    let saved: serde_json::Value = serde_json::from_str(&written).unwrap();
+    saved["reminders"]["items"].as_array().cloned().unwrap_or_default()
+}
+
+#[test]
+fn the_reminders_editor_adds_duplicates_edits_and_deletes() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut h = harness(&dir, [1100.0, 900.0]);
+    open(&mut h, "reminders");
+    h.get_by_label("+ Add").click();
+    settle(&mut h);
+    h.get_by_role_and_label(egui::Role::TextInput, "Reminder title").focus();
+    h.run();
+    h.get_by_role_and_label(egui::Role::TextInput, "Reminder title").type_text(" today");
+    settle(&mut h);
+    h.get_by_label("Duplicate").click();
+    settle(&mut h);
+    h.get_by_label("Save & Apply").click();
+    h.run();
+    let items = reminders_on_disk(&dir);
+    assert_eq!(items.len(), 2);
+    assert!(items[0]["title"].as_str().unwrap().starts_with("New reminder"));
+    assert!(items[0]["title"].as_str().unwrap().ends_with("today"));
+    assert!(items[1]["title"].as_str().unwrap().ends_with("(copy)"));
+    assert_ne!(items[0]["id"], items[1]["id"]);
+    assert_eq!(items[0]["schedule"]["type"], "daily", "a new reminder is a daily one at 09:00");
+
+    // the profile bar has a Delete as well; the editor's is the one lower down
+    h.get_all_by_label("Delete").last().unwrap().click();
+    settle(&mut h);
+    h.get_by_label("Save & Apply").click();
+    h.run();
+    assert_eq!(reminders_on_disk(&dir).len(), 1);
+}
+
+#[test]
+fn editing_a_reminder_changes_only_what_was_edited_and_keeps_the_rest() {
+    let dir = tempfile::tempdir().unwrap();
+    let original = std::fs::read_to_string(format!(
+        "{}/../../fixtures/sample_home/settings.json",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    std::fs::write(dir.path().join("settings.json"), &original).unwrap();
+    let mut h = harness(&dir, [1100.0, 900.0]);
+    open(&mut h, "reminders");
+    let before = reminders_on_disk(&dir);
+    check(&h, "Enabled").click();
+    settle(&mut h);
+    h.get_by_label("Save & Apply").click();
+    h.run();
+    let after = reminders_on_disk(&dir);
+    assert_eq!(after.len(), before.len());
+    let mut expected = before[0].clone();
+    expected["enabled"] = serde_json::json!(!before[0]["enabled"].as_bool().unwrap());
+    assert_eq!(after[0], expected, "the schedule and actions are as they were");
+    assert_eq!(&after[1..], &before[1..]);
+}
+
+#[test]
+fn test_this_reminder_asks_the_app_to_fire_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut h = harness(&dir, [1100.0, 1500.0]);
+    open(&mut h, "reminders");
+    h.get_by_label("+ Add").click();
+    settle(&mut h);
+    h.get_by_label("\u{25b6} Test this reminder now").click();
+    h.run();
+    assert!(h.state().outs.iter().any(|o| o.preview_reminder.is_some()));
+}
+
 #[test]
 fn the_page_switcher_list_keeps_dashboard_and_settings() {
     let dir = tempfile::tempdir().unwrap();
@@ -549,4 +623,31 @@ fn a_small_box_in_dark() {
 #[test]
 fn a_small_box_in_light() {
     small_picture(Look::Light, "light");
+}
+
+fn reminders_picture(look: Look, name: &str) {
+    let dir = tempfile::tempdir().unwrap();
+    let sample = std::fs::read_to_string(format!(
+        "{}/../../fixtures/sample_home/settings.json",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    std::fs::write(dir.path().join("settings.json"), sample).unwrap();
+    let mut h = harness_with(state(dir.path(), look, Schema::get()), [1000.0, 1500.0], true);
+    h.state_mut().ui.open_section("reminders");
+    settle(&mut h);
+    if cfg!(target_os = "linux") {
+        let options = SnapshotOptions::new().threshold(1.5).max_failed_pixels(600);
+        h.snapshot_options(name, &options);
+    }
+}
+
+#[test]
+fn the_reminders_editor_with_a_weekly_reminder_dark() {
+    reminders_picture(Look::Dark, "settings_reminders_editor_dark");
+}
+
+#[test]
+fn the_reminders_editor_with_a_weekly_reminder_light() {
+    reminders_picture(Look::Light, "settings_reminders_editor_light");
 }

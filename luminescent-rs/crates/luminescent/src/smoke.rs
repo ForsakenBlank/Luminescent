@@ -404,7 +404,7 @@ fn dashboard(app: &mut App) -> Result<(), String> {
 /// The Calculator and the Timers drawn without windows: their panels opened by their actions, their pages on
 /// the overlay, and a sum in the palette.
 fn everyday_tools(app: &mut App) -> Result<(), String> {
-    for module in ["calculator", "timer", "notes"] {
+    for module in ["calculator", "timer", "notes", "reminders"] {
         if !app.host.is_running(module) {
             return Err(format!("{module} is not running"));
         }

@@ -30,6 +30,7 @@ ureq = { version = "3", default-features = false, features = ["rustls"] }
 clap = { version = "4", features = ["derive"] }
 crc32fast = "1"
 crossbeam-channel = "0.5"
+fancy-regex = "0.20"
 eframe = { version = "0.37", default-features = false, features = ["glow", "wayland", "x11", "default_fonts"] }
 egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"] }
 egui_kittest = { version = "0.37", features = ["snapshot", "wgpu"] }

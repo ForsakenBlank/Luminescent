@@ -185,6 +185,7 @@ fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
     vec![
         Box::new(lum_ui::tools::notes::NotesModule::new(services)),
         Box::new(lum_ui::tools::timer::TimerModule::new(services)),
+        Box::new(lum_ui::tools::reminders::RemindersModule::new(services)),
         Box::new(lum_ui::tools::calculator::CalculatorModule::new(services)),
     ]
 }
@@ -1381,6 +1382,7 @@ impl App {
             time: now.strftime("%H:%M").to_string(),
             date: now.strftime("%A %d %B").to_string().to_uppercase().replace(" 0", " "),
             hour: now.hour().clamp(0, 23) as u8,
+            status: self.host.running_refs().flat_map(|m| m.chips()).collect(),
             timers: self.status_lines().into_iter().take(6).map(|line| ("⏱".to_owned(), line)).collect(),
             ..Default::default()
         };
@@ -1396,6 +1398,8 @@ impl App {
             .into_iter()
             .filter_map(|key| Some((key, module_info(&self.host, &self.actions, key)?)))
             .collect();
+        let theme_names: Vec<(String, String)> =
+            self.themes.themes().iter().map(|t| (t.id().to_owned(), t.name().to_owned())).collect();
         let out = {
             let App {
                 overlay,
@@ -1419,10 +1423,12 @@ impl App {
                 let key_user = |combo: &str| other_key_user(dashboard_keys, hotkeys, combo);
                 let key_list = || dashboard_key_list(dashboard_keys);
                 let module = |key: &str| infos.get(key).cloned();
+                let theme_list = || theme_names.clone();
                 let settings_env = lum_ui::settings::Env {
                     key_user: &key_user,
                     dashboard_keys: &key_list,
                     module: &module,
+                    themes: &theme_list,
                     version: VERSION,
                     today: &today,
                 };
@@ -1463,6 +1469,8 @@ impl App {
                                 settings_result.check_import =
                                     page_out.check_import.or(settings_result.check_import.take());
                                 settings_result.restore = page_out.restore.or(settings_result.restore.take());
+                                settings_result.preview_reminder =
+                                    page_out.preview_reminder.or(settings_result.preview_reminder.take());
                                 PageFrame { busy: settings_ui.busy() }
                             }
                             other => {

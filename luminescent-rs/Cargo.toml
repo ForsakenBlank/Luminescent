@@ -14,12 +14,18 @@ lum-hypr = { path = "crates/lum-hypr" }
 lum-theme = { path = "crates/lum-theme" }
 lum-platform = { path = "crates/lum-platform" }
 lum-ui = { path = "crates/lum-ui" }
+lum-calc = { path = "crates/lum-calc" }
 
 anyhow = "1"
 base64 = "0.22"
 indexmap = { version = "2", features = ["serde"] }
 jiff = "1"
 nucleo-matcher = "0.3"
+num-bigint = "0.4"
+num-integer = "0.1"
+num-traits = "0.2"
+regex = "1"
+ureq = { version = "3", default-features = false, features = ["rustls"] }
 clap = { version = "4", features = ["derive"] }
 crc32fast = "1"
 crossbeam-channel = "0.5"

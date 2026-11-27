@@ -2388,6 +2388,8 @@ dependencies = [
  "egui",
  "egui_kittest",
  "image",
+ "jiff",
+ "lum-calc",
  "lum-core",
  "lum-platform",
  "lum-theme",

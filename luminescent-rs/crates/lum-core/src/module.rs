@@ -116,6 +116,16 @@ impl<M: ?Sized + Module> ModuleHost<M> {
         self.slot(key).map(|s| s.module.title())
     }
 
+    /// The modules that run now, to read from.
+    pub fn running_refs(&self) -> impl Iterator<Item = &M> {
+        self.slots.iter().filter(|s| s.running).map(|s| &*s.module)
+    }
+
+    /// The module behind `key`, while it runs (for drawing its page).
+    pub fn running_module(&mut self, key: &str) -> Option<&mut M> {
+        self.slots.iter_mut().find(|s| s.running && s.module.key() == key).map(|s| &mut *s.module)
+    }
+
     pub fn is_running(&self, key: &str) -> bool {
         self.slot(key).is_some_and(|s| s.running)
     }

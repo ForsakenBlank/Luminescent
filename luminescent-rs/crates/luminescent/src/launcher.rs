@@ -27,12 +27,13 @@ use lum_platform::keepawake::KeepAwake;
 use lum_platform::tray::{self, MenuItem, Tray, TrayEvent};
 use lum_theme::{ThemeEvent, ThemeStore};
 use lum_ui::overlay::{Config as OverlayConfig, MainOverlay, PageFrame, PageSlot};
-use lum_ui::{Tokens, UiModule};
+use lum_ui::{Services, Tokens, UiModule};
 use serde_json::json;
 use tokio::runtime::Runtime;
 
 mod dashboard;
 mod settings;
+mod tools;
 
 use crate::ctl::{self, CtlCommand};
 use crate::{idle, shell, smoke};
@@ -180,8 +181,8 @@ impl Passes {
 }
 
 /// The modules, in the order `modules/__init__.py` lists them. Each phase adds the ones it ports.
-fn modules() -> Vec<Box<dyn UiModule>> {
-    Vec::new()
+fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
+    vec![Box::new(lum_ui::tools::calculator::CalculatorModule::new(services))]
 }
 
 pub fn run(options: Options, started: Instant) -> anyhow::Result<u8> {
@@ -274,6 +275,10 @@ pub struct App {
     /// The pixels are drawn by the CPU, whose driver memory then shows up in ours.
     pub software_renderer: bool,
     notifier: AppNotifier,
+    /// How the everyday tools reach the app: what they ask for, and a way to wake the UI.
+    services: Services,
+    /// When the tray's tooltip is made again, while a timer runs.
+    tooltip_at: Option<Instant>,
     clock: Arc<dyn Clock>,
     start_guard: Option<Arc<StartGuard>>,
     runtime: Option<Runtime>,
@@ -360,12 +365,18 @@ impl App {
         let endpoint = CtlEndpoint::for_home(&paths);
         let waker = Waker::default();
         let mailbox = Mailbox { tx: messages_tx, waker: waker.clone() };
+        let services = {
+            let waker = waker.clone();
+            Services::new(paths.data.clone(), move || waker.wake())
+        };
         let mut app = App {
             usage: Usage::new(&paths, clock.clone()),
-            host: ModuleHost::new(modules()),
+            host: ModuleHost::new(modules(&services)),
             events: EventBus::new(),
             actions: ActionRegistry::new(),
             notifier: AppNotifier { waker: waker.clone(), ..AppNotifier::default() },
+            services,
+            tooltip_at: None,
             endpoint,
             ctl_requests,
             safe_mode,
@@ -512,6 +523,7 @@ impl App {
         self.register_hotkeys();
         self.register_theme_hotkeys();
         self.register_dashboard_hotkeys();
+        self.register_module_hotkeys();
         let mailbox = self.mailbox.clone();
         self.keep_awake =
             Some(KeepAwake::start(Arc::new(move |on, err| mailbox.send(AppMsg::KeepAwake(on, err)))));
@@ -678,6 +690,7 @@ impl App {
         if self.keep_awake.as_ref().is_some_and(KeepAwake::is_on) {
             lines.push("Keep awake is on".to_owned());
         }
+        lines.extend(self.status_lines());
         tray::tooltip_text(&lines)
     }
 
@@ -706,6 +719,9 @@ impl App {
         menu.push(MenuItem::Separator);
         if let Some(sub) = self.dashboard_tray_menu() {
             menu.push(sub);
+        }
+        if has("actions") {
+            menu.extend(self.module_tray_items());
         }
         if has("keepawake") {
             let combo = self.settings.get_str("general.keep_awake_hotkey").unwrap_or_default();
@@ -814,6 +830,7 @@ impl App {
             ));
         }
         out.extend(self.dashboard_palette_entries());
+        out.extend(self.module_palette_entries());
         let active = self.themes.active_id();
         for t in self.themes.themes() {
             let hint = if t.id() == active { "active" } else { "theme" };
@@ -851,6 +868,7 @@ impl App {
             "item" => self.run_dashboard_item(rest, None),
             "settings" => self.open_settings(rest),
             "lum" => self.run_luminescent(rest),
+            "calc" | "remind" => self.run_module_row(&entry.id),
             other => tracing::warn!("the palette has no way to run {other} entries yet"),
         }
     }
@@ -978,7 +996,7 @@ impl App {
                 self.settings_ui.reset_page();
             }
             "dashboard" => self.dashboard_repair(),
-            _ => {}
+            other => self.reset_module_page(other),
         }
         self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
     }
@@ -999,10 +1017,15 @@ impl App {
                 "restart" => self.restart_app(false),
                 "quit" => self.confirm_quit(),
                 "dash-edit" => self.open_overlay("dashboard"),
-                other => match other.strip_prefix("dash:") {
-                    Some(id) => self.run_dashboard_item(id, None),
-                    None => tracing::debug!("tray: {other}"),
-                },
+                other => {
+                    if let Some(id) = other.strip_prefix("dash:") {
+                        self.run_dashboard_item(id, None);
+                    } else if let Some(action) = other.strip_prefix("act:") {
+                        self.run_action(action);
+                    } else {
+                        tracing::debug!("tray: {other}");
+                    }
+                }
             },
         }
     }
@@ -1065,8 +1088,13 @@ impl App {
         }
         self.theme_events();
         self.dashboard_tick();
+        self.handle_requests();
         self.flush_if_due();
-        match (self.next_flush(), self.dash.deadline()) {
+        let next = match (self.next_flush(), self.dash.deadline()) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        };
+        match (next, self.tooltip_deadline()) {
             (Some(a), Some(b)) => Some(a.min(b)),
             (a, b) => a.or(b),
         }
@@ -1100,6 +1128,8 @@ impl App {
                     self.theme_key(&id);
                 } else if owner == "dashboard" {
                     self.run_dashboard_item(&id, None);
+                } else if self.host.keys().contains(&owner.as_str()) {
+                    self.module_hotkey(&owner, &id);
                 }
             }
             HotkeyEvent::Released { .. } => {
@@ -1117,6 +1147,12 @@ impl App {
                 } else if owner == "dashboard" {
                     self.notifier.notify(
                         "Dashboard hotkeys",
+                        &format!("{}: {reason}", hotkeys::pretty(&combo, hotkeys::Os::current())),
+                        4000,
+                    );
+                } else if let Some(title) = self.host.title(&owner) {
+                    self.notifier.notify(
+                        title,
                         &format!("{}: {reason}", hotkeys::pretty(&combo, hotkeys::Os::current())),
                         4000,
                     );
@@ -1232,8 +1268,9 @@ impl App {
         }
         self.show_messages(ctx);
         if self.palette.is_open() {
-            // sums and quick reminders join in phase 8, with the calculator and reminders
-            if let Some(entry) = self.palette.show(ctx, &|_| Vec::new()) {
+            let host = &self.host;
+            let live = |text: &str| host.running_refs().flat_map(|m| m.palette_live(text)).collect();
+            if let Some(entry) = self.palette.show(ctx, &live) {
                 self.run_palette_entry(&entry);
             }
         }
@@ -1340,6 +1377,7 @@ impl App {
             time: now.strftime("%H:%M").to_string(),
             date: now.strftime("%A %d %B").to_string().to_uppercase().replace(" 0", " "),
             hour: now.hour().clamp(0, 23) as u8,
+            timers: self.status_lines().into_iter().take(6).map(|line| ("⏱".to_owned(), line)).collect(),
             ..Default::default()
         };
         let mut themes_out = lum_ui::themes::Out::default();
@@ -1347,6 +1385,13 @@ impl App {
         let tools = self.tool_sources();
         let (snap, tidy_style, tidy_order, show_icons) = self.dashboard_env_values();
         let today = now.strftime("%Y-%m-%d").to_string();
+        // a module's page needs the module for itself, so what Settings shows about modules is made first
+        let infos: std::collections::HashMap<&str, lum_ui::settings::ModuleInfo> = self
+            .host
+            .keys()
+            .into_iter()
+            .filter_map(|key| Some((key, module_info(&self.host, &self.actions, key)?)))
+            .collect();
         let out = {
             let App {
                 overlay,
@@ -1361,7 +1406,6 @@ impl App {
                 dashboard_keys,
                 dash,
                 host,
-                actions,
                 safe_mode,
                 ..
             } = self;
@@ -1370,7 +1414,7 @@ impl App {
                 let key_owner = |combo: &str| hotkeys.owner_of(combo).map(str::to_owned);
                 let key_user = |combo: &str| other_key_user(dashboard_keys, hotkeys, combo);
                 let key_list = || dashboard_key_list(dashboard_keys);
-                let module = |key: &str| module_info(host, actions, key);
+                let module = |key: &str| infos.get(key).cloned();
                 let settings_env = lum_ui::settings::Env {
                     key_user: &key_user,
                     dashboard_keys: &key_list,
@@ -1418,8 +1462,20 @@ impl App {
                                 PageFrame { busy: settings_ui.busy() }
                             }
                             other => {
-                                lum_ui::overlay::pages::placeholder(ui, other);
-                                PageFrame::default()
+                                let owner = host
+                                    .running_refs()
+                                    .find(|m| m.page_key() == Some(other))
+                                    .map(|m| m.key());
+                                match owner.and_then(|key| host.running_module(key)) {
+                                    Some(module) => {
+                                        let mut cx = lum_ui::UiCx::new(ctx, settings);
+                                        module.page(ui, rect, &mut cx)
+                                    }
+                                    None => {
+                                        lum_ui::overlay::pages::placeholder(ui, other);
+                                        PageFrame::default()
+                                    }
+                                }
                             }
                         }
                     };

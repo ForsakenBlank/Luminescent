@@ -103,6 +103,7 @@ impl App {
         self.register_hotkeys();
         self.register_dashboard_hotkeys();
         self.with_modules(|host, cx, actions| host.apply_changed(cx, actions, changed));
+        self.register_module_hotkeys();
         self.refresh_tray();
         self.sync_autostart();
         self.restyle();
@@ -131,6 +132,7 @@ impl App {
             tracing::warn!("could not store that {key} is on: {e}");
         }
         self.with_modules(|host, cx, actions| host.apply_changed(cx, actions, &[]));
+        self.register_module_hotkeys();
         self.refresh_tray();
         self.waker.wake();
     }

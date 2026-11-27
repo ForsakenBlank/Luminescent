@@ -2,6 +2,7 @@
 
 use egui::{Color32, Response, Sense, Stroke, StrokeKind, Ui, Vec2, Widget, vec2};
 
+use super::icons::IconShape;
 use crate::fonts::Weight;
 use crate::paint;
 use crate::theme::{DANGER, Role, Tokens, alpha};
@@ -195,11 +196,24 @@ pub struct IconButton {
     font_px: f32,
     ghost: bool,
     tooltip: Option<String>,
+    shape: Option<IconShape>,
 }
 
 impl IconButton {
     pub fn new(glyph: impl Into<String>) -> IconButton {
-        IconButton { glyph: glyph.into(), size: 26.0, font_px: 13.0, ghost: false, tooltip: None }
+        IconButton {
+            glyph: glyph.into(),
+            size: 26.0,
+            font_px: 13.0,
+            ghost: false,
+            tooltip: None,
+            shape: None,
+        }
+    }
+
+    /// A button with a drawn icon, for the glyphs no font has. Give it a tooltip: that is its name.
+    pub fn shape(shape: IconShape) -> IconButton {
+        IconButton { shape: Some(shape), ..IconButton::new("") }
     }
 
     /// The ✕ in panel and dialog headers.
@@ -243,8 +257,12 @@ impl Widget for IconButton {
                 response.is_pointer_button_down_on(),
             );
             paint_body(ui, rect, self.size / 2.0, fill, border, &tokens);
-            let font = tokens.font(self.font_px, Weight::Regular, false);
-            ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, &self.glyph, font, text);
+            if let Some(shape) = self.shape {
+                shape.paint(ui.painter(), rect, text);
+            } else {
+                let font = tokens.font(self.font_px, Weight::Regular, false);
+                ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, &self.glyph, font, text);
+            }
         }
         if response.hovered() && ui.is_enabled() {
             ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);

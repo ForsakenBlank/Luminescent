@@ -188,6 +188,7 @@ fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
         Box::new(lum_ui::tools::timer::TimerModule::new(services)),
         Box::new(lum_ui::tools::reminders::RemindersModule::new(services)),
         Box::new(lum_ui::tools::calculator::CalculatorModule::new(services)),
+        Box::new(lum_ui::tools::qr::QrModule::new(services)),
     ]
 }
 

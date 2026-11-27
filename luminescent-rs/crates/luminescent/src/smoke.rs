@@ -404,12 +404,14 @@ fn dashboard(app: &mut App) -> Result<(), String> {
 /// The Snippets, Calculator, Timers, Notes and Reminders drawn without windows: their panels opened by their actions, their pages on
 /// the overlay, and a sum in the palette.
 fn everyday_tools(app: &mut App) -> Result<(), String> {
-    for module in ["snippets", "calculator", "timer", "notes", "reminders"] {
+    for module in ["snippets", "calculator", "timer", "notes", "reminders", "qr"] {
         if !app.host.is_running(module) {
             return Err(format!("{module} is not running"));
         }
     }
-    for action in ["snippets:open", "calculator:toggle", "timer:new_stopwatch", "notes:toggle"] {
+    for action in
+        ["snippets:open", "calculator:toggle", "timer:new_stopwatch", "notes:toggle", "qr:clipboard"]
+    {
         let answer = app.run_action(action);
         if answer != "ok" {
             return Err(format!("{action}: {answer}"));

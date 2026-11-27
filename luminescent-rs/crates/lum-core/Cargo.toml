@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 jiff.workspace = true
+qrcode.workspace = true
 crossbeam-channel.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -18,6 +19,7 @@ uuid.workspace = true
 zip.workspace = true
 
 [dev-dependencies]
+rqrr.workspace = true
 lum-fixtures.workspace = true
 tempfile.workspace = true
 

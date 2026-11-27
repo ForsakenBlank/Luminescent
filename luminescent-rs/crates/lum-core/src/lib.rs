@@ -12,6 +12,7 @@ pub mod module;
 pub mod notes;
 pub mod paths;
 pub mod pyjson;
+pub mod qr;
 pub mod settings;
 pub mod snippets;
 pub mod store;

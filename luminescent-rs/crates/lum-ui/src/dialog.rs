@@ -15,8 +15,10 @@ use crate::fonts::Weight;
 use crate::paint;
 use crate::text::{Text, caps};
 use crate::theme::{DANGER, Role, Tokens, alpha};
+use crate::widgets::Combo;
 use crate::widgets::button::{Button, IconButton, Variant};
 use crate::widgets::input::TextInput;
+use crate::widgets::when::{self, WhenState};
 
 /// The round badge left of the message, as `_AskDialog.GLYPHS`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -143,6 +145,10 @@ pub struct AskDialog {
     buttons: Vec<DialogButton>,
     /// The text box of `ask_text`, with what is typed in it.
     input: Option<String>,
+    /// The drop-down of `ask_choice`: the entries and the one picked.
+    choice: Option<(Vec<String>, usize)>,
+    /// The picker of `ask_datetime`.
+    when: Option<WhenState>,
     focused: bool,
 }
 
@@ -155,6 +161,8 @@ impl AskDialog {
             icon,
             buttons: Vec::new(),
             input: None,
+            choice: None,
+            when: None,
             focused: false,
         }
     }
@@ -204,8 +212,36 @@ impl AskDialog {
         dialog
     }
 
+    /// A drop-down with Cancel and OK (`ask_choice`).
+    pub fn ask_choice(id: Id, title: &str, label: &str, options: &[&str]) -> AskDialog {
+        let mut dialog = AskDialog::new(id, title, label, Icon::None)
+            .button("Cancel", Variant::Ghost, false, false)
+            .button("OK", Variant::Primary, true, true);
+        dialog.choice = Some((options.iter().map(|o| (*o).to_owned()).collect(), 0));
+        dialog
+    }
+
+    /// A date and time to pick, starting at `at` (`ask_datetime`).
+    pub fn ask_datetime(id: Id, title: &str, label: &str, at: jiff::civil::DateTime) -> AskDialog {
+        let mut dialog = AskDialog::new(id, title, label, Icon::None)
+            .button("Cancel", Variant::Ghost, false, false)
+            .button("OK", Variant::Primary, true, true);
+        dialog.when = Some(WhenState::new(at));
+        dialog
+    }
+
     pub fn id(&self) -> Id {
         self.id
+    }
+
+    /// The entry picked in an `ask_choice` dialog.
+    pub fn chosen(&self) -> &str {
+        self.choice.as_ref().and_then(|(options, at)| options.get(*at)).map_or("", String::as_str)
+    }
+
+    /// The moment picked in an `ask_datetime` dialog.
+    pub fn when(&self) -> Option<jiff::civil::DateTime> {
+        self.when.as_ref().map(WhenState::value)
     }
 
     /// What is typed in an `ask_text` dialog.
@@ -260,6 +296,12 @@ impl AskDialog {
             } else {
                 ui.input(|i| i.key_pressed(Key::Enter))
             };
+            if let Some((options, selected)) = self.choice.as_mut() {
+                ui.add(Combo::new(self.id.with("choice"), selected, options).width(width - 32.0));
+            }
+            if let Some(when) = self.when.as_mut() {
+                when::show(ui, when, jiff::ZonedDateTime::now().date());
+            }
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -298,6 +340,16 @@ mod tests {
         let d = AskDialog::choose(Id::unique("c"), "Paste", "How?", &["Text", "Image"], "Cancel");
         assert_eq!(d.buttons.last().map(|b| (b.label.as_str(), b.default)), Some(("Image", true)));
         assert_eq!(AskDialog::ask_text(Id::unique("a"), "Rename", "Name", "Notes").text(), "Notes");
+    }
+
+    #[test]
+    fn a_choice_starts_on_its_first_entry_and_a_date_dialog_on_the_given_moment() {
+        let d = AskDialog::ask_choice(Id::unique("t"), "Type", "Choose type:", &["note", "todo"]);
+        assert_eq!(d.chosen(), "note");
+        let at: jiff::civil::DateTime = "2026-11-24T09:00".parse().expect("a date and time");
+        let d = AskDialog::ask_datetime(Id::unique("d"), "Due date", "When?", at);
+        assert_eq!(d.when(), Some(at));
+        assert_eq!(AskDialog::ask_text(Id::unique("a"), "Rename", "Name", "x").when(), None);
     }
 
     #[test]

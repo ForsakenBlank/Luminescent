@@ -9,8 +9,8 @@ use std::cell::Cell;
 
 use egui::viewport::ResizeDirection;
 use egui::{
-    Align, Area, Context, CornerRadius, CursorIcon, Id, Key, Layout, Order, Pos2, Rect, Sense, Stroke,
-    StrokeKind, Ui, UiBuilder, Vec2, ViewportBuilder, ViewportCommand, ViewportId, pos2, vec2,
+    Align, Area, Color32, Context, CornerRadius, CursorIcon, Id, Key, Layout, Order, Pos2, Rect, Sense,
+    Stroke, StrokeKind, Ui, UiBuilder, Vec2, ViewportBuilder, ViewportCommand, ViewportId, pos2, vec2,
 };
 use lum_platform::desktop::{APP_ID, marker};
 
@@ -48,6 +48,8 @@ pub struct PanelResponse {
     pub escape: bool,
     /// It was moved or resized; save its geometry.
     pub geometry_changed: bool,
+    /// The back button left of the title was clicked.
+    pub back: bool,
 }
 
 /// The edges a panel can be resized from, and the strip each one listens on.
@@ -133,6 +135,10 @@ pub struct FloatingPanel {
     /// (a timer finishing) do not.
     activate_on_show: bool,
     header_height: f32,
+    /// The tooltip of a back arrow left of the title, when the panel has one (Notes, inside a note).
+    back: Option<String>,
+    /// The colour and length of the line under the header's left end (the theme's accent and 40 px by default).
+    accent: Option<(Color32, f32)>,
     open: bool,
     closing: bool,
     /// Opened since the last frame: its fades start over.
@@ -144,6 +150,7 @@ pub struct FloatingPanel {
 /// What a frame of the panel needs from outside its own state.
 struct Drawn {
     close: bool,
+    back: bool,
     escape: bool,
     drag: Option<Vec2>,
     drag_started: bool,
@@ -164,6 +171,8 @@ impl FloatingPanel {
             edit_mode: false,
             activate_on_show: true,
             header_height: 38.0,
+            back: None,
+            accent: None,
             open: false,
             closing: false,
             fresh: false,
@@ -189,6 +198,25 @@ impl FloatingPanel {
     pub fn activate_on_show(mut self, activate: bool) -> FloatingPanel {
         self.activate_on_show = activate;
         self
+    }
+
+    pub fn set_min_size(&mut self, size: Vec2) {
+        self.min_size = size;
+    }
+
+    pub fn header_height(mut self, height: f32) -> FloatingPanel {
+        self.header_height = height;
+        self
+    }
+
+    /// Shows or hides the back arrow left of the title.
+    pub fn set_back(&mut self, tooltip: Option<&str>) {
+        self.back = tooltip.map(str::to_owned);
+    }
+
+    /// Colours the tick under the header (a note's own colour on its sticky).
+    pub fn set_accent(&mut self, accent: Option<(Color32, f32)>) {
+        self.accent = accent;
     }
 
     pub fn id(&self) -> Id {
@@ -297,6 +325,7 @@ impl FloatingPanel {
         };
         let Some(drawn) = drawn else { return response };
         response.escape = drawn.escape;
+        response.back = drawn.back;
         if drawn.close {
             response.closed = true;
             self.close();
@@ -434,14 +463,16 @@ impl FloatingPanel {
         };
         painter.rect_filled(header_rect.shrink(0.5), top, p.bg_header);
         painter.hline(header_rect.x_range(), header_rect.max.y - 0.5, Stroke::new(1.0, p.border));
+        let (tick, tick_width) = self.accent.unwrap_or((p.primary, 40.0));
         painter.rect_filled(
-            Rect::from_min_size(pos2(header_rect.min.x, header_rect.max.y - 1.0), vec2(40.0, 1.0)),
+            Rect::from_min_size(pos2(header_rect.min.x, header_rect.max.y - 1.0), vec2(tick_width, 1.0)),
             0.0,
-            p.primary,
+            tick,
         );
         painter.rect_stroke(panel, radius, Stroke::new(border_width, border), StrokeKind::Inside);
 
-        let mut drawn = Drawn { close: false, escape: false, drag: None, drag_started: false, resize: None };
+        let mut drawn =
+            Drawn { close: false, back: false, escape: false, drag: None, drag_started: false, resize: None };
         // dragging by the header comes first, so the header's buttons (added after) sit on top of it
         if self.can_move() {
             let drag = ui.interact(header_rect, self.id.with("drag"), Sense::click_and_drag());
@@ -459,6 +490,13 @@ impl FloatingPanel {
                 .layout(Layout::left_to_right(Align::Center)),
         );
         header_ui.spacing_mut().item_spacing.x = 8.0;
+        if let Some(tip) = &self.back
+            && header_ui
+                .add(IconButton::new("←").size(24.0).font_px(13.0).ghost().tooltip(tip.clone()))
+                .clicked()
+        {
+            drawn.back = true;
+        }
         header_ui.add(caps(&self.title));
         if !self.subtitle.is_empty() {
             header_ui.add(

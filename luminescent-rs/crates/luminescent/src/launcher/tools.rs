@@ -69,7 +69,22 @@ impl App {
                 Request::Usage { kind, key, label } => self.usage.record(&kind, &key, &label),
                 Request::Activity { kind, label, secs } => self.usage.activity(&kind, &label, secs, None),
                 Request::StatusChanged => self.refresh_tray(),
+                Request::TodoReminder(sync) => self.todo_reminder(&sync),
             }
+        }
+    }
+
+    /// A to-do item's due date changed: Reminders keeps its reminder in step. With Reminders off there is
+    /// nobody to remind, which is said once, when a date that would have reminded is set.
+    fn todo_reminder(&mut self, sync: &lum_core::notes::TodoSync) {
+        let mut handled = false;
+        self.host.each_running("setting a to-do reminder", |m| handled |= m.todo_reminder(sync));
+        if !handled && matches!(sync, lum_core::notes::TodoSync::Set { .. }) {
+            self.notifier.notify(
+                "Notes",
+                "Reminders is turned off, so this due date will not remind you.",
+                4000,
+            );
         }
     }
 

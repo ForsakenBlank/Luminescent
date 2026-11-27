@@ -21,6 +21,7 @@ base64 = "0.22"
 indexmap = { version = "2", features = ["serde"] }
 jiff = "1"
 nucleo-matcher = "0.3"
+pulldown-cmark = { version = "0.13", default-features = false }
 num-bigint = "0.4"
 num-integer = "0.1"
 num-traits = "0.2"

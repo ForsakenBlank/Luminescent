@@ -15,6 +15,7 @@ lum-core.workspace = true
 lum-platform.workspace = true
 lum-theme.workspace = true
 nucleo-matcher.workspace = true
+pulldown-cmark.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 

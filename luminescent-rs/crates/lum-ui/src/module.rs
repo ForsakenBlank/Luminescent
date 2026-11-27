@@ -76,6 +76,8 @@ pub enum Request {
     },
     /// The tray's tooltip (running timers) and the chips on the overlay need drawing again.
     StatusChanged,
+    /// A to-do item's due date changed: Reminders keeps its reminder in step.
+    TodoReminder(lum_core::notes::TodoSync),
 }
 
 type Wake = Arc<dyn Fn() + Send + Sync>;
@@ -210,6 +212,11 @@ pub trait UiModule: Module {
     /// Rows that depend on what is typed (a sum, "remind me in 20m").
     fn palette_live(&self, _text: &str) -> Vec<Entry> {
         Vec::new()
+    }
+
+    /// Reminders only: sets or drops the reminder of a to-do item. `false` when this module is not Reminders.
+    fn todo_reminder(&mut self, _sync: &lum_core::notes::TodoSync) -> bool {
+        false
     }
 
     /// Runs a row this module made. `false` when the id is not one of its own.

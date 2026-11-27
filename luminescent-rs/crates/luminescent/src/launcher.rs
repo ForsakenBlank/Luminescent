@@ -183,6 +183,7 @@ impl Passes {
 /// The modules, in the order `modules/__init__.py` lists them. Each phase adds the ones it ports.
 fn modules(services: &Services) -> Vec<Box<dyn UiModule>> {
     vec![
+        Box::new(lum_ui::tools::notes::NotesModule::new(services)),
         Box::new(lum_ui::tools::timer::TimerModule::new(services)),
         Box::new(lum_ui::tools::calculator::CalculatorModule::new(services)),
     ]
@@ -871,7 +872,7 @@ impl App {
             "item" => self.run_dashboard_item(rest, None),
             "settings" => self.open_settings(rest),
             "lum" => self.run_luminescent(rest),
-            "calc" | "remind" => self.run_module_row(&entry.id),
+            "calc" | "remind" | "note" => self.run_module_row(&entry.id),
             other => tracing::warn!("the palette has no way to run {other} entries yet"),
         }
     }

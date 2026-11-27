@@ -28,7 +28,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("themes window, editor and colour dialog", themes_window),
     ("dashboard: boxes, items, palette, tray and running", dashboard),
     ("settings page: every section, save and apply", settings_page),
-    ("calculator and timers: panels, pages, palette", everyday_tools),
+    ("everyday tools: panels, pages, palette", everyday_tools),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -404,12 +404,12 @@ fn dashboard(app: &mut App) -> Result<(), String> {
 /// The Calculator and the Timers drawn without windows: their panels opened by their actions, their pages on
 /// the overlay, and a sum in the palette.
 fn everyday_tools(app: &mut App) -> Result<(), String> {
-    for module in ["calculator", "timer"] {
+    for module in ["calculator", "timer", "notes"] {
         if !app.host.is_running(module) {
             return Err(format!("{module} is not running"));
         }
     }
-    for action in ["calculator:toggle", "timer:new_stopwatch"] {
+    for action in ["calculator:toggle", "timer:new_stopwatch", "notes:toggle"] {
         let answer = app.run_action(action);
         if answer != "ok" {
             return Err(format!("{action}: {answer}"));
@@ -427,7 +427,7 @@ fn everyday_tools(app: &mut App) -> Result<(), String> {
     if painted(app) == 0 {
         return Err("the panels drew nothing".into());
     }
-    for page in ["calculator", "timers"] {
+    for page in ["calculator", "timers", "notes"] {
         app.open_overlay(page);
         if painted(app) == 0 {
             return Err(format!("the {page} page drew nothing"));
@@ -438,6 +438,9 @@ fn everyday_tools(app: &mut App) -> Result<(), String> {
     let live = app.host.running_refs().flat_map(|m| m.palette_live("2+3*4")).collect::<Vec<_>>();
     if !live.iter().any(|e| e.label == "= 14") {
         return Err("a sum typed into the palette gets no answer".into());
+    }
+    if !app.host.running_refs().flat_map(|m| m.palette_entries()).any(|e| e.id.starts_with("note:")) {
+        return Err("the palette lists no notes".into());
     }
     Ok(())
 }

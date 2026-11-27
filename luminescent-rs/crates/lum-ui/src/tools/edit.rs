@@ -3,6 +3,7 @@
 
 use egui::{Context, Id, Rect, pos2, vec2};
 
+use crate::panel::Geometry;
 use crate::widgets::{Anchor, anchor_bar};
 
 const SIZE: egui::Vec2 = vec2(420.0, 44.0);
@@ -47,6 +48,22 @@ pub fn cursor_screen_rect() -> Option<Rect> {
     Some(screens[at].rect)
 }
 
+/// Brings a panel that is off every screen back onto the one it is nearest to (a monitor was unplugged since it
+/// was saved). One that is mostly on a screen stays where it is, but never hangs over an edge.
+pub fn keep_on_screen(g: Geometry, screens: &[Rect]) -> Geometry {
+    let centre = pos2(g.x + g.w / 2.0, g.y + g.h / 2.0);
+    let nearest = screens.iter().min_by(|a, b| {
+        let distance = |r: &&Rect| r.center().distance(centre);
+        let by_contact = (!a.contains(centre)).cmp(&(!b.contains(centre)));
+        by_contact.then(distance(a).total_cmp(&distance(b)))
+    });
+    let Some(screen) = nearest else { return g };
+    let (w, h) = (g.w.min(screen.width()), g.h.min(screen.height()));
+    let x = g.x.min(screen.max.x - w).max(screen.min.x);
+    let y = g.y.min(screen.max.y - h).max(screen.min.y);
+    Geometry { x, y, w, h }
+}
+
 /// Where each of `sizes` goes when snapped to `anchor`: stacked so they do not sit on top of each other.
 pub fn snap_all(anchor: Anchor, sizes: &[egui::Vec2], padding: f32, screen: Rect) -> Vec<egui::Pos2> {
     let key = anchor.key().as_bytes();
@@ -69,6 +86,20 @@ pub fn snap_all(anchor: Anchor, sizes: &[egui::Vec2], padding: f32, screen: Rect
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_panel_off_every_screen_comes_back_onto_the_nearest() {
+        let screens = [
+            Rect::from_min_size(pos2(0.0, 0.0), vec2(1000.0, 800.0)),
+            Rect::from_min_size(pos2(1000.0, 0.0), vec2(1000.0, 800.0)),
+        ];
+        let g = |x, y, w, h| Geometry { x, y, w, h };
+        assert_eq!(keep_on_screen(g(100.0, 100.0, 300.0, 200.0), &screens), g(100.0, 100.0, 300.0, 200.0));
+        assert_eq!(keep_on_screen(g(2500.0, 100.0, 300.0, 200.0), &screens), g(1700.0, 100.0, 300.0, 200.0));
+        assert_eq!(keep_on_screen(g(700.0, 700.0, 300.0, 200.0), &screens), g(700.0, 600.0, 300.0, 200.0));
+        assert_eq!(keep_on_screen(g(5.0, 5.0, 3000.0, 100.0), &screens[..1]), g(0.0, 5.0, 1000.0, 100.0));
+        assert_eq!(keep_on_screen(g(5.0, 5.0, 50.0, 50.0), &[]), g(5.0, 5.0, 50.0, 50.0));
+    }
 
     #[test]
     fn snapped_panels_stack_away_from_the_edge_they_hug() {

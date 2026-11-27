@@ -1000,9 +1000,9 @@ What phases 3 to 7 left for you:
   or key recording has the keyboard. A page that panics comes back as `Out::repair`: reset its state in
   `UiModule::reset_page`. File dialogs go out through the page's `Out` and come back as an `AppMsg` (see
   `AppMsg::SettingsFile`); slow work runs on a thread or the tokio runtime and reports back through the module's `Inbox`.
-- The reminders editor goes into the `Slot` of `reminders.items` (`settings/custom.rs`, `custom_control`; the field is
-  not edited by the page until you give it an editor: `model::is_edited` / `has_editor`). Settings a module reads each
-  frame show at once; after Save the app calls `settings_saved`.
+- A custom Settings field gets its editor in `settings/custom.rs` (`custom_control`) and `model::has_editor`; the reminders
+  editor (`settings/reminders.rs`) is the example. Settings a module reads each frame show at once; after Save the app calls
+  `settings_saved`.
 - The hotkey recorder is in the kit: `HotkeyField`, `recorded_key`, `combo_of`; `Out.suspend_keys` pauses the hotkeys.
 
 What phase 8 so far (calculator, timers, Notes, Reminders) left for you, read `lum_ui::module` and `lum_ui::tools` first:

@@ -172,16 +172,16 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Notes and to-do lists in a floating panel; show / hide and edit mode hotkeys | 8 | `modules/notes.py` |
-| [ ] | Markdown with 👁 preview | 8 | `modules/notes.py` |
-| [ ] | Colours and tags; search by name, content and `#tag` | 8 | `modules/notes.py` |
-| [ ] | Drag notes and to-do items to reorder | 8 | `modules/notes.py` |
-| [ ] | Due dates on to-do items become reminders | 8 | `modules/notes.py` |
-| [ ] | Export .md / .txt | 8 | `modules/notes.py` |
-| [ ] | Stick on the screen (several sticky notes) | 8 | `modules/notes.py` |
-| [ ] | Pin notes; the first pinned note opens on show (setting) | 8 | `modules/notes.py` |
-| [ ] | Undo for 12 s after deleting (asks first from a sticky with the panel closed) | 8 | `modules/notes.py` |
-| [ ] | Notes page and dashboard box | 8 | `modules/notes.py` |
+| [x] | Notes and to-do lists in a floating panel; show / hide and edit mode hotkeys | 8 | `modules/notes.py` |
+| [x] | Markdown with 👁 preview | 8 | `modules/notes.py` |
+| [x] | Colours and tags; search by name, content and `#tag` | 8 | `modules/notes.py` |
+| [x] | Drag notes and to-do items to reorder | 8 | `modules/notes.py` |
+| [x] | Due dates on to-do items become reminders | 8 | `modules/notes.py` |
+| [x] | Export .md / .txt | 8 | `modules/notes.py` |
+| [x] | Stick on the screen (several sticky notes) | 8 | `modules/notes.py` |
+| [x] | Pin notes; the first pinned note opens on show (setting) | 8 | `modules/notes.py` |
+| [x] | Undo for 12 s after deleting (asks first from a sticky with the panel closed) | 8 | `modules/notes.py` |
+| [x] | Notes page and dashboard box | 8 | `modules/notes.py` |
 
 ## Timers (phase 8)
 
@@ -211,11 +211,11 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Once, daily, weekly, monthly (31st = last day), every N days, interval (optionally between hours), at startup | 8 | `modules/reminders.py` |
-| [ ] | Reminder pop-up: Snooze 5 min to 1 h, Done, ✕, running-out line, rises into place | 8 | `modules/reminders.py` |
-| [ ] | Sounds, desktop notification, Switch theme action | 8 | `modules/reminders.py` |
-| [ ] | Quick reminders from the palette (`remind me in 20m to stretch`, `at 17:30 call mum`) | 5, 8 | `ui/palette.py` |
-| [ ] | Reminders editor in Settings (the slot is there, phase 7); runtime state kept apart from settings | 7, 8 | `modules/reminders.py` |
+| [x] | Once, daily, weekly, monthly (31st = last day), every N days, interval (optionally between hours), at startup | 8 | `modules/reminders.py` |
+| [x] | Reminder pop-up: Snooze 5 min to 1 h, Done, ✕, running-out line, rises into place | 8 | `modules/reminders.py` |
+| [x] | Sounds, desktop notification, Switch theme action | 8 | `modules/reminders.py` |
+| [x] | Quick reminders from the palette (`remind me in 20m to stretch`, `at 17:30 call mum`) | 5, 8 | `ui/palette.py` |
+| [x] | Reminders editor in Settings (the slot is there, phase 7); runtime state kept apart from settings | 7, 8 | `modules/reminders.py` |
 
 ## Other everyday pages (phase 8)
 

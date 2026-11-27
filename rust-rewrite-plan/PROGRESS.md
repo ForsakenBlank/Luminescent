@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 49.5 %   [##########..........]   Current phase: Phase 8 at 25 % (calculator and timers built; next is Notes) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks are unconfirmed)
+Overall: 53.2 %   [##########..........]   Current phase: Phase 8 at 62 % (calculator, timers, Notes and Reminders built; next is Clipboard) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks are unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -22,7 +22,7 @@ Overall: 49.5 %   [##########..........]   Current phase: Phase 8 at 25 % (calcu
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % (100 % built, waiting on the Looks right check) | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 75 % (100 % built, waiting on the Dashboard check) | in progress |
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
-| 8 | Everyday tools | 10 % | 47 % | 57 % | 25 % (calculator and timers) | in progress |
+| 8 | Everyday tools | 10 % | 47 % | 57 % | 62 % (calculator, timers, Notes, Reminders) | in progress |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 0 % | not started |
 | 10 | Automation | 9 % | 62 % | 71 % | 0 % | not started |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
@@ -92,8 +92,8 @@ Overall: 49.5 %   [##########..........]   Current phase: Phase 8 at 25 % (calcu
 
 ### Phase 8: Everyday tools
 - [x] 25 %: lum-calc with all fixtures, Calculator panel and page, Timers with restore
-- [ ] 50 %: Notes complete
-- [ ] 75 %: Reminders complete, Clipboard page and Ctrl+B pop-up
+- [x] 50 %: Notes complete
+- [ ] 75 %: Reminders complete (done), Clipboard page and Ctrl+B pop-up (next)
 - [ ] 100 %: QR, Today, Usage, Calendar, page boxes, Daily-drivable alpha confirmed
 
 ### Phase 9: Screen tools
@@ -142,6 +142,71 @@ Overall: 49.5 %   [##########..........]   Current phase: Phase 8 at 25 % (calcu
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-27, Phase 8 at 62 %: Notes and Reminders (overall 53.2 %)
+
+Branch `ccr-a4cc2d9e-xg3o3z`. The session first merged `origin/ccr-f1a7eeae-uxz8sm` (phases 3 to 8 at 25 %) into `main` by
+fast-forward and pushed it, as asked, so `main` now has everything up to the Calculator and Timers. **This branch has Notes and
+Reminders on top of that; merge it into `main` before the next session.** The Hello tray, Looks right, Dashboard and Settings
+checks are still on the waiting list; nothing asked for them again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, every test under Xvfb with snapshots, `--smoke`, `cargo deny check`):
+* `lum_core::notes` (`notes.json` over raw JSON, so unknown keys and key order survive): `Notes`, `Note`, `Item`, search with
+  `#tag`, `parse_tags`, `due_text` / `overdue`, Export text, the 12 second Undo trash, `Notes::order` (pinned first), `reorder`,
+  sticky places read as a list or as `{x, y, w, h, screen}` and written in the shape found, `open` read as an index or an id and
+  written as an index, `todo_changes` / `sync_for` (what Reminders must do when a due date changes). The sample file saves back
+  byte for byte. 18 tests.
+* `lum_ui::tools::notes` (`mod.rs`, `view.rs`, `markdown.rs`): the panel (list with cards, drag to reorder, Undo line, note
+  text, 👁 preview, to-do rows with tick box, handle, inline edit on double click, due dates, right-click menus, progress line,
+  Clear done), any number of sticky notes (own panels, note colour on the header tick, saved places), edit mode (side buttons,
+  dim of the screens, anchor bar), the overlay page (list left, note right; one column under 640 px so it fits a dashboard box),
+  palette rows `note:<id>`, tray entry, hotkeys, Export through the save dialog on a worker thread. `markdown.rs` parses with
+  `pulldown-cmark` into a small block tree (tested) and draws headings, emphasis, strike, code, links (only http, https and
+  mailto open), lists, tasks, quotes, tables, rules.
+* `lum_calc::reminder`: `next_due` for every schedule type, `describe`, `new_reminder`, `parse_quick` (with `fancy-regex`,
+  because Python's patterns use lookahead), the `State` engine (`prime`, `tick` with the catch-up window, snooze, "last in the
+  future", `next_reminder`, `next_wake`), `Edit` / `apply_edit` / `quick_reminder`. All 150 next-due, 41 describe and 23 quick
+  cases pass; `reminders_state.json` saves back byte for byte and the schedule signature equals Python's `json.dumps(sort_keys)`.
+* `lum_ui::tools::reminders`: the module wakes at the moment the next reminder is due (never polls every 10 s), fires (event
+  `reminder.fired`, theme switch, sound repeated every 3 s, desktop notification, pop-up), the pop-up window (card in the toasts'
+  colours, rises into place at bottom anchors, runs out by itself, Snooze with the 5 to 60 minute menu, Done, ✕, stacking per
+  anchor, primary or cursor screen), startup reminders once per run, palette rows `remind:quick:...`, `todo_reminder` for Notes,
+  `preview_reminder`, the `⏰` status chip (`UiModule::chips`), tray entry "Reminders…".
+* Settings → Reminders editor (`settings/reminders.rs`): list with Add, Duplicate, Delete; REMINDER, WHEN and HOW IT TELLS YOU
+  cards; changes only the keys that were edited; Browse for the sound file; "Test this reminder now". `Env.themes` and
+  `Out.preview_reminder` are new.
+* App side: `Request::TodoReminder`, `ReminderEdit`, `ApplyTheme`, `SystemNotice`; edits to the list are stored through
+  `save_quiet`; widget kit gets `drag_rows` (drag to reorder), `when` (date and time picker) and `AskDialog::ask_choice` /
+  `ask_datetime`; `FloatingPanel` gets a back arrow, a header height and a coloured tick; `tools::edit::keep_on_screen`.
+* Tests: `crates/lum-ui/tests/notes.rs` and `reminders.rs` (snapshots Dark and Light of the list, to-do, text, preview, sticky, edit
+  mode, page and pop-up; typing, ticking, clearing, adding, search, delete with Undo, reminders dropped with a note, a reminder
+  going off, Snooze, quick reminders, to-do reminders, theme switch), `settings.rs` (editor add, duplicate, delete, edit one key,
+  test button, two pictures with the sample reminders), `--smoke` check "everyday tools".
+
+**Left out on purpose or not done.**
+* Notes: no Delete in a sticky's menu (Python has none either); the page's last open note is not kept in a dashboard box
+  (`PageFrame` has no state); the page's list has no drag (Python's has none); the 👁 preview has no images; Export has no
+  `.txt` filter choice beyond the dialog's two filters.
+* Reminders: the pop-up does not answer Esc or Enter (it never takes the keyboard, so Qt's key handler could not either in
+  practice); the date field in the editor is a text box (`YYYY-MM-DD`) and the time a text box (`HH:MM`), not Qt's calendar pop-up;
+  a missed "once" reminder fires only inside the catch-up window, as before; the Settings page shows the new list after
+  `QuietlySaved` only when it reloads, as the other quiet saves.
+* `＋` (U+FF0B) is not in the bundled fonts, so the Python labels "＋ New note" and "＋ Add" are "+ New note" and "+ Add".
+* Not tried on a real desktop: global hotkeys, sound, the pop-up windows on Hyprland and Windows, Export's file dialog, the dim and
+  anchor bar of Notes' edit mode, sticky windows.
+
+**Surprising, worth knowing.**
+* `egui_kittest` panics on a glyph no font has while the app draws a box: probe suspicious characters with
+  `ctx.set_missing_glyph_policy(MissingGlyphPolicy::Panic)` after two passes (fonts apply from the second one).
+* `ui.scope` is no place to set `interact_size.y` for a `horizontal_wrapped` row: the row height is taken when the row starts.
+* Python's `datetime.fromisoformat("2026-11-24T09:00")` and jiff's `DateTime` parse agree for every file in the fixtures; a due date
+  six days away still reads as a weekday ("Mon 08:05"), seven as "01 Dec 08:05".
+* `cargo deny` is not preinstalled here: `cargo install cargo-deny --locked`.
+
+**Next: Clipboard (Snippets)** (checkpoint 75 %): `modules/snippets.py` (1 313 lines). Plan it as `lum-core` or `lum-calc`-side data
+(`.luminescent.json` in the snippets folder, folder colours, favourites, order, placeholders), then `tools/snippets` (the page and
+the Ctrl+B pop-up grid, thumbnails on a worker thread, breadcrumb, search across folders, "+ Save clipboard here", drag to reorder
+and into folders, hover preview, paste into the app you were using through `lum_platform`). Then QR, Today, Usage, Calendar.
 
 ### 2026-11-27, Phase 8 at 25 %: lum-calc, Calculator and Timers (overall 49.5 %)
 
@@ -849,6 +914,10 @@ Manual checks on real desktops that a session asked for and is waiting on.
   Calculator and new timer hotkeys, let a short timer finish (sound, blinking border, the panel must not take the keyboard),
   quit and start again with a timer running, and try timer edit mode's anchor bar. The user's day with the alpha comes at
   the end of the phase.
+* **Phase 8, Notes and Reminders (does not block the next tool):** press the Notes hotkey (Alt+N), make a note and a to-do list,
+  give a task a due date (right-click), stick a note on the screen and move it, try the edit mode hotkey (Alt+E: dim, anchor bar,
+  side buttons), delete a note and press Undo, export one. In the palette type "remind me in 1m to test", wait for the pop-up
+  (sound, Snooze, Done), and in Settings → Reminders add a reminder, press "Test this reminder now". Windows: do it again.
 
 * **Phase 7 (blocks the 100 % checkpoint):** quit the Python app first. Build with
   `cd luminescent-rs && cargo build --release -p luminescent`, copy your real `settings.json` and `profiles.json` into a

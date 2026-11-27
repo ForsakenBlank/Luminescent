@@ -31,7 +31,7 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [ ] | First start of a downloaded build copies settings and data from the source folder it was built from *(added in phase 0)* | 15 | `core/__init__.py` (`_first_frozen_run`) |
 | [ ] | `--smoke` self-test; `--strip-metadata <paths>` | 1, 13 | `Launcher.py` |
 | [ ] | Tray icon: the sparkle in the accent colour; click opens the overlay; menu editable (Settings → General → Tray menu) | 3, 7 | `Launcher.py` |
-| [ ] | Tray tooltip shows running timers (ticks only while a timer runs) | 3, 8 | `Launcher.py` |
+| [x] | Tray tooltip shows running timers (ticks only while a timer runs) | 3, 8 | `Launcher.py` |
 | [ ] | Run at login (autostart entry / Run key) | 3 | `core/autostart*.py` |
 | [ ] | Keep awake (tray, palette, hotkey) | 3 | `core/keepawake.py` |
 | [ ] | Reset stuck keys (tray; also automatic) | 3 | `core/hotkeys*.py` |
@@ -80,7 +80,7 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [x] | Performance mode drops glow, animations, background images | 2, 5 | `core/anim.py` |
 | [x] | Type on the Dashboard or Themes page to open the palette with what you typed | 5 | `ui/overlay.py` |
 | [x] | Chrome layer: logo, sparkle, title, clock, time, date, status chips, running timers; edit mode to drag, add, freeze, duplicate, resize, move to screen, remove, reset | 5 | `ui/chrome.py` |
-| [ ] | Status chips: running timers, Hearing Guard level, next reminder *(phase 5: the chips are drawn from `ChromeData`; their lines come with phases 8, 11, 12)* | 5 | `ui/chrome.py` |
+| [ ] | Status chips: running timers, Hearing Guard level, next reminder *(phase 5: the chips are drawn from `ChromeData`; running timers are in since phase 8, the rest come with phases 8 (reminder), 11, 12)* | 5 | `ui/chrome.py` |
 | [x] | Pages built lazily; prewarm after start; repair (rebuild) when a page breaks | 5 | `ui/overlay.py` |
 | [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries *(phase 5: pages, actions, themes, settings, Luminescent entries, recent; sums and quick reminders phase 8, notes 8, colours 9, pins 8, automations 10; phase 6: dashboard items are in)* | 5 | `ui/palette.py` |
 | [x] | Hotkey cheat sheet while held | 5 | `ui/cheatsheet.py` |
@@ -187,25 +187,25 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | As many timer / stopwatch panels as you like; monotonic timing | 8 | `modules/timer.py` |
-| [ ] | Type `5m`, `1h30`, `25m focus`, `at 17:30`, empty = stopwatch; ⏲ types a new time | 8 | `core/timeparse.py` |
-| [ ] | Restored still running after a restart or reboot; a timer that ran out shows DONE | 8 | `modules/timer.py` |
-| [ ] | Progress ring or bar; DONE flash and sound | 8 | `modules/timer.py` |
-| [ ] | Stopwatch laps; lap hotkey laps the one started last | 8 | `modules/timer.py` |
-| [ ] | Timers page and box; time logged to Today | 8 | `modules/timer.py` |
+| [x] | As many timer / stopwatch panels as you like; monotonic timing | 8 | `modules/timer.py` |
+| [x] | Type `5m`, `1h30`, `25m focus`, `at 17:30`, empty = stopwatch; ⏲ types a new time | 8 | `core/timeparse.py` |
+| [x] | Restored still running after a restart or reboot; a timer that ran out shows DONE | 8 | `modules/timer.py` |
+| [x] | Progress ring or bar; DONE flash and sound | 8 | `modules/timer.py` |
+| [x] | Stopwatch laps; lap hotkey laps the one started last | 8 | `modules/timer.py` |
+| [x] | Timers page and box; time logged to Today | 8 | `modules/timer.py` |
 
 ## Calculator (phase 8)
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Safe evaluator with limits; `×`, `÷`, `^`, `%` rules, `1,000`, `mod`, functions, constants, degrees / radians | 8 | `modules/calculator.py` |
-| [ ] | `ans` and sums starting with an operator; ↑ / ↓ history | 8 | `modules/calculator.py` |
-| [ ] | Pins with names usable in sums; pin folders and colours | 8 | `modules/calculator.py` |
-| [ ] | History grouped by day; keypad toggle; copy; Ctrl+Enter calculates, copies, closes | 8 | `modules/calculator.py` |
-| [ ] | Conversions (`5 km to mi`, `20 c to f`, `2.5 gb in mb`, `3 st to kg`), currency (daily rates) | 8 | `core/convert.py` |
-| [ ] | Dates (`today + 45 days`, `days until 25/12/2026`, `2026-12-25 - today`) | 8 | `core/convert.py` |
-| [ ] | DEC / HEX / BIN / OCT display; `0x1f`, `&`, `|`, `xor`, `<<`, `>>` | 8 | `modules/calculator.py` |
-| [ ] | Calculator page and box; sums in the palette | 8 | `modules/calculator.py` |
+| [x] | Safe evaluator with limits; `×`, `÷`, `^`, `%` rules, `1,000`, `mod`, functions, constants, degrees / radians | 8 | `modules/calculator.py` |
+| [x] | `ans` and sums starting with an operator; ↑ / ↓ history | 8 | `modules/calculator.py` |
+| [x] | Pins with names usable in sums; pin folders and colours | 8 | `modules/calculator.py` |
+| [x] | History grouped by day; keypad toggle; copy; Ctrl+Enter calculates, copies, closes | 8 | `modules/calculator.py` |
+| [x] | Conversions (`5 km to mi`, `20 c to f`, `2.5 gb in mb`, `3 st to kg`), currency (daily rates) | 8 | `core/convert.py` |
+| [x] | Dates (`today + 45 days`, `days until 25/12/2026`, `2026-12-25 - today`) | 8 | `core/convert.py` |
+| [x] | DEC / HEX / BIN / OCT display; `0x1f`, `&`, `|`, `xor`, `<<`, `>>` | 8 | `modules/calculator.py` |
+| [x] | Calculator page and box; sums in the palette | 8 | `modules/calculator.py` |
 
 ## Reminders (phase 8)
 

@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 41.75 %   [########............]   Current phase: Phase 7 at 100 % (built; the Settings check waits on you) (phase 3's Hello tray, phase 5's Looks right and phase 6's Dashboard checks are unconfirmed)
+Overall: 49.5 %   [##########..........]   Current phase: Phase 8 at 25 % (calculator and timers built; next is Notes) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks are unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -22,7 +22,7 @@ Overall: 41.75 %   [########............]   Current phase: Phase 7 at 100 % (bui
 | 5 | Overlay shell | 6 % | 31 % | 37 % | 75 % (100 % built, waiting on the Looks right check) | in progress |
 | 6 | Dashboard | 6 % | 37 % | 43 % | 75 % (100 % built, waiting on the Dashboard check) | in progress |
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
-| 8 | Everyday tools | 10 % | 47 % | 57 % | 0 % | not started |
+| 8 | Everyday tools | 10 % | 47 % | 57 % | 25 % (calculator and timers) | in progress |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 0 % | not started |
 | 10 | Automation | 9 % | 62 % | 71 % | 0 % | not started |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
@@ -91,7 +91,7 @@ Overall: 41.75 %   [########............]   Current phase: Phase 7 at 100 % (bui
 - [x] 100 %: custom widgets, backups UI, snapshots of every section (built and tested here; the Settings check below is on the waiting list)
 
 ### Phase 8: Everyday tools
-- [ ] 25 %: lum-calc with all fixtures, Calculator panel and page, Timers with restore
+- [x] 25 %: lum-calc with all fixtures, Calculator panel and page, Timers with restore
 - [ ] 50 %: Notes complete
 - [ ] 75 %: Reminders complete, Clipboard page and Ctrl+B pop-up
 - [ ] 100 %: QR, Today, Usage, Calendar, page boxes, Daily-drivable alpha confirmed
@@ -142,6 +142,78 @@ Overall: 41.75 %   [########............]   Current phase: Phase 7 at 100 % (bui
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-27, Phase 8 at 25 %: lum-calc, Calculator and Timers (overall 49.5 %)
+
+Branch `ccr-f1a7eeae-uxz8sm`. It started at `main` (phases 1 and 2), not at the phase 7 branch the prompt expected, so this
+session first fast-forwarded it onto `origin/ccr-6cfe5063-2qz557` (phases 3 to 7, nothing lost, no force). **This branch
+now holds phases 3 to 8 so far, and `main` has only 1 and 2. Merge it before the next session starts**, or the next
+one will find Phase 3 at 0 % again. The Hello tray, Looks right, Dashboard and Settings checks are still on the waiting
+list; nothing asked for them again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, every test under Xvfb with snapshots, `--smoke`,
+`cargo deny check`):
+* `lum-calc` (new content): `num` (Python's int and float rules on `num-bigint`: `/` is always a decimal, `//` and `%`
+  follow the divisor, whole numbers as big as they like), `eval` (hand-written lexer, Pratt-style parser with Python's
+  precedence and `-2**2`, tree walk, limits `MAX_POW` 10 000 and shifts 4 096, `fact` 1 000, nesting depth 150; strings,
+  lists, comparisons, attributes and other calls read fine and answer "not allowed in a sum" as Python does), `funcs`,
+  `format` (`fmt`, `pin_name`), `convert` (157 units, temperatures, symbols, currency, date sums), `rates` (`ureq` into
+  `currency.json`, at most once a day), `timeparse`, `book` (history, pins, panel over raw JSON, `compute` with `ans`,
+  pins, conversions and dates, `reformat`, pin, rename, recalc, folders and colours), `timer` (the timer state
+  machine on `Instant`, laps, restore from the wall clock, `timers.json` keeping unknown keys, `parse_entry`).
+  Tests: every case of `calc_cases.json` (206 sums x both angle modes, 576 formats, 48 computes, 12 plain, pin names),
+  `convert_cases.json` (106 conversions with and without rates, the unit table, 38 date sums, 9 dates),
+  `timeparse_cases.json` (78 durations, 38 clocks, 16 `fmt_secs`), and `sample_home/data/calculator.json` saved back
+  byte for byte. On Linux floats must match to the last digit; other systems allow 1e-13.
+* `lum_ui::module`: `Services` and `Request` (what a module asks of the app), `Inbox<Cmd>` (commands from actions,
+  hotkeys and worker threads), `Bind`, and on `UiModule`: `binds`, `bind_pressed`, `page_key`, `page`, `reset_page`,
+  `tray_actions`, `status_lines`, `palette_entries`, `palette_live`, `run_palette`. `ModuleHost::running_refs` and
+  `running_module`. The app side is `launcher/tools.rs`: hotkeys registered after start, Save and "Turn it on" (owner =
+  the module key), requests answered once per pass, module rows in the palette and the tray menu, the tray tooltip made
+  again every 15 s while a timer counts, pages found by key in `show_overlay` (Settings' module info is made first so the
+  page can borrow the module), the overlay's chips from `status_lines`, repair resets a module's page.
+* `lum_ui::tools`: `calculator` (CalcPanel as `View::show` into any rect, so the panel, the page and a dashboard box
+  share it; pins in folders with colours, history grouped by day, DEC / HEX / BIN / OCT, keypad, live preview, up and
+  down through the history, Ctrl+Enter, Ctrl+C on an empty box, right-click menus, the dialogs, `⋯` menu, palette sums and
+  pins, "Update currency rates"), `timer` (panels with ring or bar, laps, DONE title and tone, flash, sound, `timer.finished`,
+  activity lines, typing a time into the panel or the page, ⏲, edit mode with the Reset and switch buttons and the anchor
+  bar, restore still running, a late finish 1.5 s after the start, the Timers page with cards), `edit` (anchor bar window,
+  `snap_all`), `clip`. Widget kit: `IconShape` (Copy, Keypad, Clock, Eye drawn with the painter) and
+  `IconButton::shape`; `FloatingPanel::flash`.
+* Tests: `crates/lum-ui/tests/calculator.rs` and `timer.rs` (snapshots of both panels and pages in Dark and Light,
+  the keypad, edit mode with the bar style; typing, keypad, Ctrl+Enter asking the overlay to close, a bad sum, the
+  palette, a typed time, a refused time, restore of a running timer, a timer that ran out while closed, closing),
+  `--smoke` check "calculator and timers".
+* Numbers: idle with both modules on and the currency fetch off is 0.01 % CPU and 0.2 wake-ups a second (debug build,
+  Xvfb); the one fetch 8 s after the start shows as extra wake-ups in a short `--idle-check`, as in Python.
+
+**Left out on purpose or not done.**
+* The panel's "DONE" and the run dot: the green dot sits with the header buttons, not after the title; the flash blinks the
+  border only (the Python one restyled the whole panel the same way).
+* Pins and history values past 64 bits (`fact(100)`) are written to `calculator.json` as the nearest decimal; Python wrote the
+  exact whole number. They still calculate exactly while the app runs.
+* `(-8)**0.5` says "no finite answer"; Python answered with a complex number the panel could not show anyway.
+* Calculator pins are not draggable into folders (only the menu); the page has no fade between pages.
+* The `calculator.panel` "visible" flag is saved when the panel is toggled; the tray entry is "Calculator" under Settings
+  → General → Tray menu → actions.
+* Not tried on a real desktop: the global hotkeys, the sound, the flash, edit mode's anchor window and focus on DONE.
+
+**Surprising, worth knowing.**
+* **The branch premise was wrong** (see the first paragraph). Check `git log` and the Overall line before building.
+* `ureq` with rustls pulls in `ring` (a C compiler for the Windows clippy run: `gcc-mingw-w64-x86-64`) and `webpki-roots`,
+  whose licence CDLA-Permissive-2.0 is now allowed in `deny.toml` (Mozilla's list of certificate authorities).
+* Python's `round(2.5)` through the calculator's `round(x, 0)` gives `2.0`, a decimal; `fmt_secs` of a negative time uses
+  floor division (`-5` is `-1h 59m`); both kept.
+* egui: a single-line `TextEdit` has lost focus by the time you ask after Enter; `Ui::id` and `Id::new` are deprecated; the
+  panel's Esc comes back only when no widget has the keyboard, so the timer's typing box handles Esc through the panel's
+  `escape` flag.
+* `UPDATE_SNAPSHOTS=1` does not rewrite a picture that is within the tolerance; delete the PNG when a layout moved a little.
+
+**Next: Notes** (checkpoint 50 %): `modules/notes.py` (1 475 lines) is the biggest tool in the phase. Plan it as `lum-core`
+or `lum-calc`-side data (`notes.json`, to-do items, tags, due dates, export, markdown), then `tools/notes` (the panel with
+the 👁 preview, sticky notes that open several at once, edit mode with the anchor bar from `tools::edit` and the dim from
+`widgets::DimOverlay`, drag to reorder, Undo for 12 s after deleting) and the Notes page and box. Due dates create
+reminders, so leave a `Request` for that until Reminders lands. Markdown rendering: `pulldown-cmark` (CRATES.md).
 
 ### 2026-11-27, Phase 7 built to 100 % (overall 41.75 %; 43.75 % with every check in, 47 % is the phase's own end)
 
@@ -772,6 +844,11 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 8 so far (does not block the next tool):** on Hyprland and Windows 11 with a copied data folder, press the
+  Calculator and new timer hotkeys, let a short timer finish (sound, blinking border, the panel must not take the keyboard),
+  quit and start again with a timer running, and try timer edit mode's anchor bar. The user's day with the alpha comes at
+  the end of the phase.
 
 * **Phase 7 (blocks the 100 % checkpoint):** quit the Python app first. Build with
   `cd luminescent-rs && cargo build --release -p luminescent`, copy your real `settings.json` and `profiles.json` into a

@@ -22,6 +22,9 @@ allow = [
     "MPL-2.0",
     "BSL-1.0",
     "0BSD",
+    # Mozilla's list of trusted certificate authorities (webpki-roots), which ureq uses to check the currency
+    # rates server; it is data, not code
+    "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.9
 # egui's bundled fallback fonts (symbols Geist lacks); fonts under these licences can ship in a program

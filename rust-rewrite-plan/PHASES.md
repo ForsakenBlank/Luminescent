@@ -970,31 +970,57 @@ modules/reminders.py, modules/snippets.py, modules/qr.py, ui/today.py, ui/stats.
 section of README.md, then build everything the Phase 8 Deliverables list says for it: the logic in its crate
 with tests, the floating panel, the overlay page where there is one, and the dashboard page box.
 
+Before anything else check the branch: `git log --oneline -3` must show the Phase 8 commits ("Timers: ...",
+"Calculator: ...", "lum-calc: ..."). If PROGRESS.md still says Phase 3 at 0 %, the branch is main without the later
+phases: the work is on origin/ccr-f1a7eeae-uxz8sm (or whichever branch the handoff note names), so fast-forward onto it
+(`git merge --ff-only origin/<branch>`) and say so.
+
 What phases 3 to 7 left for you:
 - Phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks may still be open;
-  leave them on the waiting list and do not ask again unless the user brings them up. The work branch holds phases 3
-  to 7 (main only 1 and 2), so the user merges before this session starts.
-- A module is a `UiModule` in `modules()` (launcher.rs); its actions are registered by the host, so the palette, tray,
-  dashboard Tools tab and the Settings page's buttons ("Turn it on" while off) pick them up with no extra wiring. Its
-  Settings section is already drawn from the schema; a changed section restarts only that module (`apply_changed`,
-  `Module::apply_settings` is a stop and start unless you override it).
-- Pages are drawn by the `sub` closure in `App::show_overlay`: `match key { "themes" => ..., "settings" => ..., other =>
-  placeholder }`, into `ui.max_rect()`, in any size from 360 x 220 up (the same closure draws a dashboard page box). Return
-  `PageFrame { busy: true }` while a dialog or key recording has the keyboard; a page that panics comes back as
-  `Out::repair`, reset its state in `App::repair_page`. File dialogs go out through the page's `Out` and come back as an
-  `AppMsg` (see `AppMsg::SettingsFile`); slow work runs on the tokio runtime and reports through the mailbox.
+  leave them on the waiting list and do not ask again unless the user brings them up.
+- A module is a `UiModule` in `modules()` (launcher.rs, in the order of modules/__init__.py); its actions are
+  registered by the host, so the palette, tray, dashboard Tools tab and the Settings page's buttons ("Turn it on" while
+  off) pick them up with no extra wiring. Its Settings section is already drawn from the schema; a changed section
+  restarts only that module (`apply_changed`, `Module::apply_settings` is a stop and start unless you override it).
+- Pages are drawn by the `sub` closure in `App::show_overlay`: a module that returns its page key from
+  `UiModule::page_key` and draws in `UiModule::page(ui, rect, cx)` is found there by key, into `ui.max_rect()`, in any
+  size from 360 x 220 up (the same closure draws a dashboard page box). Return `PageFrame { busy: true }` while a dialog
+  or key recording has the keyboard. A page that panics comes back as `Out::repair`: reset its state in
+  `UiModule::reset_page`. File dialogs go out through the page's `Out` and come back as an `AppMsg` (see
+  `AppMsg::SettingsFile`); slow work runs on a thread or the tokio runtime and reports back through the module's `Inbox`.
 - The reminders editor goes into the `Slot` of `reminders.items` (`settings/custom.rs`, `custom_control`; the field is
-  not edited by the page until you give it an editor: `model::is_edited` / `has_editor`). Settings it reads each frame
-  show at once; after Save the app calls `settings_saved`.
+  not edited by the page until you give it an editor: `model::is_edited` / `has_editor`). Settings a module reads each
+  frame show at once; after Save the app calls `settings_saved`.
 - The hotkey recorder is in the kit: `HotkeyField`, `recorded_key`, `combo_of`; `Out.suspend_keys` pauses the hotkeys.
+
+What phase 8 so far (calculator and timers) left for you, read `lum_ui::module` and `lum_ui::tools` first:
+- A tool lives in `crates/lum-ui/src/tools/<tool>/` and the logic that does not draw lives in `lum-calc` or `lum-core`
+  with its own tests. Copy the shape of `tools/calculator` (module, `view.rs`) and `tools/timer`.
+- Actions, hotkeys, palette rows and worker threads reach a module through its `Inbox<Cmd>` (`inbox.action(id, label,
+  || Cmd::X)` makes an action); the module takes its commands at the top of `show` / `page`. What a module wants from the
+  app (a card, an event, the overlay closed, a usage or activity line, the tray's tooltip redone) goes back as a
+  `Request` through `Services::send`; the app answers them in `launcher/tools.rs`. Hotkeys: return them from
+  `UiModule::binds` (the setting inside the section, an id, a label) and handle `bind_pressed`; the app registers them
+  after start, after Save and after "Turn it on". Palette rows: `palette_entries` (always) and `palette_live(text)`;
+  `run_palette` runs a row whose id starts with the module's prefix (add the prefix to `run_palette_entry`, as `calc:`).
+  The tray menu takes `tray_actions`, the tray tooltip and the overlay's chips take `status_lines`.
+- Panels: `FloatingPanel::show_with(ctx, header, body)`; `flash(n)` blinks its border. Dialogs from a panel go through
+  `tools::dialog_window`. Edit mode with the nine anchors: `tools::edit::anchor_window` and `snap_all` (Notes adds the
+  dim). Copying: `tools::clip::copy` (never on the UI thread). Icons the fonts lack are drawn: `IconButton::shape(
+  IconShape::Copy | Keypad | Clock | Eye)`, so `⧉ ⌗ ⏲` are no longer a problem there.
+- Data files are kept over raw JSON (`Map<String, Value>` wrapped in typed getters) so unknown fields and key order
+  survive; save through `lum_core::store::Writer` with `pyjson::to_string(.., Style::indented(n))`. The sample file must
+  save back byte for byte (see `the_sample_calculator_file_is_saved_back_unchanged`).
 - Gotchas: an egui menu or pop-up is drawn inside its window; `f32::clamp` panics when its bounds cross, use
-  `.min().max()`; `ui.put` places a widget in an exact rect; text typed into a `TextEdit` changes it during the pass;
-  `⤢ ＋ ⌕ ⌗ ⏯ ⏲ ⏻ ␟ ⓘ ⧉` have no glyph in any bundled font and panic in layout (use `↗` and `+`); `egui::WidgetType` is
-  `egui::Role`; give custom-painted widgets `response.widget_info(...)` so kittest can find them. In tests: a drag or
-  a recording asks for a frame every frame, so use `step()`, not `run()`; call `focus()` and `run()` before `type_text`;
+  `.min().max()`; `ui.put` places a widget in an exact rect; `egui::WidgetType` is `egui::Role`; give custom-painted
+  widgets `response.widget_info(...)` so kittest can find them; `Ui::id` is deprecated, pass an `Id` salt down;
+  `Id::new` is deprecated, use `Id::unique`; jiff 1.0 names it `ZonedDateTime`; a single-line `TextEdit` loses focus on
+  Enter, so test `response.lost_focus()` with the key, or `consume_key` before drawing it. In tests: a drag or a
+  recording asks for a frame every frame, so use `step()`, not `run()`; call `focus()` and `run()` before `type_text`;
   look widgets up by role and label (`get_by_role_and_label`), names repeat; a widget below the fold can not be clicked,
-  so make the test window tall. This container needs `libasound2-dev pkg-config libxkbcommon-x11-0
-  mesa-vulkan-drivers xvfb` installed.
+  so make the test window tall; `UPDATE_SNAPSHOTS=1` leaves a picture alone while it is within the tolerance, so delete
+  the PNG first when a layout moved a little. This container needs `libasound2-dev pkg-config libxkbcommon-x11-0
+  mesa-vulkan-drivers xvfb` installed (and `gcc-mingw-w64-x86-64` for the Windows clippy run because of `ring`).
 
 Tests: all calculator, conversion, time and reminder fixtures in luminescent-rs/fixtures must pass, and every
 tool's data file from fixtures/sample_home must round-trip unchanged. Snapshot each panel in Dark and Light.
@@ -1003,8 +1029,8 @@ Rules: follow luminescent-rs/CLAUDE.md. Same labels, hotkeys and wording as the 
 hand-written parser, never an eval. Never use em dashes anywhere. Code should read like a careful human wrote it.
 Commit after each tool.
 
-Finish each session: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md (checkpoints,
-percentages, handoff note naming the next tool) and FEATURE_INVENTORY.md.
+Finish each session: fmt, clippy -D warnings (and the Windows target), tests, --smoke, cargo deny check. Update
+rust-rewrite-plan/PROGRESS.md (checkpoints, percentages, handoff note naming the next tool) and FEATURE_INVENTORY.md.
 
 Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
 learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.

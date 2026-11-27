@@ -231,13 +231,13 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Doodle: hold Alt to draw (left) / erase (right); solo delay; other hotkeys cancel it; "Start drawing with" a chosen tool or the last one | 9 | `modules/doodle.py` |
-| [ ] | Doodle tools: pen, highlighter, line, rectangle, circle, arrow, text, fill; Shift = straight line; wheel = size | 9 | `modules/doodle.py` |
-| [ ] | Doodle: clear, undo (shared across screens), blackboard, copy screen + drawing, panic, Esc | 9 | `modules/doodle.py` |
-| [ ] | Colour picker: frozen screens, 11 × 11 loupe, formats, arrow nudge, recent 10, to theme accent or new theme | 9 | `modules/colorpicker.py` |
-| [ ] | Text grab: drag a box, OCR (Windows OCR / Tesseract), optional edit box | 9 | `modules/textgrab.py` |
-| [ ] | Screen ruler: drag to measure, Shift level, click copies W × H, Ctrl+click distance, arrows nudge | 9 | `modules/ruler.py` |
-| [ ] | Window snapper: halves, thirds, two thirds, corners, cycling; undo back to tiling / previous spot | 9 | `modules/snapper.py` |
+| [x] | Doodle: hold Alt to draw (left) / erase (right); solo delay; other hotkeys cancel it; "Start drawing with" a chosen tool or the last one | 9 | `modules/doodle.py` |
+| [x] | Doodle tools: pen, highlighter, line, rectangle, circle, arrow, text, fill; Shift = straight line; wheel = size | 9 | `modules/doodle.py` |
+| [x] | Doodle: clear, undo (shared across screens), blackboard, copy screen + drawing, panic, Esc | 9 | `modules/doodle.py` |
+| [x] | Colour picker: frozen screens, 11 × 11 loupe, formats, arrow nudge, recent 10, to theme accent or new theme | 9 | `modules/colorpicker.py` |
+| [x] | Text grab: drag a box, OCR (Windows OCR / Tesseract), optional edit box | 9 | `modules/textgrab.py` |
+| [x] | Screen ruler: drag to measure, Shift level, click copies W × H, Ctrl+click distance, arrows nudge | 9 | `modules/ruler.py` |
+| [x] | Window snapper: halves, thirds, two thirds, corners, cycling; undo back to tiling / previous spot | 9 | `modules/snapper.py` |
 
 ## Automation (phase 10)
 

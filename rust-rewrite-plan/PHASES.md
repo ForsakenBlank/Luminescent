@@ -1242,28 +1242,73 @@ pass; 1 000 pulses a second do not hitch the UI; a wire loop trips the safety st
 ```text
 We are rewriting Luminescent (a Python + PyQt6 tray app in this repo) as a native Rust app. Read
 rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 10 section), rust-rewrite-plan/PROGRESS.md,
-rust-rewrite-plan/ARCHITECTURE.md (threads and data flow), rust-rewrite-plan/PERFORMANCE.md and
-luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 10 already started, continue from its handoff note.
+rust-rewrite-plan/ARCHITECTURE.md (threads and data flow, the decision log), rust-rewrite-plan/PERFORMANCE.md and
+luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 10 already started, continue from its handoff note and take
+the next checkpoint in order.
+
+Before anything else check the branch: `git log --oneline -3` must show the end of Phase 9 ("Plan: phase 9 at 75 %",
+"Snapper: ...", "Doodle: ..."). If PROGRESS.md says less than "Phase 9 at 75 %", the branch is main without the later
+work: it is on origin/claude/luminescent-phase-9-screen-tools-s65lah (or whichever branch the handoff note names), so
+fast-forward onto it (`git merge --ff-only origin/<branch>`) and say so.
 
 This session is Phase 10: automation. The spec is core/automation.py and ui/automation.py (read both in full),
-core/events.py, the Automation section of README.md, and luminescent-rs/fixtures/automation_nodes.json, which
-lists all 65 node types with their ports and fields.
+core/events.py, the Automation section of README.md, and luminescent-rs/fixtures/automation_nodes.json (all 65 node
+types with their ports and fields), automation_compare_cases.json, automation_expand_cases.json and
+automation_load_cases.json.
 
-Build everything in the Phase 10 Deliverables list. First lum-automation with no UI: the automation.json model,
-the engine with next-pass pulse delivery, value pulls, token expansion, the max_rate safety stop, pause, status
-and saved state, running on the services runtime. Then every node type, wired to the services and modules that
-exist (stub any that need a later phase behind a clear "not available yet" status). Then the node editor with
-pulse animation, undo / redo, clipboard, workspaces and .lumflow export / import.
+Build everything in the Phase 10 Deliverables list, in checkpoint order. First lum-automation with no UI (the crate exists
+as an empty shell): the automation.json model over raw JSON (unknown fields and key order survive; the sample file saves
+back byte for byte through `lum_core::store` and `pyjson::to_string`), the engine with next-pass pulse delivery, value
+pulls, token expansion, the max_rate safety stop, pause, status and saved state, on the services runtime with a fake
+clock for tests. Then every node type, wired to the services and modules that exist (stub any that need a later phase
+behind a clear "not available yet" status). Then the node editor with pulse animation, undo / redo, clipboard,
+workspaces and .lumflow export / import.
 
-Tests: compare() and expansion fixtures, graph trace tests driven by a fake clock, a loop that must trip the
-safety stop, a round trip of fixtures/sample_home/data/automation.json, and a benchmark of 1 000 pulses a second.
+What phases 3 to 9 left for you:
+- Phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings, phase 8's Daily-drivable alpha and
+  phase 9's two-monitor checks may still be open; leave them on the waiting list and do not ask again unless the user
+  brings them up.
+- A module is a `UiModule` in `modules()` (launcher.rs, in the order of modules/__init__.py). Actions it registers reach
+  the palette, tray, dashboard Tools tab and Settings with no extra wiring; nodes that "run a Luminescent tool" can call
+  `App::run_action("<module>:<id>")` (every screen tool and the snapper's 15 spots are actions now). Commands from
+  actions, hotkeys and worker threads reach a module through its `Inbox<Cmd>`; what it wants from the app goes back as a
+  `Request` through `Services::send` (Notify, Toast, Emit an event, SendKeys, SetSetting, ApplyTheme, ThemeAccent,
+  ThemeFromColour...), answered in `launcher/tools.rs`. Hotkeys: `UiModule::binds` + `bind_pressed`, `fixed_binds` for
+  keys that are not settings, `hold_setting` + `hold_event` for a hold key. Tray: `tray_actions`, or `tray_menu` for
+  submenus (an entry id `row:<id>` runs the module's palette row). Palette: `palette_entries`, `palette_live`,
+  `run_palette`. A page is `page_key` + `page`.
+- Screens: `lum_ui::window::screens()` (with `scale` now), `screens_in(ctx)` (tests install their own with
+  `install_screens`), `DimOverlay`, `tools::frozen` (screenshots of every monitor, `lum_platform::capture`),
+  `WindowPlacer::cover` for a window that must cover a monitor exactly on Windows. `lum_platform::snap`, `ocr`,
+  `clipboard` (text, picture, files), `dialogs`, `desktop::cursor` / `move_cursor` exist for action nodes.
+- Copy the shape of `crates/lum-ui/src/tools/` (`doodle` is the most complex: overlays per screen, state machine in a
+  crate, `Act`s collected during a frame and applied after). Keep the logic that draws nothing in its own crate with tests
+  (here lum-automation), and anything that talks to the OS in lum-platform / lum-hypr behind `cfg(target_os)`, never on the
+  UI thread (sockets, processes and the clipboard go to worker threads or the services runtime).
+- Gotchas: `Settings::get` takes `section.key` only, a whole section is `Settings::section`; `ctx.data_mut` must not call
+  other `ctx` methods inside (deadlock); `IdTypeMap::remove_temp` needs `Default`, use `remove::<T>(id)`; egui 0.37 has no
+  `raw_scroll_delta` (read `Event::MouseWheel`, which has `phase` and `source`); `f32::clamp` panics when its bounds
+  cross, use `.min().max()`; give custom-painted widgets AND painted text `response.widget_info(...)` so kittest can find
+  them; `Id::unique((salt, ...))`, not `Id::new`; fonts lack `＋`, `⧉`, `⌗` and `⏲`, probe new characters with
+  `MissingGlyphPolicy::Panic`. In tests: kittest's `run()` lets time pass until nothing wants a repaint (a short timer fires
+  inside it), so use `step()` around timers and drags; modifiers for a drag are `Event::ModifiersChanged`, and code should
+  read a key's modifiers from its `Event::Key`; one harness per test when taking pictures; worker threads need a wait loop
+  with a generous limit (the full suite under Xvfb is slow); delete a PNG before `UPDATE_SNAPSHOTS=1` when a layout moved a
+  little. This container needs `apt-get update` and then `apt-get install -y libasound2-dev pkg-config libxkbcommon-x11-0
+  mesa-vulkan-drivers xvfb gcc-mingw-w64-x86-64` (plus `rustup target add x86_64-pc-windows-gnu` and
+  `cargo install cargo-deny --locked`); `sway`, `grim` and `tesseract-ocr` also install if a real compositor helps.
 
-Rules: follow luminescent-rs/CLAUDE.md. Node titles, field labels and help texts come from the fixtures,
-unchanged. Never use em dashes anywhere. Code should read like a careful human wrote it. Commit after each
-checkpoint.
+Tests: compare() and expansion fixtures, graph trace tests driven by a fake clock, a loop that must trip the safety stop,
+a round trip of fixtures/sample_home/data/automation.json, snapshots of the editor in Dark and Light, and a benchmark of
+1 000 pulses a second without a UI hitch. Check the budgets in PERFORMANCE.md (nothing polling while no workspace needs
+it: `--idle-check`).
 
-Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
-Stop at a checkpoint boundary if you run low on room.
+Rules: follow luminescent-rs/CLAUDE.md. Node titles, field labels and help texts come from the fixtures, unchanged. Never
+use em dashes anywhere. Code should read like a careful human wrote it. Commit after each checkpoint.
+
+Finish each session: fmt, clippy -D warnings (and the Windows target), tests, --smoke, cargo deny check. Update
+rust-rewrite-plan/PROGRESS.md (checkpoints, percentages, handoff note naming the next checkpoint) and
+FEATURE_INVENTORY.md. Stop at a checkpoint boundary if you run low on room.
 
 Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
 learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.

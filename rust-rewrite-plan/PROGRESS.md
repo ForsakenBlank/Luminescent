@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 56.0 %   [###########.........]   Current phase: Phase 8 at 90 % (every tool built; only the Daily-drivable alpha check is left) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard and phase 7's Settings checks are unconfirmed)
+Overall: 60.75 %   [############........]   Current phase: Phase 9 at 75 % (every screen tool built; the two-monitor check on Hyprland and Windows 11 is left) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings and phase 8's Daily-drivable alpha checks are unconfirmed)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -23,7 +23,7 @@ Overall: 56.0 %   [###########.........]   Current phase: Phase 8 at 90 % (every
 | 6 | Dashboard | 6 % | 37 % | 43 % | 75 % (100 % built, waiting on the Dashboard check) | in progress |
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 90 % (100 % built, waiting on the Daily-drivable alpha check) | in progress |
-| 9 | Screen tools | 5 % | 57 % | 62 % | 0 % | not started |
+| 9 | Screen tools | 5 % | 57 % | 62 % | 75 % (100 % built, waiting on the two-monitor check) | in progress |
 | 10 | Automation | 9 % | 62 % | 71 % | 0 % | not started |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
 | 12 | Audio + media | 5 % | 81 % | 86 % | 0 % | not started |
@@ -97,10 +97,10 @@ Overall: 56.0 %   [###########.........]   Current phase: Phase 8 at 90 % (every
 - [ ] 100 %: QR, Today, Usage, Calendar, page boxes (all built and tested here; ticked once the Daily-drivable alpha check below is in)
 
 ### Phase 9: Screen tools
-- [ ] 25 %: capture backends, frozen multi-monitor picker base
-- [ ] 50 %: colour picker, ruler, text grab
-- [ ] 75 %: doodle complete
-- [ ] 100 %: snapper on both systems, palette entries, tests
+- [x] 25 %: capture backends, frozen multi-monitor picker base
+- [x] 50 %: colour picker, ruler, text grab
+- [x] 75 %: doodle complete
+- [ ] 100 %: snapper on both systems, palette entries, tests (all built and tested here; ticked once the two-monitor check below is in)
 
 ### Phase 10: Automation
 - [ ] 25 %: model, engine core, logic and value nodes, expansion; fixtures pass
@@ -142,6 +142,88 @@ Overall: 56.0 %   [###########.........]   Current phase: Phase 8 at 90 % (every
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-27, Phase 9 built to 100 %, the two-monitor check waits on you (overall 60.75 %; 62 % with the check)
+
+Branch `claude/luminescent-phase-9-screen-tools-s65lah`. It started at "Plan: phase 8 at 25 %" (main), so the session first
+fast-forwarded it onto `origin/claude/pensive-galileo-6ms969` (phases 3 to 8 at 90 %, nothing lost, no force). **This branch holds
+phases 3 to 9. Merge it into `main` (a fast-forward) before the next session starts.** The Hello tray, Looks right, Dashboard,
+Settings and Daily-drivable alpha checks are still on the waiting list; nothing asked for them again.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, 626 tests under Xvfb with snapshots, `--smoke`, `cargo deny check`):
+* **`lum-screen`** (new crate, no drawing): `colour` (HEX / RGB / HSL exactly as `colorsys` rounds, the nudge, `colours.json` as
+  `Recent`; the sample saves back byte for byte), `frame` (a monitor's picture at real pixels, layout point to real pixel, crops,
+  PNG), `loupe` (card, zoom, ringed cell, hint), `ruler` (Shift lock, W x H and distance in real pixels, the tag, what is copied),
+  `snap` (the 15 spots, gaps, `usable_area`, the cycles, Windows' invisible borders), `ocr` (Tesseract languages, line joining,
+  enlarging small boxes, the messages, the review size), `font` (Geist SemiBold through `ab_glyph`), and `doodle`: `Tool`,
+  `Settings` (the whole section), `mark` (pen, pixel brush, highlighter, shapes, arrow, text, Clear, painted with tiny-skia),
+  `canvas` (one per screen at its real scale, the stroke under way painted as it goes, dirty rectangles, undo by painting the
+  marks again over a base that holds marks older than the history), `History` (one for every screen), `hold` (the hold-key rules
+  as a state machine; every rule from the Python docstring has a test), `strip` (the tool strip's layout and hits) and `compose`
+  (copy screen + drawing). 46 unit tests and the budget test.
+* **`lum_platform::capture`**: every monitor at its real pixels through the wlr-screencopy protocol (wayland-client was already in the
+  tree), `grim -o NAME -t ppm` when that fails, GDI on Windows; one thread per monitor; a `Fake` for tests. Checked against a real
+  headless sway (two outputs, one at scale 2: 640x480 and 800x600 real pixels, right colours, 22 ms for both); the example
+  `cargo run -p lum-platform --example grab` writes each monitor to a PNG. Also `ocr` (Tesseract through stdin, no temp file;
+  `Windows.Media.Ocr` through the `windows` crate, Tesseract only when Windows has no OCR language; a real Tesseract read the test
+  picture back here), `snap` (active window and its monitor's free area, float, size and move in one Lua call, back into tiling;
+  Windows: foreground window, work area, restore a maximised window, invisible borders), `desktop::move_cursor`, `active_window`,
+  `refocus`, `hotkeys::other_modifiers_down` and `mask_menu_key` (Windows), and `WindowPlacer::cover` (Windows puts a cover window
+  exactly over its monitor in real pixels, up to three tries since a move to a monitor with another scale resizes it once more).
+* **`lum_ui`**: `Screen.scale`, `window::install_capture` / `install_screens` / `screens_in` (tests put two monitors with different
+  scales side by side in one window), `tools::frozen` (each screen's picture in its own window over its monitor, cover prefixes per
+  tool, keys to the screen with the mouse, the time from the hotkey to the screens in the log), and the modules, in Python's order:
+  **Doodle** (after Notes), **Colour Picker**, **Text Grab**, **Window Snapper**, **Screen Ruler** (after Calculator). The colour
+  picker is also the colour dialog's eyedropper (`tools::colorpicker::eyedropper`, the dialog and the picker meet in the context's
+  memory, so no owner needs wiring), with Recent colours in the tray (a submenu; `row:` ids run palette rows) and the palette (copy,
+  accent, new theme; `Request::ThemeAccent` and `ThemeFromColour`). Text grab has the review panel (Ctrl+Enter copies). The doodle
+  has every tool and setting, the strip, the circle pointer, the "N px" label, the wheel (saved quietly a second later through
+  `Request::SetSetting`), the text box, blackboard, copy screen + drawing (saved to ~/Pictures/Luminescent when asked), panic, Esc,
+  clear on release, start tool, the Windows Alt menu mask, and the keyboard handed back to the window that had it on Hyprland. The
+  snapper's every spot is an action (palette, tray, dashboard Tools tab), the four directions cycle.
+* **`UiModule`** gained `tray_menu`, `fixed_binds` (Doodle's Esc and Alt+Esc, not consuming) and `hold_setting` / `hold_event`
+  (`HoldEvent::Down`, `Up`, `Interrupted`, `Refused`); the launcher registers holds first and tells a module when the key was
+  refused (it then toggles, as Python does), and routes `HoldDown`, `HoldUp` and `Interrupted`.
+* Tests: `crates/lum-ui/tests/frozen.rs` (3), `screen_tools.rs` (21: picker, ruler, text grab, the eyedropper), `doodle.rs` (12),
+  snapper (3), capture, OCR, snap against the fake Hyprland, and `lum-screen`. Pictures in Dark and Light of the loupe, the ruler
+  (crosshairs and a measure), text grab (selecting, review) and the doodle (every tool with the strip, the blackboard). `--smoke`
+  opens the picker, the ruler and text grab on stand-in screens, closes them with Esc, checks the snapper's actions, and puts the
+  doodle's blackboard up and takes it down with panic.
+* Budgets: **doodle at 60 fps with 500 strokes**: `crates/lum-screen/tests/doodle_budget.rs` draws over 500 strokes on a 1920 x 1080
+  canvas: a frame's work (painting the new piece and copying out what changed) is 11 µs mean, 15 µs p95 in a debug build, and the
+  same as with no strokes (ratio 0.99). An undo paints all 500 again in 87 ms (debug), once. **Nothing polling while closed**:
+  `--idle-check 20` (debug, Xvfb, llvmpipe) gives 0.08 % of a core, 7.9 wake-ups a second, 2 passes painted and 21 threads, against
+  0.12 %, 11.3, 2 and 21 measured the same way at the end of phase 8: the screen tools add no thread and no wake-up while closed. The
+  **picker within 150 ms of the hotkey** needs your desktop: the command is under "Waiting on the user".
+
+**Left out on purpose or not done.**
+* No `xcap` (D55). On desktops without screencopy or `grim` (KDE, GNOME on Wayland) the screen tools say they could not grab the
+  screen; the portal is phase 16.
+* The doodle's pointer is painted (egui can not make a cursor from a picture), so moving the mouse while drawing repaints; Python's
+  pixmap cursor did not. Only while drawing is on.
+* The highlighter's live preview is an egui line, which can darken where it crosses itself until the button comes up (the finished
+  stroke is right).
+* Panic records a Clear step, so Alt+F after panic brings the drawing back (Python's panic left the undo snapshots and the history
+  half in step).
+* Copy screen + drawing paints the drawings by hand everywhere but Linux, as Python did; if Windows' GDI copy already shows our
+  overlay windows the drawing would show twice (see the check below).
+* Not tried on a real desktop: anything with real windows, hotkeys, scaling or Windows (the check below).
+
+**Surprising, worth knowing.**
+* `Settings::get` only takes `section.key`; a whole section is `Settings::section`.
+* kittest's `run()` lets time pass until nothing wants a repaint, so a 120 ms timer fires inside it; use `step()` to stay before it.
+  Modifier keys for a drag are `Event::ModifiersChanged`; a key's own modifiers come with `key_press_modifiers`, and a module should
+  read them from the key event (`i.modifiers` may not have them). Two harnesses in one test must not both take pictures.
+* `IdTypeMap::remove_temp` needs `Default`; `remove::<T>(id)` does not. Calling `ctx.cumulative_pass_nr()` inside `ctx.data_mut`
+  deadlocks.
+* egui 0.37 has no `raw_scroll_delta`; wheel notches come from `Event::MouseWheel` (which has `phase` and `source` now).
+* The Python label's HSL example (`hsl(246, 89%, 69%)` for #7B6CF6) is not what `colorsys` gives (`hsl(247, 88%, 69%)`); Rust
+  matches `colorsys`.
+* `sway` and `tesseract-ocr` install fine in this container (`apt-get install -y sway grim tesseract-ocr tesseract-ocr-eng`): headless
+  sway (`WLR_BACKENDS=headless WLR_RENDERER=pixman`) is a real screencopy compositor for checks.
+
+**Next: Phase 10, Automation** (Opus 5.5, xhigh), checkpoint 25 % (model, engine core, logic and value nodes, expansion;
+fixtures pass). Phase 9's last checkpoint waits for the two-monitor check below; it does not block Phase 10.
 
 ### 2026-11-27, Phase 8 built to 100 %, the Daily-drivable alpha check waits on you (overall 56.0 %; 57 % with the check)
 
@@ -989,6 +1071,29 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 9, the screen tools on two monitors with different scales (blocks the 100 % checkpoint):** quit the Python app first (same
+  hotkeys). Hyprland: two monitors with different scales (e.g. `hyprctl keyword monitor DP-2,preferred,auto,1.5`), `grim` installed
+  as the fallback, `tesseract tesseract-data-eng` for Text Grab. Build and run with a copied data folder:
+  `cd luminescent-rs && cargo build --release -p luminescent`, then
+  `LUMINESCENT_HOME=/tmp/lumhome ./target/release/luminescent`. On **each** monitor:
+  **Colour picker** Ctrl+Alt+C: the frozen screen must cover the monitor exactly and be sharp (not blurred or offset); the loupe's
+  pixels must match what is under the mouse at real pixels; arrows move 1 px, Shift+arrows 10; click copies; Esc and right-click
+  cancel; move the mouse to the other monitor (no loupe left behind, keys follow). Then Settings → Themes → a colour → the
+  eyedropper. Tray → Recent colours → Use as the theme's accent. **Ruler** Ctrl+Alt+R: drag 100 layout px on the scaled monitor
+  (it should say 150 px there at 1.5), Shift, Ctrl+release, Enter. **Text grab** Ctrl+Alt+O over some text, with and without
+  "Show the text in an editable box". **Doodle**: hold Alt (not Alt+Tab, not Alt+N) and draw on both monitors with every tool on the
+  strip, right-drag to rub out, the wheel, Alt+F undo (last stroke wherever it was), Alt+X, Alt+G, Alt+C (paste the picture
+  somewhere), Alt+Shift+Q, Esc while holding, the text tool (click, let go of Alt, type, Enter); check that after letting go of Alt
+  the window you were in still has the keyboard and the mouse did not jump. **Snapper** with a tiled window: Super+Alt+Left three
+  times, Up twice, Down, then palette "Snap window: back into the tiling layout"; on both monitors (the bar must stay clear).
+  **Timing:** press the colour picker hotkey ten times (Esc between) and run
+  `grep "frozen screens up" /tmp/lumhome/data/launcher.log` (budget 150 ms; paste the lines).
+  **Windows 11**, two monitors at 100 % and 150 %: the same, with `$env:LUMINESCENT_HOME="$env:TEMP\lumhome"` and
+  `.\target\release\luminescent.exe`, then `Select-String "frozen screens up" "$env:TEMP\lumhome\data\launcher.log"`. On Windows
+  also: Alt held to draw must not open the menu bar of the app underneath when you let go; snapping a maximised window; "Snap
+  window: put it back where it was"; and whether Alt+C's picture shows the drawing twice (darker highlighter) or once. Say what
+  looked or behaved wrong next to the Python version.
 
 * **Phase 8, the Daily-drivable alpha (blocks the 100 % checkpoint and the milestone):** quit the Python app first. Build with
   `cd luminescent-rs && cargo build --release -p luminescent`, copy your real data into a throw-away home

@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 60.75 %   [############........]   Current phase: Phase 9 at 75 % (every screen tool built; the two-monitor check on Hyprland and Windows 11 is left) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings and phase 8's Daily-drivable alpha checks are unconfirmed)
+Overall: 63.0 %   [#############.......]   Current phase: Phase 10 at 25 % (lum-automation: model, engine, logic and value nodes, expansion) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings, phase 8's Daily-drivable alpha and phase 9's two-monitor checks are unconfirmed; 64.25 % with them)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -24,7 +24,7 @@ Overall: 60.75 %   [############........]   Current phase: Phase 9 at 75 % (ever
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 90 % (100 % built, waiting on the Daily-drivable alpha check) | in progress |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 75 % (100 % built, waiting on the two-monitor check) | in progress |
-| 10 | Automation | 9 % | 62 % | 71 % | 0 % | not started |
+| 10 | Automation | 9 % | 62 % | 71 % | 25 % | in progress |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
 | 12 | Audio + media | 5 % | 81 % | 86 % | 0 % | not started |
 | 13 | Privacy, sync, keybinds | 6 % | 86 % | 92 % | 0 % | not started |
@@ -103,7 +103,7 @@ Overall: 60.75 %   [############........]   Current phase: Phase 9 at 75 % (ever
 - [ ] 100 %: snapper on both systems, palette entries, tests (all built and tested here; ticked once the two-monitor check below is in)
 
 ### Phase 10: Automation
-- [ ] 25 %: model, engine core, logic and value nodes, expansion; fixtures pass
+- [x] 25 %: model, engine core, logic and value nodes, expansion; fixtures pass
 - [ ] 50 %: all triggers and actions wired
 - [ ] 75 %: editor canvas, nodes, wires, picker, field editors
 - [ ] 100 %: pulse animation, undo / redo, clipboard, workspaces and `.lumflow`, perf check
@@ -142,6 +142,50 @@ Overall: 60.75 %   [############........]   Current phase: Phase 9 at 75 % (ever
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-28, Phase 10 at 25 %: the automation engine (overall 63.0 %; 64.25 % with the open checks)
+
+Branch `claude/bold-babbage-kscm6j`, started from `main` after `main` was fast-forwarded onto the Phase 9 branch (so `main`
+now holds phases 3 to 9). The waiting checks from phases 3 to 9 were left alone.
+
+**Done and green** (fmt, clippy on Linux and the Windows target, `cargo deny check`; 30 tests in lum-automation):
+* **`lum-automation`** (no UI): `spec` (all 65 node types read from `fixtures/automation_nodes.json`, embedded in the build, with the
+  four Windows help texts swapped in, D61), `doc` (automation.json as raw JSON, repaired in the same order as `_load` so key order
+  matches; the first-start example, blank and copied workspaces, `.lumflow` import repaired straight away, D65), `text` (token
+  expansion, `compare`, `hm`, `days`, `left`, Python's `%g` and `str()`, `splitlines`, `title`, `re.sub` templates through
+  fancy-regex, `expanduser`), `engine` (D60, D62, D63: `Engine` with `step` / `next_deadline` on a `Clock`, `FakeClock` for tests,
+  pulses delivered on the next pass through one queue, value pulls with Python's depth limit, the `max_rate` safety stop, pause
+  through `Config.enabled`, status lines and progress through `info`, saved node state, variables, `run_node` with Python's
+  "paused" / "switched off" cards, `edited` (a field change restarts only a trigger) and `replaced` (undo: everything restarts),
+  `watch_pulses` and `take_updates` for the editor, `Host` for the clipboard and `Out` requests) and `runner` (`Automation`: one
+  thread asleep until the next timer or a poke, `with` / `read` for the UI, saves 600 ms after the first change through
+  `store::Writer`, D64, and once more at `shutdown`).
+* Node types that run: every logic node (Wait, If, Gate, Count, Only once, Cooldown, Sequence, Take turns, Random chance, Repeat),
+  every value node (Text, Number, Variable, Join text, Maths, Date / time, Clipboard text, Read a file, Replace text, Change text,
+  Random number), Every…, Button, Set variable, Show and Note. The other 43 start with the status "not available yet".
+* Tests: `tests/fixtures.rs` (compare, days, hm, number formatting, every expansion case, the three load cases with made-up ids
+  lined up, and `sample_home/data/automation.json` saving back byte for byte), `tests/engine.rs` (14 graph traces on a fake clock:
+  interval timing and progress, next-pass order, pulls, a value loop, the safety stop on a wire loop, Wait, Repeat, a count kept
+  across a restart, paused and switched-off cards, edits, pulses only while watched, every logic node, every value node),
+  `tests/runner.rs` (the real thread runs, wakes a watching editor, saves on the way out and picks up again) and
+  `tests/throughput.rs`.
+* Budget, engine side: **1 000 pulses a second** (Repeat every 1 ms through If, Show, Count and Set variable with a pull, 4 000
+  deliveries) take 29 ms of work per simulated second in a debug build, the longest pass 0.5 ms. The UI side of the budget is
+  measured with the editor (checkpoint 100 %).
+
+**Left for the next checkpoints.**
+* The app does not start the engine yet: nothing in `luminescent` or `lum-ui` uses `Automation`. Checkpoint 50 % starts it from the
+  launcher (`data/automation.json`, Settings → Automation into `Config`, the clipboard through `lum_platform::clipboard` off the UI
+  thread), answers `Out` in `launcher/tools.rs`, and wires the triggers and actions.
+* `Out` only has `Notify` so far; the actions add their own variants.
+
+**Surprising, worth knowing.**
+* `jiff` 1.x calls it `ZonedDateTime`, not `Zoned`.
+* Python's `setdefault("id", _id())` makes an id even when the key is there, so load fixtures can not be matched by feeding ids in
+  order; `tests/fixtures.rs` lines up made-up ids instead.
+* `rustup target add` must run inside `luminescent-rs/` (the pinned toolchain), or the Windows clippy finds no `core`.
+
+**Next: Phase 10, checkpoint 50 %** (all triggers and actions wired to services and modules).
 
 ### 2026-11-27, Phase 9 built to 100 %, the two-monitor check waits on you (overall 60.75 %; 62 % with the check)
 

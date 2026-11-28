@@ -247,13 +247,13 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [ ] | Round flow ports, diamond value ports, ◆ pins on fields | 10 | `ui/automation.py` |
 | [ ] | Pulses run along wires as glowing dots with a peek at what they carry | 10 | `ui/automation.py` |
 | [ ] | Add nodes by right-click, double-click, or dropping a wire on open space (filtered) | 10 | `ui/automation.py` |
-| [ ] | 13 triggers, 30 actions, 10 logic nodes, 11 values, the note (65 types) | 10 | `core/automation.py` |
-| [ ] | Tokens: `{input}`, `{var:name}`, `{date}`, `{time}`, `{now}`, `{clipboard}`, `{newline}` | 10 | `core/automation.py` |
-| [ ] | Runs in the background, overlay open or not | 10 | `core/automation.py` |
+| [ ] | 13 triggers, 30 actions, 10 logic nodes, 11 values, the note (65 types) *(phase 10 at 25 %: every spec from the fixture; logic, values, Every…, Button, Set variable, Show and Note run; the rest say "not available yet")* | 10 | `core/automation.py` |
+| [ ] | Tokens: `{input}`, `{var:name}`, `{date}`, `{time}`, `{now}`, `{clipboard}`, `{newline}` *(phase 10 at 25 %: in lum-automation, every expansion fixture passes)* | 10 | `core/automation.py` |
+| [ ] | Runs in the background, overlay open or not *(phase 10 at 25 %: `Automation` runs the engine on its own thread, asleep until the next timer; not started by the app yet)* | 10 | `core/automation.py` |
 | [ ] | Workspaces with on / off switches; export / import `.lumflow` | 10 | `core/automation.py` |
 | [ ] | Undo / redo, copy / paste / duplicate, Delete, F to fit | 10 | `ui/automation.py` |
-| [ ] | Variables kept between restarts | 10 | `core/automation.py` |
-| [ ] | Pause everything (Settings, tray, hotkey); safety stop for wire loops | 10 | `core/automation.py` |
+| [ ] | Variables kept between restarts *(phase 10 at 25 %: in the engine and the file)* | 10 | `core/automation.py` |
+| [ ] | Pause everything (Settings, tray, hotkey); safety stop for wire loops *(phase 10 at 25 %: the safety stop and pausing in the engine; Settings, tray and hotkey come with the app wiring)* | 10 | `core/automation.py` |
 | [ ] | Buttons in the palette and the tray | 10 | `core/automation.py` |
 | [ ] | System readings and controls the nodes use: volume, lock / sleep / screen off, temperatures, GPU load, the focused window, internet check (slow parts on a worker thread) *(added in phase 0)* | 10 | `core/system.py` |
 

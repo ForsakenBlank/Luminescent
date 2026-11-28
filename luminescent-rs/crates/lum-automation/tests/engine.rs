@@ -24,7 +24,13 @@ impl Host for Recorder {
 
 impl Recorder {
     fn notes(&self) -> Vec<String> {
-        self.outs.lock().unwrap().iter().map(|Out::Notify { text, .. }| text.clone()).collect()
+        let outs = self.outs.lock().unwrap();
+        outs.iter()
+            .filter_map(|o| match o {
+                Out::Notify { text, .. } => Some(text.clone()),
+                _ => None,
+            })
+            .collect()
     }
 }
 
@@ -455,6 +461,6 @@ fn value_nodes_read_like_python() {
 
 #[test]
 fn nodes_from_later_phases_say_they_are_not_here_yet() {
-    let r = rig(vec![node("sound", "sound", json!({}))], vec![]);
-    assert_eq!(r.status("sound"), "not available yet");
+    let r = rig(vec![node("paper", "wallpaper", json!({}))], vec![]);
+    assert_eq!(r.status("paper"), "not available yet");
 }

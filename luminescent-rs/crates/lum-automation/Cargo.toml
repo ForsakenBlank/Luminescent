@@ -8,13 +8,17 @@ publish = false
 
 [dependencies]
 lum-core.workspace = true
+lum-calc.workspace = true
 crossbeam-channel.workspace = true
 fancy-regex.workspace = true
 fastrand.workspace = true
 jiff.workspace = true
+# the File or folder changes trigger: inotify on Linux, ReadDirectoryChangesW on Windows
+notify = { version = "8", default-features = false }
 regex.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+ureq.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]

@@ -109,6 +109,7 @@ impl App {
         self.register_dashboard_hotkeys();
         self.with_modules(|host, cx, actions| host.apply_changed(cx, actions, changed));
         self.register_module_hotkeys();
+        self.automation_settings();
         self.refresh_tray();
         self.sync_autostart();
         self.restyle();

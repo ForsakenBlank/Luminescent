@@ -301,4 +301,20 @@ pub trait UiModule: Module {
     fn run_palette(&mut self, _id: &str, _services: &Services) -> bool {
         false
     }
+
+    /// Timer only: a new timer panel, already running (`ms` 0: a stopwatch). `false` when this module is not
+    /// Timer.
+    fn start_timer(&mut self, _ms: f64, _label: &str) -> bool {
+        false
+    }
+
+    /// Notes only: shows the Notes panel on that note. `false` when this module is not Notes.
+    fn show_note(&mut self, _id: &str) -> bool {
+        false
+    }
+
+    /// Notes only: every note's id and name, for the automation node that opens one.
+    fn note_choices(&self) -> Vec<(String, String)> {
+        Vec::new()
+    }
 }

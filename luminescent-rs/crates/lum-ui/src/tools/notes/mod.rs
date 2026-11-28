@@ -979,4 +979,22 @@ impl UiModule for NotesModule {
         self.panel.open();
         true
     }
+
+    fn show_note(&mut self, id: &str) -> bool {
+        // Python's show_note_id: a note that is not there leaves the panel as it was
+        if self.notes.as_ref().is_some_and(|n| n.index_of(id).is_some()) {
+            self.open_in_panel(id);
+            self.panel.open();
+        }
+        true
+    }
+
+    fn note_choices(&self) -> Vec<(String, String)> {
+        let Some(notes) = &self.notes else { return Vec::new() };
+        notes
+            .notes
+            .iter()
+            .map(|n| (n.id.clone(), if n.name.is_empty() { "Note".to_owned() } else { n.name.clone() }))
+            .collect()
+    }
 }

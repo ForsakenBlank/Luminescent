@@ -9,9 +9,12 @@ mod nodes;
 mod runner;
 pub mod spec;
 pub mod text;
+mod work;
 
 pub use engine::{
-    Clock, Config, Cx, Engine, FakeClock, Host, NodeRuntime, Out, Pulse, Status, SystemClock, Updates,
+    Answer, Button, Clock, Config, Cx, Engine, FakeClock, Host, HotkeyNode, Look, NodeRuntime, Out, Pulse,
+    Reply, Status, SystemClock, Updates,
 };
-pub use runner::Automation;
+pub use runner::{Automation, Handle};
 pub use text::MAX_TEXT;
+pub use work::{Job, JobHandle, JobMsg, Level, Readings, Watch};

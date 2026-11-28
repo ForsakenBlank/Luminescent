@@ -6,6 +6,7 @@ pub mod apps;
 pub mod autostart;
 pub mod capture;
 pub mod clipboard;
+pub mod control;
 pub mod desktop;
 pub mod dialogs;
 pub mod frame;

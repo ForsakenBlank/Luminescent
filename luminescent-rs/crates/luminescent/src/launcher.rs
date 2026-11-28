@@ -31,6 +31,7 @@ use lum_ui::{Services, Tokens, UiModule};
 use serde_json::json;
 use tokio::runtime::Runtime;
 
+mod automation;
 mod dashboard;
 mod settings;
 mod tools;
@@ -73,6 +74,8 @@ pub enum AppMsg {
     SettingsFile(lum_ui::settings::FileJob, Option<std::path::PathBuf>),
     /// A backup was written, looked at or restored.
     Backup(settings::BackupDone),
+    /// An automation node asks for something only the app can do.
+    Automation(lum_automation::Out),
 }
 
 /// Notifications go to the log, and once windows run, to Luminescent's own cards or to the desktop, as Settings
@@ -340,6 +343,16 @@ pub struct App {
     messages: Receiver<AppMsg>,
     flush_at: Option<Instant>,
     shut_down: bool,
+    /// The engine behind the Automation page, on a thread of its own.
+    automation: Option<lum_automation::Automation>,
+    /// Whether keep awake is on, for the Keep awake node's value port.
+    auto_keep_awake: Arc<std::sync::atomic::AtomicBool>,
+    /// Settings → Dashboard & Scripts → Terminal, for commands an automation shows in a terminal.
+    auto_terminal: Arc<Mutex<String>>,
+    /// Boxes automations put up, waiting for an answer.
+    auto_dialogs: Vec<automation::AutoDialog>,
+    /// Warnings automations put up, by title, and who hears when each closes.
+    auto_alerts: Vec<(String, lum_automation::Reply)>,
 }
 
 impl App {
@@ -446,10 +459,16 @@ impl App {
             messages,
             flush_at: None,
             shut_down: false,
+            automation: None,
+            auto_keep_awake: Arc::default(),
+            auto_terminal: Arc::default(),
+            auto_dialogs: Vec::new(),
+            auto_alerts: Vec::new(),
             settings,
             paths,
         };
         app.with_modules(|host, cx, actions| host.start_enabled(cx, actions));
+        app.start_automation(mailbox.clone());
         app.start_services(mailbox, ctl_tx, options)?;
         let running = app.host.running();
         let running = if running.is_empty() { "no modules running".to_owned() } else { running.join(", ") };
@@ -542,6 +561,7 @@ impl App {
         self.register_theme_hotkeys();
         self.register_dashboard_hotkeys();
         self.register_module_hotkeys();
+        self.register_automation_hotkeys();
         let mailbox = self.mailbox.clone();
         self.keep_awake =
             Some(KeepAwake::start(Arc::new(move |on, err| mailbox.send(AppMsg::KeepAwake(on, err)))));
@@ -1149,6 +1169,8 @@ impl App {
                     self.theme_key(&id);
                 } else if owner == "dashboard" {
                     self.run_dashboard_item(&id, None);
+                } else if owner == "automation" {
+                    self.automation_hotkey(&id);
                 } else if self.host.keys().contains(&owner.as_str()) {
                     self.module_hotkey(&owner, &id);
                 }
@@ -1170,6 +1192,8 @@ impl App {
                 tracing::warn!("{owner}: {combo} was refused: {reason}");
                 if owner == "launcher" {
                     self.hotkey_refused(&combo, &reason);
+                } else if owner == "automation" {
+                    self.automation_key_refused(&combo, &reason);
                 } else if owner == "dashboard" {
                     self.notifier.notify(
                         "Dashboard hotkeys",
@@ -1259,9 +1283,14 @@ impl App {
             }
             AppMsg::SettingsFile(job, path) => self.settings_file_chosen(&job, path),
             AppMsg::Backup(done) => self.backup_done(done),
+            AppMsg::Automation(out) => self.automation_out(out),
             AppMsg::KeepAwake(on, error) => {
                 if let Some(k) = &mut self.keep_awake {
                     k.reported(on);
+                }
+                // the event triggers hear it, as the Python app's keep-awake signal told them
+                if self.auto_keep_awake.swap(on, std::sync::atomic::Ordering::Relaxed) != on {
+                    self.emit("keepawake.changed", if on { "on" } else { "off" });
                 }
                 if let Some(e) = error {
                     self.notifier.notify("Keep awake", &format!("Could not keep the PC awake: {e}"), 4000);
@@ -1336,8 +1365,10 @@ impl App {
         if !self.alerts.is_empty() {
             for title in self.alerts.show(ctx) {
                 self.emit("alert.closed", &title);
+                self.automation_alert_closed(&title);
             }
         }
+        self.show_automation_dialogs(ctx);
         self.show_ask_args(ctx);
         if let Some(dialog) = &mut self.quit_dialog {
             match dialog.show(ctx) {
@@ -1713,6 +1744,7 @@ impl App {
             return;
         }
         tracing::info!("shutting down");
+        self.stop_automation();
         self.usage.flush();
         self.themes.flush();
         self.dashboard_flush();

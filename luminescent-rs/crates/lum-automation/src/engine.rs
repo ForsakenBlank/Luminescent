@@ -11,17 +11,23 @@
 //! its own; tests drive it with a [`FakeClock`].
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use crossbeam_channel::{Receiver, Sender};
 use jiff::civil::DateTime;
 use serde_json::{Map, Value, json};
 
 use crate::doc::{self, str_of};
 use crate::spec::{self, NodeSpec};
 use crate::text::{self, MAX_TEXT, clip_chars};
+use crate::work::{
+    self, Job, JobHandle, JobMsg, JobNote, JobWhat, Level, NodeAddr, Readings, Wake, Want, Watch,
+};
 
 /// Where the engine gets the time from.
 pub trait Clock: Send + Sync {
@@ -79,20 +85,212 @@ impl Clock for FakeClock {
     }
 }
 
-/// What the engine asks of the rest of Luminescent: cards, actions, the overlay... The app answers on its own
-/// thread; nothing here waits for an answer.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Out {
-    Notify { title: String, text: String, ms: u32 },
+/// Where an answer from the app goes back to: the node that asked (as it was then) and which question it was.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Reply {
+    pub workspace: String,
+    pub node: String,
+    born: u64,
+    token: u64,
 }
 
-/// The engine's way out to the app and the desktop. Calls come from the engine's thread.
+/// What the app says back to a node that asked it something.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Answer {
+    /// It happened (the box was closed, the timer started...), with the text that goes on.
+    Done(String),
+    /// You said no, or closed the box without an answer.
+    Cancelled,
+    /// It could not be done: why.
+    Failed(String),
+}
+
+/// What the engine asks of the rest of Luminescent: cards, actions, the overlay... The app answers on its own
+/// thread; nothing here waits for it. Requests with a `reply` are answered through [`Engine::answer`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum Out {
+    /// A card or a desktop notification, as Settings → General says (none when notifications are off).
+    Notify {
+        title: String,
+        text: String,
+        ms: u32,
+    },
+    /// A Luminescent card, whatever the notification settings say.
+    Card {
+        title: String,
+        text: String,
+        ms: u32,
+    },
+    /// A desktop notification that stays in its history, and a card as well when that is the style.
+    Toast {
+        title: String,
+        text: String,
+        ms: u32,
+    },
+    /// The big warning in the middle of the screen; `reply` hears when it closes. `sound` plays first.
+    Alert {
+        title: String,
+        text: String,
+        level: String,
+        seconds: f64,
+        sound: String,
+        reply: Option<Reply>,
+    },
+    /// A message box on top of everything; `reply` hears when it is closed.
+    Message {
+        title: String,
+        text: String,
+        reply: Reply,
+    },
+    /// A box to type in: `Done` with what was typed, or `Cancelled`.
+    Ask {
+        title: String,
+        question: String,
+        default: String,
+        reply: Reply,
+    },
+    /// A yes or no question: `Done` for yes.
+    Confirm {
+        title: String,
+        text: String,
+        yes: String,
+        reply: Reply,
+    },
+    /// A tool action, `<module>:<id>`.
+    RunAction(String),
+    /// `open` (on `page`), `close` or `toggle` the overlay.
+    Overlay {
+        mode: String,
+        page: String,
+    },
+    /// `next`, `previous` or a theme's id.
+    Theme(String),
+    /// A dashboard item, as if it was double-clicked.
+    RunItem(String),
+    SwitchBoard(String),
+    /// A Timer panel, already running: `Done` with what it is called, `Failed` when the Timer module is off.
+    StartTimer {
+        ms: f64,
+        label: String,
+        reply: Reply,
+    },
+    /// The Notes panel on that note: `Failed` when the Notes module is off.
+    OpenNote {
+        id: String,
+        reply: Reply,
+    },
+    /// Starts a program, opens a file or a web page: `Done`, or `Failed` with why.
+    Open {
+        target: String,
+        args: String,
+        name: String,
+        reply: Reply,
+    },
+    /// An event for the bus (the clipboard changed).
+    Emit {
+        name: String,
+        text: String,
+    },
+    Sound {
+        kind: String,
+        file: String,
+    },
+    /// Read out loud: `Done` once it was said, `Failed` when nothing can speak.
+    Speak {
+        text: String,
+        reply: Reply,
+    },
+    /// Type into the window that has the keyboard.
+    TypeText(String),
+    PressKeys(String),
+    SetClipboard(String),
+    /// Keep awake on, off, or the other way (`None`): `Done` with the status line.
+    KeepAwake {
+        on: Option<bool>,
+        why: String,
+        reply: Reply,
+    },
+    /// The speakers' volume (`set`, `up`, `down`, `mute`, `unmute`, `toggle_mute`): `Done` with the status line.
+    Volume {
+        mode: String,
+        amount: f64,
+        reply: Reply,
+    },
+    /// Lock, turn the screens off, sleep, sign out, restart or shut down: `Failed` with why.
+    Power {
+        action: String,
+        reply: Reply,
+    },
+    /// The Hotkey triggers that run changed: register [`Engine::hotkey_nodes`] again.
+    HotkeysChanged,
+}
+
+/// The engine's way out to the app and the desktop. `send` is called from the engine's thread with the engine
+/// locked, so it must only pass the request on; the readings are called from worker threads and may wait.
 pub trait Host: Send + Sync {
+    fn send(&self, out: Out);
+
     fn clipboard_text(&self) -> String {
         String::new()
     }
 
-    fn send(&self, out: Out);
+    /// The command that runs one line of the Run command node in `shell` (bash, fish, cmd, powershell...).
+    fn shell_command(&self, shell: &str, line: &str) -> std::process::Command {
+        let mut cmd = std::process::Command::new(if shell.is_empty() { "sh" } else { shell });
+        cmd.arg("-c").arg(line);
+        cmd
+    }
+
+    /// Runs the lines as a script in a terminal window; when it ends, its exit code is written to `marker`.
+    /// Gives back the script's path (removed once the marker is there).
+    fn run_in_terminal(
+        &self,
+        _cwd: &Path,
+        _lines: &[String],
+        _shell: &str,
+        _stop_on_error: bool,
+        _marker: &Path,
+    ) -> Result<PathBuf, String> {
+        Err("No terminal program found.".into())
+    }
+
+    /// Closes every running copy of a program. `true` when one was running.
+    fn close_program(&self, _name: &str, _force: bool) -> bool {
+        false
+    }
+
+    /// The lowercase names of the running programs.
+    fn process_names(&self) -> BTreeSet<String> {
+        BTreeSet::new()
+    }
+
+    /// Seconds since the PC was last used.
+    fn idle_seconds(&self) -> f64 {
+        0.0
+    }
+
+    /// The focused window's app (class) and title.
+    fn focused_window(&self) -> (String, String) {
+        (String::new(), String::new())
+    }
+
+    /// Whether the internet can be reached, `None` while that is not known.
+    fn online(&self) -> Option<bool> {
+        None
+    }
+
+    fn level(&self, _metric: &str) -> Level {
+        Level::NotYet
+    }
+
+    fn keep_awake_on(&self) -> bool {
+        false
+    }
+
+    /// The speakers' volume in percent, and whether they are muted.
+    fn volume(&self) -> Option<(f64, bool)> {
+        None
+    }
 }
 
 /// The Automation section of Settings, as the engine needs it.
@@ -151,10 +349,63 @@ pub trait NodeRuntime: Send {
     /// A variable changed somewhere (the Variable node shows its value).
     fn vars_changed(&mut self, _cx: &mut Cx<'_>) {}
 
+    /// A job it started with [`Cx::spawn`] (or a [`Job`] it handed out) has news.
+    fn job(&mut self, _token: u64, _msg: JobMsg, _cx: &mut Cx<'_>) {}
+
+    /// The app answered a request it sent with [`Cx::reply`].
+    fn answer(&mut self, _token: u64, _answer: Answer, _cx: &mut Cx<'_>) {}
+
+    /// A round of the shared polls it asked for with [`Cx::watch`].
+    fn reading(&mut self, _readings: &Readings, _cx: &mut Cx<'_>) {}
+
+    /// Something happened in Luminescent (`timer.finished`, `theme.changed`...).
+    fn event(&mut self, _name: &str, _text: &str, _cx: &mut Cx<'_>) {}
+
     /// What the editor shows under the node. Live nodes work it out from the time.
-    fn info(&self, status: &Status, _now: f64) -> Status {
+    fn info(&self, status: &Status, _look: &Look<'_>) -> Status {
         status.clone()
     }
+}
+
+/// What a node can read while the editor asks for its status line.
+pub struct Look<'a> {
+    pub mono: f64,
+    pub local: DateTime,
+    node: &'a Value,
+    spec: &'static NodeSpec,
+}
+
+impl Look<'_> {
+    pub fn raw(&self, key: &str) -> &Value {
+        field_of(self.node, self.spec, key)
+    }
+
+    pub fn raw_str(&self, key: &str) -> String {
+        raw_text(self.raw(key))
+    }
+
+    pub fn state(&self) -> &Value {
+        &self.node["state"]
+    }
+}
+
+/// A Hotkey trigger that runs, for the app to register.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HotkeyNode {
+    pub workspace: String,
+    pub node: String,
+    pub combo: String,
+    pub label: String,
+}
+
+/// A Button trigger, for the palette and the tray.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Button {
+    pub workspace: String,
+    pub workspace_name: String,
+    pub node: String,
+    pub label: String,
+    pub running: bool,
 }
 
 /// A pulse on its way: for the editor's animation.
@@ -189,10 +440,17 @@ const STEP_BUDGET: usize = 4096;
 /// How deep value pulls may nest (a value wired into itself).
 const MAX_DEPTH: u32 = 40;
 
+/// How often the shared polls run while a node wants them.
+const WATCH_EVERY: f64 = 2.0;
+
 struct LiveNode {
     spec: &'static NodeSpec,
+    /// Unique to this start of the node: news for an earlier start of it is dropped.
+    born: u64,
     rt: RefCell<Box<dyn NodeRuntime>>,
     status: RefCell<Status>,
+    /// The stop switches of the jobs it started.
+    jobs: RefCell<Vec<Arc<AtomicBool>>>,
 }
 
 struct Wire {
@@ -213,8 +471,17 @@ struct WsLive {
 /// What waits for the next pass: a pulse, or a workspace to switch on or off. Both go through one queue, as
 /// Python's `QTimer.singleShot(0, ...)` did, so pulses sent before a switch still arrive.
 enum Queued {
-    Pulse { ws: String, node: String, port: String, text: String },
-    Switch { ws: String, on: bool },
+    Pulse {
+        ws: String,
+        node: String,
+        port: String,
+        text: String,
+    },
+    /// `None`: the other way.
+    Switch {
+        ws: String,
+        on: Option<bool>,
+    },
 }
 
 struct TimerTarget {
@@ -226,7 +493,7 @@ struct TimerTarget {
 enum Effect {
     Fire { ws: String, node: String, port: String, text: String },
     SaveState { ws: String, node: String, key: String, value: Value },
-    SetEnabled { ws: String, on: bool },
+    SetEnabled { ws: String, on: Option<bool> },
     VarsChanged,
 }
 
@@ -248,6 +515,19 @@ struct Core {
     watch_pulses: bool,
     dirty: bool,
     last: HashMap<(String, String), String>,
+    next_born: u64,
+    jobs_tx: Sender<JobNote>,
+    jobs_rx: Receiver<JobNote>,
+    /// News a test waited for, before the channel's.
+    jobs_waiting: VecDeque<JobNote>,
+    jobs_running: Arc<AtomicUsize>,
+    waker: Wake,
+    watchers: BTreeMap<Watch, BTreeSet<(String, String)>>,
+    watch_timer: Option<u64>,
+    /// A round of readings is on its way.
+    reading: bool,
+    clip_last: Option<String>,
+    hotkeys: Vec<HotkeyNode>,
 }
 
 pub struct Engine {
@@ -277,6 +557,7 @@ impl Engine {
             Some(Value::Object(vars)) => vars,
             _ => Map::new(),
         };
+        let (jobs_tx, jobs_rx) = crossbeam_channel::unbounded();
         Engine {
             doc,
             live: HashMap::new(),
@@ -298,8 +579,47 @@ impl Engine {
                 watch_pulses: false,
                 dirty: false,
                 last: HashMap::new(),
+                next_born: 1,
+                jobs_tx,
+                jobs_rx,
+                jobs_waiting: VecDeque::new(),
+                jobs_running: Arc::default(),
+                waker: Arc::new(|| {}),
+                watchers: BTreeMap::new(),
+                watch_timer: None,
+                reading: false,
+                clip_last: None,
+                hotkeys: Vec::new(),
             },
         }
+    }
+
+    /// Called from worker threads when a job has news, so whoever runs the engine comes back to it.
+    pub fn set_waker(&mut self, wake: impl Fn() + Send + Sync + 'static) {
+        self.core.waker = Arc::new(wake);
+    }
+
+    /// Jobs still working, and news from them not taken yet.
+    pub fn jobs_running(&self) -> usize {
+        self.core.jobs_running.load(Ordering::SeqCst) + self.core.jobs_waiting.len() + self.core.jobs_rx.len()
+    }
+
+    /// Waits up to `timeout` for news from a job (tests). `true` when some came.
+    pub fn wait_for_job(&mut self, timeout: Duration) -> bool {
+        if !self.core.jobs_waiting.is_empty() || !self.core.jobs_rx.is_empty() {
+            return true;
+        }
+        let end = Instant::now() + timeout;
+        while Instant::now() < end {
+            if let Ok(note) = self.core.jobs_rx.recv_timeout(Duration::from_millis(10)) {
+                self.core.jobs_waiting.push_back(note);
+                return true;
+            }
+            if self.core.jobs_running.load(Ordering::SeqCst) == 0 && self.core.jobs_rx.is_empty() {
+                return false;
+            }
+        }
+        false
     }
 
     /// Makes Random chance and Random number repeatable (tests).
@@ -549,7 +869,114 @@ impl Engine {
         let node = self.live.get(wid)?.nodes.get(nid)?;
         let status = node.status.borrow().clone();
         let rt = node.rt.try_borrow().ok()?;
-        Some(rt.info(&status, self.core.clock.mono()))
+        let node_doc = self.workspace(wid).and_then(|ws| doc::node_in(ws, nid)).unwrap_or(&NULL);
+        let look = Look {
+            mono: self.core.clock.mono(),
+            local: self.core.clock.local(),
+            node: node_doc,
+            spec: node.spec,
+        };
+        Some(rt.info(&status, &look))
+    }
+
+    /// Sets a node's status line from outside (the app could not register its hotkey).
+    pub fn set_status(&mut self, wid: &str, nid: &str, text: &str) {
+        self.with_node(wid, nid, |_, cx| cx.set_status(text, None));
+    }
+
+    /// The app answers a node's request.
+    pub fn answer(&mut self, reply: &Reply, answer: Answer) {
+        if self.born_of(&reply.workspace, &reply.node) != Some(reply.born) {
+            return;
+        }
+        let token = reply.token;
+        self.with_node(&reply.workspace, &reply.node, |rt, cx| rt.answer(token, answer, cx));
+        self.apply_effects();
+    }
+
+    /// Something happened in Luminescent: the event triggers hear it.
+    pub fn event(&mut self, name: &str, text: &str) {
+        for (wid, nid) in self.live_of_type("event") {
+            self.with_node(&wid, &nid, |rt, cx| rt.event(name, text, cx));
+            self.apply_effects();
+        }
+    }
+
+    /// The Hotkey triggers that run and have a key, in the order of the workspaces and their nodes.
+    pub fn hotkey_nodes(&self) -> Vec<HotkeyNode> {
+        let mut out = Vec::new();
+        for ws in doc::workspaces(&self.doc) {
+            let wid = str_of(ws, "id");
+            let Some(live) = self.live.get(wid) else { continue };
+            for n in ws["nodes"].as_array().into_iter().flatten() {
+                let nid = str_of(n, "id");
+                let Some(node) = live.nodes.get(nid).filter(|l| l.spec.id == "hotkey") else { continue };
+                let combo = raw_text(field_of(n, node.spec, "combo"));
+                if combo.is_empty() {
+                    continue;
+                }
+                let label = match str_of(n, "title") {
+                    "" => node.spec.title.clone(),
+                    title => title.to_owned(),
+                };
+                out.push(HotkeyNode { workspace: wid.to_owned(), node: nid.to_owned(), combo, label });
+            }
+        }
+        out
+    }
+
+    /// A Hotkey trigger's key was pressed.
+    pub fn hotkey_pressed(&mut self, wid: &str, nid: &str) {
+        let combo = self
+            .workspace(wid)
+            .and_then(|ws| doc::node_in(ws, nid))
+            .map(|n| raw_text(&n["fields"]["combo"]))
+            .unwrap_or_default();
+        self.with_node(wid, nid, |rt, cx| rt.run_now(&combo, cx));
+        self.apply_effects();
+    }
+
+    /// Every Button trigger that is not switched off, running or not.
+    pub fn buttons(&self) -> Vec<Button> {
+        let mut out = Vec::new();
+        for ws in doc::workspaces(&self.doc) {
+            for n in ws["nodes"].as_array().into_iter().flatten() {
+                if str_of(n, "type") != "manual" || text::truthy(&n["off"]) {
+                    continue;
+                }
+                let label = match raw_text(&n["fields"]["label"]) {
+                    l if l.is_empty() => "Run".to_owned(),
+                    l => l,
+                };
+                out.push(Button {
+                    workspace: str_of(ws, "id").to_owned(),
+                    workspace_name: str_of(ws, "name").to_owned(),
+                    node: str_of(n, "id").to_owned(),
+                    label,
+                    running: self.running(ws),
+                });
+            }
+        }
+        out
+    }
+
+    fn born_of(&self, wid: &str, nid: &str) -> Option<u64> {
+        self.live.get(wid)?.nodes.get(nid).map(|n| n.born)
+    }
+
+    fn live_of_type(&self, type_id: &str) -> Vec<(String, String)> {
+        let mut out: Vec<(String, String)> = self
+            .live
+            .iter()
+            .flat_map(|(wid, l)| {
+                l.nodes
+                    .iter()
+                    .filter(|(_, n)| n.spec.id == type_id)
+                    .map(move |(nid, _)| (wid.clone(), nid.clone()))
+            })
+            .collect();
+        out.sort();
+        out
     }
 
     /// Whether the node is running (it is in a running workspace and not switched off).
@@ -589,7 +1016,7 @@ impl Engine {
     /// When [`Engine::step`] has something to do next, on the clock's `mono` scale. `None`: nothing until
     /// something from outside happens.
     pub fn next_deadline(&self) -> Option<f64> {
-        if !self.queue.is_empty() {
+        if !self.queue.is_empty() || !self.core.jobs_waiting.is_empty() || !self.core.jobs_rx.is_empty() {
             return Some(self.core.clock.mono());
         }
         self.core.timers.keys().next().map(|(micros, _)| *micros as f64 / 1e6)
@@ -604,13 +1031,24 @@ impl Engine {
             if due {
                 let (key, target) = self.core.timers.pop_first().expect("checked above");
                 self.core.timer_keys.remove(&key.1);
-                self.with_node(&target.ws, &target.node, |rt, cx| rt.timer(target.token, cx));
+                if target.node.is_empty() {
+                    self.watch_tick();
+                } else {
+                    self.with_node(&target.ws, &target.node, |rt, cx| rt.timer(target.token, cx));
+                }
+            } else if let Some(note) = self.next_job_note() {
+                self.job_note(note);
             } else if let Some(next) = self.queue.pop_front() {
                 match next {
                     Queued::Pulse { ws, node, port, text } => {
                         self.with_node(&ws, &node, |rt, cx| rt.receive(&port, &text, cx));
                     }
-                    Queued::Switch { ws, on } => self.set_enabled(&ws, on),
+                    Queued::Switch { ws, on } => {
+                        let Some(was) = self.workspace(&ws).map(|w| text::truthy(&w["enabled"])) else {
+                            continue;
+                        };
+                        self.set_enabled(&ws, on.unwrap_or(!was));
+                    }
                 }
             } else {
                 return false;
@@ -618,6 +1056,122 @@ impl Engine {
             self.apply_effects();
         }
         true
+    }
+
+    fn next_job_note(&mut self) -> Option<JobNote> {
+        self.core.jobs_waiting.pop_front().or_else(|| self.core.jobs_rx.try_recv().ok())
+    }
+
+    fn job_note(&mut self, note: JobNote) {
+        match (note.to, note.what) {
+            (Some(to), JobWhat::Msg(msg)) => {
+                if self.born_of(&to.ws, &to.node) == Some(to.born) {
+                    self.with_node(&to.ws, &to.node, |rt, cx| rt.job(to.token, msg, cx));
+                }
+            }
+            (_, JobWhat::Readings(readings)) => self.deliver_readings(readings),
+            (None, JobWhat::Msg(_)) => {}
+        }
+    }
+
+    /// The shared polls' timer: schedules the next round and starts reading unless the last round is still busy.
+    fn watch_tick(&mut self) {
+        self.core.watch_timer = None;
+        if self.core.watchers.values().all(BTreeSet::is_empty) {
+            return;
+        }
+        self.core.watch_timer = Some(self.core.add_timer("", "", WATCH_EVERY, 0));
+        if self.core.reading {
+            return;
+        }
+        let has = |kind: Watch| self.core.watchers.get(&kind).is_some_and(|s| !s.is_empty());
+        let mut metrics: Vec<String> = Vec::new();
+        for (wid, nid) in self.core.watchers.get(&Watch::Levels).into_iter().flatten() {
+            let node = self.workspace(wid).and_then(|ws| doc::node_in(ws, nid)).unwrap_or(&NULL);
+            let metric = match raw_text(&node["fields"]["metric"]) {
+                m if m.is_empty() => "cpu".to_owned(),
+                m => m,
+            };
+            if !metrics.contains(&metric) {
+                metrics.push(metric);
+            }
+        }
+        let want = Want {
+            programs: has(Watch::Programs),
+            idle: has(Watch::Idle),
+            metrics,
+            window: has(Watch::Window),
+            online: has(Watch::Internet),
+            clipboard: has(Watch::Clipboard),
+        };
+        self.core.reading = true;
+        let job = Job {
+            to: None,
+            tx: self.core.jobs_tx.clone(),
+            wake: self.core.waker.clone(),
+            host: self.core.host.clone(),
+            stop: Arc::default(),
+        };
+        work::spawn(&self.core.jobs_running, "automation-watch", move || {
+            let readings = want.read(job.host());
+            job.note(JobWhat::Readings(readings));
+        });
+    }
+
+    fn deliver_readings(&mut self, mut readings: Readings) {
+        self.core.reading = false;
+        let clip = readings.clipboard.take();
+        let has = [
+            (Watch::Programs, readings.programs.is_some()),
+            (Watch::Idle, readings.idle.is_some()),
+            (Watch::Levels, !readings.levels.is_empty()),
+            (Watch::Window, readings.window.is_some()),
+            (Watch::Internet, readings.online.is_some()),
+        ];
+        for (kind, there) in has {
+            if !there {
+                continue;
+            }
+            let subs: Vec<(String, String)> =
+                self.core.watchers.get(&kind).map(|s| s.iter().cloned().collect()).unwrap_or_default();
+            for (wid, nid) in subs {
+                self.with_node(&wid, &nid, |rt, cx| rt.reading(&readings, cx));
+                self.apply_effects();
+            }
+        }
+        let Some(text) = clip else { return };
+        let subs: Vec<(String, String)> = self
+            .core
+            .watchers
+            .get(&Watch::Clipboard)
+            .map(|s| s.iter().cloned().collect())
+            .unwrap_or_default();
+        if subs.is_empty() || self.core.clip_last.as_deref() == Some(text.as_str()) {
+            return;
+        }
+        // the first look only learns what is there; a change is what fires
+        let first = self.core.clip_last.is_none();
+        self.core.clip_last = Some(text.clone());
+        if first {
+            return;
+        }
+        let changed = Readings { clipboard: Some(text.clone()), ..Readings::default() };
+        for (wid, nid) in subs {
+            self.with_node(&wid, &nid, |rt, cx| rt.reading(&changed, cx));
+            self.apply_effects();
+        }
+        self.core
+            .host
+            .send(Out::Emit { name: "clipboard.changed".into(), text: clip_chars(&text, 200).to_owned() });
+    }
+
+    /// Tells the app when the set of Hotkey triggers to register changed.
+    fn check_hotkeys(&mut self) {
+        let now = self.hotkey_nodes();
+        if now != self.core.hotkeys {
+            self.core.hotkeys = now;
+            self.core.host.send(Out::HotkeysChanged);
+        }
     }
 
     fn workspace_ids(&self) -> Vec<String> {
@@ -676,14 +1230,25 @@ impl Engine {
             }
             let Some(spec) = spec::spec(&ty) else { continue };
             let rt = crate::nodes::make(spec);
-            live.nodes
-                .insert(nid.clone(), LiveNode { spec, rt: RefCell::new(rt), status: RefCell::default() });
+            let born = self.core.next_born;
+            self.core.next_born += 1;
+            live.nodes.insert(
+                nid.clone(),
+                LiveNode {
+                    spec,
+                    born,
+                    rt: RefCell::new(rt),
+                    status: RefCell::default(),
+                    jobs: RefCell::default(),
+                },
+            );
             fresh.push(nid);
         }
         for nid in fresh {
             self.with_node(wid, &nid, |rt, cx| rt.start(cx));
             self.apply_effects();
         }
+        self.check_hotkeys();
     }
 
     fn stop_workspace(&mut self, wid: &str) {
@@ -694,13 +1259,17 @@ impl Engine {
         }
         self.live.remove(wid);
         self.queue.retain(|q| !matches!(q, Queued::Pulse { ws, .. } if ws == wid));
+        self.check_hotkeys();
     }
 
     fn stop_node(&mut self, wid: &str, nid: &str) {
         self.with_node(wid, nid, |rt, cx| rt.stop(cx));
         self.core.cancel_node_timers(wid, nid);
-        if let Some(live) = self.live.get_mut(wid) {
-            live.nodes.remove(nid);
+        self.core.unwatch_node(wid, nid);
+        if let Some(node) = self.live.get_mut(wid).and_then(|live| live.nodes.remove(nid)) {
+            for stop in node.jobs.borrow().iter() {
+                stop.store(true, Ordering::Relaxed);
+            }
         }
         // Whatever the node was still going to send is dropped, as Python's `alive = False` does.
         self.core.effects.retain(|e| !matches!(e, Effect::Fire { ws, node, .. } if ws == wid && node == nid));
@@ -717,12 +1286,15 @@ impl Engine {
         let mut cx = Cx {
             core: &mut self.core,
             ws: live,
+            doc: &self.doc,
             ws_doc,
             node_doc,
             wid,
             nid,
+            born: node.born,
             spec: node.spec,
             status: &node.status,
+            jobs: &node.jobs,
         };
         if catch_unwind(AssertUnwindSafe(|| f(&mut **rt, &mut cx))).is_err() {
             tracing::error!("automation node {} ({nid}) failed", node.spec.id);
@@ -812,7 +1384,7 @@ impl Core {
         if r.1 == limit + 1 {
             let name = doc::workspace(doc, wid).map(|w| str_of(w, "name")).unwrap_or_default().to_owned();
             tracing::warn!("workspace {name} fired more than {limit} times a second: switched off");
-            self.effects.push(Effect::SetEnabled { ws: wid.to_owned(), on: false });
+            self.effects.push(Effect::SetEnabled { ws: wid.to_owned(), on: Some(false) });
             self.host.send(Out::Notify {
                 title: "Automation".into(),
                 text: format!(
@@ -850,6 +1422,26 @@ impl Core {
         }
     }
 
+    fn watch(&mut self, kind: Watch, wid: &str, nid: &str) {
+        self.watchers.entry(kind).or_default().insert((wid.to_owned(), nid.to_owned()));
+        if self.watch_timer.is_none() {
+            // the first round straight away, as Python's `singleShot(0, self._tick)`
+            self.watch_timer = Some(self.add_timer("", "", 0.0, 0));
+        }
+    }
+
+    fn unwatch_node(&mut self, wid: &str, nid: &str) {
+        let key = (wid.to_owned(), nid.to_owned());
+        for subs in self.watchers.values_mut() {
+            subs.remove(&key);
+        }
+        if self.watchers.values().all(BTreeSet::is_empty)
+            && let Some(id) = self.watch_timer.take()
+        {
+            self.cancel_timer(id);
+        }
+    }
+
     fn cancel_node_timers(&mut self, wid: &str, nid: &str) {
         let gone: Vec<(i64, u64)> =
             self.timers.iter().filter(|(_, t)| t.ws == wid && t.node == nid).map(|(k, _)| *k).collect();
@@ -864,16 +1456,32 @@ fn to_micros(secs: f64) -> i64 {
     (secs * 1e6).round() as i64
 }
 
+/// A field as saved, or its default.
+fn field_of<'v>(node: &'v Value, spec: &'static NodeSpec, key: &str) -> &'v Value {
+    match node["fields"].get(key) {
+        Some(v) => v,
+        None => spec.field(key).map_or(&NULL, |f| &f.default),
+    }
+}
+
+/// `str(value or "")`.
+fn raw_text(v: &Value) -> String {
+    if text::truthy(v) { text::py_str(v) } else { String::new() }
+}
+
 /// What a node can see and do while it runs.
 pub struct Cx<'a> {
     core: &'a mut Core,
     ws: &'a WsLive,
+    doc: &'a Value,
     ws_doc: &'a Value,
     node_doc: &'a Value,
     wid: &'a str,
     nid: &'a str,
+    born: u64,
     pub spec: &'static NodeSpec,
     status: &'a RefCell<Status>,
+    jobs: &'a RefCell<Vec<Arc<AtomicBool>>>,
 }
 
 impl Cx<'_> {
@@ -899,16 +1507,17 @@ impl Cx<'_> {
 
     /// A field as saved, or its default.
     pub fn raw(&self, key: &str) -> &Value {
-        match self.node_doc["fields"].get(key) {
-            Some(v) => v,
-            None => self.spec.field(key).map_or(&NULL, |f| &f.default),
-        }
+        field_of(self.node_doc, self.spec, key)
     }
 
     /// `str(self.raw(key) or "")`: a field as text, without filling in tokens.
     pub fn raw_str(&self, key: &str) -> String {
-        let v = self.raw(key);
-        if text::truthy(v) { text::py_str(v) } else { String::new() }
+        raw_text(self.raw(key))
+    }
+
+    /// Another workspace (or this one), as saved.
+    pub fn workspace(&self, wid: &str) -> Option<&Value> {
+        doc::workspace(self.doc, wid)
     }
 
     pub fn flag(&self, key: &str) -> bool {
@@ -955,12 +1564,15 @@ impl Cx<'_> {
         let mut cx = Cx {
             core: &mut *self.core,
             ws: self.ws,
+            doc: self.doc,
             ws_doc: self.ws_doc,
             node_doc,
             wid: self.wid,
             nid: src,
+            born: node.born,
             spec: node.spec,
             status: &node.status,
+            jobs: &node.jobs,
         };
         let got = catch_unwind(AssertUnwindSafe(|| rt.value(port, input, &mut cx)));
         self.core.depth -= 1;
@@ -1027,9 +1639,43 @@ impl Cx<'_> {
         self.core.set_var(name, value);
     }
 
-    /// Switches a workspace on or off once this pass is over.
-    pub fn set_enabled(&mut self, wid: &str, on: bool) {
+    /// Switches a workspace on or off (`None`: the other way) once this pass is over.
+    pub fn set_enabled(&mut self, wid: &str, on: Option<bool>) {
         self.core.effects.push(Effect::SetEnabled { ws: wid.to_owned(), on });
+    }
+
+    /// Where the app's answer to a request goes; `token` tells the node which request it was.
+    pub fn reply(&self, token: u64) -> Reply {
+        Reply { workspace: self.wid.to_owned(), node: self.nid.to_owned(), born: self.born, token }
+    }
+
+    /// A way back into this node for another thread (a file watcher's callback). Its news arrives through
+    /// [`NodeRuntime::job`] with `token`; it is told to stop when the node goes.
+    pub fn job(&mut self, token: u64) -> Job {
+        let stop = Arc::new(AtomicBool::new(false));
+        let mut jobs = self.jobs.borrow_mut();
+        jobs.retain(|s| Arc::strong_count(s) > 1);
+        jobs.push(stop.clone());
+        Job {
+            to: Some(NodeAddr { ws: self.wid.to_owned(), node: self.nid.to_owned(), born: self.born, token }),
+            tx: self.core.jobs_tx.clone(),
+            wake: self.core.waker.clone(),
+            host: self.core.host.clone(),
+            stop,
+        }
+    }
+
+    /// Runs `work` on a thread of its own. What it sends arrives through [`NodeRuntime::job`] with `token`.
+    pub fn spawn(&mut self, token: u64, work: impl FnOnce(&Job) + Send + 'static) -> JobHandle {
+        let job = self.job(token);
+        let handle = JobHandle(job.stop.clone());
+        work::spawn(&self.core.jobs_running, "automation-job", move || work(&job));
+        handle
+    }
+
+    /// Asks for a shared poll; the readings arrive through [`NodeRuntime::reading`] until the node stops.
+    pub fn watch(&mut self, kind: Watch) {
+        self.core.watch(kind, self.wid, self.nid);
     }
 
     pub fn mono(&self) -> f64 {

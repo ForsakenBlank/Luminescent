@@ -34,6 +34,11 @@ enum Cmd {
     },
     ToggleEdit,
     Lap,
+    /// An automation asked for a running timer (`ms` 0: a stopwatch).
+    Start {
+        ms: f64,
+        label: String,
+    },
 }
 
 #[derive(Debug)]
@@ -210,6 +215,18 @@ impl TimerModule {
                         self.save();
                     }
                 }
+                Cmd::Start { ms, label } => {
+                    let state = if ms > 0.0 {
+                        TimerState::new(Mode::Timer, ms as i64, &label)
+                    } else {
+                        TimerState::new(Mode::Stopwatch, 0, &label)
+                    };
+                    self.add_panel(state, None, settings);
+                    let last = self.panels.len() - 1;
+                    self.act(last, Act::PlayPause);
+                    self.save();
+                    self.status_changed();
+                }
             }
         }
     }
@@ -374,6 +391,11 @@ impl Module for TimerModule {
 }
 
 impl UiModule for TimerModule {
+    fn start_timer(&mut self, ms: f64, label: &str) -> bool {
+        self.inbox.push(Cmd::Start { ms, label: label.to_owned() });
+        true
+    }
+
     fn binds(&self) -> Vec<Bind> {
         vec![
             Bind { setting: "new_hotkey", id: "new", label: "new timer" },

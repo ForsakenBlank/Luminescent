@@ -2,7 +2,7 @@
 
 use serde_json::json;
 
-use crate::engine::{Cx, NodeRuntime, Status};
+use crate::engine::{Cx, Look, NodeRuntime, Status};
 use crate::text;
 
 struct Waiting {
@@ -43,9 +43,9 @@ impl NodeRuntime for Delay {
         self.waiting.clear();
     }
 
-    fn info(&self, _status: &Status, now: f64) -> Status {
+    fn info(&self, _status: &Status, look: &Look<'_>) -> Status {
         let Some(first) = self.waiting.first() else { return Status::default() };
-        let left = (first.secs - (now - first.t0)).max(0.0);
+        let left = (first.secs - (look.mono - first.t0)).max(0.0);
         let more = match self.waiting.len() {
             1 => String::new(),
             n => format!(" (+{} waiting)", n - 1),
@@ -277,7 +277,7 @@ impl NodeRuntime for Repeat {
         self.step(cx);
     }
 
-    fn info(&self, _status: &Status, _now: f64) -> Status {
+    fn info(&self, _status: &Status, _look: &Look<'_>) -> Status {
         match self.timer {
             Some(_) => Status { text: format!("{} to go", self.left), progress: None },
             None => Status::default(),

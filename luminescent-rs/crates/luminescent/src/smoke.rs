@@ -30,6 +30,7 @@ const CHECKS: &[(&str, Check)] = &[
     ("settings page: every section, save and apply", settings_page),
     ("everyday tools: panels, pages, palette", everyday_tools),
     ("screen tools: frozen screens, picker, ruler, text grab, doodle", screen_tools),
+    ("automation: the engine, an event trigger, the hotkeys", automation),
 ];
 
 pub fn run(app: &mut App) -> u8 {
@@ -550,5 +551,56 @@ fn settings_page(app: &mut App) -> Result<(), String> {
     pass(app);
     app.hide_overlay();
     pass(app);
+    Ok(())
+}
+
+/// The engine runs on its thread: an event from the bus reaches an event trigger, which sets a variable; a
+/// Hotkey trigger is offered to the app; switching the workspace off takes it away again.
+fn automation(app: &mut App) -> Result<(), String> {
+    use serde_json::json;
+    let auto = app.automation().ok_or("the engine did not start")?;
+    let example = auto.read(|e| {
+        lum_automation::doc::workspaces(e.doc())
+            .iter()
+            .any(|w| w["name"] == "Example" && w["enabled"] == false)
+    });
+    if !example {
+        return Err("the first start should bring the Example workspace, switched off".into());
+    }
+    let wid = auto.with(|e| {
+        let wid = e.add_workspace("Smoke", None);
+        if let Some(ws) = lum_automation::doc::workspace_mut(e.doc_mut(), &wid) {
+            ws["nodes"] = json!([
+                {"id": "ev", "type": "event", "fields": {"event": "overlay.opened", "filter": ""}},
+                {"id": "set", "type": "var_set", "fields": {"name": "smoke", "value": "{input}"}},
+                {"id": "key", "type": "hotkey", "fields": {"combo": "ctrl+alt+shift+f12"}}
+            ]);
+            ws["wires"] = json!([{"id": "w1", "src": ["ev", "out:fire"], "dst": ["set", "in:run"]}]);
+        }
+        e.replaced(&wid);
+        wid
+    });
+    app.emit("overlay.opened", "dashboard");
+    let auto = app.automation().ok_or("the engine went away")?;
+    let mut got = String::new();
+    for _ in 0..500 {
+        got = auto.read(|e| e.get_var("smoke"));
+        if !got.is_empty() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    if got != "dashboard" {
+        return Err(format!("the event trigger did not set the variable (it is {got:?})"));
+    }
+    if auto.read(|e| e.hotkey_nodes().len()) != 1 {
+        return Err("the Hotkey trigger was not offered to the app".into());
+    }
+    auto.with(|e| {
+        e.set_enabled(&wid, false);
+        e.delete_workspace(&wid);
+        e.delete_var("smoke");
+    });
+    app.poll();
     Ok(())
 }

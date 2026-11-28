@@ -82,7 +82,7 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 | [x] | Chrome layer: logo, sparkle, title, clock, time, date, status chips, running timers; edit mode to drag, add, freeze, duplicate, resize, move to screen, remove, reset | 5 | `ui/chrome.py` |
 | [ ] | Status chips: running timers, Hearing Guard level, next reminder *(phase 5: the chips are drawn from `ChromeData`; running timers are in since phase 8, the rest come with phases 8 (reminder), 11, 12)* | 5 | `ui/chrome.py` |
 | [x] | Pages built lazily; prewarm after start; repair (rebuild) when a page breaks | 5 | `ui/overlay.py` |
-| [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries *(phase 5: pages, actions, themes, settings, Luminescent entries, recent; sums and quick reminders phase 8, notes 8, colours 9, pins 8, automations 10; phase 6: dashboard items are in)* | 5 | `ui/palette.py` |
+| [ ] | Command palette: actions, scripts, notes, themes, settings sections, colours, pins, reminders; sums; quick reminders; recent entries *(phase 5: pages, actions, themes, settings, Luminescent entries, recent; sums and quick reminders phase 8, notes 8, colours 9, pins 8; phase 6: dashboard items are in; phase 10: automation buttons and pause)* | 5 | `ui/palette.py` |
 | [x] | Hotkey cheat sheet while held | 5 | `ui/cheatsheet.py` |
 | [x] | Luminescent notification cards: position, width, accent style, duration, max on screen, opacity, text size, icon, hover keeps, ✕, right-click copies, grows to fit *(right-click copies at once and says so on the card: a menu can not leave a card's small window, D37)* | 5 | `ui/toast.py` |
 | [x] | Desktop notifications option; reminders and dose warnings always go to the desktop too | 5 | `ui/toast.py` |
@@ -243,18 +243,18 @@ marked *(added in phase 0)*. The behaviour behind many rows is pinned by a fixtu
 
 | Done | Feature | Phase | Spec |
 |---|---|---|---|
-| [ ] | Endless workspace: pan (right / middle drag, Space + drag), smooth wheel zoom | 10 | `ui/automation.py` |
-| [ ] | Round flow ports, diamond value ports, ◆ pins on fields | 10 | `ui/automation.py` |
-| [ ] | Pulses run along wires as glowing dots with a peek at what they carry | 10 | `ui/automation.py` |
-| [ ] | Add nodes by right-click, double-click, or dropping a wire on open space (filtered) | 10 | `ui/automation.py` |
-| [ ] | 13 triggers, 30 actions, 10 logic nodes, 11 values, the note (65 types) *(phase 10 at 25 %: every spec from the fixture; logic, values, Every…, Button, Set variable, Show and Note run; the rest say "not available yet")* | 10 | `core/automation.py` |
-| [ ] | Tokens: `{input}`, `{var:name}`, `{date}`, `{time}`, `{now}`, `{clipboard}`, `{newline}` *(phase 10 at 25 %: in lum-automation, every expansion fixture passes)* | 10 | `core/automation.py` |
-| [ ] | Runs in the background, overlay open or not *(phase 10 at 25 %: `Automation` runs the engine on its own thread, asleep until the next timer; not started by the app yet)* | 10 | `core/automation.py` |
-| [ ] | Workspaces with on / off switches; export / import `.lumflow` | 10 | `core/automation.py` |
-| [ ] | Undo / redo, copy / paste / duplicate, Delete, F to fit | 10 | `ui/automation.py` |
-| [ ] | Variables kept between restarts *(phase 10 at 25 %: in the engine and the file)* | 10 | `core/automation.py` |
-| [ ] | Pause everything (Settings, tray, hotkey); safety stop for wire loops *(phase 10 at 25 %: the safety stop and pausing in the engine; Settings, tray and hotkey come with the app wiring)* | 10 | `core/automation.py` |
-| [ ] | Buttons in the palette and the tray | 10 | `core/automation.py` |
+| [x] | Endless workspace: pan (right / middle drag, Space + drag), smooth wheel zoom | 10 | `ui/automation.py` |
+| [x] | Round flow ports, diamond value ports, ◆ pins on fields | 10 | `ui/automation.py` |
+| [x] | Pulses run along wires as glowing dots with a peek at what they carry | 10 | `ui/automation.py` |
+| [x] | Add nodes by right-click, double-click, or dropping a wire on open space (filtered) | 10 | `ui/automation.py` |
+| [x] | 13 triggers, 30 actions, 10 logic nodes, 11 values, the note (65 types) *(phase 10: all run; Set wallpaper says "not available yet" until phase 14's wallpaper backends, the temperature and GPU thresholds until phase 11's sampler, and Volume on Windows until the sound settings)* | 10 | `core/automation.py` |
+| [x] | Tokens: `{input}`, `{var:name}`, `{date}`, `{time}`, `{now}`, `{clipboard}`, `{newline}` *(phase 10 at 25 %: in lum-automation, every expansion fixture passes)* | 10 | `core/automation.py` |
+| [x] | Runs in the background, overlay open or not *(phase 10: the launcher starts it with `automation.json`, Settings → Automation and the event bus; asleep while nothing is due)* | 10 | `core/automation.py` |
+| [x] | Workspaces with on / off switches; export / import `.lumflow` | 10 | `core/automation.py` |
+| [x] | Undo / redo, copy / paste / duplicate, Delete, F to fit | 10 | `ui/automation.py` |
+| [x] | Variables kept between restarts, and the Variables panel | 10 | `core/automation.py` |
+| [x] | Pause everything (Settings, tray, hotkey); safety stop for wire loops | 10 | `core/automation.py` |
+| [x] | Buttons in the palette and the tray | 10 | `core/automation.py` |
 | [ ] | System readings and controls the nodes use: volume, lock / sleep / screen off, temperatures, GPU load, the focused window, internet check (slow parts on a worker thread) *(added in phase 0)* | 10 | `core/system.py` |
 
 ## Prompt Log and Keybinds (phase 13)

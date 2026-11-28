@@ -1373,32 +1373,67 @@ when NVML is available; display changes always revert after 15 s without a confi
 ```text
 We are rewriting Luminescent (a Python + PyQt6 tray app in this repo) as a native Rust app. Read
 rust-rewrite-plan/README.md, rust-rewrite-plan/PHASES.md (Phase 11 section), rust-rewrite-plan/PROGRESS.md,
-rust-rewrite-plan/PLATFORM_MATRIX.md, rust-rewrite-plan/CRATES.md, rust-rewrite-plan/PERFORMANCE.md and
-luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 11 already started, continue from its handoff note.
+rust-rewrite-plan/ARCHITECTURE.md (threads and data flow, the decision log, D66 to D71 above all), rust-rewrite-plan/PLATFORM_MATRIX.md,
+rust-rewrite-plan/CRATES.md, rust-rewrite-plan/PERFORMANCE.md and luminescent-rs/CLAUDE.md first. If PROGRESS.md shows Phase 11 already
+started, continue from its handoff note and take the next checkpoint in order.
 
-This session is Phase 11: the system modules. The spec is modules/sysmon.py, modules/performance.py,
-core/perfstats.py, core/perftweaks.py, ui/performance_ui.py, modules/syscontrol.py, core/syscontrol.py,
-core/workspaces.py, tests/test_workspaces.py and tests/test_system_1_8_3.py. Read the ones for the checkpoint
-you are on before writing code.
+Before anything else check the branch: `git log --oneline -3` must show "Plan: phase 10 done" and "Automation: pulses, undo,
+workspaces...". If PROGRESS.md says less than "Phase 10 at 100 %", the branch is main without the later work: it is on
+origin/claude/phase-10-automation (or whichever branch the handoff note names), so fast-forward onto it
+(`git merge --ff-only origin/<branch>`) and say so. If your checkout has uncommitted work of the user's on another branch, leave it
+alone and work in a git worktree on a new branch cut from origin/main.
 
-Build everything in the Phase 11 Deliverables list, in checkpoint order: the lum-perf sampler (NVML first,
-nvidia-smi only as a fallback, DRM fdinfo, PDH on Windows) that only runs while something needs it; the
-Performance window, HUD and System Monitor panel; the tweaks with one pkexec helper that has an allow-list;
-System Settings; workspace sets with the Lua tests ported to mlua.
+This session is Phase 11: the system modules. The spec is modules/sysmon.py, modules/performance.py, core/perfstats.py,
+core/perftweaks.py, ui/performance_ui.py, modules/syscontrol.py, core/syscontrol.py, core/workspaces.py, tests/test_workspaces.py and
+tests/test_system_1_8_3.py. Read the ones for the checkpoint you are on before writing code.
 
-Measure the sampler with 400 processes and compare it with PERFORMANCE.md. Anything that changes system settings
-must be reversible the same way the Python code makes it reversible; display changes must revert by themselves
-after 15 seconds. This container has no desktop, so give me commands to verify on Hyprland and Windows 11.
+Build everything in the Phase 11 Deliverables list, in checkpoint order: the lum-perf sampler (NVML first, nvidia-smi only as a
+fallback, DRM fdinfo, PDH on Windows) that only runs while something needs it; the Performance window, HUD and System Monitor panel;
+the tweaks with one pkexec helper that has an allow-list; System Settings; workspace sets with the Lua tests ported to mlua.
 
-Rules: follow luminescent-rs/CLAUDE.md. Same labels as the Python app. Never use em dashes anywhere. Code should
-read like a careful human wrote it. Commit after each checkpoint.
+What phase 10 left for you:
+- `lum_perf::levels` (CPU between two readings, memory, battery on Linux and Windows) is the stand-in the automation threshold trigger
+  reads through the app's `AppHost::level` (`luminescent/src/launcher/automation.rs`). When the sampler exists, let the trigger read it
+  (start the sampler only while a threshold trigger runs: the engine's `Watch::Levels` subscribers say when) and give it `cpu_temp`,
+  `gpu` and `gpu_temp` (they answer `Level::NotYet`, "not available yet", today). Keep the texts of `core/automation.py`.
+- `lum_platform::control` has the volume (wpctl / pactl on Linux; Windows says "not available yet" until the endpoint COM interface
+  comes) and power actions; System Settings' sound devices and volume should reuse and extend it, and then the Volume node works on
+  Windows too.
+- The app answers automation requests in `launcher/automation.rs`; a module is a `UiModule` in `modules()` (launcher.rs); commands
+  reach it through its `Inbox<Cmd>`, requests go back through `Services::send`; copy the shape of `crates/lum-ui/src/tools/` and
+  `crates/lum-ui/src/automation/` (an egui layer with a transform when something must zoom with real widgets inside).
+- What phases 3 to 10 left: the Hello tray, Looks right, Dashboard, Settings, Daily-drivable alpha, two-monitor and automation desktop
+  checks may still be open; leave them on the waiting list and do not ask again unless the user brings them up.
 
-Finish: fmt, clippy -D warnings, tests, --smoke. Update rust-rewrite-plan/PROGRESS.md and FEATURE_INVENTORY.md.
-Stop at a checkpoint boundary if you run low on room.
+Gotchas: `Settings::get` takes `section.key` only; `ctx.data_mut` must not call other `ctx` methods inside; `IdTypeMap::remove_temp`
+needs `Default`, use `remove::<T>(id)`; egui 0.37 has no `raw_scroll_delta` (read `Event::MouseWheel`, which has `phase` and `source`),
+uses `egui::Role` (not `WidgetType`), `Context::egui_wants_keyboard_input`, `Ui::scope_id`, `Id::unique((salt, ...))`; `f32::clamp`
+panics when its bounds cross; give painted widgets and text `response.widget_info(...)`; fonts lack `＋`, `⧉`, `⌗` and `⏲`, probe new
+characters with `MissingGlyphPolicy::Panic`; kittest's `run()` lets timers fire, use `step()`; it steps a quarter of a second a frame
+(raise `max_double_click_delay` for double clicks); one harness per test when taking pictures; worker threads need a wait loop with a
+generous limit; a popup opened by a click sees that click in the same frame. `jiff` 1.x calls it `ZonedDateTime`. In a cloud
+container: `apt-get update`, then `apt-get install -y libasound2-dev pkg-config libxkbcommon-x11-0 mesa-vulkan-drivers xvfb
+gcc-mingw-w64-x86-64`, `cargo install cargo-deny --locked`, and `rustup target add x86_64-pc-windows-gnu` inside luminescent-rs/. On
+the user's own desktop install nothing system-wide: run tests with `HYPRLAND_INSTANCE_SIGNATURE` unset, expect the eight screen tool
+pictures to differ without lavapipe, and if `x86_64-w64-mingw32-gcc` is missing run the Windows clippy only for crates without ureq.
 
-Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you
-learned in this phase), say which model and effort level to set, and tell me if the branch needs merging first.
-Include this same last paragraph at the end of the prompt you give me, so every phase hands over the next one.
+Measure the sampler with 400 processes and compare it with PERFORMANCE.md. Anything that changes system settings must be reversible
+the same way the Python code makes it reversible; display changes must revert by themselves after 15 seconds. Give the user commands
+to verify on Hyprland and Windows 11 (there is no real desktop in a cloud session, and on the user's desktop do not change their
+displays or run root helpers without asking first).
+
+Rules: follow luminescent-rs/CLAUDE.md. Same labels as the Python app. Never use em dashes anywhere. Code should read like a careful
+human wrote it. Commit after each checkpoint.
+
+Finish each session: fmt, clippy -D warnings (and the Windows target), tests, --smoke, cargo deny check. Update
+rust-rewrite-plan/PROGRESS.md (checkpoints, percentages, handoff note naming the next checkpoint) and FEATURE_INVENTORY.md. Stop at a
+checkpoint boundary if you run low on room.
+
+Last, give me the prompt for the next phase (the next phase from rust-rewrite-plan/PHASES.md, updated with anything you learned in
+this phase) and say which model and effort level to set. You have my permission to merge: once the session's work is committed,
+every check passes and your branch is a fast-forward of main, push it to main yourself (`git push origin HEAD:main`) and tell me
+you did; if it is not a fast-forward, stop and ask me. Include this same last paragraph at the end of the prompt you give me, so
+every phase hands over the next one and keeps this permission.
 ```
 
 ---

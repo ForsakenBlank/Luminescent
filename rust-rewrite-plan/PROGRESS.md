@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint → 37 + 6 �
 ## Overall
 
 ```
-Overall: 67.5 %   [#############.......]   Current phase: Phase 10 at 75 % (the node editor) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings, phase 8's Daily-drivable alpha and phase 9's two-monitor checks are unconfirmed; 68.75 % with them)
+Overall: 69.75 %   [##############......]   Current phase: Phase 10 at 100 % (automation done; next Phase 11) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings, phase 8's Daily-drivable alpha and phase 9's two-monitor checks are unconfirmed; 71 % with them)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -24,7 +24,7 @@ Overall: 67.5 %   [#############.......]   Current phase: Phase 10 at 75 % (the 
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 90 % (100 % built, waiting on the Daily-drivable alpha check) | in progress |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 75 % (100 % built, waiting on the two-monitor check) | in progress |
-| 10 | Automation | 9 % | 62 % | 71 % | 75 % | in progress |
+| 10 | Automation | 9 % | 62 % | 71 % | 100 % | done |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
 | 12 | Audio + media | 5 % | 81 % | 86 % | 0 % | not started |
 | 13 | Privacy, sync, keybinds | 6 % | 86 % | 92 % | 0 % | not started |
@@ -106,7 +106,7 @@ Overall: 67.5 %   [#############.......]   Current phase: Phase 10 at 75 % (the 
 - [x] 25 %: model, engine core, logic and value nodes, expansion; fixtures pass
 - [x] 50 %: all triggers and actions wired
 - [x] 75 %: editor canvas, nodes, wires, picker, field editors
-- [ ] 100 %: pulse animation, undo / redo, clipboard, workspaces and `.lumflow`, perf check
+- [x] 100 %: pulse animation, undo / redo, clipboard, workspaces and `.lumflow`, perf check
 
 ### Phase 11: System modules
 - [ ] 25 %: sampler on Linux and Windows within budget
@@ -142,6 +142,74 @@ Overall: 67.5 %   [#############.......]   Current phase: Phase 10 at 75 % (the 
 
 Newest first. Each note: date, phase and checkpoint, what is done, what is left, anything surprising, and any
 manual check waiting on the user.
+
+### 2026-11-28, Phase 10 done: every node runs, and the editor (overall 69.75 %; 71 % with the open checks)
+
+Branch `claude/phase-10-automation`, cut from `origin/main` (which already held "Plan: phase 10 at 25 %"). This session ran on the
+user's own CachyOS + Hyprland machine, not a cloud container: no `apt-get`, no lavapipe, no MinGW (see below). The checks from phases 3
+to 9 were left alone.
+
+**Done and green** (fmt, clippy on Linux, the Windows clippy for `lum-platform` and `lum-perf` (see below), `cargo deny check`,
+`--smoke`, `--idle-check`; the test counts are in the commit that closes the phase):
+* **Checkpoint 50 %, every trigger and action wired** (D66 to D69). `lum-automation`: `work.rs` (jobs on worker threads with a way
+  back into the node; `Watch` polls; `Readings`; `Level`), `Out` with a variant for everything the app does, `Reply` / `Answer`,
+  `Host` readings and OS hooks with test-friendly defaults, `Engine::event`, `hotkey_nodes` / `hotkey_pressed` (the app re-registers
+  on `Out::HotkeysChanged`), `buttons`, `answer`, `set_status`, `replace_vars`, `Handle` (from any thread). Triggers: At a time of day
+  and On a date sleep until their minute; Hotkey; Luminescent event; Program starts / stops; File or folder changes (`notify`);
+  Clipboard changes; Idle / back; thresholds (CPU, memory, battery now; temperatures and GPU "not available yet" until phase 11);
+  Window focused; Internet on / off. Actions: all 30; Run command runs each line after the last on a worker (both streams together, a
+  `line` pulse per line, the timeout, stop, a queue of 20, or a script in a terminal with its marker file). Only Set wallpaper says
+  "not available yet" (phase 14). `lum_platform::control` (shell command per OS, terminal script, close program, focused window,
+  online, volume and set volume (Linux; Windows "not available yet"), power, speech, typing), `lum_perf::levels` (CPU, memory,
+  battery on Linux and Windows). The app (`launcher/automation.rs`): starts the engine with `data/automation.json`, Settings →
+  Automation (safe mode pauses), the event bus; `AppHost`; every `Out` answered (cards, the warning with its sound, message / ask /
+  confirm dialogs, tool actions, overlay, themes, dashboard items and boards, timers (`UiModule::start_timer`), notes
+  (`show_note`), open, sounds, speech, typing (wtype, ydotool, else paste), keys, clipboard, keep awake (and `keepawake.changed`
+  on the bus, which nothing emitted before), volume, power); the pause hotkey and every Hotkey trigger registered under the owner
+  `automation`; settings saved follow at once; `--smoke` checks an event reaching an event trigger through the engine's thread.
+* **Checkpoint 75 %, the editor** (`lum_ui::automation`, D70): the canvas (right / middle / Space + drag, the wheel with the smooth
+  glide around the mouse, the dot grid, Fit), nodes as Python lays them out (header bar in the category colour, ▶, ports with labels,
+  field editors for every kind with ◆ wires greying their box, status line, progress), bezier wires (dashed for values), wiring by
+  dragging (out of an input picks the wire up again; dropped on open space opens the picker for nodes that fit), the picker (search,
+  categories, help lines, arrows and Enter), right-click menus, selection (click, Ctrl, the box), moving on the snap grid (Python's
+  round-half-to-even), rename, turn off, Delete, Esc, file and folder pickers for fields, the hotkey recorder suspending the app's keys.
+* **Checkpoint 100 %**: pulses as glowing dots with a peek at their text (up to 300 at once, only with Settings → Animations →
+  pulses on), nodes glowing and wires heating up, undo / redo (60 steps a workspace, typing in one field is one step), copy / paste /
+  duplicate, the workspace tabs and their ▾ menu (switch, new, duplicate, rename, export and import `.lumflow`, delete), the Variables
+  panel, palette rows (▶ buttons, pause) and the tray's ⚡ Automation submenu (pause, buttons, each workspace, the page).
+* Tests: `lum-automation/tests/wired.rs` (24 graph traces with a fake desktop: every trigger, the shared polls only while wanted,
+  dialogs answered, a stale answer dropped, commands, the terminal marker, HTTP and downloads against a local server, file copies),
+  `lum-ui/tests/automation.rs` (11: wiring, picking a wire up, the picker on the grid, move / select / delete, the wheel and F, undo /
+  redo, duplicate with wires, every character drawn, pulses, and the example workspace in Dark and Light), `lum-perf` levels, and the
+  editor's node helpers.
+* Budgets: **1 000 pulses a second**: the engine side was measured at 25 %; the UI side (`pulses_glide_along_their_wires...`) has a
+  Repeat every millisecond feeding two wires (about 1 900 pulses a second) while the page draws at 60 frames a second: p95 1.4 ms,
+  max 1.6 ms a frame in a debug build, up to 100 dots on screen. **Idle** (`--headless --idle-check 20`, debug): 0.01 % of a core,
+  0.6 wake-ups a second, 0 frames painted, 13 threads; the engine thread sleeps while no workspace needs it.
+
+**Left out on purpose or not done.**
+* Volume on Windows, the temperature and GPU thresholds, and Set wallpaper (D69). Speech uses spd-say / espeak like Python; phase 12
+  may move it to the `tts` crate.
+* Not tried on a real desktop: the editor by hand, Hotkey triggers on Hyprland and Windows, typing, power, the tray submenu (see the
+  check below; it does not block phase 11).
+* Text in the editor gets soft when zoomed far in (D70).
+
+**Surprising, worth knowing.**
+* On a desktop session, `cargo test` must run with `HYPRLAND_INSTANCE_SIGNATURE` unset: four dashboard drag tests read the real
+  Hyprland cursor. Without lavapipe (`vulkan-swrast` on Arch, `mesa-vulkan-drivers` on Debian), eight screen tool pictures differ on a
+  real GPU (D71); they were not touched in this phase. The automation pictures were made on this machine's GPU; if CI's lavapipe
+  disagrees, delete `lum-ui/tests/snapshots/automation_example_*.png` and make them again there.
+* The Windows clippy needs `x86_64-w64-mingw32-gcc` for `ring` (rustls, through ureq) in every crate that does HTTP; without it only
+  crates without ureq can be checked (`cargo clippy -p lum-platform -p lum-perf --target x86_64-pc-windows-gnu`).
+* The full suite here: 683 passed; the eight screen tool pictures failed as above. The `lum-ui` themes test binary crashed once
+  (SIGSEGV inside a picture test on this machine's GPU) and passed its 13 tests in six runs after; nothing in it changed in this phase.
+* kittest steps a quarter of a second a frame: raise `max_double_click_delay` for double clicks, and a pulse lives two or three frames.
+* A popup opened by a click sees that click in the same frame: ignore "clicked outside" on its first frame.
+* egui 0.37: `Context::egui_wants_keyboard_input`, `egui::Role` (not `WidgetType`), `MouseWheel` has `source`, `Id::unique`,
+  `Ui::scope_id`; layer transforms (`set_transform_layer` + `set_sublayer`) move input too.
+
+**Next: Phase 11, checkpoint 25 %** (the lum-perf sampler on Linux and Windows inside its CPU budget). It replaces the stand-in readings
+in `lum_perf::levels` and lets the threshold trigger read temperatures and GPU load.
 
 ### 2026-11-28, Phase 10 at 25 %: the automation engine (overall 63.0 %; 64.25 % with the open checks)
 
@@ -1115,6 +1183,18 @@ start phase 1.
 ## Waiting on the user
 
 Manual checks on real desktops that a session asked for and is waiting on.
+
+* **Phase 10, automation on a real desktop (does not block phase 11):** quit the Python app first. Build with
+  `cd luminescent-rs && cargo build --release -p luminescent`, copy your `data/automation.json` into a throw-away home
+  (`mkdir -p /tmp/lumhome/data && cp ~/.local/share/Luminescent/data/automation.json /tmp/lumhome/data/`; Windows:
+  `%LOCALAPPDATA%\Luminescent\data`), run `LUMINESCENT_HOME=/tmp/lumhome ./target/release/luminescent` and open the Automation page
+  (Ctrl+Shift+Space, then the page). Check: your workspaces and nodes are where they were; pan with right-drag, middle-drag and Space +
+  drag; the wheel zooms around the mouse; wire two ports, drag a wire out of an input, drop one on open space (the picker shows only
+  nodes that fit); type in fields, pick a file with …, record a Hotkey trigger's key and press it with the overlay closed; ▶ a Button
+  and watch the pulses; Ctrl+Z / Ctrl+Y, Ctrl+C / Ctrl+V / Ctrl+D, Delete, F; the ▾ menu (new, rename, export a `.lumflow`, import it
+  back); Variables; tray → ⚡ Automation (pause, a button, a workspace switch); the palette's ▶ rows. Try a Run command with a terminal,
+  Type text into an editor, Ask me, Warning on screen, and Lock / sleep (ask first). Windows: the same. Say what behaves or looks
+  wrong next to the Python version.
 
 * **Phase 9, the screen tools on two monitors with different scales (blocks the 100 % checkpoint):** quit the Python app first (same
   hotkeys). Hyprland: two monitors with different scales (e.g. `hyprctl keyword monitor DP-2,preferred,auto,1.5`), `grim` installed

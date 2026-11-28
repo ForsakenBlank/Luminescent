@@ -10,6 +10,8 @@
 mod canvas;
 mod node;
 mod picker;
+mod pulses;
+mod vars;
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -53,6 +55,10 @@ pub struct Out {
     pub browse: Option<Browse>,
     /// The switch said "All paused": resume every automation.
     pub resume: bool,
+    /// Export to a file…: the name to suggest, and the workspace as a `.lumflow` holds it.
+    pub export: Option<(String, Value)>,
+    /// Import from a file…
+    pub import: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -87,6 +93,8 @@ enum MenuOn {
     Node(String),
     Wire(String),
     Canvas,
+    /// The ▾ on the dock: switch, new, rename, export...
+    Workspaces,
 }
 
 /// What a menu entry does, once the menu is gone.
@@ -100,6 +108,10 @@ struct Menu {
 
 enum Asking {
     Rename(String),
+    /// A new workspace, a copy of this one when given.
+    NewWorkspace(Option<String>),
+    RenameWorkspace(String),
+    DeleteWorkspace(String),
 }
 
 struct Ask {
@@ -145,6 +157,17 @@ pub struct AutomationUi {
     live: bool,
     /// A node type picked from the right-click menu, added once the menu is gone.
     pending_add: Option<(String, Pos2)>,
+    pulses: pulses::Pulses,
+    /// Earlier versions of each workspace's nodes and wires, newest last.
+    undo: HashMap<String, Vec<Value>>,
+    redo: HashMap<String, Vec<Value>>,
+    /// The field typed in last and when: typing in one field is one step to undo.
+    last_step: (String, f64),
+    /// The workspace as it was when a node was pressed, kept if the press moves it.
+    before_move: Option<Value>,
+    /// Copied nodes and the wires between them, for Paste in any workspace.
+    clipboard: Option<Value>,
+    vars: Option<vars::VarsPanel>,
     out: Out,
 }
 
@@ -185,6 +208,13 @@ impl AutomationUi {
             statuses: HashMap::new(),
             live: false,
             pending_add: None,
+            pulses: pulses::Pulses::default(),
+            undo: HashMap::new(),
+            redo: HashMap::new(),
+            last_step: (String::new(), f64::NEG_INFINITY),
+            before_move: None,
+            clipboard: None,
+            vars: None,
             out: Out::default(),
         }
     }
@@ -238,8 +268,26 @@ impl AutomationUi {
     /// A page that failed while drawing starts again from what the engine has.
     pub fn reset(&mut self) {
         let handle = self.handle.take();
+        let clipboard = self.clipboard.take();
         *self = AutomationUi::new();
         self.handle = handle;
+        self.clipboard = clipboard;
+    }
+
+    /// Shows that workspace (an import, a click on its tab).
+    pub fn show_workspace(&mut self, wid: &str) {
+        self.save_view();
+        if let Some(h) = &self.handle {
+            h.with(|e| e.set_active(wid));
+        }
+        self.wid = String::new();
+        self.stale = true;
+        self.pulses.clear();
+    }
+
+    /// Pulses on their way, for tests and the frame budget.
+    pub fn pulses_shown(&self) -> usize {
+        self.pulses.len()
     }
 
     /// The file dialog a field asked for was answered.
@@ -248,7 +296,12 @@ impl AutomationUi {
         if browse.workspace != self.wid {
             return;
         }
-        self.set_field(&browse.node, &browse.key, Value::String(path.to_string_lossy().into_owned()));
+        self.set_field(
+            &browse.node,
+            &browse.key,
+            Value::String(path.to_string_lossy().into_owned()),
+            f64::NAN,
+        );
     }
 
     fn nodes(&self) -> &[Value] {
@@ -269,12 +322,20 @@ impl AutomationUi {
 
     // Keeping in step with the engine
 
-    fn sync(&mut self, handle: &Handle, now: f64) {
+    fn sync(&mut self, handle: &Handle, now: f64, animate: bool) {
         let updates = handle.take_updates();
         if updates.workspaces {
             self.stale = true;
         }
+        if updates.vars
+            && let Some(panel) = &mut self.vars
+        {
+            panel.engine_changed();
+        }
         for pulse in updates.pulses.iter().filter(|p| p.workspace == self.wid) {
+            if animate {
+                self.pulses.add(&pulse.wire, &pulse.text, now);
+            }
             self.heat.insert(pulse.wire.clone(), now + HEAT);
             let ends: Vec<String> = self
                 .wires()
@@ -319,6 +380,7 @@ impl AutomationUi {
                 self.selected.clear();
                 self.wires_selected.clear();
                 self.drag = Drag::None;
+                self.pulses.clear();
             }
         }
         let ids: Vec<String> = self.nodes().iter().map(|n| doc::str_of(n, "id").to_owned()).collect();
@@ -348,6 +410,123 @@ impl AutomationUi {
                 Push::Quiet => {}
             }
         });
+    }
+
+    fn snapshot(&self) -> Value {
+        json!({"nodes": self.ws["nodes"], "wires": self.ws["wires"]})
+    }
+
+    /// Remembers the workspace before a change. Typing in one field (`key`) counts as one change.
+    fn step(&mut self, key: &str, now: f64) {
+        if !key.is_empty() && self.last_step.0 == key && now - self.last_step.1 < 1.5 {
+            self.last_step.1 = now;
+            return;
+        }
+        self.last_step = (key.to_owned(), now);
+        let snap = self.snapshot();
+        self.remember(snap);
+    }
+
+    fn remember(&mut self, snap: Value) {
+        let stack = self.undo.entry(self.wid.clone()).or_default();
+        stack.push(snap);
+        if stack.len() > 60 {
+            stack.remove(0);
+        }
+        self.redo.insert(self.wid.clone(), Vec::new());
+    }
+
+    fn can_undo(&self, redo: bool) -> bool {
+        let stacks = if redo { &self.redo } else { &self.undo };
+        stacks.get(&self.wid).is_some_and(|s| !s.is_empty())
+    }
+
+    /// Ctrl+Z (or Ctrl+Y): the workspace as it was, every node started again.
+    pub fn undo(&mut self, redo: bool) {
+        let from = if redo { &mut self.redo } else { &mut self.undo };
+        let Some(snap) = from.get_mut(&self.wid).and_then(Vec::pop) else { return };
+        let current = self.snapshot();
+        let to = if redo { &mut self.undo } else { &mut self.redo };
+        to.entry(self.wid.clone()).or_default().push(current);
+        self.ws["nodes"] = snap["nodes"].clone();
+        self.ws["wires"] = snap["wires"].clone();
+        self.last_step = (String::new(), f64::NEG_INFINITY);
+        let still: BTreeSet<String> = self.nodes().iter().map(|n| doc::str_of(n, "id").to_owned()).collect();
+        self.selected.retain(|id| still.contains(id));
+        self.wires_selected.clear();
+        let Some(handle) = &self.handle else { return };
+        let (wid, nodes, wires) = (self.wid.clone(), snap["nodes"].clone(), snap["wires"].clone());
+        handle.with(|e| {
+            if let Some(ws) = doc::workspace_mut(e.doc_mut(), &wid) {
+                ws["nodes"] = nodes;
+                ws["wires"] = wires;
+            }
+            e.replaced(&wid);
+        });
+    }
+
+    /// Ctrl+C: the selected nodes and the wires between them.
+    pub fn copy(&mut self) -> bool {
+        if self.selected.is_empty() {
+            return false;
+        }
+        let nodes: Vec<Value> =
+            self.nodes().iter().filter(|n| self.selected.contains(doc::str_of(n, "id"))).cloned().collect();
+        let inside = |w: &Value, end: &str| w[end][0].as_str().is_some_and(|id| self.selected.contains(id));
+        let wires: Vec<Value> =
+            self.wires().iter().filter(|w| inside(w, "src") && inside(w, "dst")).cloned().collect();
+        self.clipboard = Some(json!({"nodes": nodes, "wires": wires}));
+        true
+    }
+
+    /// Ctrl+V: the copied nodes with new ids, their top-left corner at `at` (40 down and right without one).
+    pub fn paste(&mut self, at: Option<Pos2>, now: f64) {
+        let Some(mut clip) = self.clipboard.clone() else { return };
+        let Some(list) = clip["nodes"].as_array().filter(|l| !l.is_empty()) else { return };
+        let x0 = list.iter().filter_map(|n| n["x"].as_f64()).fold(f64::INFINITY, f64::min);
+        let y0 = list.iter().filter_map(|n| n["y"].as_f64()).fold(f64::INFINITY, f64::min);
+        let at = at.map_or((x0 + 40.0, y0 + 40.0), |p| (f64::from(p.x), f64::from(p.y)));
+        self.step("", now);
+        let mut ids = HashMap::new();
+        let mut added = BTreeSet::new();
+        for n in clip["nodes"].as_array_mut().into_iter().flatten() {
+            let id = doc::new_id();
+            ids.insert(doc::str_of(n, "id").to_owned(), id.clone());
+            n["id"] = json!(id);
+            n["x"] = json!(n["x"].as_f64().unwrap_or(0.0) - x0 + at.0);
+            n["y"] = json!(n["y"].as_f64().unwrap_or(0.0) - y0 + at.1);
+            n["state"] = json!({});
+            added.insert(id);
+        }
+        for w in clip["wires"].as_array_mut().into_iter().flatten() {
+            w["id"] = json!(doc::new_id());
+            for end in ["src", "dst"] {
+                let old = w[end][0].as_str().unwrap_or_default().to_owned();
+                w[end][0] = json!(ids.get(&old).cloned().unwrap_or(old));
+            }
+        }
+        for key in ["nodes", "wires"] {
+            let new = clip[key].as_array().cloned().unwrap_or_default();
+            if let Some(list) = self.ws[key].as_array_mut() {
+                list.extend(new);
+            }
+        }
+        self.selected = added;
+        self.wires_selected.clear();
+        self.push(Push::Structure);
+    }
+
+    /// Ctrl+D: a copy of the selected nodes, 40 down and right.
+    pub fn duplicate(&mut self, now: f64) {
+        let corner = self
+            .nodes()
+            .iter()
+            .filter(|n| self.selected.contains(doc::str_of(n, "id")))
+            .map(|n| (n["x"].as_f64().unwrap_or(0.0), n["y"].as_f64().unwrap_or(0.0)))
+            .fold((f64::INFINITY, f64::INFINITY), |a, b| (a.0.min(b.0), a.1.min(b.1)));
+        if self.copy() {
+            self.paste(Some(pos2(corner.0 as f32 + 40.0, corner.1 as f32 + 40.0)), now);
+        }
     }
 
     fn save_view(&mut self) {
@@ -393,6 +572,8 @@ impl AutomationUi {
             }
         }
         let nid = doc::str_of(&n, "id").to_owned();
+        let now = ui.input(|i| i.time);
+        self.step("", now);
         if let Some(list) = self.ws["nodes"].as_array_mut() {
             list.push(n);
         }
@@ -441,6 +622,7 @@ impl AutomationUi {
         if ids.is_empty() {
             return;
         }
+        self.step("", f64::NAN);
         if let Some(list) = self.ws["nodes"].as_array_mut() {
             list.retain(|n| !ids.contains(doc::str_of(n, "id")));
         }
@@ -458,6 +640,7 @@ impl AutomationUi {
         if ids.is_empty() {
             return;
         }
+        self.step("", f64::NAN);
         if let Some(list) = self.ws["wires"].as_array_mut() {
             list.retain(|w| !ids.contains(doc::str_of(w, "id")));
         }
@@ -465,22 +648,25 @@ impl AutomationUi {
         self.push(Push::Structure);
     }
 
-    fn set_field(&mut self, nid: &str, key: &str, value: Value) {
-        let Some(n) = self.node_mut(nid) else { return };
-        if n["fields"][key] == value {
+    fn set_field(&mut self, nid: &str, key: &str, value: Value, now: f64) {
+        if self.node(nid).is_none_or(|n| n["fields"][key] == value) {
             return;
         }
+        self.step(&format!("{nid}:{key}"), now);
+        let Some(n) = self.node_mut(nid) else { return };
         n["fields"][key] = value;
         self.push(Push::Field(nid.to_owned()));
     }
 
     fn rename(&mut self, nid: &str, title: &str) {
+        self.step("", f64::NAN);
         let Some(n) = self.node_mut(nid) else { return };
         n["title"] = json!(title.trim());
         self.push(Push::Quiet);
     }
 
     fn toggle_off(&mut self, ids: &BTreeSet<String>) {
+        self.step("", f64::NAN);
         let off = !ids.iter().all(|id| self.node(id).is_some_and(|n| n["off"] == true));
         for id in ids {
             if let Some(n) = self.node_mut(id) {
@@ -535,14 +721,15 @@ impl AutomationUi {
             self.stale = true;
         }
         let now = ui.input(|i| i.time);
-        self.sync(&handle, now);
+        let animate = crate::anim::Motion::of(ui.ctx()).on(crate::anim::Kind::Pulses);
+        self.sync(&handle, now, animate);
         let mut escape_used = false;
         let layouts = canvas::layouts(ui.painter(), &tokens, self.nodes());
 
         let bg = ui.interact(rect, ui.scope_id().with("automation-canvas-bg"), Sense::click_and_drag());
         canvas::background(ui.painter(), &tokens, rect, &self.view);
         self.view.glide(ui.ctx(), rect);
-        let modal = self.picker.is_some() || self.menu.is_some() || self.ask.is_some();
+        let modal = self.picker.is_some() || self.menu.is_some() || self.ask.is_some() || self.vars.is_some();
         if !modal {
             self.pointer(ui, rect, &bg, &layouts, env, now);
             escape_used = self.keys(ui, rect, &layouts);
@@ -552,7 +739,7 @@ impl AutomationUi {
         for (nid, key, did) in field_events {
             match did {
                 node::FieldDid::Changed(v) => {
-                    self.set_field(&nid, &key, v);
+                    self.set_field(&nid, &key, v, now);
                     if self.recording.as_ref().is_some_and(|(n, k)| *n == nid && *k == key) {
                         self.recording = None;
                         self.out.suspend_keys = Some(false);
@@ -570,9 +757,11 @@ impl AutomationUi {
         self.show_menu(ui, rect, &layouts, now);
         self.show_picker(ui, rect, env);
         self.show_ask(ui);
+        self.show_vars(ui);
 
+        let moving = self.pulses.step(now);
         let ctx = ui.ctx();
-        if !self.flash.is_empty() || !self.heat.is_empty() {
+        if moving || !self.flash.is_empty() || !self.heat.is_empty() {
             ctx.request_repaint();
         } else if self.live {
             // countdowns move by themselves
@@ -585,7 +774,8 @@ impl AutomationUi {
                 || self.recording.is_some()
                 || self.picker.is_some()
                 || self.menu.is_some()
-                || self.ask.is_some(),
+                || self.ask.is_some()
+                || self.vars.is_some(),
         }
     }
 
@@ -742,7 +932,9 @@ impl AutomationUi {
         let hit = canvas::port_at(at, layouts, 18.0 / self.view.zoom.max(0.2));
         match hit {
             Some((nid, other)) if compatible(port, &other) => {
+                let before = self.snapshot();
                 if self.connect(from, port, &nid, &other) {
+                    self.remember(before);
                     self.push(Push::Structure);
                 }
             }
@@ -807,6 +999,36 @@ impl AutomationUi {
                 i.consume_key(Modifiers::NONE, Key::Delete) || i.consume_key(Modifiers::NONE, Key::Backspace);
             (delete, i.consume_key(Modifiers::COMMAND, Key::A), i.consume_key(Modifiers::NONE, Key::F))
         });
+        let shift_command = Modifiers::COMMAND | Modifiers::SHIFT;
+        let (undo, redo, copy, paste, duplicate) = ctx.input_mut(|i| {
+            let redo = i.consume_key(shift_command, Key::Z) || i.consume_key(Modifiers::COMMAND, Key::Y);
+            (
+                i.consume_key(Modifiers::COMMAND, Key::Z),
+                redo,
+                i.consume_key(Modifiers::COMMAND, Key::C)
+                    || i.events.iter().any(|e| matches!(e, egui::Event::Copy)),
+                i.consume_key(Modifiers::COMMAND, Key::V)
+                    || i.events.iter().any(|e| matches!(e, egui::Event::Paste(_))),
+                i.consume_key(Modifiers::COMMAND, Key::D),
+            )
+        });
+        let now = ui.input(|i| i.time);
+        if undo || redo {
+            self.undo(redo);
+        }
+        if copy {
+            self.copy();
+        }
+        if paste {
+            let at = ui
+                .input(|i| i.pointer.hover_pos())
+                .filter(|p| rect.contains(*p))
+                .map(|p| self.view.to_scene(rect, p));
+            self.paste(at, now);
+        }
+        if duplicate {
+            self.duplicate(now);
+        }
         if delete {
             if !self.selected.is_empty() {
                 let ids = self.selected.clone();
@@ -981,6 +1203,7 @@ impl AutomationUi {
                 self.wires_selected.clear();
                 let start =
                     canvas_ui.input(|i| i.pointer.press_origin()).map(|p| self.view.to_scene(rect, p));
+                self.before_move = Some(self.snapshot());
                 if let Some(start) = start {
                     let origin = self
                         .selected
@@ -1014,8 +1237,12 @@ impl AutomationUi {
                     })
                 });
                 if moved {
+                    if let Some(before) = self.before_move.take() {
+                        self.remember(before);
+                    }
                     self.push(Push::Quiet);
                 }
+                self.before_move = None;
             }
         }
 
@@ -1037,6 +1264,11 @@ impl AutomationUi {
             let colour = if node::is_value(port) { node::VALUE_COLOUR } else { tokens.p.primary };
             canvas::dashed_wire(&painter, a, b, egui::Stroke::new(2.0, colour));
         }
+        let pulse_layer = egui::LayerId::new(ui.layer_id().order, ui.scope_id().with("automation-pulses"));
+        ui.ctx().set_sublayer(layer, pulse_layer);
+        ui.ctx().set_transform_layer(pulse_layer, to_global);
+        let pulse_painter = ui.ctx().layer_painter(pulse_layer).with_clip_rect(scene_rect);
+        self.pulses.paint(&pulse_painter, tokens, self.wires(), layouts, now);
         if let Drag::Band { start } = &self.drag
             && let Some(p) = pointer
         {
@@ -1144,6 +1376,14 @@ impl AutomationUi {
                                     })
                                 }));
                             }
+                            if menu::item(ui, "Duplicate   (Ctrl+D)").clicked() {
+                                act = Some(Box::new(move |s| s.duplicate(now)));
+                            }
+                            if menu::item(ui, "Copy   (Ctrl+C)").clicked() {
+                                act = Some(Box::new(|s| {
+                                    s.copy();
+                                }));
+                            }
                             let all_off =
                                 sel.iter().all(|id| self.node(id).is_some_and(|n| n["off"] == true));
                             let label =
@@ -1162,6 +1402,7 @@ impl AutomationUi {
                                 act = Some(Box::new(move |s| s.delete_nodes(&sel)));
                             }
                         }
+                        MenuOn::Workspaces => self.workspace_menu(ui, &mut act),
                         MenuOn::Wire(wid) => {
                             if menu::item(ui, "Delete wire").clicked() {
                                 let ids = BTreeSet::from([wid.clone()]);
@@ -1187,6 +1428,15 @@ impl AutomationUi {
                                 act = Some(Box::new(move |s| s.picker = Some(Picker::new(at, scene, None))));
                             }
                             menu::separator(ui);
+                            let can_paste = self.clipboard.is_some();
+                            if ui
+                                .add_enabled_ui(can_paste, |ui| menu::item(ui, "Paste   (Ctrl+V)"))
+                                .inner
+                                .clicked()
+                            {
+                                let at = m.scene;
+                                act = Some(Box::new(move |s| s.paste(Some(at), now)));
+                            }
                             if menu::item(ui, "Select all   (Ctrl+A)").clicked() {
                                 act = Some(Box::new(AutomationUi::select_all));
                             }
@@ -1196,6 +1446,25 @@ impl AutomationUi {
                                     s.view = fitted;
                                     s.save_view();
                                 }));
+                            }
+                            menu::separator(ui);
+                            let (can_undo, can_redo) = (self.can_undo(false), self.can_undo(true));
+                            if ui
+                                .add_enabled_ui(can_undo, |ui| menu::item(ui, "Undo   (Ctrl+Z)"))
+                                .inner
+                                .clicked()
+                            {
+                                act = Some(Box::new(|s| s.undo(false)));
+                            }
+                            if ui
+                                .add_enabled_ui(can_redo, |ui| menu::item(ui, "Redo   (Ctrl+Y)"))
+                                .inner
+                                .clicked()
+                            {
+                                act = Some(Box::new(|s| s.undo(true)));
+                            }
+                            if menu::item(ui, "Variables…").clicked() {
+                                act = Some(Box::new(AutomationUi::open_vars));
                             }
                         }
                     }
@@ -1241,74 +1510,232 @@ impl AutomationUi {
             Outcome::Accepted(_) => {
                 let text = ask.dialog.text().to_owned();
                 let Some(ask) = self.ask.take() else { return };
+                let Some(handle) = self.handle.clone() else { return };
                 match ask.what {
                     Asking::Rename(nid) => self.rename(&nid, &text),
+                    Asking::NewWorkspace(copy) => {
+                        let name = text.trim().to_owned();
+                        if name.is_empty() {
+                            return;
+                        }
+                        self.save_view();
+                        let wid = handle.with(|e| {
+                            let from = copy.and_then(|c| e.workspace(&c).cloned());
+                            e.add_workspace(&name, from.as_ref())
+                        });
+                        self.show_workspace(&wid);
+                    }
+                    Asking::RenameWorkspace(wid) => {
+                        handle.with(|e| e.rename_workspace(&wid, &text));
+                        self.stale = true;
+                    }
+                    Asking::DeleteWorkspace(wid) => {
+                        handle.with(|e| e.delete_workspace(&wid));
+                        self.undo.remove(&wid);
+                        self.redo.remove(&wid);
+                        self.stale = true;
+                    }
                 }
             }
         }
     }
 
-    /// The bar at the bottom: the workspace's switch, Add node, Fit and the zoom.
+    /// The bar at the bottom: workspace tabs and their menu, the switch, Add node, Fit, the zoom and Variables.
     fn dock(&mut self, ui: &mut Ui, rect: Rect, tokens: &Tokens, layouts: &canvas::Layouts) {
-        let name = self
-            .tabs
-            .iter()
-            .find(|(id, _, _)| *id == self.wid)
-            .map(|(_, n, _)| n.clone())
-            .unwrap_or_default();
-        let on = self.tabs.iter().any(|(id, _, e)| *id == self.wid && *e);
-        let width = 640.0f32.min(rect.width() - 32.0);
-        let bar = Rect::from_center_size(pos2(rect.center().x, rect.max.y - 28.0 - 22.0), vec2(width, 44.0));
-        let mut bar_ui = ui.new_child(
-            egui::UiBuilder::new().max_rect(bar).layout(egui::Layout::left_to_right(egui::Align::Center)),
-        );
-        crate::paint::fill(bar_ui.painter(), bar, 14.0, tokens, crate::theme::Role::BgCard, 0.96);
-        bar_ui.painter().rect_stroke(
-            bar,
-            14.0,
-            egui::Stroke::new(1.0, tokens.p.border),
-            egui::StrokeKind::Inside,
-        );
-        bar_ui.add_space(8.0);
-        let (text, tip) = if self.paused {
-            (
-                "⏸ All paused".to_owned(),
-                "Every automation is paused (Settings → Automation, the tray, or its hotkey). Click to resume.",
-            )
-        } else if on {
-            ("● Running".to_owned(), "This workspace runs in the background. Click to switch it off.")
-        } else {
-            ("○ Off".to_owned(), "Switched off: nothing in this workspace runs. Click to switch it on.")
-        };
-        bar_ui.add(egui::Label::new(egui::RichText::new(name).color(tokens.p.text_secondary)));
-        if bar_ui.add(crate::widgets::Button::new(text)).on_hover_text(tip).clicked() {
-            if self.paused {
-                self.out.resume = true;
-            } else {
-                self.set_workspace_on(!on);
+        let current = self.tabs.iter().find(|(id, _, _)| *id == self.wid).cloned();
+        let (name, on) = current.map(|(_, n, e)| (n, e)).unwrap_or_default();
+        let several = self.tabs.len() > 1;
+        let tabs_width: f32 = self.tabs.iter().map(|(_, n, _)| n.chars().count() as f32 * 8.0 + 30.0).sum();
+        let compact = several && tabs_width + 900.0 > rect.width() - 80.0;
+        let mut switch_to = None;
+        let mut menu_at = None;
+        let area = egui::Area::new(egui::Id::unique(("automation-dock", ui.scope_id())))
+            .order(egui::Order::Foreground)
+            .fixed_pos(pos2(rect.center().x, rect.max.y - 28.0))
+            .pivot(egui::Align2::CENTER_BOTTOM)
+            .constrain_to(rect)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::new()
+                    .fill(tokens.p.bg_card.gamma_multiply(0.96))
+                    .stroke(egui::Stroke::new(1.0, tokens.p.border))
+                    .corner_radius(14.0)
+                    .inner_margin(5.0)
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 6.0;
+                            if several && !compact {
+                                for (id, tab, enabled) in &self.tabs {
+                                    let dot = if *enabled && !self.paused { "● " } else { "" };
+                                    let mut button = crate::widgets::Button::ghost(format!("{dot}{tab}"));
+                                    if *id == self.wid {
+                                        button = crate::widgets::Button::new(format!("{dot}{tab}"));
+                                    }
+                                    let r = ui.add(button);
+                                    if r.clicked() {
+                                        switch_to = Some(id.clone());
+                                    }
+                                    if r.secondary_clicked() {
+                                        switch_to = Some(id.clone());
+                                        menu_at = Some(r.rect.left_top());
+                                    }
+                                }
+                            }
+                            let more = if several && !compact { "▾".to_owned() } else { format!("{name}  ▾") };
+                            let more = ui.add(crate::widgets::Button::ghost(more)).on_hover_text("Workspaces: switch, new, rename, export…");
+                            if more.clicked() {
+                                menu_at = Some(more.rect.left_top());
+                            }
+                            let (text, tip) = if self.paused {
+                                ("⏸ All paused", "Every automation is paused (Settings → Automation, the tray, or its hotkey). Click to resume.")
+                            } else if on {
+                                ("● Running", "This workspace runs in the background. Click to switch it off.")
+                            } else {
+                                ("○ Off", "Switched off: nothing in this workspace runs. Click to switch it on.")
+                            };
+                            if ui.add(crate::widgets::Button::new(text)).on_hover_text(tip).clicked() {
+                                if self.paused {
+                                    self.out.resume = true;
+                                } else {
+                                    self.set_workspace_on(!on);
+                                }
+                            }
+                            ui.separator();
+                            if ui.add(crate::widgets::Button::new("+ Add node")).clicked() {
+                                let at = pos2(rect.center().x - 220.0, rect.max.y - 640.0);
+                                self.picker = Some(Picker::new(at, self.view.center, None));
+                            }
+                            if ui.add(crate::widgets::Button::ghost("Fit")).on_hover_text("Show every node (F)").clicked() {
+                                self.fit(rect, layouts);
+                            }
+                            let zoom = format!("{:.0} %", self.view.zoom * 100.0);
+                            if ui.add(crate::widgets::Button::ghost(zoom)).on_hover_text("Back to 100 %").clicked() {
+                                self.view.set_zoom(1.0);
+                                self.save_view();
+                            }
+                            if ui.add(crate::widgets::Button::ghost("Variables")).clicked() {
+                                self.open_vars();
+                            }
+                            if rect.width() > 1100.0 {
+                                ui.separator();
+                                ui.add(
+                                    egui::Label::new(
+                                        egui::RichText::new(
+                                            "Right-click or double-click to add · drag from a dot to wire · right-drag to move around · wheel zooms",
+                                        )
+                                        .size(tokens.fs(12.0))
+                                        .color(tokens.p.text_muted),
+                                    )
+                                    .wrap_mode(egui::TextWrapMode::Extend),
+                                );
+                            }
+                        });
+                    });
+            });
+        let _ = area;
+        if let Some(wid) = switch_to
+            && wid != self.wid
+        {
+            self.show_workspace(&wid);
+        }
+        if let Some(at) = menu_at {
+            // the menu opens above the dock
+            let scene = self.view.center;
+            self.menu = Some(Menu { at: at - vec2(0.0, 300.0), scene, on: MenuOn::Workspaces });
+        }
+    }
+
+    fn open_vars(&mut self) {
+        if let Some(h) = &self.handle {
+            let vars = h.read(|e| e.vars().clone());
+            self.vars = Some(vars::VarsPanel::new(&vars));
+        }
+    }
+
+    fn show_vars(&mut self, ui: &Ui) {
+        let Some(handle) = self.handle.clone() else { return };
+        let Some(panel) = &mut self.vars else { return };
+        if panel.needs_reload() {
+            let vars = handle.read(|e| e.vars().clone());
+            panel.reload(&vars);
+        }
+        match panel.show(ui.ctx()) {
+            vars::VarsDone::Open => {}
+            vars::VarsDone::Cancelled => self.vars = None,
+            vars::VarsDone::Saved(map) => {
+                handle.with(|e| e.replace_vars(map));
+                self.vars = None;
             }
         }
-        if bar_ui.add(crate::widgets::Button::new("+ Add node")).clicked() {
-            let at = pos2(rect.center().x - 220.0, rect.max.y - 640.0);
-            self.picker = Some(Picker::new(at, self.view.center, None));
+    }
+
+    fn workspace_menu(&mut self, ui: &mut Ui, act: &mut Option<MenuAct>) {
+        let current = self.tabs.iter().find(|(id, _, _)| *id == self.wid).cloned().unwrap_or_default();
+        let (wid, name) = (current.0.clone(), current.1.clone());
+        if self.tabs.len() > 1 {
+            for (id, n, enabled) in &self.tabs {
+                let mark = if *id == self.wid { "●  " } else { "     " };
+                let off = if *enabled { "" } else { "   (off)" };
+                if menu::item(ui, &format!("{mark}{n}{off}")).clicked() {
+                    let id = id.clone();
+                    *act = Some(Box::new(move |s| s.show_workspace(&id)));
+                }
+            }
+            menu::separator(ui);
         }
-        if bar_ui.add(crate::widgets::Button::ghost("Fit")).on_hover_text("Show every node (F)").clicked() {
-            self.fit(rect, layouts);
-        }
-        let zoom = format!("{:.0} %", self.view.zoom * 100.0);
-        if bar_ui.add(crate::widgets::Button::ghost(zoom)).on_hover_text("Back to 100 %").clicked() {
-            self.view.set_zoom(1.0);
-            self.save_view();
-        }
-        if width > 560.0 {
-            bar_ui.add(
-                egui::Label::new(
-                    egui::RichText::new("Right-click or double-click to add · drag from a dot to wire · right-drag to move around · wheel zooms")
-                        .size(tokens.fs(12.0))
-                        .color(tokens.p.text_muted),
-                )
-                .truncate(),
+        let ask = |what: Asking, dialog: AskDialog| -> MenuAct {
+            Box::new(move |s| s.ask = Some(Ask { what, dialog }))
+        };
+        if menu::item(ui, "New workspace…").clicked() {
+            let d = AskDialog::ask_text(
+                egui::Id::unique("automation-ws-new"),
+                "Workspace",
+                "Name (e.g. Morning, Backups):",
+                "",
             );
+            *act = Some(ask(Asking::NewWorkspace(None), d));
+        }
+        if menu::item(ui, &format!("Duplicate “{name}”…")).clicked() {
+            let d = AskDialog::ask_text(
+                egui::Id::unique("automation-ws-new"),
+                "Workspace",
+                "Name (e.g. Morning, Backups):",
+                &format!("{name} copy"),
+            );
+            *act = Some(ask(Asking::NewWorkspace(Some(wid.clone())), d));
+        }
+        if menu::item(ui, &format!("Rename “{name}”…")).clicked() {
+            let d = AskDialog::ask_text(
+                egui::Id::unique("automation-ws-rename"),
+                "Rename workspace",
+                "New name:",
+                &name,
+            );
+            *act = Some(ask(Asking::RenameWorkspace(wid.clone()), d));
+        }
+        menu::separator(ui);
+        if menu::item(ui, "Export to a file…").clicked() {
+            let file = json!({"name": name, "nodes": self.ws["nodes"], "wires": self.ws["wires"]});
+            let name = name.clone();
+            *act = Some(Box::new(move |s| s.out.export = Some((name, file))));
+        }
+        if menu::item(ui, "Import from a file…").clicked() {
+            *act = Some(Box::new(|s| s.out.import = true));
+        }
+        menu::separator(ui);
+        let count = self.nodes().len();
+        let enabled = self.tabs.len() > 1;
+        if ui.add_enabled_ui(enabled, |ui| menu::item(ui, &format!("Delete “{name}”…"))).inner.clicked()
+        {
+            let text = format!("Delete “{name}” with its {count} node(s)?");
+            let d = AskDialog::confirm(
+                egui::Id::unique("automation-ws-delete"),
+                "Delete workspace",
+                &text,
+                "Delete",
+                "Cancel",
+                true,
+            );
+            *act = Some(ask(Asking::DeleteWorkspace(wid.clone()), d));
         }
     }
 }

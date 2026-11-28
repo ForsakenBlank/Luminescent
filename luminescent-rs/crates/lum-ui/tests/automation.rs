@@ -24,6 +24,8 @@ struct State {
     auto: Automation,
     light: bool,
     ready: bool,
+    /// Settings → Animations on, so pulses glide along their wires.
+    animate: bool,
 }
 
 fn make(dir: &std::path::Path, saved: Option<Value>, light: bool) -> State {
@@ -31,7 +33,7 @@ fn make(dir: &std::path::Path, saved: Option<Value>, light: bool) -> State {
     let auto = Automation::start(engine, dir.join("automation.json"), || {});
     let mut page = AutomationUi::new();
     page.set_engine(auto.handle());
-    State { page, auto, light, ready: false }
+    State { page, auto, light, ready: false, animate: false }
 }
 
 fn harness(state: State, render: bool) -> Harness<'static, State> {
@@ -41,7 +43,8 @@ fn harness(state: State, render: bool) -> Harness<'static, State> {
         |ui, state: &mut State| {
             if !state.ready {
                 lum_ui::fonts::install(ui.ctx());
-                lum_ui::Motion::off().install(ui.ctx());
+                if state.animate { lum_ui::Motion::default() } else { lum_ui::Motion::off() }
+                    .install(ui.ctx());
                 if state.light { Tokens::light() } else { Tokens::dark() }.install(ui.ctx());
                 state.ready = true;
             }
@@ -263,4 +266,108 @@ fn the_editor_has_every_character_it_draws() {
         .auto
         .read(|e| e.info("w", "at").is_some_and(|i| i.text.starts_with('⚠')))));
     h.run();
+}
+
+fn key(h: &mut Harness<'_, State>, key: Key, modifiers: Modifiers) {
+    h.event(egui::Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers });
+    h.event(egui::Event::Key { key, physical_key: None, pressed: false, repeat: false, modifiers });
+    h.step();
+}
+
+#[test]
+fn undo_and_redo_put_the_workspace_back() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut h = harness(make(dir.path(), Some(two_nodes()), false), false);
+    h.run();
+    drag(&mut h, at(-300.0 + 260.0, -100.0 + 49.0), at(100.0, -100.0 + 49.0));
+    click(&mut h, at(100.0 + 120.0, -100.0 + 16.0));
+    key(&mut h, Key::Delete, Modifiers::NONE);
+    let count = |h: &Harness<'_, State>| {
+        let ws = workspace(h.state());
+        (ws["nodes"].as_array().unwrap().len(), ws["wires"].as_array().unwrap().len())
+    };
+    assert_eq!(count(&h), (1, 0), "the Show went, and its wire with it");
+    key(&mut h, Key::Z, Modifiers::COMMAND);
+    assert_eq!(count(&h), (2, 1));
+    key(&mut h, Key::Z, Modifiers::COMMAND);
+    assert_eq!(count(&h), (2, 0), "the wire was the step before");
+    key(&mut h, Key::Y, Modifiers::COMMAND);
+    assert_eq!(count(&h), (2, 1));
+    key(&mut h, Key::Z, Modifiers::COMMAND | Modifiers::SHIFT);
+    assert_eq!(count(&h), (1, 0));
+}
+
+#[test]
+fn duplicate_copies_nodes_with_the_wires_between_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut saved = two_nodes();
+    saved["workspaces"][0]["wires"] =
+        json!([{"id": "w1", "src": ["btn", "out:fire"], "dst": ["show", "in:in"]}]);
+    let mut h = harness(make(dir.path(), Some(saved), false), false);
+    h.run();
+    key(&mut h, Key::A, Modifiers::COMMAND);
+    key(&mut h, Key::D, Modifiers::COMMAND);
+    let ws = workspace(h.state());
+    let nodes = ws["nodes"].as_array().unwrap();
+    assert_eq!(nodes.len(), 4);
+    assert_eq!((nodes[2]["x"].as_f64(), nodes[2]["y"].as_f64()), (Some(-260.0), Some(-60.0)));
+    assert_ne!(nodes[2]["id"], "btn");
+    let wires = ws["wires"].as_array().unwrap();
+    assert_eq!(wires.len(), 2);
+    assert_eq!(wires[1]["src"][0], nodes[2]["id"]);
+    assert_eq!(wires[1]["dst"][0], nodes[3]["id"]);
+    assert_eq!(h.state().page.selection().len(), 2, "the copies are selected");
+}
+
+/// A Repeat that fires every millisecond, through three wires: well over 1 000 pulses a second.
+fn busy() -> Value {
+    json!({"version": 1, "vars": {}, "workspaces": [{"id": "w", "name": "Busy", "enabled": true, "nodes": [
+        {"id": "go", "type": "manual", "x": -500, "y": -100, "fields": {}},
+        {"id": "rep", "type": "repeat", "x": -200, "y": -100, "fields": {"times": 100000, "gap": 0.001}},
+        {"id": "a", "type": "show", "x": 150, "y": -200, "fields": {}},
+        {"id": "b", "type": "show", "x": 150, "y": 0, "fields": {}}
+    ], "wires": [
+        {"id": "w0", "src": ["go", "out:fire"], "dst": ["rep", "in:in"]},
+        {"id": "w1", "src": ["rep", "out:each"], "dst": ["a", "in:in"]},
+        {"id": "w2", "src": ["a", "out:out"], "dst": ["b", "in:in"]}
+    ]}]})
+}
+
+#[test]
+fn pulses_glide_along_their_wires_without_hitching_the_page() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut config_ok = make(dir.path(), Some(busy()), false);
+    config_ok.animate = true;
+    // the safety stop would switch a workspace this busy off
+    config_ok.auto.with(|e| {
+        let mut c = e.config().clone();
+        c.max_rate = 100_000;
+        e.set_config(c);
+    });
+    let mut h = harness(config_ok, false);
+    h.step();
+    h.state().auto.with(|e| e.run_node("w", "go", ""));
+    let mut frames = Vec::new();
+    let mut most = 0;
+    let started = Instant::now();
+    while started.elapsed() < Duration::from_secs(2) {
+        let t = Instant::now();
+        h.step();
+        frames.push(t.elapsed().as_secs_f64() * 1000.0);
+        most = most.max(h.state().page.pulses_shown());
+        // about 60 frames a second, as on screen
+        std::thread::sleep(Duration::from_millis(16));
+    }
+    let count = h.state().auto.read(|e| e.info("w", "rep").map(|s| s.text).unwrap_or_default());
+    frames.sort_by(f64::total_cmp);
+    let p95 = frames[frames.len() * 95 / 100];
+    let max = frames[frames.len() - 1];
+    println!(
+        "{} frames, p95 {p95:.2} ms, max {max:.2} ms, up to {most} pulses on screen, repeat at {count}",
+        frames.len()
+    );
+    // the harness moves a quarter of a second each frame, so a dot lives two or three frames here
+    assert!(most > 30, "pulses should be on screen, {most}");
+    // a debug build without a GPU: a real frame budget is 16 ms, the work here must stay well under it
+    assert!(p95 < 16.0, "p95 {p95:.2} ms");
 }

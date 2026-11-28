@@ -78,6 +78,8 @@ pub enum AppMsg {
     Automation(lum_automation::Out),
     /// The file dialog of an automation node's field was answered.
     AutomationFile(lum_ui::automation::Browse, Option<std::path::PathBuf>),
+    /// A `.lumflow` file was read for Import from a file… (or why it could not be).
+    AutomationImport(Result<serde_json::Value, String>),
 }
 
 /// Notifications go to the log, and once windows run, to Luminescent's own cards or to the desktop, as Settings
@@ -763,6 +765,9 @@ impl App {
         if let Some(sub) = self.dashboard_tray_menu() {
             menu.push(sub);
         }
+        if has("automation") {
+            menu.push(self.automation_tray_menu());
+        }
         if has("actions") {
             menu.extend(self.module_tray_items());
         }
@@ -874,6 +879,7 @@ impl App {
         }
         out.extend(self.dashboard_palette_entries());
         out.extend(self.module_palette_entries());
+        out.extend(self.automation_palette_entries());
         let active = self.themes.active_id();
         for t in self.themes.themes() {
             let hint = if t.id() == active { "active" } else { "theme" };
@@ -912,6 +918,7 @@ impl App {
             "settings" => self.open_settings(rest),
             "lum" => self.run_luminescent(rest),
             "calc" | "remind" | "note" => self.run_module_row(&entry.id),
+            "auto" => self.run_automation_row(rest),
             other => tracing::warn!("the palette has no way to run {other} entries yet"),
         }
     }
@@ -1070,6 +1077,8 @@ impl App {
                         self.run_action(action);
                     } else if let Some(row) = other.strip_prefix("row:") {
                         self.run_module_row(row);
+                    } else if let Some(what) = other.strip_prefix("auto:") {
+                        self.automation_tray(what);
                     } else {
                         tracing::debug!("tray: {other}");
                     }
@@ -1292,6 +1301,7 @@ impl App {
             AppMsg::Backup(done) => self.backup_done(done),
             AppMsg::Automation(out) => self.automation_out(out),
             AppMsg::AutomationFile(browse, path) => self.automation_ui.file_chosen(&browse, path),
+            AppMsg::AutomationImport(file) => self.automation_imported(file),
             AppMsg::KeepAwake(on, error) => {
                 if let Some(k) = &mut self.keep_awake {
                     k.reported(on);

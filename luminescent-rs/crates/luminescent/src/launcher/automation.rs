@@ -205,6 +205,37 @@ impl App {
         if out.resume {
             self.toggle_automation_pause();
         }
+        if let Some((name, file)) = out.export {
+            let request = lum_platform::dialogs::Request::new("Export workspace")
+                .folder(std::env::home_dir())
+                .file_name(&format!("{name}.lumflow"))
+                .filter("Luminescent automation", &["lumflow"])
+                .filter("JSON", &["json"]);
+            let mailbox = self.mailbox.clone();
+            lum_platform::dialogs::save_file(request, move |path| {
+                let Some(path) = path else { return };
+                // on the dialog's own thread: the file is small, but the UI never waits on the disk
+                let text = lum_core::pyjson::to_string(&file, lum_core::pyjson::Style::indented(2));
+                if let Err(e) = lum_core::store::save_text(&path, &text) {
+                    let text = e.to_string();
+                    mailbox.send(AppMsg::Automation(Out::Notify { title: "Export".into(), text, ms: 6000 }));
+                }
+            });
+        }
+        if out.import {
+            let request = lum_platform::dialogs::Request::new("Import workspace")
+                .folder(std::env::home_dir())
+                .filter("Luminescent automation", &["lumflow", "json"])
+                .filter("All files", &["*"]);
+            let mailbox = self.mailbox.clone();
+            lum_platform::dialogs::open_file(request, move |path| {
+                let Some(path) = path else { return };
+                let read = std::fs::read_to_string(&path)
+                    .map_err(|e| e.to_string())
+                    .and_then(|text| serde_json::from_str(&text).map_err(|e| e.to_string()));
+                mailbox.send(AppMsg::AutomationImport(read));
+            });
+        }
         if let Some(browse) = out.browse {
             let mailbox = self.mailbox.clone();
             let start = std::path::PathBuf::from(runner::expand(&browse.start));
@@ -478,6 +509,7 @@ impl App {
                 Err(e) => Answer::Failed(e),
             }),
             Out::HotkeysChanged => self.register_automation_hotkeys(),
+            Out::WorkspacesChanged => self.refresh_tray(),
         }
     }
 
@@ -540,6 +572,107 @@ impl App {
         self.auto_alerts = kept;
         for (_, reply) in done {
             self.answer_node(&reply, Answer::Done(String::new()));
+        }
+    }
+
+    /// A `.lumflow` was read: it becomes a new workspace, switched off until you look at it.
+    pub(super) fn automation_imported(&mut self, file: Result<serde_json::Value, String>) {
+        let Some(auto) = &self.automation else { return };
+        let wid = file.and_then(|f| {
+            auto.with(|e| e.import_workspace(&f)).ok_or_else(|| "it holds no workspace".to_owned())
+        });
+        match wid {
+            Ok(wid) => {
+                self.automation_ui.show_workspace(&wid);
+                self.notifier.notify(
+                    "Automation",
+                    "Imported. It is switched off until you turn it on.",
+                    4000,
+                );
+            }
+            Err(e) => self.notifier.notify("Import", &format!("Could not read that file: {e}"), 6000),
+        }
+    }
+
+    /// ▶ for every Button trigger, and Pause all automations / Resume automations.
+    pub(super) fn automation_palette_entries(&self) -> Vec<lum_ui::palette::Entry> {
+        use lum_ui::palette::Entry;
+        let Some(auto) = &self.automation else { return Vec::new() };
+        let (buttons, paused) = auto.read(|e| (e.buttons(), e.paused()));
+        let mut out: Vec<Entry> = buttons
+            .into_iter()
+            .map(|b| {
+                let off = if b.running { "" } else { " (off)" };
+                let hint = format!("Automation · {}{off}", b.workspace_name);
+                Entry::new(
+                    format!("auto:{}/{}", b.workspace, b.node),
+                    format!("▶ {}", b.label),
+                    hint,
+                    "automation",
+                )
+            })
+            .collect();
+        let label = if paused { "Resume automations" } else { "Pause all automations" };
+        out.push(Entry::new("auto:pause", label, "Automation", "automation"));
+        out
+    }
+
+    pub(super) fn run_automation_row(&mut self, what: &str) {
+        if what == "pause" {
+            self.toggle_automation_pause();
+        } else if let (Some((wid, nid)), Some(auto)) = (what.split_once('/'), &self.automation) {
+            auto.with(|e| e.run_node(wid, nid, ""));
+        }
+    }
+
+    /// The tray's ⚡ Automation submenu: pause, the buttons, each workspace on or off, and the page.
+    pub(super) fn automation_tray_menu(&self) -> lum_platform::tray::MenuItem {
+        use lum_platform::tray::MenuItem;
+        let (buttons, workspaces, paused) = self.automation.as_ref().map_or_else(Default::default, |auto| {
+            auto.read(|e| {
+                let workspaces: Vec<(String, String, bool)> = lum_automation::doc::workspaces(e.doc())
+                    .iter()
+                    .map(|w| {
+                        let id = lum_automation::doc::str_of(w, "id").to_owned();
+                        (id, lum_automation::doc::str_of(w, "name").to_owned(), w["enabled"] == true)
+                    })
+                    .collect();
+                (e.buttons(), workspaces, e.paused())
+            })
+        });
+        let label = if paused { "Resume automations" } else { "Pause all automations" };
+        let mut items = vec![MenuItem::action("auto:pause", label)];
+        if !buttons.is_empty() {
+            items.push(MenuItem::Separator);
+            for b in buttons {
+                items.push(MenuItem::Action {
+                    id: format!("auto:run:{}/{}", b.workspace, b.node),
+                    text: format!("▶  {}   ({})", b.label, b.workspace_name),
+                    enabled: b.running,
+                });
+            }
+        }
+        items.push(MenuItem::Separator);
+        for (id, name, on) in workspaces {
+            items.push(MenuItem::Check { id: format!("auto:ws:{id}"), text: name, checked: on });
+        }
+        items.push(MenuItem::Separator);
+        items.push(MenuItem::action("auto:page", "Open the Automation page"));
+        MenuItem::Sub { text: "⚡  Automation".into(), items }
+    }
+
+    pub(super) fn automation_tray(&mut self, what: &str) {
+        if what == "pause" {
+            self.toggle_automation_pause();
+        } else if what == "page" {
+            self.open_overlay("automation");
+        } else if let Some(row) = what.strip_prefix("run:") {
+            self.run_automation_row(row);
+        } else if let (Some(wid), Some(auto)) = (what.strip_prefix("ws:"), &self.automation) {
+            auto.with(|e| {
+                let on = e.workspace(wid).is_some_and(|w| w["enabled"] == true);
+                e.set_enabled(wid, !on);
+            });
         }
     }
 

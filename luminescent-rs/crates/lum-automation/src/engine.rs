@@ -223,6 +223,8 @@ pub enum Out {
     },
     /// The Hotkey triggers that run changed: register [`Engine::hotkey_nodes`] again.
     HotkeysChanged,
+    /// Workspaces came, went, were renamed or switched on or off (the tray lists them).
+    WorkspacesChanged,
 }
 
 /// The engine's way out to the app and the desktop. `send` is called from the engine's thread with the engine
@@ -700,7 +702,7 @@ impl Engine {
         self.doc["active"] = json!(wid);
         self.build(&wid, false);
         self.core.dirty = true;
-        self.core.updates.workspaces = true;
+        self.workspaces_changed();
         wid
     }
 
@@ -712,7 +714,7 @@ impl Engine {
         if let Some(ws) = doc::workspace_mut(&mut self.doc, wid) {
             ws["name"] = json!(name);
             self.core.dirty = true;
-            self.core.updates.workspaces = true;
+            self.workspaces_changed();
         }
     }
 
@@ -729,7 +731,7 @@ impl Engine {
             self.doc["active"] = doc::workspaces(&self.doc)[0]["id"].clone();
         }
         self.core.dirty = true;
-        self.core.updates.workspaces = true;
+        self.workspaces_changed();
     }
 
     pub fn set_enabled(&mut self, wid: &str, on: bool) {
@@ -740,7 +742,7 @@ impl Engine {
         ws["enabled"] = json!(on);
         self.build(wid, false);
         self.core.dirty = true;
-        self.core.updates.workspaces = true;
+        self.workspaces_changed();
     }
 
     // Variables
@@ -756,6 +758,20 @@ impl Engine {
     pub fn set_var(&mut self, name: &str, value: &str) {
         self.core.set_var(name, value);
         self.apply_effects();
+    }
+
+    /// The Variables panel's Save: these and no others.
+    pub fn replace_vars(&mut self, vars: Map<String, Value>) {
+        self.core.vars = vars;
+        self.core.dirty = true;
+        self.core.updates.vars = true;
+        self.core.effects.push(Effect::VarsChanged);
+        self.apply_effects();
+    }
+
+    fn workspaces_changed(&mut self) {
+        self.core.updates.workspaces = true;
+        self.core.host.send(Out::WorkspacesChanged);
     }
 
     pub fn delete_var(&mut self, name: &str) {
@@ -806,7 +822,7 @@ impl Engine {
         for wid in self.workspace_ids() {
             self.build(&wid, false);
         }
-        self.core.updates.workspaces = true;
+        self.workspaces_changed();
     }
 
     pub fn running(&self, ws: &Value) -> bool {

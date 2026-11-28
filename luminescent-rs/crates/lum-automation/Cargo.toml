@@ -1,13 +1,25 @@
 [package]
 name = "lum-automation"
-description = "The automation graph model, engine and node types (phase 10)."
+description = "The automation graph model, engine and node types."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish = false
 
 [dependencies]
-lum-core = { path = "../lum-core" }
+lum-core.workspace = true
+crossbeam-channel.workspace = true
+fancy-regex.workspace = true
+fastrand.workspace = true
+jiff.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+lum-fixtures.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -2347,7 +2347,17 @@ dependencies = [
 name = "lum-automation"
 version = "2.0.0-dev"
 dependencies = [
+ "crossbeam-channel",
+ "fancy-regex",
+ "fastrand",
+ "jiff",
  "lum-core",
+ "lum-fixtures",
+ "regex",
+ "serde_json",
+ "tempfile",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -9,7 +9,7 @@ Example: Phase 6 (share 6 %, starts at 37 %) at its 50 % checkpoint â†’ 37 + 6 Ã
 ## Overall
 
 ```
-Overall: 65.25 %   [#############.......]   Current phase: Phase 10 at 50 % (every trigger and action wired to the app) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings, phase 8's Daily-drivable alpha and phase 9's two-monitor checks are unconfirmed; 66.5 % with them)
+Overall: 67.5 %   [#############.......]   Current phase: Phase 10 at 75 % (the node editor) (phase 3's Hello tray, phase 5's Looks right, phase 6's Dashboard, phase 7's Settings, phase 8's Daily-drivable alpha and phase 9's two-monitor checks are unconfirmed; 68.75 % with them)
 ```
 
 | # | Phase | Share | Starts at | Done at | Phase progress | Status |
@@ -24,7 +24,7 @@ Overall: 65.25 %   [#############.......]   Current phase: Phase 10 at 50 % (eve
 | 7 | Settings page | 4 % | 43 % | 47 % | 100 % (built, waiting on the Settings check) | in progress |
 | 8 | Everyday tools | 10 % | 47 % | 57 % | 90 % (100 % built, waiting on the Daily-drivable alpha check) | in progress |
 | 9 | Screen tools | 5 % | 57 % | 62 % | 75 % (100 % built, waiting on the two-monitor check) | in progress |
-| 10 | Automation | 9 % | 62 % | 71 % | 50 % | in progress |
+| 10 | Automation | 9 % | 62 % | 71 % | 75 % | in progress |
 | 11 | System modules | 10 % | 71 % | 81 % | 0 % | not started |
 | 12 | Audio + media | 5 % | 81 % | 86 % | 0 % | not started |
 | 13 | Privacy, sync, keybinds | 6 % | 86 % | 92 % | 0 % | not started |
@@ -105,7 +105,7 @@ Overall: 65.25 %   [#############.......]   Current phase: Phase 10 at 50 % (eve
 ### Phase 10: Automation
 - [x] 25 %: model, engine core, logic and value nodes, expansion; fixtures pass
 - [x] 50 %: all triggers and actions wired
-- [ ] 75 %: editor canvas, nodes, wires, picker, field editors
+- [x] 75 %: editor canvas, nodes, wires, picker, field editors
 - [ ] 100 %: pulse animation, undo / redo, clipboard, workspaces and `.lumflow`, perf check
 
 ### Phase 11: System modules

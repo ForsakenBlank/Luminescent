@@ -2544,6 +2544,7 @@ dependencies = [
  "egui_kittest",
  "image",
  "jiff",
+ "lum-automation",
  "lum-calc",
  "lum-core",
  "lum-fixtures",

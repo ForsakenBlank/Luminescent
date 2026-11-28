@@ -76,6 +76,8 @@ pub enum AppMsg {
     Backup(settings::BackupDone),
     /// An automation node asks for something only the app can do.
     Automation(lum_automation::Out),
+    /// The file dialog of an automation node's field was answered.
+    AutomationFile(lum_ui::automation::Browse, Option<std::path::PathBuf>),
 }
 
 /// Notifications go to the log, and once windows run, to Luminescent's own cards or to the desktop, as Settings
@@ -353,6 +355,8 @@ pub struct App {
     auto_dialogs: Vec<automation::AutoDialog>,
     /// Warnings automations put up, by title, and who hears when each closes.
     auto_alerts: Vec<(String, lum_automation::Reply)>,
+    /// The Automation page.
+    pub automation_ui: lum_ui::automation::AutomationUi,
 }
 
 impl App {
@@ -464,6 +468,7 @@ impl App {
             auto_terminal: Arc::default(),
             auto_dialogs: Vec::new(),
             auto_alerts: Vec::new(),
+            automation_ui: lum_ui::automation::AutomationUi::new(),
             settings,
             paths,
         };
@@ -994,6 +999,7 @@ impl App {
     /// The overlay finished going away: it remembers the page it was on.
     fn overlay_closed(&mut self) {
         self.emit("overlay.closed", "");
+        self.automation_ui.hidden();
         self.dashboard_ui.hidden();
         if self.settings_ui.on_hide() {
             self.hotkeys.set_suspended(false);
@@ -1035,6 +1041,7 @@ impl App {
             }
             "dashboard" => self.dashboard_repair(),
             "today" | "stats" | "calendar" => self.overview.reset(key),
+            "automation" => self.automation_ui.reset(),
             other => self.reset_module_page(other),
         }
         self.notifier.toast("Luminescent error", "The overlay was rebuilt to recover.", 6000);
@@ -1284,6 +1291,7 @@ impl App {
             AppMsg::SettingsFile(job, path) => self.settings_file_chosen(&job, path),
             AppMsg::Backup(done) => self.backup_done(done),
             AppMsg::Automation(out) => self.automation_out(out),
+            AppMsg::AutomationFile(browse, path) => self.automation_ui.file_chosen(&browse, path),
             AppMsg::KeepAwake(on, error) => {
                 if let Some(k) = &mut self.keep_awake {
                     k.reported(on);
@@ -1451,6 +1459,12 @@ impl App {
             .collect();
         let theme_names: Vec<(String, String)> =
             self.themes.themes().iter().map(|t| (t.id().to_owned(), t.name().to_owned())).collect();
+        let auto_choices = if self.overlay.current() == "automation" {
+            self.automation_choices()
+        } else {
+            Default::default()
+        };
+        let auto_snap = self.settings.get_f64("dashboard.snap").unwrap_or(8.0).max(0.0) as f32;
         let out = {
             let App {
                 overlay,
@@ -1469,6 +1483,7 @@ impl App {
                 overview,
                 usage,
                 paths,
+                automation_ui,
                 ..
             } = self;
             EnvData::of(settings).with(hotkeys, |env| {
@@ -1527,6 +1542,12 @@ impl App {
                                     page_out.preview_reminder.or(settings_result.preview_reminder.take());
                                 PageFrame { busy: settings_ui.busy() }
                             }
+                            "automation" => {
+                                let choices =
+                                    |name: &str| auto_choices.get(name).cloned().unwrap_or_default();
+                                let env = lum_ui::automation::Env { choices: &choices, snap: auto_snap };
+                                automation_ui.page(ui, rect, &env)
+                            }
                             other if lum_ui::tools::overview::Overview::handles(other) => {
                                 let reminders = host.is_running("reminders").then(|| {
                                     settings
@@ -1574,6 +1595,7 @@ impl App {
         };
         let dashboard_out = self.dashboard_ui.take_out();
         self.dashboard_out(dashboard_out);
+        self.automation_page_out();
         self.settings_out(settings_result);
         self.themes_out(themes_out);
         if let Some(section) = self.overview.take_out().open_settings {

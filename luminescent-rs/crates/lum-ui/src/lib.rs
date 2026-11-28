@@ -3,6 +3,7 @@
 
 pub mod alert;
 pub mod anim;
+pub mod automation;
 pub mod cheatsheet;
 pub mod dashboard;
 pub mod dialog;

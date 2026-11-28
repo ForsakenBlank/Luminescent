@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 egui.workspace = true
 image.workspace = true
+lum-automation.workspace = true
 lum-calc.workspace = true
 jiff.workspace = true
 lum-core.workspace = true

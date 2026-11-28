@@ -144,7 +144,81 @@ impl App {
         let engine = Engine::new(saved, Arc::new(SystemClock::default()), host, config);
         let waker = self.waker.clone();
         let events = self.events.subscribe();
-        self.automation = Some(Automation::start_with_events(engine, path, move || waker.wake(), events));
+        let auto = Automation::start_with_events(engine, path, move || waker.wake(), events);
+        self.automation_ui.set_engine(auto.handle());
+        self.automation = Some(auto);
+    }
+
+    /// The lists the page's choice fields show that only the app knows, by the Python function's name.
+    pub(super) fn automation_choices(
+        &self,
+    ) -> std::collections::HashMap<&'static str, Vec<(String, String)>> {
+        let mut out = std::collections::HashMap::new();
+        let actions = self
+            .actions
+            .all()
+            .iter()
+            .map(|r| {
+                let title = self.host.title(&r.owner).unwrap_or(&r.owner);
+                (r.full_id(), format!("{title}: {}", r.action.label))
+            })
+            .collect();
+        out.insert("_lum_actions", actions);
+        out.insert(
+            "_pages",
+            lum_ui::overlay::pages::all_pages().map(|(k, t)| ((*k).to_owned(), (*t).to_owned())).collect(),
+        );
+        let several = self.dashboard.board_count() > 1;
+        let mut items = Vec::new();
+        for board in self.dashboard.boards() {
+            for tab in board.tabs() {
+                for item in tab.items().filter(|i| matches!(i.kind(), "item" | "group")) {
+                    let head = if several { format!("{} › ", board.name()) } else { String::new() };
+                    items.push((item.id().to_owned(), format!("{head}{} › {}", tab.title(), item.name())));
+                }
+            }
+        }
+        out.insert("_items", items);
+        out.insert(
+            "_boards",
+            self.dashboard.boards().map(|b| (b.id().to_owned(), b.name().to_owned())).collect(),
+        );
+        let mut themes = vec![
+            ("next".to_owned(), "The next theme".to_owned()),
+            ("previous".to_owned(), "The previous theme".to_owned()),
+        ];
+        themes.extend(self.themes.themes().iter().map(|t| (t.id().to_owned(), t.name().to_owned())));
+        out.insert("_themes", themes);
+        out.insert("_notes", self.host.running_refs().flat_map(|m| m.note_choices()).collect());
+        out
+    }
+
+    /// What the Automation page asked for after a frame.
+    pub(super) fn automation_page_out(&mut self) {
+        if self.overlay.current() != "automation" {
+            self.automation_ui.hidden();
+        }
+        let out = self.automation_ui.take_out();
+        if let Some(on) = out.suspend_keys {
+            self.hotkeys.set_suspended(on);
+        }
+        if out.resume {
+            self.toggle_automation_pause();
+        }
+        if let Some(browse) = out.browse {
+            let mailbox = self.mailbox.clone();
+            let start = std::path::PathBuf::from(runner::expand(&browse.start));
+            let folder =
+                if start.is_dir() { Some(start) } else { start.parent().map(std::path::Path::to_path_buf) };
+            let request = lum_platform::dialogs::Request::new(&browse.title).folder(folder);
+            let pick_folder = browse.folder;
+            let done = move |path| mailbox.send(AppMsg::AutomationFile(browse, path));
+            if pick_folder {
+                lum_platform::dialogs::pick_folder(request, done);
+            } else {
+                lum_platform::dialogs::open_file(request, done);
+            }
+        }
     }
 
     pub fn automation(&self) -> Option<&Automation> {
